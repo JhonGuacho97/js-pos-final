@@ -34,14 +34,7 @@ class SriFirmaService
             );
         }
 
-        $certData = file_get_contents($this->certificadoPath);
-        $certs = [];
-
-        if (!openssl_pkcs12_read($certData, $certs, $this->certificadoClave)) {
-            throw new \RuntimeException(
-                'No se pudo leer el certificado .p12. Verifica la clave.'
-            );
-        }
+        $certs = $this->leerCertificadoPkcs12();
 
         $privateKey = $certs['pkey'];
         $publicCert = $certs['cert'];
@@ -119,6 +112,34 @@ class SriFirmaService
             $signedPropsRefNode->setAttribute('Type', 'http://uri.etsi.org/01903#SignedProperties');
         }
 
+        // ── XAdES-BES + SRI: además de firmar el comprobante y las
+        // SignedProperties, el manual del SRI (Ficha Técnica, numeral
+        // 6.5) exige explícitamente que el certificado dentro de
+        // "KeyInfo" también quede cubierto por la firma, "con objeto de
+        // evitar la posibilidad de sustitución del certificado". Antes
+        // el certificado se agregaba recién después de firmar (vía
+        // add509Cert), sin ninguna referencia que lo cubriera -- ahora
+        // se arma ANTES, se le da un Id, y se agrega como tercera
+        // referencia.
+        $dsig->add509Cert($publicCert, true, false);
+
+        $keyInfoNode = $dsig->sigNode->getElementsByTagNameNS(
+            'http://www.w3.org/2000/09/xmldsig#',
+            'KeyInfo'
+        )->item(0);
+        $keyInfoNode->setAttribute('Id', 'KeyInfoID');
+        $keyInfoNode->setIdAttribute('Id', true);
+
+        $dsig->addReference(
+            $keyInfoNode,
+            XMLSecurityDSig::SHA1,
+            null,
+            [
+                'id_name' => 'Id',
+                'overwrite' => false,
+            ]
+        );
+
         $objKey = new XMLSecurityKey(
             XMLSecurityKey::RSA_SHA1,
             ['type' => 'private']
@@ -126,7 +147,6 @@ class SriFirmaService
         $objKey->loadKey($privateKey);
 
         $dsig->sign($objKey);
-        $dsig->add509Cert($publicCert, true, false);
 
         // El Id="Signature" es necesario para que
         // QualifyingProperties[Target="#Signature"] resuelva contra el
@@ -166,7 +186,7 @@ class SriFirmaService
     ): \DOMElement {
         // Namespace XAdES
         $xadesNs = 'http://uri.etsi.org/01903/v1.3.2#';
-        $signingTime = now()->format('Y-m-d\TH:i:s');
+        $signingTime = now()->format('Y-m-d\TH:i:s\Z');
 
         $qualProps = $dom->createElementNS($xadesNs, 'xades:QualifyingProperties');
         $qualProps->setAttribute('Target', '#Signature');
@@ -234,6 +254,111 @@ class SriFirmaService
     // HELPERS
     // ─────────────────────────────────────────────
 
+    /**
+     * Lee el .p12 y devuelve ['pkey' => ..., 'cert' => ...].
+     *
+     * Primero intenta con la función nativa de PHP (funciona en la
+     * gran mayoría de servidores, incluyendo la mayoría de hosting
+     * Linux/cPanel). Si falla -- típico en Windows con OpenSSL 3.x,
+     * donde el .p12 usa un cifrado "legacy" que la librería interna de
+     * PHP no soporta aunque el binario openssl del sistema sí lo
+     * tenga disponible -- recurre al binario de openssl de la línea
+     * de comandos, con soporte legacy.
+     */
+    private function leerCertificadoPkcs12(): array
+    {
+        if (!file_exists($this->certificadoPath)) {
+            throw new \RuntimeException(
+                "Certificado no encontrado en: {$this->certificadoPath}"
+            );
+        }
+
+        $certData = file_get_contents($this->certificadoPath);
+        $certs = [];
+
+        if (openssl_pkcs12_read($certData, $certs, $this->certificadoClave)) {
+            return $certs;
+        }
+
+        return $this->leerCertificadoPkcs12ConOpensslCli();
+    }
+
+    private function leerCertificadoPkcs12ConOpensslCli(): array
+    {
+        $opensslBin = env('SRI_OPENSSL_BINARY', 'openssl');
+        // Configurable por .env -- en Windows/XAMPP con OpenSSL 3.x
+        // suele hacer falta apuntarle la carpeta donde vive
+        // legacy.dll (ej. C:\xampp\php\extras\ssl). En la mayoría de
+        // hosting Linux esto no hace falta, se puede dejar vacío.
+        $providerPath = env('SRI_OPENSSL_LEGACY_PROVIDER_PATH');
+
+        $tmpPem = tempnam(sys_get_temp_dir(), 'sri_cert_');
+
+        $comando = [$opensslBin, 'pkcs12', '-legacy'];
+        if ($providerPath) {
+            $comando[] = '-provider-path';
+            $comando[] = $providerPath;
+        }
+        $comando = array_merge($comando, [
+            '-in', $this->certificadoPath,
+            '-nodes',
+            '-passin', 'stdin',
+            '-out', $tmpPem,
+        ]);
+
+        $descriptorSpec = [
+            0 => ['pipe', 'r'], // stdin -- la clave se manda por acá, nunca queda en el comando ni es visible en la lista de procesos
+            1 => ['pipe', 'w'],
+            2 => ['pipe', 'w'],
+        ];
+
+        $proceso = proc_open($comando, $descriptorSpec, $pipes);
+
+        if (!is_resource($proceso)) {
+            @unlink($tmpPem);
+            throw new \RuntimeException(
+                'No se pudo iniciar el proceso de openssl para leer el certificado.'
+            );
+        }
+
+        fwrite($pipes[0], $this->certificadoClave . "\n");
+        fclose($pipes[0]);
+
+        $salidaError = stream_get_contents($pipes[2]);
+        fclose($pipes[1]);
+        fclose($pipes[2]);
+
+        $codigoSalida = proc_close($proceso);
+
+        if ($codigoSalida !== 0 || !file_exists($tmpPem)) {
+            @unlink($tmpPem);
+            throw new \RuntimeException(
+                'No se pudo leer el certificado .p12 (ni con la librería interna de PHP ni con el binario de openssl del sistema). '
+                    . 'Verifica la clave y que "openssl" esté disponible en el servidor (o configura SRI_OPENSSL_BINARY / SRI_OPENSSL_LEGACY_PROVIDER_PATH en tu .env). '
+                    . 'Detalle: ' . trim($salidaError)
+            );
+        }
+
+        $pem = file_get_contents($tmpPem);
+        // Se borra de inmediato -- adentro queda la llave privada sin
+        // cifrar, no debe quedar en disco ni un segundo más de lo
+        // necesario.
+        @unlink($tmpPem);
+
+        if (!preg_match('/-----BEGIN (?:RSA )?PRIVATE KEY-----.*?-----END (?:RSA )?PRIVATE KEY-----/s', $pem, $matchKey)) {
+            throw new \RuntimeException('El binario de openssl no devolvió una llave privada legible.');
+        }
+
+        if (!preg_match('/-----BEGIN CERTIFICATE-----.*?-----END CERTIFICATE-----/s', $pem, $matchCert)) {
+            throw new \RuntimeException('El binario de openssl no devolvió un certificado legible.');
+        }
+
+        return [
+            'pkey' => $matchKey[0],
+            'cert' => $matchCert[0],
+        ];
+    }
+
     private function extraerCertBase64(string $certPem): string
     {
         $cert = preg_replace('/-----BEGIN CERTIFICATE-----|-----END CERTIFICATE-----|\s/', '', $certPem);
@@ -268,13 +393,12 @@ class SriFirmaService
             ];
         }
 
-        $certData = file_get_contents($this->certificadoPath);
-        $certs = [];
-
-        if (!openssl_pkcs12_read($certData, $certs, $this->certificadoClave)) {
+        try {
+            $certs = $this->leerCertificadoPkcs12();
+        } catch (\RuntimeException $e) {
             return [
                 'valido' => false,
-                'mensaje' => 'Clave incorrecta o archivo .p12 dañado',
+                'mensaje' => 'Clave incorrecta o archivo .p12 dañado: ' . $e->getMessage(),
             ];
         }
 
