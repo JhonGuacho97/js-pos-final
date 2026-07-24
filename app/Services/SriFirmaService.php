@@ -267,23 +267,35 @@ class SriFirmaService
      */
     private function leerCertificadoPkcs12(): array
     {
-        if (!file_exists($this->certificadoPath)) {
+        return self::leerPkcs12ConFallback($this->certificadoPath, $this->certificadoClave);
+    }
+
+    /**
+     * Lee un .p12 y devuelve ['pkey' => ..., 'cert' => ...], con el
+     * mismo respaldo (nativo de PHP primero, binario de openssl del
+     * sistema si falla). Público y estático para que también lo use
+     * la pantalla de "subir certificado" (que valida un archivo recién
+     * subido, antes de guardarlo, no el que ya está configurado).
+     */
+    public static function leerPkcs12ConFallback(string $certPath, string $clave): array
+    {
+        if (!file_exists($certPath)) {
             throw new \RuntimeException(
-                "Certificado no encontrado en: {$this->certificadoPath}"
+                "Certificado no encontrado en: {$certPath}"
             );
         }
 
-        $certData = file_get_contents($this->certificadoPath);
+        $certData = file_get_contents($certPath);
         $certs = [];
 
-        if (openssl_pkcs12_read($certData, $certs, $this->certificadoClave)) {
+        if (openssl_pkcs12_read($certData, $certs, $clave)) {
             return $certs;
         }
 
-        return $this->leerCertificadoPkcs12ConOpensslCli();
+        return self::leerPkcs12ConOpensslCli($certPath, $clave);
     }
 
-    private function leerCertificadoPkcs12ConOpensslCli(): array
+    private static function leerPkcs12ConOpensslCli(string $certPath, string $clave): array
     {
         $opensslBin = env('SRI_OPENSSL_BINARY', 'openssl');
         // Configurable por .env -- en Windows/XAMPP con OpenSSL 3.x
@@ -300,7 +312,7 @@ class SriFirmaService
             $comando[] = $providerPath;
         }
         $comando = array_merge($comando, [
-            '-in', $this->certificadoPath,
+            '-in', $certPath,
             '-nodes',
             '-passin', 'stdin',
             '-out', $tmpPem,
@@ -321,7 +333,7 @@ class SriFirmaService
             );
         }
 
-        fwrite($pipes[0], $this->certificadoClave . "\n");
+        fwrite($pipes[0], $clave . "\n");
         fclose($pipes[0]);
 
         $salidaError = stream_get_contents($pipes[2]);

@@ -58,12 +58,21 @@ const SriConfigPage = () => {
             const data = res.data.data;
             setCertInfo({ valido: true, titular: data.titular, valid_hasta: data.valid_hasta });
 
-            // Autocompletar RUC y razón social desde el certificado
+            // Autocompletar RUC, razón social y dirección desde el
+            // SRI (la razón social/dirección nunca vienen del propio
+            // certificado -- son datos del registro de RUC).
             if (data.ruc_detectado) {
                 setConfig((prev) => ({
                     ...prev,
                     sri_ruc: data.ruc_detectado,
                     sri_razon_social: data.razon_social || prev.sri_razon_social,
+                    sri_dir_matriz: data.dir_matriz || prev.sri_dir_matriz,
+                }));
+            }
+
+            if (data.ruc_detectado && !data.datos_sri_disponibles) {
+                dispatch(addToast({
+                    text: "No se pudo consultar razón social/dirección al SRI (por ejemplo, si el servicio de consulta se quedó sin créditos). Puedes completarlos a mano abajo.",
                 }));
             }
 

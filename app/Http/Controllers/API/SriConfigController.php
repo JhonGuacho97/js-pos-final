@@ -4,6 +4,7 @@ namespace App\Http\Controllers\API;
 
 use App\Http\Controllers\AppBaseController;
 use App\Models\Setting;
+use App\Services\SriService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
@@ -12,6 +13,10 @@ use Illuminate\Support\Facades\Crypt;
 
 class SriConfigController extends AppBaseController
 {
+    public function __construct(protected SriService $sriService)
+    {
+    }
+
     // ── Obtener configuración actual ──────────────────────────────────────
 
     public function index(): JsonResponse
@@ -152,16 +157,19 @@ class SriConfigController extends AppBaseController
         }
 
         // Leer el archivo
-        $certData = file_get_contents($archivo->getRealPath());
-        $certs = [];
-
-        // Validar que sea un PKCS#12 válido y que la clave sea correcta
-        if (!openssl_pkcs12_read($certData, $certs, $clave)) {
+        try {
+            $certs = \App\Services\SriFirmaService::leerPkcs12ConFallback(
+                $archivo->getRealPath(),
+                $clave
+            );
+        } catch (\Throwable $e) {
             return response()->json([
                 'success' => false,
                 'message' => 'La clave del certificado es incorrecta o el archivo está dañado.',
             ], 422);
         }
+
+        $certData = file_get_contents($archivo->getRealPath());
 
         // Extraer información del certificado
         $certInfo = openssl_x509_parse($certs['cert']);
@@ -196,6 +204,32 @@ class SriConfigController extends AppBaseController
         // Extraer datos
         $ruc = $this->extraerRuc($certInfo);
 
+        // El certificado NUNCA trae nombre comercial ni dirección de
+        // matriz -- esos son datos del registro de RUC, no del
+        // certificado en sí. Se consultan al SRI (mismo servicio que
+        // ya se usa para validar identificación de clientes) para
+        // traerlos reales. Si la consulta falla (sin internet, RUC
+        // recién habilitado, etc.), no bloqueamos la subida del
+        // certificado -- solo esos campos quedan sin autocompletar.
+        $razonSocial = $certInfo['subject']['CN'] ?? '';
+        $direccionMatriz = null;
+        $datosSriDisponibles = false;
+
+        if ($ruc) {
+            try {
+                $datosRuc = $this->sriService->searchByIdentificationSRI($ruc);
+                $razonSocial = $datosRuc['name'] ?? $razonSocial;
+                $direccionMatriz = $datosRuc['address'] ?? null;
+                $datosSriDisponibles = true;
+            } catch (\Throwable $e) {
+                // Seguimos sin esos datos, no es motivo para rechazar
+                // el certificado -- el usuario los puede llenar a mano.
+                // (Por ejemplo, si el servicio de consulta de RUC se
+                // quedó sin créditos -- eso no debe frenar nunca la
+                // subida del certificado.)
+            }
+        }
+
         // Guardar configuración
         $this->guardarSetting('sri_certificado_path', $nombreArchivo);
         $this->guardarSetting(
@@ -208,7 +242,9 @@ class SriConfigController extends AppBaseController
             'valid_hasta' => date('d/m/Y H:i', $certInfo['validTo_time_t']),
             'vencido' => false,
             'ruc_detectado' => $ruc,
-            'razon_social' => $certInfo['subject']['CN'] ?? '',
+            'datos_sri_disponibles' => $datosSriDisponibles,
+            'razon_social' => $razonSocial,
+            'dir_matriz' => $direccionMatriz,
             'cert_path' => $nombreArchivo,
         ], 'Certificado subido y validado correctamente.');
     }
@@ -332,10 +368,21 @@ class SriConfigController extends AppBaseController
     private function extraerRuc(array $certInfo): string
     {
         // Uanataca y Security Data guardan el RUC en distintos campos
-        // Intentar extraer de serialNumber, OU, o CN
+        // según el emisor y el tipo de certificado.
         $subject = $certInfo['subject'] ?? [];
 
-        // TINEC-XXXXXXXXX001 (patrón Uanataca)
+        // organizationIdentifier: TINEC-XXXXXXXXX001 -- es donde
+        // UANATACA guarda el RUC real en certificados de persona
+        // natural. OJO: "serialNumber" en estos certificados suele
+        // traer la CÉDULA (10 dígitos), no el RUC -- por eso este
+        // campo se revisa primero.
+        if (isset($subject['organizationIdentifier'])) {
+            if (preg_match('/(\d{13})/', $subject['organizationIdentifier'], $matches)) {
+                return $matches[1];
+            }
+        }
+
+        // TINEC-XXXXXXXXX001 (patrón Uanataca, otros tipos de certificado)
         if (isset($subject['serialNumber'])) {
             $serial = $subject['serialNumber'];
             if (preg_match('/(\d{13})/', $serial, $matches)) {
@@ -347,6 +394,28 @@ class SriConfigController extends AppBaseController
         if (isset($subject['OU'])) {
             if (preg_match('/(\d{13})/', $subject['OU'], $matches)) {
                 return $matches[1];
+            }
+        }
+
+        // Último respaldo: recorrer TODOS los valores del subject por
+        // si el campo organizationIdentifier vino con otro nombre de
+        // clave (ej. el OID crudo "2.5.4.97") según la versión de
+        // OpenSSL del servidor -- buscamos 13 dígitos que empiecen
+        // igual que la cédula/RUC ya detectados en otros campos, para
+        // no confundirnos con otro número de 13 dígitos que no sea el
+        // RUC.
+        $cedula = null;
+        if (isset($subject['serialNumber']) && preg_match('/(\d{10})/', $subject['serialNumber'], $m)) {
+            $cedula = $m[1];
+        }
+        foreach ($subject as $valor) {
+            if (!is_string($valor)) {
+                continue;
+            }
+            if (preg_match('/(\d{13})/', $valor, $matches)) {
+                if (!$cedula || str_starts_with($matches[1], $cedula)) {
+                    return $matches[1];
+                }
             }
         }
 
