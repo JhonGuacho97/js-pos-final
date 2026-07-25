@@ -604,6 +604,7 @@ export const Permissions = {
     MANAGE_SELLER_DASHBOARD: "manage_my-sales",
     MANAGE_KARDEX: "manage_kardex",
     MANAGE_ELECTRONIC_INVOICES: "manage_electronic_invoices",
+    MANAGE_SRI_CONFIG: "manage_sri_config",
 };
 
 //POS Screen Constants

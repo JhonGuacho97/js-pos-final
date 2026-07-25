@@ -13,6 +13,7 @@ export const routePermissions = [
     { path: "my-sales", permission: Permissions.MANAGE_SELLER_DASHBOARD },
     { path: "kardex", permission: Permissions.MANAGE_KARDEX },
     { path: "electronic-invoices", permission: Permissions.MANAGE_ELECTRONIC_INVOICES },
+    { path: "sri-config", permission: Permissions.MANAGE_SRI_CONFIG },
     { path: "brands", permission: Permissions.MANAGE_BRANDS },
     { path: "currencies", permission: Permissions.MANAGE_CURRENCY },
     { path: "warehouse", permission: Permissions.MANAGE_WAREHOUSES },

@@ -121,10 +121,9 @@ const CreateAdjustment = lazyWithRetry(() => import(/* webpackChunkName: "adjust
 const EditAdjustMent = lazyWithRetry(() => import(/* webpackChunkName: "adjustments" */ "./components/adjustments/EditAdjustMent"), "EditAdjustMent");
 
 // Transferencias entre sucursales.
-const Transfers = lazyWithRetry(() => import(/* webpackChunkName: "transfers" */ "./components/transfers/Transfers"), "Transfers");
-const EditTransfer = lazyWithRetry(() => import(/* webpackChunkName: "transfers" */ "./components/transfers/EditTransfer"), "EditTransfer");
-const CreateTransfer = lazyWithRetry(() => import(/* webpackChunkName: "transfers" */ "./components/transfers/CreateTransfer"), "CreateTransfer");
-
+import Transfers from "./components/transfers/Transfers";
+import EditTransfer from "./components/transfers/EditTransfer";
+import CreateTransfer from "./components/transfers/CreateTransfer";
 
 // Plantillas de correo/SMS.
 const EmailTemplates = lazyWithRetry(() => import(/* webpackChunkName: "templates" */ "./components/Email-templates/EmailTemplates"), "EmailTemplates");
@@ -171,7 +170,7 @@ export const route = [
     {
         path: "sri-config",
         ele: <SriConfigPage />,
-        permission: "",
+        permission: Permissions.MANAGE_SRI_CONFIG,
     },
     {
         path: "electronic-invoices",

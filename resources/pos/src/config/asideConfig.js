@@ -557,7 +557,7 @@ export default [
                 fontIcon: <FontAwesomeIcon icon={faFileInvoiceDollar} />,
                 to: "/app/sri-config",
                 class: "d-flex",
-                permission: "",
+                permission: Permissions.MANAGE_SRI_CONFIG,
             },
         ],
     },

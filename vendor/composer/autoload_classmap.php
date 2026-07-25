@@ -1634,6 +1634,7 @@ return array(
     'Database\\Seeders\\AddSellerDashboardPermissionSeeder' => $baseDir . '/database/seeders/AddSellerDashboardPermissionSeeder.php',
     'Database\\Seeders\\AddSettingPrefixCodeSeeder' => $baseDir . '/database/seeders/AddSettingPrefixCodeSeeder.php',
     'Database\\Seeders\\AddSmsPermissionsSeeder' => $baseDir . '/database/seeders/AddSmsPermissionsSeeder.php',
+    'Database\\Seeders\\AddSriConfigPermissionSeeder' => $baseDir . '/database/seeders/AddSriConfigPermissionSeeder.php',
     'Database\\Seeders\\AddVersionFooterKeySettingTableSeeder' => $baseDir . '/database/seeders/AddVersionFooterKeySettingTableSeeder.php',
     'Database\\Seeders\\AssignAllPermissionAdminRole' => $baseDir . '/database/seeders/AssignAllPermissionAdminRole.php',
     'Database\\Seeders\\DatabaseSeeder' => $baseDir . '/database/seeders/DatabaseSeeder.php',

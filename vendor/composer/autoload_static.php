@@ -2454,6 +2454,7 @@ class ComposerStaticInit7fffbc345bfe6f2e1a041843c5c008dd
         'Database\\Seeders\\AddSellerDashboardPermissionSeeder' => __DIR__ . '/../..' . '/database/seeders/AddSellerDashboardPermissionSeeder.php',
         'Database\\Seeders\\AddSettingPrefixCodeSeeder' => __DIR__ . '/../..' . '/database/seeders/AddSettingPrefixCodeSeeder.php',
         'Database\\Seeders\\AddSmsPermissionsSeeder' => __DIR__ . '/../..' . '/database/seeders/AddSmsPermissionsSeeder.php',
+        'Database\\Seeders\\AddSriConfigPermissionSeeder' => __DIR__ . '/../..' . '/database/seeders/AddSriConfigPermissionSeeder.php',
         'Database\\Seeders\\AddVersionFooterKeySettingTableSeeder' => __DIR__ . '/../..' . '/database/seeders/AddVersionFooterKeySettingTableSeeder.php',
         'Database\\Seeders\\AssignAllPermissionAdminRole' => __DIR__ . '/../..' . '/database/seeders/AssignAllPermissionAdminRole.php',
         'Database\\Seeders\\DatabaseSeeder' => __DIR__ . '/../..' . '/database/seeders/DatabaseSeeder.php',

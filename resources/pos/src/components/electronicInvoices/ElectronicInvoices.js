@@ -55,10 +55,11 @@ const ElectronicInvoices = () => {
     const [resumen, setResumen] = useState({ no_autorizados: 0, saldo_total: 0 });
     const [meta, setMeta] = useState({ current_page: 1, last_page: 1, total: 0 });
     const [loading, setLoading] = useState(false);
+    const [pageSize, setPageSize] = useState(10);
 
     const cargar = useCallback((page = 1, overrides = {}) => {
         setLoading(true);
-        const params = { ...filtrosAplicados, search, ...overrides, page, per_page: 15 };
+        const params = { ...filtrosAplicados, search, per_page: pageSize, ...overrides, page };
         // "TODOS" es solo un valor de UI -- no se manda como filtro real.
         if (params.tipo_comprobante === "TODOS") delete params.tipo_comprobante;
         if (params.estado === "TODOS") delete params.estado;
@@ -83,7 +84,7 @@ const ElectronicInvoices = () => {
             })
             .finally(() => setLoading(false));
         // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [filtrosAplicados, search]);
+    }, [filtrosAplicados, search, pageSize]);
 
     // Carga inicial, una sola vez.
     useEffect(() => {
@@ -192,7 +193,7 @@ const ElectronicInvoices = () => {
                             </button>
                         </div>
                         <div className="col-md-6">
-                            <label className="form-label">Busqueda Inteligente</label>
+                            <label className="form-label">Cliente / número de documento / referencia / clave de acceso:</label>
                             <input
                                 type="text"
                                 name="search"
@@ -224,8 +225,22 @@ const ElectronicInvoices = () => {
                         <div className="text-muted small">Saldo pendiente de cobro (ventas con factura electrónica)</div>
                         <div className="fs-3 fw-bold text-success">{money(resumen.saldo_total)}</div>
                     </div>
-                    <div className="text-muted small">
-                        {meta.total} documento{meta.total === 1 ? "" : "s"} encontrado{meta.total === 1 ? "" : "s"}
+                    <div className="d-flex align-items-center gap-2">
+                        <span className="fw-bold">Mostrar:</span>
+                        <select
+                            className="form-select"
+                            style={{ width: 80 }}
+                            value={pageSize}
+                            onChange={(e) => {
+                                const nuevoTamano = Number(e.target.value);
+                                setPageSize(nuevoTamano);
+                                cargar(1, { search, per_page: nuevoTamano });
+                            }}
+                        >
+                            {[5, 10, 25, 50].map((n) => (
+                                <option key={n} value={n}>{n}</option>
+                            ))}
+                        </select>
                     </div>
                 </div>
             </div>
@@ -297,27 +312,27 @@ const ElectronicInvoices = () => {
                     </table>
                 </div>
 
-                {meta.last_page > 1 && (
-                    <div className="card-footer d-flex justify-content-center gap-2">
+                <div className="card-footer d-flex justify-content-between align-items-center">
+                    <div>
                         <button
-                            className="btn btn-sm btn-light"
+                            className="btn btn-light me-2"
                             disabled={meta.current_page <= 1}
                             onClick={() => cargar(meta.current_page - 1)}
                         >
-                            Anterior
+                            ‹ Anterior
                         </button>
-                        <span className="align-self-center small text-muted">
-                            Página {meta.current_page} de {meta.last_page}
-                        </span>
                         <button
-                            className="btn btn-sm btn-light"
+                            className="btn btn-light"
                             disabled={meta.current_page >= meta.last_page}
                             onClick={() => cargar(meta.current_page + 1)}
                         >
-                            Siguiente
+                            Siguiente ›
                         </button>
                     </div>
-                )}
+                    <span className="text-primary fw-bold">
+                        Total registros: {meta.total}
+                    </span>
+                </div>
             </div>
         </MasterLayout>
     );
