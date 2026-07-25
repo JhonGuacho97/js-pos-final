@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\API\AdjustmentAPIController;
 use App\Http\Controllers\API\AuthController;
+use App\Http\Controllers\API\BackupController;
 use App\Http\Controllers\API\BaseUnitAPIController;
 use App\Http\Controllers\API\BrandAPIController;
 use App\Http\Controllers\API\CouponCodeAPIController;
@@ -446,6 +447,10 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::post('register-entry', [POSRegisterAPIController::class, 'entry']);
     Route::post('register-close', [POSRegisterAPIController::class, 'closeRegister']);
     Route::get('register-report', [POSRegisterAPIController::class, 'registerReport']);
+
+    Route::get('backup/download', [BackupController::class, 'download'])
+        ->name('backup.download');
+
 
     // Coupon Code Routes
     Route::resource('coupon-codes', CouponCodeAPIController::class);

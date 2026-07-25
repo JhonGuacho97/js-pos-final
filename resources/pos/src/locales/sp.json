@@ -15,7 +15,7 @@
     "login-logs.title": "Inicios de Sesión",
     "globally.input.identification.label": "Identificación",
     "purchase.order-item.table.quantity.column.label": "Cantidad",
-    "globally.total-record.label":"Total Ventas Completadas",
+    "globally.total-record.label": "Total Ventas Completadas",
     "globally.add-cart-btn": "Agregar al carrito",
     "login.status.success": "Exitoso",
     "login.status.failed": "Fallido",
@@ -823,5 +823,12 @@
     "variation.type.select.validate.error.message": "Por favor, seleccione tipos de variante",
     "products.warehouse.title": "Almacén de productos",
     "barcode-symbol-uppercase-validation-message": "Ingrese solo letras mayúsculas y números para el código de barras Código 39.",
-    "sale.product-qty.limit.validate.message": "No puedes comprar más que la cantidad límite."
+    "sale.product-qty.limit.validate.message": "No puedes comprar más que la cantidad límite.",
+
+    "settings.backup.title": "Backup de Base de Datos",
+    "settings.backup.description": "Descarga un backup completo en SQL de tu base de datos. Guarda este archivo en un lugar seguro.",
+    "settings.backup.button": "Descargar Backup",
+    "settings.backup.generating": "Generando...",
+    "backup.success.message": "Backup descargado correctamente",
+    "backup.error.message": "Error al generar el backup. Inténtalo de nuevo."
 }

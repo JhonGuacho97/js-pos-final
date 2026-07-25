@@ -24,6 +24,7 @@ import ReactSelect from "../../shared/select/reactSelect";
 import HeaderTitle from "../header/HeaderTitle";
 import TopProgressBar from "../../shared/components/loaders/TopProgressBar";
 import dateFormatOptions from "./dateFormatOptions.json";
+import { downloadBackup } from "../../store/action/backupAction";
 
 const Settings = (props) => {
     const {
@@ -37,6 +38,7 @@ const Settings = (props) => {
         editSetting,
         currencies,
         settings,
+        downloadBackup,
         fetchState,
         countryState,
         dateFormat,
@@ -122,10 +124,7 @@ const Settings = (props) => {
     const [checked, setChecked] = useState(false);
     const [logoChecked, setLogoChecked] = useState(false);
     const [showAppName, setShowAppName] = useState(false);
-
-    const newLanguages = languages.filter((language) => language.value);
-    // const currencies = useSelector((state) => state.currencies)
-    // const settings = useSelector((state) => state.settings)
+    const [isBackingUp, setIsBackingUp] = useState(false);
     const [selectedLanguage] = useState(
         newLanguages
             ? [
@@ -136,8 +135,8 @@ const Settings = (props) => {
             ]
             : null
     );
+    const newLanguages = languages.filter((language) => language.value);
 
-    const newSms = sms.filter((item) => item.value);
     const [selectedSms] = useState(
         newSms
             ? [
@@ -148,6 +147,14 @@ const Settings = (props) => {
             ]
             : null
     );
+    const newSms = sms.filter((item) => item.value);
+
+    const onBackupDownload = async () => {
+        setIsBackingUp(true);
+        await downloadBackup();
+        setIsBackingUp(false);
+    };
+
 
     useEffect(() => {
         fetchSetting();
@@ -1246,6 +1253,42 @@ const Settings = (props) => {
                         </div>
                     </Form>
                 </div>
+                {/* Backup de base de datos */}
+                <div className="w-100 mx-auto pt-lg-10 pt-5">
+                    <h4 className="mb-5">
+                        {getFormattedMessage("settings.backup.title")}
+                    </h4>
+                    <div className="card card-body">
+                        <div className="row">
+                            <div className="col-12">
+                                <p className="text-muted mb-4">
+                                    {getFormattedMessage("settings.backup.description")}
+                                </p>
+                                <button
+                                    className="btn btn-success"
+                                    onClick={onBackupDownload}
+                                    disabled={isBackingUp}
+                                >
+                                    {isBackingUp ? (
+                                        <>
+                                            <span
+                                                className="spinner-border spinner-border-sm me-2"
+                                                role="status"
+                                                aria-hidden="true"
+                                            />
+                                            {getFormattedMessage("settings.backup.generating")}
+                                        </>
+                                    ) : (
+                                        <>
+                                            <i className="fa fa-database me-2" />
+                                            {getFormattedMessage("settings.backup.button")}
+                                        </>
+                                    )}
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
 
             </>
         </MasterLayout>
@@ -1281,4 +1324,5 @@ export default connect(mapStateToProps, {
     fetchAllWarehouses,
     editSetting,
     fetchState,
+    downloadBackup,
 })(Settings);

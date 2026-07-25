@@ -870,6 +870,7 @@ class ComposerStaticInit7fffbc345bfe6f2e1a041843c5c008dd
         'App\\Filters\\CustomSearchFilter' => __DIR__ . '/../..' . '/app/Filters/CustomSearchFilter.php',
         'App\\Http\\Controllers\\API\\AdjustmentAPIController' => __DIR__ . '/../..' . '/app/Http/Controllers/API/AdjustmentAPIController.php',
         'App\\Http\\Controllers\\API\\AuthController' => __DIR__ . '/../..' . '/app/Http/Controllers/API/AuthController.php',
+        'App\\Http\\Controllers\\API\\BackupController' => __DIR__ . '/../..' . '/app/Http/Controllers/API/BackupController.php',
         'App\\Http\\Controllers\\API\\BaseUnitAPIController' => __DIR__ . '/../..' . '/app/Http/Controllers/API/BaseUnitAPIController.php',
         'App\\Http\\Controllers\\API\\BrandAPIController' => __DIR__ . '/../..' . '/app/Http/Controllers/API/BrandAPIController.php',
         'App\\Http\\Controllers\\API\\CouponCodeAPIController' => __DIR__ . '/../..' . '/app/Http/Controllers/API/CouponCodeAPIController.php',

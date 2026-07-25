@@ -50,6 +50,7 @@ return array(
     'App\\Filters\\CustomSearchFilter' => $baseDir . '/app/Filters/CustomSearchFilter.php',
     'App\\Http\\Controllers\\API\\AdjustmentAPIController' => $baseDir . '/app/Http/Controllers/API/AdjustmentAPIController.php',
     'App\\Http\\Controllers\\API\\AuthController' => $baseDir . '/app/Http/Controllers/API/AuthController.php',
+    'App\\Http\\Controllers\\API\\BackupController' => $baseDir . '/app/Http/Controllers/API/BackupController.php',
     'App\\Http\\Controllers\\API\\BaseUnitAPIController' => $baseDir . '/app/Http/Controllers/API/BaseUnitAPIController.php',
     'App\\Http\\Controllers\\API\\BrandAPIController' => $baseDir . '/app/Http/Controllers/API/BrandAPIController.php',
     'App\\Http\\Controllers\\API\\CouponCodeAPIController' => $baseDir . '/app/Http/Controllers/API/CouponCodeAPIController.php',

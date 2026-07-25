@@ -10,8 +10,8 @@
     "header.profile-menu.profile.label": "Profile",
     "login-logs.title": "Login Logs",
     "globally.input.identification.label": "Identification",
-    "globally.total-record.label":"Total Sales Completed",
-     "purchase.order-item.table.quantity.column.label": "Quantity",
+    "globally.total-record.label": "Total Sales Completed",
+    "purchase.order-item.table.quantity.column.label": "Quantity",
     "login-status.success": "Success",
     "login-status.failed": "Failed",
     "globally.add-cart-btn": "Add to Cart",
@@ -829,5 +829,11 @@
     "product.type.input.validation.error": "Please select product type",
     "products.warehouse.title": "Product Warehouse",
     "barcode-symbol-uppercase-validation-message": "Please enter only uppercase letters and numbers for Code 39 Barcode Symbology.",
-    "sale.product-qty.limit.validate.message": "You can't buy more than limit quantity"
+    "sale.product-qty.limit.validate.message": "You can't buy more than limit quantity",
+    "settings.backup.title": "Database Backup",
+    "settings.backup.description": "Download a complete SQL backup of your database. Keep this file in a safe place.",
+    "settings.backup.button": "Download Backup",
+    "settings.backup.generating": "Generating...",
+    "backup.success.message": "Backup downloaded successfully",
+    "backup.error.message": "Error generating backup. Please try again."
 }
