@@ -16,6 +16,30 @@ const ReactMultiSelect = ({
     errors = "",
     option,
 }) => {
+    // Por defecto, react-select no le avisa a su propio contenedor que
+    // creció cuando los chips seleccionados ocupan varias líneas -- el
+    // control se queda con la altura mínima inicial mientras los chips
+    // se siguen dibujando hacia abajo, pisando lo que venga después en
+    // el formulario. Estos estilos le dicen explícitamente que la
+    // altura debe seguir al contenido (auto), no quedarse fija.
+    const estilosSelect = {
+        control: (base) => ({
+            ...base,
+            minHeight: 38,
+            height: "auto",
+        }),
+        valueContainer: (base) => ({
+            ...base,
+            flexWrap: "wrap",
+            overflow: "visible",
+            padding: "4px 8px",
+        }),
+        indicatorsContainer: (base) => ({
+            ...base,
+            alignSelf: "flex-start",
+        }),
+    };
+
     return (
         <Form.Group className="form-group w-100" controlId="formBasic">
             {title ? <Form.Label>{title} :</Form.Label> : ""}
@@ -28,6 +52,7 @@ const ReactMultiSelect = ({
                 defaultValue={defaultValue}
                 onChange={onChange}
                 options={option}
+                styles={estilosSelect}
                 noOptionsMessage={() => getFormattedMessage("no-option.label")}
             />
             {errors ? (

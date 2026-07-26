@@ -57,6 +57,24 @@ const Variation = (props) => {
         {
             name: placeholderText('variation.variation_types'),
             selector: row => row.variation_types.map(type => type.name).join(' , '),
+            cell: row => {
+                const nombres = row.variation_types.map(type => type.name);
+                const limite = 4;
+                const visibles = nombres.slice(0, limite);
+                const restantes = nombres.length - limite;
+                return (
+                    <span title={nombres.join(', ')}>
+                        {visibles.join(', ')}
+                        {restantes > 0 && (
+                            <span className="badge bg-light-secondary ms-1">
+                                +{restantes} más
+                            </span>
+                        )}
+                    </span>
+                );
+            },
+            wrap: true,
+            grow: 2,
         },
         {
             name: getFormattedMessage('react-data-table.action.column.label'),
