@@ -298,14 +298,21 @@ const PosMainPage = (props) => {
     ]);
 
     const onAddPaymentRow = () => {
-        setPaymentRows((prev) => [
-            ...prev,
-            {
-                id: Date.now(),
-                amount: "",
-                payment_type: paymentTypeDefaultValue[0],
-            },
-        ]);
+        setPaymentRows((prev) => {
+            const totalPagado = prev.reduce(
+                (sum, row) => sum + (Number(row.amount) || 0),
+                0
+            );
+            const saldoRestante = Math.max(0, grandTotal - totalPagado);
+            return [
+                ...prev,
+                {
+                    id: Date.now(),
+                    amount: saldoRestante > 0 ? saldoRestante.toFixed(2) : "",
+                    payment_type: paymentTypeDefaultValue[0],
+                },
+            ];
+        });
     };
 
     const onRemovePaymentRow = (id) => {

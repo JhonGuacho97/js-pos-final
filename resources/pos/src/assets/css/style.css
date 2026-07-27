@@ -5346,6 +5346,11 @@ fieldset:disabled .btn {
     padding: 2.5rem 2.5rem;
 }
 
+.card-amounts{
+        flex: 1 1 auto;
+    padding: 1.2rem 2.0rem;
+}
+
 .card-title {
     margin-bottom: 0.5rem;
 }

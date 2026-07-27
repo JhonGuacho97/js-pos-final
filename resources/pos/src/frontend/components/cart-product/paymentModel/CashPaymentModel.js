@@ -1,26 +1,25 @@
 import React from "react";
-import { Modal, Form, Table } from "react-bootstrap";
+import { Modal, Form, Badge } from "react-bootstrap";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { faPlus, faTrash } from "@fortawesome/free-solid-svg-icons";
+import {
+    faPlus,
+    faTrash,
+    faReceipt,
+    faMoneyBillWave,
+    faWallet,
+    faCheckCircle,
+} from "@fortawesome/free-solid-svg-icons";
+
 import {
     currencySymbolHandling,
     getFormattedMessage,
     numValidate,
     placeholderText,
 } from "../../../../shared/sharedMethod";
+
 import ReactSelect from "../../../../shared/select/reactSelect";
 import SriComprobanteSelect from "../../sri/SriComprobanteSelect";
 
-/**
- * Modal de cobro del POS. Antes solo dejaba elegir UNA forma de pago por
- * venta; ahora se puede dividir el cobro en varias filas (ej. $20 en
- * efectivo + $10 por transferencia para una venta de $30).
- *
- * El estado de pago (Pagado / Parcial / No pagado) ya NO se elige a mano:
- * se calcula solo comparando lo que sumaron las filas contra el total de
- * la venta, para que nunca pueda quedar "Pagado" sin cubrir el total. Se
- * muestra igual en el mismo lugar que antes, pero de solo lectura.
- */
 const CashPaymentModel = (props) => {
     const {
         handleCashPayment,
@@ -47,28 +46,47 @@ const CashPaymentModel = (props) => {
     } = props;
 
     const currencySymbol =
-        settings.attributes && settings.attributes.currency_symbol;
+        settings.attributes &&
+        settings.attributes.currency_symbol;
 
     const totalPaid = paymentRows.reduce(
         (sum, row) => sum + (Number(row.amount) || 0),
         0
     );
-    const changeReturn = Math.max(0, totalPaid - grandTotal);
-    // Sin recortar a 0 -- esta es la que se muestra en el resumen de la
-    // derecha mientras se llenan las filas, para que se vea en vivo cuánto
-    // falta (negativo) o cuánto sobra (positivo), como en las capturas.
-    const liveDifference = totalPaid - grandTotal;
+
+    const changeReturn = Math.max(
+        0,
+        totalPaid - grandTotal
+    );
+
+    const liveDifference =
+        totalPaid - grandTotal;
 
     const status =
         totalPaid <= 0
-            ? { label: getFormattedMessage("payment-status.filter.unpaid.label"), tone: "#dc2626" }
+            ? {
+                label: getFormattedMessage(
+                    "payment-status.filter.unpaid.label"
+                ),
+                tone: "danger",
+                color: "#dc2626",
+            }
             : totalPaid >= grandTotal
-            ? { label: getFormattedMessage("payment-status.filter.paid.label"), tone: "#059669" }
-            : { label: getFormattedMessage("payment-status.filter.partial.label"), tone: "#b45309" };
+                ? {
+                    label: getFormattedMessage(
+                        "payment-status.filter.paid.label"
+                    ),
+                    tone: "success",
+                    color: "#059669",
+                }
+                : {
+                    label: getFormattedMessage(
+                        "payment-status.filter.partial.label"
+                    ),
+                    tone: "warning",
+                    color: "#d97706",
+                };
 
-    // Calculado UNA sola vez (no dentro del .map() de filas): placeholderText
-    // usa un hook por dentro, y llamarlo una cantidad de veces que cambia
-    // según cuántas filas hay rompe el orden de hooks entre renders.
     const amountPlaceholder = placeholderText(
         "expense.input.amount.placeholder.label"
     );
@@ -78,308 +96,239 @@ const CashPaymentModel = (props) => {
             show={cashPayment}
             onHide={handleCashPayment}
             size="xl"
+            centered
             className="pos-modal"
         >
-            <Modal.Header closeButton>
-                <Modal.Title>
+            <Modal.Header closeButton className="border-bottom">
+                <Modal.Title className="fw-bold fs-3">
+                    <FontAwesomeIcon icon={faMoneyBillWave} className="me-2 text-primary" />
                     {getFormattedMessage("pos-make-Payment.title")}
                 </Modal.Title>
             </Modal.Header>
-            <Modal.Body>
-                <div className="row">
-                    <div className="col-lg-8 col-12">
-                        <SriComprobanteSelect
-                            value={tipoComprobanteSri}
-                            onChange={onTipoComprobanteChange}
-                        />
-                        {paymentRows.map((row, index) => {
-                            const isLast = index === paymentRows.length - 1;
-                            return (
-                                <div className="row align-items-end mb-3" key={row.id}>
-                                    <Form.Group className="col-5">
-                                        {index === 0 && (
-                                            <Form.Label>
-                                                {getFormattedMessage(
-                                                    "expense.input.amount.label"
-                                                )}
-                                                :
-                                            </Form.Label>
-                                        )}
-                                        <Form.Control
-                                            type="text"
-                                            autoComplete="off"
-                                            className="form-control-solid"
-                                            placeholder={amountPlaceholder}
-                                            onKeyPress={(event) => numValidate(event)}
-                                            value={row.amount}
-                                            onChange={(e) =>
-                                                onPaymentRowAmountChange(
-                                                    row.id,
-                                                    e.target.value
-                                                )
-                                            }
-                                        />
-                                    </Form.Group>
-                                    <Form.Group className="col-5">
-                                        {index === 0 && (
-                                            <Form.Label>
-                                                {getFormattedMessage(
-                                                    "globally.react-table.column.payment-type.label"
-                                                )}
-                                                :{" "}
-                                                <span className="required" />
-                                            </Form.Label>
-                                        )}
-                                        <ReactSelect
-                                            isRequired
-                                            multiLanguageOption={paymentTypeFilterOptions}
-                                            onChange={(obj) =>
-                                                onPaymentRowTypeChange(row.id, obj)
-                                            }
-                                            name={`payment_type_${row.id}`}
-                                            value={row.payment_type}
-                                            placeholder={getFormattedMessage(
-                                                "select.payment-type.label"
-                                            )}
-                                        />
-                                    </Form.Group>
-                                    <div className="col-2 d-flex gap-2 mb-1">
-                                        {paymentRows.length > 1 && (
-                                            <button
-                                                type="button"
-                                                title="Quitar"
-                                                className="btn btn-icon btn-light-danger"
-                                                onClick={() =>
-                                                    onRemovePaymentRow(row.id)
-                                                }
-                                            >
-                                                <FontAwesomeIcon icon={faTrash} />
-                                            </button>
-                                        )}
-                                        {isLast && (
-                                            <button
-                                                type="button"
-                                                title="Agregar otra forma de pago"
-                                                className="btn btn-icon btn-light-primary"
-                                                onClick={onAddPaymentRow}
-                                            >
-                                                <FontAwesomeIcon icon={faPlus} />
-                                            </button>
-                                        )}
+            <Modal.Body className="p-4">
+                <div className="row g-4">
+                    <div className="col-lg-8">
+                        <div className="card shadow-sm border-0">
+                            <div className="card-body">
+                                <SriComprobanteSelect
+                                    value={tipoComprobanteSri}
+                                    onChange={onTipoComprobanteChange}
+                                />
+                                <hr className="my-4" />
+                                <div className="d-flex justify-content-between align-items-center mb-4">
+                                    <h5 className="fw-bold mb-0">Formas de pago</h5>
+                                    <button
+                                        type="button"
+                                        className="btn btn-primary btn-sm"
+                                        onClick={onAddPaymentRow}
+                                    >
+                                        <FontAwesomeIcon icon={faPlus} className="me-2" />
+                                        Agregar forma de pago
+                                    </button>
+                                </div>
+                                {paymentRows.map((row) => (
+                                    <div key={row.id} className="card border mb-3 shadow-sm">
+                                        <div className="card-body">
+                                            <div className="row">
+                                                <div className="col-md-5">
+                                                    <Form.Label className="fw-semibold">
+                                                        {getFormattedMessage("expense.input.amount.label")}
+                                                    </Form.Label>
+                                                    <Form.Control
+                                                        type="text"
+                                                        className="form-control-lg"
+                                                        autoComplete="off"
+                                                        placeholder={amountPlaceholder}
+                                                        value={row.amount}
+                                                        onKeyPress={(e) => numValidate(e)}
+                                                        onChange={(e) => onPaymentRowAmountChange(row.id, e.target.value)}
+                                                    />
+                                                    {row.payment_type?.value === 1 && (
+                                                        <div className="d-flex gap-2 mt-2">
+                                                            {[
+                                                                Math.ceil(grandTotal / 5) * 5,
+                                                                Math.ceil(grandTotal / 10) * 10,
+                                                                Math.ceil(grandTotal / 20) * 20,
+                                                            ]
+                                                                .filter((v, i, arr) => arr.indexOf(v) === i && v >= grandTotal)
+                                                                .slice(0, 3)
+                                                                .map((monto) => (
+                                                                    <button
+                                                                        key={monto}
+                                                                        type="button"
+                                                                        className="btn btn-sm btn-outline-primary"
+                                                                        onClick={() => onPaymentRowAmountChange(row.id, monto.toFixed(2))}
+                                                                    >
+                                                                        {currencySymbolHandling(allConfigData, currencySymbol, monto)}
+                                                                    </button>
+                                                                ))}
+                                                        </div>
+                                                    )}
+                                                </div>
+                                                <div className="col-md-5">
+                                                    <Form.Label className="fw-semibold">
+                                                        {getFormattedMessage("globally.react-table.column.payment-type.label")}
+                                                    </Form.Label>
+                                                    <ReactSelect
+                                                        isRequired
+                                                        multiLanguageOption={paymentTypeFilterOptions}
+                                                        value={row.payment_type}
+                                                        name={`payment_type_${row.id}`}
+                                                        onChange={(obj) => onPaymentRowTypeChange(row.id, obj)}
+                                                        placeholder={getFormattedMessage("select.payment-type.label")}
+                                                    />
+                                                </div>
+                                                <div className="col-md-2 text-end">
+                                                    <div className="d-flex justify-content-end gap-2">
+                                                        {paymentRows.length > 1 && (
+                                                            <button
+                                                                type="button"
+                                                                className="btn btn-light-danger"
+                                                                onClick={() => onRemovePaymentRow(row.id)}
+                                                            >
+                                                                <FontAwesomeIcon icon={faTrash} />
+                                                            </button>
+                                                        )}
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                ))}
+                                <div className="row mt-4">
+                                    <div className="col-lg-4">
+                                        <div className="card border-0 shadow-sm text-center h-100" style={{ background: "#f8fafc" }}>
+                                            <div className="card-body">
+                                                <small className="text-muted text-uppercase fw-bold">Total a cobrar</small>
+                                                <h2 className="fw-bold mt-2 mb-0" style={{ color: "#1e293b" }}>
+                                                    {currencySymbolHandling(allConfigData, currencySymbol, grandTotal)}
+                                                </h2>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div className="col-lg-4">
+                                        <div className="card border-0 shadow-sm text-center h-100" style={{ background: "#eff6ff" }}>
+                                            <div className="card-body">
+                                                <small className="text-muted text-uppercase fw-bold">Recibido</small>
+                                                <h2 className="fw-bold mt-2 mb-0" style={{ color: "#2563eb" }}>
+                                                    {currencySymbolHandling(allConfigData, currencySymbol, totalPaid.toFixed(2))}
+                                                </h2>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div className="col-lg-4">
+                                        <div
+                                            className="card border-0 shadow text-center h-100"
+                                            style={{
+                                                background: liveDifference >= 0 ? "#ecfdf5" : "#fef2f2",
+                                                border: liveDifference >= 0 ? "2px solid #10b981" : "2px solid #ef4444",
+                                            }}
+                                        >
+                                            <div className="card-amounts">
+                                                <small className="text-uppercase fw-bold" style={{ color: liveDifference >= 0 ? "#047857" : "#b91c1c" }}>
+                                                    {liveDifference >= 0 ? "Cambio" : "Faltante"}
+                                                </small>
+                                                <h1 className="fw-bold mb-0 mt-2" style={{ fontSize: "2.6rem", color: liveDifference >= 0 ? "#059669" : "#dc2626" }}>
+                                                    {currencySymbolHandling(allConfigData, currencySymbol, Math.abs(liveDifference).toFixed(2))}
+                                                </h1>
+                                            </div>
+                                        </div>
                                     </div>
                                 </div>
-                            );
-                        })}
-
-                        <Form.Group
-                            className="mb-3 col-12"
-                            controlId="formBasicNotes"
-                        >
-                            <Form.Label>
-                                {getFormattedMessage(
-                                    "globally.input.notes.label"
-                                )}
-                                :{" "}
-                            </Form.Label>
-                            <Form.Control
-                                as="textarea"
-                                className="form-control-solid"
-                                name="notes"
-                                rows={3}
-                                onChange={(e) => onChangeInput(e)}
-                                placeholder={placeholderText(
-                                    "globally.input.notes.placeholder.label"
-                                )}
-                                value={cashPaymentValue.notes}
-                            />
-                            <span className="text-danger">
-                                {errors["notes"] ? errors["notes"] : null}
-                            </span>
-                        </Form.Group>
-
-                        <Form.Group className="mb-3 col-12">
-                            <Form.Label>
-                                {getFormattedMessage(
-                                    "dashboard.recentSales.paymentStatus.label"
-                                )}
-                                :
-                            </Form.Label>
-                            {/* De solo lectura a propósito: el estado se
-                                calcula solo, sumando las filas de arriba
-                                contra el total -- no se puede desajustar
-                                a mano. */}
-                            <div
-                                className="form-control form-control-solid d-flex align-items-center"
-                                style={{ color: status.tone, fontWeight: 600, cursor: "default" }}
-                            >
-                                {status.label}
-                                {changeReturn > 0 && (
-                                    <span className="text-muted ms-2 fw-normal">
-                                        ({getFormattedMessage("pos.change-return.label")}:{" "}
-                                        {currencySymbolHandling(
-                                            allConfigData,
-                                            currencySymbol,
-                                            changeReturn.toFixed(2)
-                                        )}
-                                        )
-                                    </span>
-                                )}
+                                <div className="mt-4">
+                                    <Form.Label className="fw-semibold">Estado del pago</Form.Label>
+                                    <div>
+                                        <Badge bg={status.tone} className="px-4 py-3 fs-6">
+                                            <FontAwesomeIcon icon={faCheckCircle} className="me-2" />
+                                            {status.label}
+                                        </Badge>
+                                    </div>
+                                </div>
+                                <div className="mt-4">
+                                    <Form.Label className="fw-semibold">
+                                        {getFormattedMessage("globally.input.notes.label")}
+                                    </Form.Label>
+                                    <Form.Control
+                                        as="textarea"
+                                        rows={4}
+                                        className="form-control-solid"
+                                        value={cashPaymentValue.notes}
+                                        name="notes"
+                                        onChange={(e) => onChangeInput(e)}
+                                        placeholder={placeholderText("globally.input.notes.placeholder.label")}
+                                    />
+                                    <span className="text-danger">{errors.notes ?? null}</span>
+                                </div>
                             </div>
-                        </Form.Group>
+                        </div>
                     </div>
-                    <div className="col-lg-4 col-12">
-                        <div className="card custom-cash-card">
-                            <div className="card-body p-6">
-                                <Table
-                                    striped
-                                    bordered
-                                    hover
-                                    className="mb-0 text-nowrap"
-                                >
-                                    <tbody>
-                                        <tr>
-                                            <td scope="row" className="ps-3">
-                                                {getFormattedMessage(
-                                                    "dashboard.recentSales.total-product.label"
-                                                )}
-                                            </td>
-                                            <td className="px-3">
-                                                <span className="btn btn-primary cursor-default rounded-circle total-qty-text d-flex align-items-center justify-content-center p-2">
-                                                    {totalQty}
-                                                </span>
-                                            </td>
-                                        </tr>
-                                        <tr>
-                                            <td scope="row" className="ps-3">
-                                                {getFormattedMessage(
-                                                    "pos-total-amount.title"
-                                                )}
-                                            </td>
-                                            <td className="px-3">
-                                                {currencySymbolHandling(
-                                                    allConfigData,
-                                                    currencySymbol,
-                                                    subTotal ? subTotal : "0.00"
-                                                )}
-                                            </td>
-                                        </tr>
-                                        <tr>
-                                            <td scope="row" className="ps-3">
-                                                {getFormattedMessage(
-                                                    "globally.detail.order.tax"
-                                                )}
-                                            </td>
-                                            <td className="px-3">
-                                                {currencySymbolHandling(
-                                                    allConfigData,
-                                                    currencySymbol,
-                                                    taxTotal ? taxTotal : "0.00"
-                                                )}{" "}
-                                                (
-                                                {cartItemValue.tax
-                                                    ? parseFloat(
-                                                          cartItemValue.tax
-                                                      ).toFixed(2)
-                                                    : "0.00"}{" "}
-                                                %)
-                                            </td>
-                                        </tr>
-                                        <tr>
-                                            <td scope="row" className="ps-3">
-                                                {getFormattedMessage(
-                                                    "purchase.order-item.table.discount.column.label"
-                                                )}
-                                            </td>
-                                            <td className="px-3">
-                                                {currencySymbolHandling(
-                                                    allConfigData,
-                                                    currencySymbol,
-                                                    cartItemValue.discount
-                                                        ? cartItemValue.discount
-                                                        : "0.00"
-                                                )}
-                                            </td>
-                                        </tr>
-                                        <tr>
-                                            <td scope="row" className="ps-3">
-                                                {getFormattedMessage(
-                                                    "purchase.input.shipping.label"
-                                                )}
-                                            </td>
-                                            <td className="px-3">
-                                                {currencySymbolHandling(
-                                                    allConfigData,
-                                                    currencySymbol,
-                                                    cartItemValue.shipping
-                                                        ? cartItemValue.shipping
-                                                        : "0.00"
-                                                )}
-                                            </td>
-                                        </tr>
-                                        <tr>
-                                            <td scope="row" className="ps-3">
-                                                {getFormattedMessage(
-                                                    "purchase.grant-total.label"
-                                                )}
-                                            </td>
-                                            <td className="px-3">
-                                                {currencySymbolHandling(
-                                                    allConfigData,
-                                                    currencySymbol,
-                                                    grandTotal
-                                                )}
-                                            </td>
-                                        </tr>
-                                        <tr>
-                                            <td scope="row" className="ps-3">
-                                                {getFormattedMessage(
-                                                    "pos.change-return.label"
-                                                )}
-                                            </td>
-                                            <td
-                                                className="px-3"
-                                                style={{
-                                                    color:
-                                                        liveDifference < 0
-                                                            ? "#dc2626"
-                                                            : liveDifference > 0
-                                                            ? "#059669"
-                                                            : "inherit",
-                                                    fontWeight:
-                                                        liveDifference !== 0 ? 600 : "inherit",
-                                                }}
-                                            >
-                                                {currencySymbolHandling(
-                                                    allConfigData,
-                                                    currencySymbol,
-                                                    liveDifference.toFixed(2)
-                                                )}
-                                            </td>
-                                        </tr>
-                                    </tbody>
-                                </Table>
+                    <div className="col-lg-4">
+                        <div className="card border-0 shadow h-100" style={{ borderRadius: 18 }}>
+                            <div className="card-body d-flex flex-column">
+                                <div className="text-center mb-4">
+                                    <FontAwesomeIcon icon={faReceipt} size="2x" className="text-primary mb-3" />
+                                    <h4 className="fw-bold mb-1">Resumen de la venta</h4>
+                                    <small className="text-muted">Información general</small>
+                                </div>
+                                <div className="rounded-4 p-3 mb-3" style={{ background: "#f8fafc" }}>
+                                    <div className="d-flex justify-content-between">
+                                        <span className="text-muted">Productos</span>
+                                        <strong>{totalQty}</strong>
+                                    </div>
+                                </div>
+                                <div className="rounded-4 p-3 mb-3" style={{ background: "#f8fafc" }}>
+                                    <div className="d-flex justify-content-between">
+                                        <span className="text-muted">Subtotal</span>
+                                        <strong>{currencySymbolHandling(allConfigData, currencySymbol, subTotal ? subTotal : "0.00")}</strong>
+                                    </div>
+                                </div>
+                                <div className="rounded-4 p-3 mb-3" style={{ background: "#f8fafc" }}>
+                                    <div className="d-flex justify-content-between">
+                                        <span className="text-muted">IVA</span>
+                                        <strong>{currencySymbolHandling(allConfigData, currencySymbol, taxTotal ? taxTotal : "0.00")}</strong>
+                                    </div>
+                                    <small className="text-muted">
+                                        {cartItemValue.tax ? Number(cartItemValue.tax).toFixed(2) : "0.00"}%
+                                    </small>
+                                </div>
+                                <div className="rounded-4 p-3 mb-3" style={{ background: "#f8fafc" }}>
+                                    <div className="d-flex justify-content-between">
+                                        <span className="text-muted">Descuento</span>
+                                        <strong>{currencySymbolHandling(allConfigData, currencySymbol, cartItemValue.discount ? cartItemValue.discount : "0.00")}</strong>
+                                    </div>
+                                </div>
+                                <div className="rounded-4 p-3 mb-4" style={{ background: "#f8fafc" }}>
+                                    <div className="d-flex justify-content-between">
+                                        <span className="text-muted">Envío</span>
+                                        <strong>{currencySymbolHandling(allConfigData, currencySymbol, cartItemValue.shipping ? cartItemValue.shipping : "0.00")}</strong>
+                                    </div>
+                                </div>
+                                <div className="mt-20 rounded-4 p-4" style={{ background: "linear-gradient(135deg,#2563eb,#1d4ed8)", color: "white" }}>
+                                    <div className="text-center">
+                                        <small className="text-uppercase" style={{ opacity: .9 }}>TOTAL A COBRAR</small>
+                                        <h1 className="fw-bold mt-2 mb-0" style={{ fontSize: "2.7rem" }}>
+                                            {currencySymbolHandling(allConfigData, currencySymbol, grandTotal)}
+                                        </h1>
+                                    </div>
+                                </div>
                             </div>
                         </div>
                     </div>
                 </div>
             </Modal.Body>
-            <Modal.Footer className="mt-0">
-                <button
-                    type="button"
-                    className="btn btn-primary"
-                    onClick={(event) => onCashPayment(event)}
-                >
-                    {getFormattedMessage("globally.submit-btn")}
-                </button>
-                <button
-                    type="button"
-                    className="btn btn-secondary me-0"
-                    onClick={handleCashPayment}
-                >
-                    {getFormattedMessage("globally.cancel-btn")}
-                </button>
+            <Modal.Footer className="border-0 px-4 pb-4 pt-0" style={{ background: "#fff" }}>
+                <div className="d-flex justify-content-end w-100 gap-3">
+                    <button type="button" className="btn btn-light btn-lg px-5" onClick={handleCashPayment}>
+                        Cancelar
+                    </button>
+                    <button type="button" className="btn btn-primary btn-lg px-5 shadow" onClick={(event) => onCashPayment(event)}>
+                        <FontAwesomeIcon icon={faWallet} className="me-2" />
+                        {getFormattedMessage("globally.submit-btn")}
+                    </button>
+                </div>
             </Modal.Footer>
         </Modal>
     );
 };
+
 export default CashPaymentModel;
