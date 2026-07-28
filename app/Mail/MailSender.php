@@ -18,9 +18,13 @@ class MailSender extends Mailable
     /**
      * Adjuntos: array de ['path' => ..., 'name' => ..., 'mime' => ...]
      *
+     * Ojo: NO se llama $attachments -- la clase base Mailable de
+     * Laravel ya declara una propiedad pública con ese nombre, y PHP no
+     * permite que una clase hija la vuelva privada.
+     *
      * @var array
      */
-    private $attachments;
+    private $adjuntosPersonalizados;
 
     /**
      * MailSender constructor.
@@ -30,7 +34,7 @@ class MailSender extends Mailable
         $this->view = $view;
         $this->subject = $subject;
         $this->data = $data;
-        $this->attachments = $attachments;
+        $this->adjuntosPersonalizados = $attachments;
     }
 
     public function build(): MailSender
@@ -39,7 +43,7 @@ class MailSender extends Mailable
             ->markdown($this->view)
             ->with($this->data);
 
-        foreach ($this->attachments as $adjunto) {
+        foreach ($this->adjuntosPersonalizados as $adjunto) {
             if (!empty($adjunto['path']) && file_exists($adjunto['path'])) {
                 $mail->attach($adjunto['path'], [
                     'as' => $adjunto['name'] ?? basename($adjunto['path']),
