@@ -51,7 +51,12 @@ class SriRideService
         $pdfContent = $this->generarPdf($factura);
         $nombreArchivo = "rides/factura_{$factura->clave_acceso}.pdf";
         Storage::disk('local')->put($nombreArchivo, $pdfContent);
-        return $nombreArchivo;
+
+        // Ruta absoluta real, no la ruta relativa al disco -- para que
+        // cualquiera que reciba esto (como el adjunto de un correo)
+        // pueda usarla directo con file_exists()/attach() sin tener que
+        // saber en qué disco de Storage vive.
+        return Storage::disk('local')->path($nombreArchivo);
     }
 
     /**
