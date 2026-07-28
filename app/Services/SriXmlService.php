@@ -61,8 +61,13 @@ class SriXmlService
 
     public function proximoSecuencial(string $tipoDoc): string
     {
+        // Importante: NO excluir "DEVUELTA" acá. El SRI ya registró ese
+        // secuencial en su sistema aunque lo haya rechazado -- si lo
+        // ignoramos al calcular el máximo, el siguiente intento vuelve a
+        // calcular el mismo número (que el SRI ya conoce y va a volver a
+        // rechazar por "ERROR SECUENCIAL REGISTRADO"), quedando atascado
+        // en un bucle para siempre.
         $ultimo = ElectronicInvoice::where('tipo_comprobante', $tipoDoc)
-            ->whereNotIn('estado', [ElectronicInvoice::DEVUELTA])
             ->max('secuencial');
 
         $siguiente = $ultimo ? ((int) $ultimo + 1) : 1;
