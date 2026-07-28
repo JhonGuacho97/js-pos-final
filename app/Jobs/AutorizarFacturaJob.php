@@ -71,8 +71,11 @@ class AutorizarFacturaJob implements ShouldQueue
                     'mensajes_sri'        => $resultado['mensajes'],
                 ]);
 
-                // Aquí puedes disparar el envío del RIDE por correo (Fase 8)
-                // SendRideEmailJob::dispatch($factura->id);
+                // Envía el correo al cliente con el RIDE (PDF) y el XML
+                // autorizado adjuntos -- respeta la plantilla y el
+                // estado activo/inactivo configurados en Documentos
+                // Electrónicos, igual que ya hace el correo de venta.
+                SendRideEmailJob::dispatch($factura->id);
                 break;
 
             case ElectronicInvoice::NO_AUTORIZADA:

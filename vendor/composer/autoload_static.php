@@ -1065,6 +1065,7 @@ class ComposerStaticInit7fffbc345bfe6f2e1a041843c5c008dd
         'App\\Imports\\SupplierImport' => __DIR__ . '/../..' . '/app/Imports/SupplierImport.php',
         'App\\Jobs\\AutorizarFacturaJob' => __DIR__ . '/../..' . '/app/Jobs/AutorizarFacturaJob.php',
         'App\\Jobs\\EmitirFacturaJob' => __DIR__ . '/../..' . '/app/Jobs/EmitirFacturaJob.php',
+        'App\\Jobs\\SendRideEmailJob' => __DIR__ . '/../..' . '/app/Jobs/SendRideEmailJob.php',
         'App\\Listeners\\LogFailedLogin' => __DIR__ . '/../..' . '/app/Listeners/LogFailedLogin.php',
         'App\\Listeners\\LogSuccessfulLogin' => __DIR__ . '/../..' . '/app/Listeners/LogSuccessfulLogin.php',
         'App\\Mail\\MailSender' => __DIR__ . '/../..' . '/app/Mail/MailSender.php',

@@ -18,7 +18,9 @@ const EditEmailTemplate = ( props ) => {
 
     const itemsValue = emailTemplates && emailTemplates.length === 1 && emailTemplates.map( emailTemplate => ( {
         name: emailTemplate.attributes.template_name,
+        subject: emailTemplate.attributes.subject,
         content: emailTemplate.attributes.content,
+        type: emailTemplate.attributes.type,
         id: emailTemplate.id
     } ) );
 

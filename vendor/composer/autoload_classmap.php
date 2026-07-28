@@ -245,6 +245,7 @@ return array(
     'App\\Imports\\SupplierImport' => $baseDir . '/app/Imports/SupplierImport.php',
     'App\\Jobs\\AutorizarFacturaJob' => $baseDir . '/app/Jobs/AutorizarFacturaJob.php',
     'App\\Jobs\\EmitirFacturaJob' => $baseDir . '/app/Jobs/EmitirFacturaJob.php',
+    'App\\Jobs\\SendRideEmailJob' => $baseDir . '/app/Jobs/SendRideEmailJob.php',
     'App\\Listeners\\LogFailedLogin' => $baseDir . '/app/Listeners/LogFailedLogin.php',
     'App\\Listeners\\LogSuccessfulLogin' => $baseDir . '/app/Listeners/LogSuccessfulLogin.php',
     'App\\Mail\\MailSender' => $baseDir . '/app/Mail/MailSender.php',

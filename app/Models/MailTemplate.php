@@ -36,11 +36,13 @@ class MailTemplate extends BaseModel implements JsonResourceful
 
     protected $table = 'mail_templates';
 
-    protected $fillable = ['template_name', 'content', 'type', 'status'];
+    protected $fillable = ['template_name', 'subject', 'content', 'type', 'status'];
 
     const MAIL_TYPE_SALE = 1;
 
     const MAIL_TYPE_SALE_RETURN = 2;
+
+    const MAIL_TYPE_ELECTRONIC_INVOICE = 3;
 
     const ACTIVE = 1;
 
@@ -61,6 +63,7 @@ class MailTemplate extends BaseModel implements JsonResourceful
     {
         $fields = [
             'template_name' => $this->template_name,
+            'subject' => $this->subject,
             'content' => $this->content,
             'type' => $this->type,
             'status' => $this->status,
