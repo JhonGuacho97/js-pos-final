@@ -61,7 +61,8 @@ public function updateSettings($input)
             $media = $setting->addMedia($input['logo'])
                 ->toMediaCollection(Setting::PATH, config('app.media_disc'));
             
-            $setting->update(['value' => $media->getFullUrl()]);
+            $urlLogo = str_replace('\\', '/', $media->getFullUrl());
+            $setting->update(['value' => $urlLogo]);
             $input['logo'] = $setting->getLogoAttribute();
         }
 
