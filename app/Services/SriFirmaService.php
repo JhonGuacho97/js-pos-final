@@ -26,7 +26,93 @@ class SriFirmaService
     // MÉTODO PRINCIPAL — firma el XML con XAdES-BES
     // ─────────────────────────────────────────────
 
+    /**
+     * Firma el XML del comprobante.
+     *
+     * Usa el binario go-xml-signer-cli si está configurado y disponible
+     * -- es la implementación verificada end-to-end contra el SRI real
+     * (autorizada, sin ningún mensaje de advertencia), a diferencia del
+     * armado manual de XAdES-BES en PHP (firmarConPhp) que tenía dos
+     * huecos reales: el X509IssuerName incompleto (le faltaba el campo
+     * organizationIdentifier del certificado) y una referencia de más a
+     * KeyInfo que el SRI no esperaba.
+     *
+     * Si el binario no está configurado o no existe en este servidor
+     * (por ejemplo, en desarrollo local en Windows, donde el binario
+     * compilado para Linux no puede correr), cae de vuelta al armado en
+     * PHP -- así el sistema sigue funcionando en cualquier entorno.
+     */
     public function firmar(string $xmlString): string
+    {
+        $binario = env('SRI_GO_SIGNER_PATH', base_path('bin/go-signer-cli-listo/go-xml-signer-cli'));
+
+        if ($binario && file_exists($binario) && is_executable($binario)) {
+            return $this->firmarConGo($xmlString, $binario);
+        }
+
+        return $this->firmarConPhp($xmlString);
+    }
+
+    private function firmarConGo(string $xmlString, string $binario): string
+    {
+        if (!file_exists($this->certificadoPath)) {
+            throw new \RuntimeException(
+                "Certificado no encontrado en: {$this->certificadoPath}"
+            );
+        }
+
+        $tmpInput = tempnam(sys_get_temp_dir(), 'sri_xml_in_');
+        file_put_contents($tmpInput, $xmlString);
+
+        $input = json_encode([
+            'cert_path'  => $this->certificadoPath,
+            'password'   => $this->certificadoClave,
+            'input_path' => $tmpInput,
+        ]);
+
+        $descriptorSpec = [
+            0 => ['pipe', 'r'],
+            1 => ['pipe', 'w'],
+            2 => ['pipe', 'w'],
+        ];
+
+        $proceso = proc_open($binario, $descriptorSpec, $pipes);
+
+        if (!is_resource($proceso)) {
+            @unlink($tmpInput);
+            throw new \RuntimeException(
+                'No se pudo iniciar el proceso de go-xml-signer-cli.'
+            );
+        }
+
+        fwrite($pipes[0], $input);
+        fclose($pipes[0]);
+
+        $xmlFirmado = stream_get_contents($pipes[1]);
+        $salidaError = stream_get_contents($pipes[2]);
+        fclose($pipes[1]);
+        fclose($pipes[2]);
+
+        $codigoSalida = proc_close($proceso);
+
+        @unlink($tmpInput);
+
+        if ($codigoSalida !== 0 || trim($xmlFirmado) === '') {
+            throw new \RuntimeException(
+                'go-xml-signer-cli no pudo firmar el comprobante. Detalle: '
+                    . trim($salidaError)
+            );
+        }
+
+        return $xmlFirmado;
+    }
+
+    // ─────────────────────────────────────────────
+    // RESPALDO — armado manual de XAdES-BES en PHP
+    // (se usa solo si el binario de Go no está disponible)
+    // ─────────────────────────────────────────────
+
+    private function firmarConPhp(string $xmlString): string
     {
         if (!file_exists($this->certificadoPath)) {
             throw new \RuntimeException(
