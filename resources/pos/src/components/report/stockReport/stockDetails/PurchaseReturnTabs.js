@@ -59,7 +59,9 @@ const PurchaseReturnTab = (props) => {
             id: sale.id,
             purchase_return_items: sale.attributes.purchase_return_items.map(
                 (item) => ({
-                    name: item.product && item.product.name,
+                    name: item.product?.name
+                        ? item.product.name + (item.product.variation_type?.name ? ` - ${item.product.variation_type.name}` : "")
+                        : "",
                     sub_total: item.sub_total,
                     quantity: item.quantity,
                     product_id: item.product_id,

@@ -277,6 +277,11 @@ const SaleReturnDetails = (props) => {
                                                             {details.product &&
                                                                 details.product
                                                                     .name}
+                                                            {details.product &&
+                                                                details.product
+                                                                    .variation_type
+                                                                ? ` - ${details.product.variation_type.name}`
+                                                                : ""}
                                                             )
                                                         </td>
                                                         <td>

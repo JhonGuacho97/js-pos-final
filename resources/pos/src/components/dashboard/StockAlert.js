@@ -35,7 +35,12 @@ const StockAlert = ( props ) => {
                                         return (
                                             <tr key={index}>
                                                 <td className='py-4'>{alert.code}</td>
-                                                <td className='py-4'>{alert.name}</td>
+                                                <td className='py-4'>
+                                                    {alert.name}
+                                                    {alert.variation_type_name && (
+                                                        <span className="text-primary fw-semibold"> - {alert.variation_type_name}</span>
+                                                    )}
+                                                </td>
                                                 <td className='py-4'>{alert.stock.warehouse.name}</td>
                                                 <td className='py-4'>
                                                     <div>

@@ -160,7 +160,7 @@ class SaleReturnAPIController extends AppBaseController
 
     public function saleReturnInfo(SaleReturn $salesReturn): JsonResponse
     {
-        $salesReturn = $salesReturn->load('saleReturnItems.product', 'warehouse', 'customer');
+        $salesReturn = $salesReturn->load('saleReturnItems.product.variationType', 'warehouse', 'customer');
         $keyName = [
             'email', 'company_name', 'phone', 'address',
         ];
@@ -197,7 +197,7 @@ class SaleReturnAPIController extends AppBaseController
         $productId = $request->get('product_id');
         $saleReturns = $this->saleReturnRepository->whereHas('saleReturnItems', function ($q) use ($productId) {
             $q->where('product_id', '=', $productId);
-        })->with(['saleReturnItems.product', 'customer']);
+        })->with(['saleReturnItems.product.variationType', 'customer']);
 
         $saleReturns = $saleReturns->paginate($perPage);
 

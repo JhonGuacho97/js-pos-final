@@ -326,7 +326,7 @@ class SaleAPIController extends AppBaseController
         $productId = $request->get('product_id');
         $sales = $this->saleRepository->whereHas('saleItems', function ($q) use ($productId) {
             $q->where('product_id', '=', $productId);
-        })->with(['saleItems.product', 'customer']);
+        })->with(['saleItems.product.variationType', 'customer']);
 
         $sales = $sales->paginate($perPage);
 

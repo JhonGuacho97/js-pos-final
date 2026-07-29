@@ -98,7 +98,7 @@ class QuotationAPIController extends AppBaseController
 
     public function quotationInfo(Quotation $quotation): JsonResponse
     {
-        $quotation = $quotation->load('quotationItems.product', 'warehouse', 'customer');
+        $quotation = $quotation->load('quotationItems.product.variationType', 'warehouse', 'customer');
         $keyName = [
             'email', 'company_name', 'phone', 'address',
         ];

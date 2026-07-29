@@ -58,7 +58,9 @@ const SaleTabs = (props) => {
             warehouse_name: sale.attributes.warehouse_name,
             id: sale.id,
             sale_items: sale.attributes.sale_items.map((item) => ({
-                name: item.product && item.product.name,
+                name: item.product?.name
+                    ? item.product.name + (item.product.variation_type?.name ? ` - ${item.product.variation_type.name}` : "")
+                    : "",
                 sub_total: item.sub_total,
                 quantity: item.quantity,
                 product_id: item.product_id,

@@ -1,0 +1,152 @@
+/* Estilo "Tarjeta suave" -- fondo gris claro, tarjeta blanca centrada
+   con una franja de color arriba. Estos colores son los mismos que ya
+   usa el sistema (acento #2F6FED, grises pizarra). */
+
+body,
+body *:not(html):not(style):not(br):not(tr):not(code) {
+    box-sizing: border-box;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+    position: relative;
+}
+
+body {
+    -webkit-text-size-adjust: none;
+    background-color: #F1F5F9;
+    color: #1E293B;
+    height: 100%;
+    line-height: 1.5;
+    margin: 0;
+    padding: 0;
+    width: 100% !important;
+}
+
+p,
+ul,
+ol,
+blockquote {
+    line-height: 1.6;
+    text-align: left;
+}
+
+a {
+    color: #2F6FED;
+    text-decoration: none;
+}
+
+/* Envoltorio de página completa (fondo gris) */
+.wrapper {
+    background-color: #F1F5F9;
+    margin: 0;
+    padding: 32px 16px;
+    width: 100%;
+}
+
+/* La tarjeta blanca en sí */
+.content {
+    margin: 0 auto;
+    max-width: 570px;
+    width: 100%;
+}
+
+.header {
+    padding: 28px 32px 20px;
+    text-align: left;
+}
+
+.header a {
+    color: #1E293B;
+    font-size: 15px;
+    font-weight: 500;
+    text-decoration: none;
+}
+
+.header .logo {
+    max-height: 32px;
+    width: auto;
+}
+
+/* Franja de acento arriba de la tarjeta */
+.accent-bar {
+    background-color: #2F6FED;
+    font-size: 1px;
+    height: 4px;
+    line-height: 4px;
+}
+
+.body {
+    background-color: #FFFFFF;
+    border-radius: 10px 10px 0 0;
+    width: 100%;
+}
+
+.inner-body {
+    background-color: #FFFFFF;
+    margin: 0 auto;
+    padding: 4px 32px 32px;
+    width: 100%;
+}
+
+.content-cell {
+    padding: 0;
+}
+
+h1 {
+    color: #1E293B;
+    font-size: 20px;
+    font-weight: 500;
+    margin-top: 0;
+    text-align: left;
+}
+
+table.data-table {
+    width: 100%;
+    border-collapse: collapse;
+}
+
+table.data-table td {
+    padding: 10px 0;
+    border-bottom: 1px solid #E2E8F0;
+    font-size: 14px;
+    color: #1E293B;
+}
+
+/* Botón */
+.action {
+    margin: 24px 0;
+    text-align: left;
+    width: 100%;
+}
+
+.button {
+    background-color: #2F6FED;
+    border-radius: 6px;
+    color: #FFFFFF;
+    display: inline-block;
+    font-size: 14px;
+    font-weight: 500;
+    padding: 10px 20px;
+    text-decoration: none;
+}
+
+/* Pie de página, fuera de la tarjeta blanca */
+.footer {
+    background-color: #F1F5F9;
+    border-radius: 0 0 10px 10px;
+    margin: 0 auto;
+    padding: 20px 32px 28px;
+    text-align: left;
+    width: 100%;
+}
+
+.footer p {
+    color: #64748B;
+    font-size: 12px;
+    line-height: 1.6;
+    margin: 0;
+    text-align: left;
+}
+
+.footer a {
+    color: #64748B;
+    text-decoration: underline;
+}

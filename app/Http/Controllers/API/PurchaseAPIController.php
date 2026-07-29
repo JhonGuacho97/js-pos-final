@@ -159,7 +159,7 @@ class PurchaseAPIController extends AppBaseController
 
     public function purchaseInfo(Purchase $purchase): JsonResponse
     {
-        $purchase = $purchase->load(['purchaseItems.product', 'warehouse', 'supplier']);
+        $purchase = $purchase->load(['purchaseItems.product.variationType', 'warehouse', 'supplier']);
         $keyName = [
             'email', 'company_name', 'phone', 'address',
         ];
@@ -174,7 +174,7 @@ class PurchaseAPIController extends AppBaseController
         $productId = $request->get('product_id');
         $purchases = $this->purchaseRepository->whereHas('purchaseItems', function ($q) use ($productId) {
             $q->where('product_id', '=', $productId);
-        })->with(['purchaseItems.product', 'supplier']);
+        })->with(['purchaseItems.product.variationType', 'supplier']);
 
         $purchases = $purchases->paginate($perPage);
 

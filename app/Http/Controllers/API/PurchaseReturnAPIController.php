@@ -126,7 +126,7 @@ class PurchaseReturnAPIController extends AppBaseController
 
     public function purchaseReturnInfo(PurchaseReturn $purchaseReturn): JsonResponse
     {
-        $purchaseReturn = $purchaseReturn->load(['purchaseReturnItems.product', 'warehouse', 'supplier']);
+        $purchaseReturn = $purchaseReturn->load(['purchaseReturnItems.product.variationType', 'warehouse', 'supplier']);
         $keyName = [
             'email', 'company_name', 'phone', 'address',
         ];
@@ -167,7 +167,7 @@ class PurchaseReturnAPIController extends AppBaseController
         $purchaseReturn = $this->purchaseReturnRepository->whereHas('purchaseReturnItems',
             function ($q) use ($productId) {
                 $q->where('product_id', '=', $productId);
-            })->with(['purchaseReturnItems.product', 'supplier']);
+            })->with(['purchaseReturnItems.product.variationType', 'supplier']);
 
         $purchaseReturn = $purchaseReturn->paginate($perPage);
         PurchaseReturnResource::usingWithCollection();

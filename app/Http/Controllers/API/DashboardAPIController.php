@@ -138,7 +138,8 @@ class DashboardAPIController extends AppBaseController
             ->get();
         $data = [];
         foreach ($topSellings as $topSelling) {
-            $data['name'][] = $topSelling->name;
+            $variationLabel = optional($topSelling->variationType)->name;
+            $data['name'][] = $variationLabel ? "{$topSelling->name} - {$variationLabel}" : $topSelling->name;
             $data['total_quantity'][] = $topSelling->total_quantity;
         }
 
@@ -175,6 +176,7 @@ class DashboardAPIController extends AppBaseController
                 $productUnitName = BaseUnit::whereId($product->product_unit)->value('name');
                 $stock['product_unit_name'] = $productUnitName;
                 $product->setAttribute('stock', $stock);
+                $product->setAttribute('variation_type_name', optional($product->variationType)->name);
                 $productResponse[] = $product;
                 $product = null;
                 $stock = null;

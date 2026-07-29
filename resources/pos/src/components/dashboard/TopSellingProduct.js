@@ -116,6 +116,9 @@ const TopSellingProduct = (props) => {
                                                 <tr key={index}>
                                                     <td className="py-4">
                                                         {top.name}
+                                                        {top.variation_type_name && (
+                                                            <span className="text-primary fw-semibold"> - {top.variation_type_name}</span>
+                                                        )}
                                                     </td>
                                                     <td className="py-4">
                                                         <span className="badge bg-light-primary me-2">

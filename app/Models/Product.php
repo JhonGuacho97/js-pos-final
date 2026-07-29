@@ -335,6 +335,7 @@ class Product extends BaseModel implements HasMedia, JsonResourceful
     {
         return [
             'name' => $this->name,
+            'variation_type_name' => optional($this->variationType)->name,
             'total_quantity' => $this->total_quantity,
             'grand_total' => $this->grand_total,
             'sale_unit' => isset($this->getSaleUnitName()['short_name']) ? $this->getSaleUnitName()['short_name'] : null,
@@ -362,6 +363,7 @@ class Product extends BaseModel implements HasMedia, JsonResourceful
     {
         return [
             'name' => $this->name,
+            'variation_type_name' => optional($this->variationType)->name,
             'total_quantity' => $this->total_quantity,
             'price' => $this->product_price,
             'grand_total' => $this->grand_total,
@@ -375,6 +377,7 @@ class Product extends BaseModel implements HasMedia, JsonResourceful
     {
         return [
             'name' => $this->name,
+            'variation_type_name' => optional($this->variationType)->name,
             'total_quantity' => $this->total_quantity,
             'grand_total' => $this->grand_total,
             'sale_unit' => isset($this->getSaleUnitName()['short_name']) ? $this->getSaleUnitName()['short_name'] : null,

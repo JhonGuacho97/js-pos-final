@@ -24,7 +24,12 @@ function getLogoUrl(): string
         $appLogo = Setting::where('key', '=', 'logo')->first();
     }
 
+    if (empty($appLogo) || empty($appLogo->logo)) {
+        return '';
+    }
+
     return asset($appLogo->logo);
+    //return '/public/uploads/settings/1/Imagen-de-WhatsApp-2023-10-06-a-las-09.21.45_4c27850c.png';
 }
 
 if (! function_exists('getSettingValue')) {
