@@ -41,10 +41,18 @@ class ResetPasswordNotification extends Notification
     {
         $this->url = $this->url.'/'.$notifiable->email;
 
-        return (new MailMessage)
-            ->line('You are receiving this email because we received a password reset request for your account. Click the button below to reset your password:')
-            ->action('Reset Password', $this->url)
-            ->line('If you did not request a password reset, no further action is required.');
+    return (new MailMessage)
+        ->subject('Solicitud de restablecimiento de contraseña')
+        ->greeting('Estimado(a) usuario(a),')
+        ->line('Recibimos una solicitud para restablecer la contraseña asociada a tu cuenta.')
+        ->line('Para continuar con el proceso, haz clic en el siguiente botón:')
+        ->action('Restablecer mi contraseña', $this->url)
+        ->line('Este enlace de seguridad expirará en :count minutos.', [
+            'count' => config('auth.passwords.' . config('auth.defaults.passwords') . '.expire')
+        ])
+        ->line('Si no realizaste esta solicitud, no es necesario que hagas nada. Tu contraseña permanecerá sin cambios y tu cuenta seguirá protegida.')
+        ->line('Gracias por confiar en nosotros.')
+        ->salutation('Atentamente,' . PHP_EOL . config('app.name'));
     }
 
     /**
