@@ -13,8 +13,21 @@ import {
     placeholderText,
 } from "../../shared/sharedMethod";
 import { loginStyles } from "./styles/LoginStyles";
-import { EyeIcon, EyeOffIcon, LockIcon } from "./styles/icons";
+import { EyeIcon, EyeOffIcon } from "./styles/icons";
 
+/* Small inline icons kept local so styles/icons.js doesn't need changes */
+const CheckIcon = () => (
+    <svg width="11" height="11" viewBox="0 0 12 12" fill="none">
+        <path d="M2.5 6.2L4.8 8.5L9.5 3.5" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+);
+
+const ShieldIcon = () => (
+    <svg width="13" height="13" viewBox="0 0 14 14" fill="none">
+        <path d="M7 1.3L12 3.1v3.5c0 3.2-2.1 5.6-5 6.1c-2.9-.5-5-2.9-5-6.1V3.1L7 1.3Z" stroke="currentColor" strokeWidth="1.2" strokeLinejoin="round" />
+        <path d="M4.8 6.9L6.3 8.4L9.3 5.2" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+);
 
 const Login = () => {
     const navigate = useNavigate();
@@ -82,27 +95,54 @@ const Login = () => {
             <TabTitle title={placeholderText("login-form.login-btn.label")} />
 
             <div className="lp-root">
-                {/* Fondo animado */}
-                <div className="lp-bg">
-                    <div className="lp-bg-blob" />
-                </div>
-
                 {/* ── Panel izquierdo ── */}
                 <aside className="lp-aside">
-                    {logoSrc
-                        ? <Image src={logoSrc} className="lp-aside-logo" alt="logo" />
-                        : <div className="lp-brand-name">JhonSport</div>
-                    }
+                    {/* <div className="lp-aside-top">
+                        {logoSrc
+                            ? <Image src={logoSrc} className="lp-aside-logo" alt="logo" />
+                            : <span className="lp-brand-name">JhonSport</span>
+                        }
+                    </div> */}
 
-                    <h1 className="lp-hero-title">
-                        Gestiona tu<br />
-                        negocio con<br />
-                        <span>total control</span>
-                    </h1>
+                    <div className="lp-hero">
+                        <span className="lp-hero-eyebrow">Panel administrativo</span>
+                        <h1 className="lp-hero-title">
+                            Gestiona tu negocio<br />
+                            con <span>total control</span>
+                        </h1>
+                        <p className="lp-hero-sub">
+                            Ventas, compras, inventario y reportes en una sola plataforma —
+                            rápida, confiable y siempre disponible.
+                        </p>
 
-                    <p className="lp-hero-sub">
-                        Ventas, compras, inventario y reportes en una sola plataforma. Rápida, confiable y siempre disponible.
-                    </p>
+                        {/* Signature element: SRI e-invoicing trust card */}
+                        <div className="lp-seal" aria-hidden="true">
+                            <div className="lp-seal-head">
+                                <span className="lp-seal-title">Factura electrónica</span>
+                                <span className="lp-seal-badge">
+                                    <CheckIcon />
+                                    Autorizado SRI
+                                </span>
+                            </div>
+                            <div className="lp-seal-body">
+                                <div className="lp-seal-rows">
+                                    <div className="lp-seal-row">
+                                        <span className="lp-seal-row-label">Ambiente</span>
+                                        <span className="lp-seal-row-value">Producción</span>
+                                    </div>
+                                    <div className="lp-seal-row">
+                                        <span className="lp-seal-row-label">Comprobante</span>
+                                        <span className="lp-seal-row-value">Factura 001-001</span>
+                                    </div>
+                                    <div className="lp-seal-row">
+                                        <span className="lp-seal-row-label">Emisión</span>
+                                        <span className="lp-seal-row-value">Automática</span>
+                                    </div>
+                                </div>
+                                <div className="lp-seal-qr" />
+                            </div>
+                        </div>
+                    </div>
 
                     <div className="lp-stats">
                         <div className="lp-stat">
@@ -114,8 +154,8 @@ const Login = () => {
                             <div className="lp-stat-label">Punto de venta</div>
                         </div>
                         <div className="lp-stat">
-                            <div className="lp-stat-num">∞</div>
-                            <div className="lp-stat-label">Productos</div>
+                            <div className="lp-stat-num">SRI</div>
+                            <div className="lp-stat-label">Facturación e.</div>
                         </div>
                     </div>
                 </aside>
@@ -124,13 +164,14 @@ const Login = () => {
                 <main className="lp-main">
                     <div className="lp-card">
 
-                        {logoSrc && (
+                        {/* {logoSrc && (
                             <Image src={logoSrc} className="lp-card-logo" alt="logo" />
-                        )}
+                        )} */}
 
-                        <div className="lp-card-icon">
-                            <LockIcon />
-                        </div>
+                        <span className="lp-card-badge-mobile">
+                            <CheckIcon />
+                            Facturación electrónica SRI
+                        </span>
 
                         <h2 className="lp-heading">
                             {getFormattedMessage("login-form.title")}
@@ -212,8 +253,12 @@ const Login = () => {
                                     </span>
                                 </span>
                             </button>
-
                         </form>
+
+                        <div className="lp-card-foot">
+                            <ShieldIcon />
+                            <span>Conexión segura · Datos protegidos</span>
+                        </div>
                     </div>
                 </main>
             </div>

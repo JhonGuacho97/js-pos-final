@@ -1,421 +1,395 @@
-/* ─────────────────────────────────────────
-   STYLES
-───────────────────────────────────────── */
 export const loginStyles = `
-  @import url('https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800&family=Poppins:wght@300;400;500;600&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600&family=IBM+Plex+Mono:wght@500;600&display=swap');
 
-  .lp-root *, .lp-root *::before, .lp-root *::after {
-    box-sizing: border-box;
-    margin: 0;
-    padding: 0;
-  }
+.lp-root {
+  --lp-ink: #0B1220;
+  --lp-ink-2: #141F38;
+  --lp-paper: #FFFFFF;
+  --lp-paper-2: #F6F8FB;
+  --lp-line: #E4E8F0;
+  --lp-line-dark: rgba(255,255,255,0.12);
+  --lp-text: #10182B;
+  --lp-muted: #64748B;
+  --lp-muted-2: rgba(255,255,255,0.62);
+  --lp-accent: #2F6FED;
+  --lp-accent-ink: #1B3E9E;
+  --lp-green: #12A876;
+  --lp-green-soft: rgba(18,168,118,0.14);
+  --lp-radius: 14px;
+  --lp-font-display: 'Space Grotesk', 'Inter', sans-serif;
+  --lp-font-body: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+  --lp-font-mono: 'IBM Plex Mono', 'SFMono-Regular', monospace;
 
-  .lp-root {
-    min-height: 100vh;
-    display: flex;
-    font-family: 'Poppins', sans-serif;
-    background: #f0f2ff;
-    position: relative;
-    overflow: hidden;
-  }
+  min-height: 100vh;
+  width: 100%;
+  display: grid;
+  grid-template-columns: minmax(0, 1.05fr) minmax(0, 1fr);
+  background: var(--lp-paper-2);
+  font-family: var(--lp-font-body);
+  color: var(--lp-text);
+}
 
-  /* Fondo animado con burbujas de gradiente */
-  .lp-bg {
-    position: fixed;
-    inset: 0;
-    z-index: 0;
-    overflow: hidden;
-  }
+.lp-root *, .lp-root *::before, .lp-root *::after { box-sizing: border-box; }
 
-  .lp-bg::before {
-    content: '';
-    position: absolute;
-    width: 700px;
-    height: 700px;
-    border-radius: 50%;
-    background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
-    top: -200px;
-    left: -200px;
-    opacity: 0.25;
-    animation: lpFloat 8s ease-in-out infinite;
-  }
+.lp-root a { text-decoration: none; }
 
-  .lp-bg::after {
-    content: '';
-    position: absolute;
-    width: 500px;
-    height: 500px;
-    border-radius: 50%;
-    background: linear-gradient(135deg, #2F6FED 0%, #2563EB 100%);
-    bottom: -150px;
-    right: -100px;
-    opacity: 0.2;
-    animation: lpFloat 10s ease-in-out infinite reverse;
-  }
+/* ── Left / brand panel ───────────────────────────────── */
+.lp-aside {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  padding: 56px 60px;
+  background:#2F6FED;
+  overflow: hidden;
+}
 
-  .lp-bg-blob {
-    position: absolute;
-    width: 350px;
-    height: 350px;
-    border-radius: 50%;
-    background: linear-gradient(135deg, #f97316 0%, #ef4444 100%);
-    bottom: 10%;
-    left: 5%;
-    opacity: 0.15;
-    animation: lpFloat 12s ease-in-out infinite 2s;
-  }
+.lp-aside-top { display: flex; align-items: center; gap: 10px; }
 
-  @keyframes lpFloat {
-    0%, 100% { transform: translateY(0) scale(1); }
-    50%       { transform: translateY(-30px) scale(1.05); }
-  }
+.lp-aside-logo { height: 32px; width: auto; object-fit: contain; }
 
-  /* ── Panel izquierdo ── */
-  .lp-aside {
-    width: 48%;
-    display: flex;
-    flex-direction: column;
-    justify-content: center;
-    align-items: flex-start;
-    padding: 60px 64px;
-    position: relative;
-    z-index: 1;
-  }
+.lp-brand-name {
+  font-family: var(--lp-font-display);
+  font-weight: 700;
+  font-size: 20px;
+  letter-spacing: 0.01em;
+  color: #fff;
+}
 
-  .lp-aside-logo {
-    max-height: 72px;
-    width: auto;
-    object-fit: contain;
-    margin-bottom: 48px;
-    filter: drop-shadow(0 4px 12px rgba(0,0,0,0.15));
-  }
+.lp-hero { margin-top: 40px; max-width: 460px; }
 
-  .lp-brand-name {
-    font-family: 'Nunito', sans-serif;
-    font-size: 20px;
-    font-weight: 800;
-    margin-bottom: 48px;
-    background: linear-gradient(135deg, #2F6FED, #2F6FED);
-    -webkit-background-clip: text;
-    -webkit-text-fill-color: transparent;
-    background-clip: text;
-    letter-spacing: -0.3px;
-  }
+.lp-hero-eyebrow {
+  font-family: var(--lp-font-mono);
+  font-size: 11.5px;
+  font-weight: 600;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--lp-muted-2);
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 18px;
+}
 
-  .lp-hero-title {
-    font-family: 'Nunito', sans-serif;
-    font-size: 46px;
-    font-weight: 800;
-    line-height: 1.15;
-    color: #1e1b4b;
-    letter-spacing: -1px;
-    margin-bottom: 20px;
-  }
+.lp-hero-eyebrow::before {
+  content: '';
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: #0fff85;
+  box-shadow: 0 0 0 3px var(--lp-green-soft);
+}
 
-  .lp-hero-title span {
-    background: linear-gradient(135deg, #2F6FED 0%, #2F6FED 50%, #2563EB 100%);
-    -webkit-background-clip: text;
-    -webkit-text-fill-color: transparent;
-    background-clip: text;
-  }
+.lp-hero-title {
+  font-family: var(--lp-font-display);
+  font-weight: 600;
+  font-size: clamp(28px, 3vw, 38px);
+  line-height: 1.14;
+  letter-spacing: -0.01em;
+  margin: 0 0 16px;
+  color: #fff;
+}
 
-  .lp-hero-sub {
-    font-size: 15px;
-    color: #6b7280;
-    font-weight: 400;
-    line-height: 1.6;
-    max-width: 380px;
-    margin-bottom: 48px;
-  }
+.lp-hero-title span { color: #8FB0FF; }
 
-  /* Stats decorativos */
-  .lp-stats {
-    display: flex;
-    gap: 24px;
-  }
+.lp-hero-sub {
+  font-size: 15px;
+  line-height: 1.6;
+  color: var(--lp-muted-2);
+  margin: 0;
+  max-width: 380px;
+}
 
-  .lp-stat {
-    background: white;
-    border-radius: 16px;
-    padding: 16px 24px;
-    box-shadow: 0 4px 24px rgba(47, 111, 237,0.12);
-    min-width: 120px;
-  }
+/* ── Electronic-invoice "seal" signature element ─────────── */
+.lp-seal {
+  margin-top: 36px;
+  width: 300px;
+  background: rgb(0 0 0 / 18%);
+  border: 1px solid var(--lp-line-dark);
+  border-radius: var(--lp-radius);
+  padding: 18px 18px 16px;
+  backdrop-filter: blur(6px);
+  transform: rotate(-1.4deg);
+  box-shadow: 0 20px 40px -20px rgba(0,0,0,0.55);
+}
 
-  .lp-stat-num {
-    font-family: 'Nunito', sans-serif;
-    font-size: 26px;
-    font-weight: 800;
-    background: linear-gradient(135deg, #2F6FED, #2F6FED);
-    -webkit-background-clip: text;
-    -webkit-text-fill-color: transparent;
-    background-clip: text;
-    line-height: 1;
-    margin-bottom: 4px;
-  }
+.lp-seal-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding-bottom: 12px;
+  margin-bottom: 12px;
+  border-bottom: 1px dashed var(--lp-line-dark);
+}
 
-  .lp-stat-label {
+.lp-seal-title {
+  font-family: var(--lp-font-mono);
+  font-size: 10.5px;
+  font-weight: 600;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--lp-muted-2);
+}
+
+.lp-seal-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-family: var(--lp-font-mono);
+  font-size: 10.5px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  color: #20835d;
+  background: rgb(155 255 210 / 67%);
+  border-radius: 100px;
+  padding: 3px 9px 3px 7px;
+}
+
+.lp-seal-body { display: flex; gap: 14px; align-items: center; }
+
+.lp-seal-rows { flex: 1; min-width: 0; }
+
+.lp-seal-row {
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+  font-size: 11px;
+  padding: 3px 0;
+}
+
+.lp-seal-row-label { color: var(--lp-muted-2); }
+
+.lp-seal-row-value {
+  font-family: var(--lp-font-mono);
+  color: #fff;
+  font-weight: 500;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.lp-seal-qr {
+  flex: none;
+  width: 46px;
+  height: 46px;
+  border-radius: 6px;
+  background:
+    linear-gradient(90deg, #fff 0 22%, transparent 0 44%, #fff 0 66%, transparent 0 100%) 0 0/100% 22% repeat-y,
+    linear-gradient(0deg, #fff 0 22%, transparent 0 44%, #fff 0 66%, transparent 0 100%) 0 0/22% 100% repeat-x;
+  background-color: rgba(255,255,255,0.9);
+  opacity: 0.92;
+}
+
+/* ── Stats row ────────────────────────────────────────── */
+.lp-stats {
+  display: flex;
+  gap: 34px;
+  margin-top: 44px;
+  padding-top: 24px;
+  border-top: 1px solid var(--lp-line-dark);
+}
+
+.lp-stat-num {
+  font-family: var(--lp-font-display);
+  font-weight: 600;
+  font-size: 20px;
+  color: #fff;
+}
+
+.lp-stat-label {
+  font-size: 11.5px;
+  color: var(--lp-muted-2);
+  margin-top: 2px;
+}
+
+/* ── Right / form panel ──────────────────────────────────── */
+.lp-main {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 40px 32px;
+}
+
+.lp-card {
+  width: 100%;
+  max-width: 380px;
+}
+
+.lp-card-badge-mobile { display: none; }
+
+.lp-card-logo { height: 30px; width: auto; object-fit: contain; margin-bottom: 28px; }
+
+.lp-heading {
+  font-family: var(--lp-font-display);
+  font-weight: 600;
+  font-size: 24px;
+  letter-spacing: -0.01em;
+  margin: 0 0 6px;
+  color: var(--lp-text);
+}
+
+.lp-sub {
+  font-size: 14px;
+  color: var(--lp-muted);
+  margin: 0 0 30px;
+}
+
+.lp-field { margin-bottom: 18px; }
+
+.lp-field-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 7px;
+}
+
+.lp-label {
+  font-size: 12.5px;
+  font-weight: 600;
+  color: var(--lp-text);
+}
+
+.lp-forgot {
+  font-size: 12.5px;
+  font-weight: 500;
+  color: var(--lp-accent);
+}
+
+.lp-forgot:hover { color: var(--lp-accent-ink); }
+
+.lp-input-wrap { position: relative; }
+
+.lp-input {
+  width: 100%;
+  height: 46px;
+  padding: 0 14px;
+  border-radius: 10px;
+  border: 1px solid var(--lp-line);
+  background: var(--lp-paper);
+  font-family: var(--lp-font-body);
+  font-size: 14.5px;
+  color: var(--lp-text);
+  outline: none;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+.lp-input::placeholder { color: #9AA4B2; }
+
+.lp-input:focus {
+  border-color: var(--lp-accent);
+  box-shadow: 0 0 0 3px rgba(36,81,196,0.14);
+}
+
+.lp-input--error { border-color: #DC4C4C; }
+.lp-input--error:focus { box-shadow: 0 0 0 3px rgba(220,76,76,0.14); }
+
+.lp-error-msg {
+  display: block;
+  margin-top: 6px;
+  font-size: 12px;
+  color: #DC4C4C;
+}
+
+.lp-pw-toggle {
+  position: absolute;
+  right: 6px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 34px;
+  height: 34px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: transparent;
+  border: none;
+  border-radius: 8px;
+  color: var(--lp-muted);
+  cursor: pointer;
+}
+
+.lp-pw-toggle:hover { background: var(--lp-paper-2); color: var(--lp-text); }
+
+.lp-btn {
+  width: 100%;
+  height: 46px;
+  margin-top: 6px;
+  border: none;
+  border-radius: 10px;
+  background: var(--lp-accent);
+  color: #fff;
+  font-family: var(--lp-font-body);
+  font-weight: 600;
+  font-size: 14.5px;
+  cursor: pointer;
+  transition: background 0.15s ease, transform 0.05s ease;
+}
+
+.lp-btn:hover:not(:disabled) { background: var(--lp-accent-ink); }
+.lp-btn:active:not(:disabled) { transform: scale(0.99); }
+.lp-btn:disabled { opacity: 0.7; cursor: not-allowed; }
+
+.lp-btn-inner { display: inline-flex; align-items: center; justify-content: center; gap: 9px; }
+
+.lp-spinner {
+  width: 15px;
+  height: 15px;
+  border-radius: 50%;
+  border: 2px solid rgba(255,255,255,0.4);
+  border-top-color: #fff;
+  animation: lp-spin 0.7s linear infinite;
+}
+
+@keyframes lp-spin { to { transform: rotate(360deg); } }
+
+.lp-card-foot {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  justify-content: center;
+  margin-top: 26px;
+  font-size: 11.5px;
+  color: var(--lp-muted);
+}
+
+.lp-card-foot svg { flex: none; }
+
+/* Focus visibility for keyboard users */
+.lp-root a:focus-visible,
+.lp-root button:focus-visible,
+.lp-root input:focus-visible {
+  outline: 2px solid var(--lp-accent);
+  outline-offset: 2px;
+}
+
+/* ── Responsive ───────────────────────────────────────── */
+@media (max-width: 1024px) {
+  .lp-root { grid-template-columns: 1fr; }
+  .lp-aside { display: none; }
+  .lp-card-badge-mobile {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    font-family: var(--lp-font-mono);
     font-size: 11px;
-    color: #9ca3af;
-    font-weight: 500;
-    text-transform: uppercase;
-    letter-spacing: 0.5px;
-  }
-
-  /* ── Panel derecho (card) ── */
-  .lp-main {
-    flex: 1;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    padding: 40px 48px;
-    position: relative;
-    z-index: 1;
-  }
-
-  .lp-card {
-    width: 100%;
-    max-width: 420px;
-    background: rgba(255,255,255,0.95);
-    backdrop-filter: blur(20px);
-    border-radius: 28px;
-    padding: 44px 40px;
-    box-shadow:
-      0 20px 60px rgba(47, 111, 237,0.15),
-      0 4px 20px rgba(0,0,0,0.06),
-      inset 0 1px 0 rgba(255,255,255,0.8);
-    animation: lpSlideIn 0.6s cubic-bezier(.22,.61,.36,1) both;
-    border: 1px solid rgba(255,255,255,0.6);
-  }
-
-  @keyframes lpSlideIn {
-    from { opacity: 0; transform: translateY(28px) scale(0.97); }
-    to   { opacity: 1; transform: translateY(0) scale(1); }
-  }
-
-  /* Logo en móvil */
-  .lp-card-logo {
-    display: none;
-    max-height: 44px;
-    width: auto;
-    object-fit: contain;
-    margin: 0 auto 24px;
-  }
-
-  /* Icono decorativo en la card */
-  .lp-card-icon {
-    width: 56px;
-    height: 56px;
-    border-radius: 16px;
-    background: linear-gradient(135deg, #2F6FED 0%, #2F6FED 100%);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    margin-bottom: 24px;
-    box-shadow: 0 8px 20px rgba(47, 111, 237,0.35);
-  }
-
-  .lp-heading {
-    font-family: 'Nunito', sans-serif;
-    font-size: 28px;
-    font-weight: 800;
-    color: #1e1b4b;
-    letter-spacing: -0.5px;
-    margin-bottom: 4px;
-  }
-
-  .lp-sub {
-    font-size: 13.5px;
-    color: #9ca3af;
-    font-weight: 400;
-    margin-bottom: 32px;
-  }
-
-  /* ── Campo ── */
-  .lp-field { margin-bottom: 18px; }
-
-  .lp-field-header {
-    display: flex;
-    align-items: baseline;
-    justify-content: space-between;
-    margin-bottom: 7px;
-  }
-
-  .lp-label {
-    font-size: 12px;
     font-weight: 600;
-    color: #374151;
-    letter-spacing: 0.3px;
+    letter-spacing: 0.04em;
+    color: var(--lp-green);
+    background: var(--lp-green-soft);
+    border-radius: 100px;
+    padding: 5px 11px 5px 9px;
+    margin-bottom: 22px;
   }
+}
 
-  .lp-forgot {
-    font-size: 12px;
-    font-weight: 500;
-    color: #2F6FED;
-    text-decoration: none;
-    transition: color 0.18s;
-  }
-  .lp-forgot:hover { color: #2F6FED; }
+@media (max-width: 460px) {
+  .lp-main { padding: 28px 18px; }
+  .lp-heading { font-size: 21px; }
+}
 
-  .lp-input-wrap { position: relative; }
-
-  .lp-input {
-    width: 100%;
-    padding: 12px 16px;
-    font-size: 14.5px;
-    font-family: 'Poppins', sans-serif;
-    font-weight: 400;
-    color: #1f2937;
-    background: #f8f7ff;
-    border: 2px solid #e5e7f0;
-    border-radius: 12px;
-    outline: none;
-    transition: border-color 0.2s, background 0.2s, box-shadow 0.2s;
-    -webkit-appearance: none;
-  }
-  .lp-input::placeholder { color: #c4c4d4; }
-  .lp-input:focus {
-    background: #fff;
-    border-color: #2F6FED;
-    box-shadow: 0 0 0 4px rgba(47, 111, 237,0.12);
-  }
-  .lp-input--error {
-    border-color: #ef4444 !important;
-    background: #fff8f8 !important;
-    box-shadow: 0 0 0 4px rgba(239,68,68,0.08) !important;
-  }
-
-  .lp-pw-toggle {
-    position: absolute;
-    right: 13px;
-    top: 50%;
-    transform: translateY(-50%);
-    background: none;
-    border: none;
-    cursor: pointer;
-    color: #9ca3af;
-    padding: 2px;
-    display: flex;
-    align-items: center;
-    transition: color 0.18s;
-  }
-  .lp-pw-toggle:hover { color: #2F6FED; }
-
-  .lp-error-msg {
-    font-size: 11.5px;
-    color: #ef4444;
-    margin-top: 5px;
-    display: block;
-    font-weight: 500;
-  }
-
-  /* ── Botón ── */
-  .lp-btn {
-    width: 100%;
-    margin-top: 10px;
-    padding: 14px;
-    font-family: 'Poppins', sans-serif;
-    font-size: 15px;
-    font-weight: 600;
-    color: #fff;
-    background: linear-gradient(135deg, #2F6FED 0%, #2F6FED 100%);
-    border: none;
-    border-radius: 12px;
-    cursor: pointer;
-    letter-spacing: 0.3px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    gap: 8px;
-    transition: transform 0.15s, box-shadow 0.15s, opacity 0.15s;
-    box-shadow: 0 8px 24px rgba(47, 111, 237,0.4);
-    position: relative;
-    overflow: hidden;
-  }
-
-  .lp-btn::before {
-    content: '';
-    position: absolute;
-    inset: 0;
-    background: linear-gradient(135deg, #2F6FED 0%, #2563EB 100%);
-    opacity: 0;
-    transition: opacity 0.3s;
-  }
-  .lp-btn:hover:not(:disabled)::before { opacity: 1; }
-  .lp-btn:hover:not(:disabled) {
-    transform: translateY(-2px);
-    box-shadow: 0 12px 32px rgba(47, 111, 237,0.45);
-  }
-  .lp-btn:active:not(:disabled) { transform: translateY(0); }
-  .lp-btn:disabled {
-    opacity: 0.6;
-    cursor: not-allowed;
-    transform: none;
-    box-shadow: none;
-  }
-
-  .lp-btn span { position: relative; z-index: 1; }
-  .lp-btn-inner {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    position: relative;
-    z-index: 1;
-  }
-
-  .lp-spinner {
-    width: 16px;
-    height: 16px;
-    border: 2px solid rgba(255,255,255,0.35);
-    border-top-color: #fff;
-    border-radius: 50%;
-    animation: lpSpin 0.7s linear infinite;
-    flex-shrink: 0;
-  }
-  @keyframes lpSpin { to { transform: rotate(360deg); } }
-
-  /* Divider */
-  .lp-divider {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    margin: 20px 0 0;
-  }
-  .lp-divider::before, .lp-divider::after {
-    content: '';
-    flex: 1;
-    height: 1px;
-    background: #e5e7eb;
-  }
-  .lp-divider span {
-    font-size: 11.5px;
-    color: #d1d5db;
-    font-weight: 500;
-  }
-
-  /* Footer de la card */
-  .lp-card-footer {
-    text-align: center;
-    margin-top: 20px;
-    font-size: 12.5px;
-    color: #9ca3af;
-  }
-  .lp-card-footer a {
-    color: #2F6FED;
-    font-weight: 600;
-    text-decoration: none;
-  }
-  .lp-card-footer a:hover { color: #2F6FED; }
-
-  /* ── Responsive ── */
-  @media (max-width: 768px) {
-    .lp-aside { display: none; }
-    .lp-main  { padding: 24px 20px; }
-    .lp-card  { padding: 36px 28px; border-radius: 24px; }
-    .lp-card-logo { display: block; }
-  }
+@media (prefers-reduced-motion: reduce) {
+  .lp-spinner { animation: none; }
+}
 `;
-
 
 export const ForgotPasswordStyles = `
     @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap');
