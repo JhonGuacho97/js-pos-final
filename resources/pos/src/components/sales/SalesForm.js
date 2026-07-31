@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Form, InputGroup } from 'react-bootstrap-v5';
+import { Tab, Tabs } from 'react-bootstrap';
 import dayjs from 'dayjs';
 import utc from 'dayjs/plugin/utc';
 import localizedFormat from 'dayjs/plugin/localizedFormat';
@@ -25,7 +26,6 @@ import { addToast } from '../../store/action/toastAction';
 import { paymentMethodOptions, salePaymentStatusOptions, saleStatusOptions, statusOptions, toastType } from '../../constants';
 import { fetchFrontSetting } from '../../store/action/frontSettingAction';
 import ReactSelect from '../../shared/select/reactSelect';
-import FacturaElectronicaToggle from '../sri/components/FacturaElectronicaToggle';
 
 const SalesForm = (props) => {
     const {
@@ -316,165 +316,258 @@ const SalesForm = (props) => {
     return (
         <div className='card'>
             <div className='card-body'>
-                {/*<Form>*/}
+                <div className='row g-3 mb-4'>
+                    {/* ── Datos del Cliente ─────────────────────────── */}
+                    <div className='col-md-6'>
+                        <div className='card border-0 shadow-sm h-100'>
+                            <div className='card-header text-white py-2' style={{ background: '#2F6FED' }}>
+                                <strong>{getFormattedMessage('customer.title')}</strong>
+                            </div>
+                            <div className='card-body'>
+                                <ReactSelect name='customer_id' data={customers} onChange={onCustomerChange}
+                                    title={getFormattedMessage('customer.title')} errors={errors['customer_id']}
+                                    defaultValue={saleValue.customer_id} value={saleValue.customer_id}
+                                    placeholder={placeholderText('sale.select.customer.placeholder.label')} />
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* ── Datos de la Factura ───────────────────────── */}
+                    <div className='col-md-6'>
+                        <div className='card border-0 shadow-sm h-100'>
+                            <div className='card-header text-white py-2' style={{ background: '#2F6FED' }}>
+                                <strong>Datos de la Factura</strong>
+                            </div>
+                            <div className='card-body'>
+                                <div className='row g-3'>
+                                    <div className='col-md-6'>
+                                        <label className='form-label'>Tipo de Documento:</label>
+                                        <select
+                                            className='form-select'
+                                            value={emitirFacturaSri ? 'factura' : 'recibo'}
+                                            onChange={(e) => setEmitirFacturaSri(e.target.value === 'factura')}
+                                        >
+                                            <option value='factura'>Factura Electrónica</option>
+                                            <option value='recibo'>Recibo Electrónico</option>
+                                        </select>
+                                    </div>
+                                    <div className='col-md-6'>
+                                        <label className='form-label'>
+                                            {getFormattedMessage('react-data-table.date.column.label')}:
+                                        </label>
+                                        <span className='required' />
+                                        <div className='position-relative'>
+                                            <ReactDatePicker onChangeDate={handleCallback} newStartDate={saleValue.date} />
+                                        </div>
+                                        <span className='text-danger d-block fw-400 fs-small mt-2'>{errors['date'] ? errors['date'] : null}</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <style>{`
+    .sale-tabs-card {
+    border-radius: 14px;
+
+}
+
+.sale-tabs-card .nav-tabs {
+    background: linear-gradient(135deg, #2F6FED 0%, #3D7CF6 100%);
+    border: none;
+    padding: 14px;
+    gap: 12px;
+    display: flex;
+}
+
+.sale-tabs-card .nav-tabs .nav-item {
+    display: flex;
+}
+
+.sale-tabs-card .nav-tabs .nav-link {
+    border: none !important;
+    border-radius: 12px;
+    padding: 12px 22px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 600;
+    color: rgba(255,255,255,.82);
+    background: transparent;
+    transition: all .25s ease;
+}
+
+.sale-tabs-card .nav-tabs .nav-link:hover {
+    color: #fff;
+    background: rgba(255,255,255,.12);
+}
+
+.sale-tabs-card .nav-tabs .nav-link.active {
+    background: #fff;
+    color: #2F6FED;
+    box-shadow: 0 8px 18px rgba(0,0,0,.12);
+    transform: translateY(-2px);
+    padding: 5px !important
+}
+
+.sale-tabs-card .tab-content {
+    background: #fff;
+    padding: 24px;
+}
+`}</style>
+                <div className='card border-0 shadow-sm mb-4 sale-tabs-card'>
+                    <Tabs defaultActiveKey='detalles'>
+                        <Tab eventKey='detalles' title='Detalles'>
+                            <div className='row g-3 pt-4'>
+                                <div className='col-md-6'>
+                                    <ReactSelect name='warehouse_id' data={warehouses} onChange={onWarehouseChange}
+                                        title={getFormattedMessage('warehouse.title')} errors={errors['warehouse_id']}
+                                        defaultValue={saleValue.warehouse_id} value={saleValue.warehouse_id} addSearchItems={singleSale}
+                                        isWarehouseDisable={true}
+                                        placeholder={placeholderText('purchase.select.warehouse.placeholder.label')} />
+                                </div>
+                                <div className='col-md-6'>
+                                    <label className='form-label'>
+                                        {getFormattedMessage('product.title')}:
+                                    </label>
+                                    <ProductSearch values={saleValue} products={products} handleValidation={handleValidation}
+                                        updateProducts={updateProducts}
+                                        setUpdateProducts={setUpdateProducts} customProducts={customProducts}
+                                        presentationMode="sale" />
+                                </div>
+                                <div className='col-12'>
+                                    <label className='form-label'>
+                                        {getFormattedMessage('purchase.order-item.table.label')}:
+                                    </label>
+                                    <span className='required' />
+                                    <ProductRowTable updateProducts={updateProducts} setUpdateProducts={setUpdateProducts}
+                                        updatedQty={updatedQty} frontSetting={frontSetting}
+                                        updateCost={updateCost} updateDiscount={updateDiscount}
+                                        updateTax={updateTax} updateSubTotal={updateSubTotal}
+                                        updateSaleUnit={updateSaleUnit}
+                                    />
+                                </div>
+                                <div className='col-12'>
+                                    <ProductMainCalculation inputValues={saleValue} allConfigData={allConfigData} updateProducts={updateProducts} frontSetting={frontSetting} />
+                                </div>
+                                <div className='col-md-4'>
+                                    <label
+                                        className='form-label'>{getFormattedMessage('purchase.input.order-tax.label')}: </label>
+                                    <InputGroup>
+                                        <input aria-label='Dollar amount (with dot and two decimal places)'
+                                            className='form-control'
+                                            type='text' name='tax_rate' value={saleValue.tax_rate}
+                                            onBlur={(event) => onBlurInput(event)} onFocus={(event) => onFocusInput(event)}
+                                            onKeyPress={(event) => decimalValidate(event)}
+                                            onChange={(e) => {
+                                                onChangeInput(e)
+                                            }} />
+                                        <InputGroup.Text>%</InputGroup.Text>
+                                    </InputGroup>
+                                </div>
+                                <div className='col-md-4'>
+                                    <Form.Label
+                                        className='form-label'>{getFormattedMessage('purchase.order-item.table.discount.column.label')}: </Form.Label>
+                                    <InputGroup>
+                                        <input aria-label='Dollar amount (with dot and two decimal places)'
+                                            className='form-control'
+                                            type='text' name='discount' value={saleValue.discount}
+                                            onBlur={(event) => onBlurInput(event)} onFocus={(event) => onFocusInput(event)}
+                                            onKeyPress={(event) => decimalValidate(event)}
+                                            onChange={(e) => onChangeInput(e)}
+                                        />
+                                        <InputGroup.Text>{frontSetting.value && frontSetting.value.currency_symbol}</InputGroup.Text>
+                                    </InputGroup>
+                                </div>
+                                <div className='col-md-4'>
+                                    <label
+                                        className='form-label'>{getFormattedMessage('purchase.input.shipping.label')}: </label>
+                                    <InputGroup>
+                                        <input aria-label='Dollar amount (with dot and two decimal places)' type='text'
+                                            className='form-control'
+                                            name='shipping' value={saleValue.shipping}
+                                            onBlur={(event) => onBlurInput(event)} onFocus={(event) => onFocusInput(event)}
+                                            onKeyPress={(event) => decimalValidate(event)}
+                                            onChange={(e) => onChangeInput(e)}
+                                        />
+                                        <InputGroup.Text>{frontSetting.value && frontSetting.value.currency_symbol}</InputGroup.Text>
+                                    </InputGroup>
+                                </div>
+                                <div className='col-md-4'>
+                                    <ReactSelect multiLanguageOption={statusFilterOptions} onChange={onStatusChange} name='status_id'
+                                        title={getFormattedMessage('purchase.select.status.label')}
+                                        value={saleValue.status_id} errors={errors['status_id']}
+                                        defaultValue={statusDefaultValue[0]}
+                                        placeholder={getFormattedMessage('purchase.select.status.label')} />
+                                </div>
+                            </div>
+                        </Tab>
+
+                        <Tab eventKey='pagos' title='Formas de Pago'>
+                            <div className='row g-3 pt-4'>
+                                {!singleSale && <div className='col-md-6'>
+                                    <ReactSelect multiLanguageOption={paymentStatusFilterOptions} onChange={onPaymentStatusChange} name='payment_status'
+                                        title={getFormattedMessage('dashboard.recentSales.paymentStatus.label')}
+                                        value={saleValue.payment_status} errors={errors['payment_status']}
+                                        defaultValue={paymentStatusDefaultValue[0]}
+                                        placeholder={placeholderText('sale.select.payment-status.placeholder')} />
+                                </div>}
+                                {!singleSale && (
+                                    <div
+                                        className='col-md-6'
+                                        style={{ display: saleValue?.payment_status?.value === 2 ? "none" : "block" }}
+                                    >
+                                        <ReactSelect
+                                            title={getFormattedMessage("select.payment-type.label")}
+                                            name='payment_type'
+                                            value={saleValue.payment_type}
+                                            errors={errors['payment_type']}
+                                            placeholder={placeholderText('sale.select.payment-type.placeholder')}
+                                            defaultValue={paymentTypeDefaultValue[0]}
+                                            multiLanguageOption={paymentMethodOption}
+                                            onChange={onPaymentTypeChange}
+                                        />
+                                    </div>
+                                )}
+                                {isQuotation && <div className='col-md-6'>
+                                    <ReactSelect multiLanguageOption={paymentStatusFilterOptions} onChange={onPaymentStatusChange} name='payment_status'
+                                        title={getFormattedMessage('dashboard.recentSales.paymentStatus.label')}
+                                        value={saleValue.payment_status} errors={errors['payment_status']}
+                                        defaultValue={paymentStatusDefaultValue[0]}
+                                        placeholder={placeholderText('sale.select.payment-status.placeholder')} />
+                                </div>}
+                                {isQuotation && isPaymentType && <div className='col-md-6'>
+                                    <ReactSelect title={getFormattedMessage('select.payment-type.label')}
+                                        name='payment_type'
+                                        value={saleValue.payment_type} errors={errors['payment_type']}
+                                        placeholder={placeholderText('sale.select.payment-type.placeholder')}
+                                        defaultValue={paymentTypeDefaultValue[0]}
+                                        multiLanguageOption={paymentMethodOption}
+                                        onChange={onPaymentTypeChange}
+                                    />
+                                </div>}
+                            </div>
+                        </Tab>
+
+                        <Tab eventKey='adicional' title='Información Adicional'>
+                            <div className='row g-3 pt-4'>
+                                <div className='col-12'>
+                                    <label className='form-label'>
+                                        {getFormattedMessage('globally.input.notes.label')}: </label>
+                                    <textarea name='notes' className='form-control' rows={4} value={saleValue.notes}
+                                        placeholder={placeholderText('globally.input.notes.placeholder.label')}
+                                        onChange={(e) => onNotesChangeInput(e)}
+                                    />
+                                </div>
+                            </div>
+                        </Tab>
+                    </Tabs>
+                </div>
+
                 <div className='row'>
-                    <div className='col-md-4'>
-                        <label className='form-label'>
-                            {getFormattedMessage('react-data-table.date.column.label')}:
-                        </label>
-                        <span className='required' />
-                        <div className='position-relative'>
-                            <ReactDatePicker onChangeDate={handleCallback} newStartDate={saleValue.date} />
-                        </div>
-                        <span className='text-danger d-block fw-400 fs-small mt-2'>{errors['date'] ? errors['date'] : null}</span>
-                    </div>
-                    <div className='col-md-4'>
-                        <ReactSelect name='warehouse_id' data={warehouses} onChange={onWarehouseChange}
-                            title={getFormattedMessage('warehouse.title')} errors={errors['warehouse_id']}
-                            defaultValue={saleValue.warehouse_id} value={saleValue.warehouse_id} addSearchItems={singleSale}
-                            isWarehouseDisable={true}
-                            placeholder={placeholderText('purchase.select.warehouse.placeholder.label')} />
-                    </div>
-                    <div className='col-md-4'>
-                        <ReactSelect name='customer_id' data={customers} onChange={onCustomerChange}
-                            title={getFormattedMessage('customer.title')} errors={errors['customer_id']}
-                            defaultValue={saleValue.customer_id} value={saleValue.customer_id}
-                            placeholder={placeholderText('sale.select.customer.placeholder.label')} />
-                    </div>
-                    <div className='mb-5'>
-                        <label className='form-label'>
-                            {getFormattedMessage('product.title')}:
-                        </label>
-                        <ProductSearch values={saleValue} products={products} handleValidation={handleValidation}
-                            updateProducts={updateProducts}
-                            setUpdateProducts={setUpdateProducts} customProducts={customProducts}
-                            presentationMode="sale" />
-                    </div>
-                    <div>
-                        <label className='form-label'>
-                            {getFormattedMessage('purchase.order-item.table.label')}:
-                        </label>
-                        <span className='required' />
-                        <ProductRowTable updateProducts={updateProducts} setUpdateProducts={setUpdateProducts}
-                            updatedQty={updatedQty} frontSetting={frontSetting}
-                            updateCost={updateCost} updateDiscount={updateDiscount}
-                            updateTax={updateTax} updateSubTotal={updateSubTotal}
-                            updateSaleUnit={updateSaleUnit}
-                        />
-                    </div>
-                    <div className='col-12'>
-                        <ProductMainCalculation inputValues={saleValue} allConfigData={allConfigData} updateProducts={updateProducts} frontSetting={frontSetting} />
-                    </div>
-                    <div className='col-md-4 mb-3'>
-                        <label
-                            className='form-label'>{getFormattedMessage('purchase.input.order-tax.label')}: </label>
-                        <InputGroup>
-                            <input aria-label='Dollar amount (with dot and two decimal places)'
-                                className='form-control'
-                                type='text' name='tax_rate' value={saleValue.tax_rate}
-                                onBlur={(event) => onBlurInput(event)} onFocus={(event) => onFocusInput(event)}
-                                onKeyPress={(event) => decimalValidate(event)}
-                                onChange={(e) => {
-                                    onChangeInput(e)
-                                }} />
-                            <InputGroup.Text>%</InputGroup.Text>
-                        </InputGroup>
-                    </div>
-                    <div className='col-md-4 mb-3'>
-                        <Form.Label
-                            className='form-label'>{getFormattedMessage('purchase.order-item.table.discount.column.label')}: </Form.Label>
-                        <InputGroup>
-                            <input aria-label='Dollar amount (with dot and two decimal places)'
-                                className='form-control'
-                                type='text' name='discount' value={saleValue.discount}
-                                onBlur={(event) => onBlurInput(event)} onFocus={(event) => onFocusInput(event)}
-                                onKeyPress={(event) => decimalValidate(event)}
-                                onChange={(e) => onChangeInput(e)}
-                            />
-                            <InputGroup.Text>{frontSetting.value && frontSetting.value.currency_symbol}</InputGroup.Text>
-                        </InputGroup>
-                    </div>
-                    <div className='col-md-4 mb-3'>
-                        <label
-                            className='form-label'>{getFormattedMessage('purchase.input.shipping.label')}: </label>
-                        <InputGroup>
-                            <input aria-label='Dollar amount (with dot and two decimal places)' type='text'
-                                className='form-control'
-                                name='shipping' value={saleValue.shipping}
-                                onBlur={(event) => onBlurInput(event)} onFocus={(event) => onFocusInput(event)}
-                                onKeyPress={(event) => decimalValidate(event)}
-                                onChange={(e) => onChangeInput(e)}
-                            />
-                            <InputGroup.Text>{frontSetting.value && frontSetting.value.currency_symbol}</InputGroup.Text>
-                        </InputGroup>
-                    </div>
-                    <div className='col-md-4 mb-3'>
-                        <ReactSelect multiLanguageOption={statusFilterOptions} onChange={onStatusChange} name='status_id'
-                            title={getFormattedMessage('purchase.select.status.label')}
-                            value={saleValue.status_id} errors={errors['status_id']}
-                            defaultValue={statusDefaultValue[0]}
-                            placeholder={getFormattedMessage('purchase.select.status.label')} />
-                    </div>
-                    {!singleSale && <div className='col-md-4'>
-                        <ReactSelect multiLanguageOption={paymentStatusFilterOptions} onChange={onPaymentStatusChange} name='payment_status'
-                            title={getFormattedMessage('dashboard.recentSales.paymentStatus.label')}
-                            value={saleValue.payment_status} errors={errors['payment_status']}
-                            defaultValue={paymentStatusDefaultValue[0]}
-                            placeholder={placeholderText('sale.select.payment-status.placeholder')} />
-                    </div>}
-                    {!singleSale && (
-                        <div
-                            className='col-md-4'
-                            style={{ display: saleValue?.payment_status?.value === 2 ? "none" : "block" }}
-                        >
-                            <ReactSelect
-                                title={getFormattedMessage("select.payment-type.label")}
-                                name='payment_type'
-                                value={saleValue.payment_type}
-                                errors={errors['payment_type']}
-                                placeholder={placeholderText('sale.select.payment-type.placeholder')}
-                                defaultValue={paymentTypeDefaultValue[0]}
-                                multiLanguageOption={paymentMethodOption}
-                                onChange={onPaymentTypeChange}
-                            />
-                        </div>
-                    )}
-                    {isQuotation && <div className='col-md-4'>
-                        <ReactSelect multiLanguageOption={paymentStatusFilterOptions} onChange={onPaymentStatusChange} name='payment_status'
-                            title={getFormattedMessage('dashboard.recentSales.paymentStatus.label')}
-                            value={saleValue.payment_status} errors={errors['payment_status']}
-                            defaultValue={paymentStatusDefaultValue[0]}
-                            placeholder={placeholderText('sale.select.payment-status.placeholder')} />
-                    </div>}
-                    {isQuotation && isPaymentType && <div className='col-md-4'>
-                        <ReactSelect title={getFormattedMessage('select.payment-type.label')}
-                            name='payment_type'
-                            value={saleValue.payment_type} errors={errors['payment_type']}
-                            placeholder={placeholderText('sale.select.payment-type.placeholder')}
-                            defaultValue={paymentTypeDefaultValue[0]}
-                            multiLanguageOption={paymentMethodOption}
-                            onChange={onPaymentTypeChange}
-                        />
-                    </div>}
-                    <div className='mb-3'>
-                        <label className='form-label'>
-                            {getFormattedMessage('globally.input.notes.label')}: </label>
-                        <textarea name='notes' className='form-control' value={saleValue.notes}
-                            placeholder={placeholderText('globally.input.notes.placeholder.label')}
-                            onChange={(e) => onNotesChangeInput(e)}
-                        />
-                    </div>
-                    {!singleSale && (
-                        <div className='col-12 mb-3'>
-                            <FacturaElectronicaToggle
-                                checked={emitirFacturaSri}
-                                onChange={setEmitirFacturaSri}
-                            />
-                        </div>
-                    )}
                     <ModelFooter onEditRecord={singleSale} onSubmit={onSubmit} link='/app/sales' />
                 </div>
-                {/*</Form>*/}
             </div>
         </div>
     )

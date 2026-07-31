@@ -41,7 +41,7 @@ const Product = (props) => {
     const [showVariationModal, setShowVariationModal] = useState(false);
     const [variationProduct, setVariationProduct] = useState(null);
     const [play] = useSound(
-        "https://s3.amazonaws.com/freecodecamp/drums/Heater-4_1.mp3"
+        "https://res.cloudinary.com/dxt0es7sj/video/upload/v1785534224/click_audio_xw43en.mp3"
     );
     const dispatch = useDispatch();
 
