@@ -209,6 +209,7 @@ class Sale extends BaseModel implements HasMedia, JsonResourceful
             'is_return' => $this->is_return,
             'customer_id' => $this->customer_id,
             'customer_name' => $this->customer->name,
+            'customer' => $this->customer,
             'warehouse_id' => $this->warehouse_id,
             'warehouse_name' => $this->warehouse->name,
             'user_id' => $this->user_id,

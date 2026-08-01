@@ -240,6 +240,9 @@ const TicketSlipModal = (props) => {
                         <div>
                             <strong>Dirección:</strong> {saleDetails?.customer?.address ?? '-'}
                         </div>
+                        <div>
+                            <strong>Atendido por:</strong> {saleDetails?.user ? `${saleDetails.user.first_name ?? ''} ${saleDetails.user.last_name ?? ''}`.trim() : '-'}
+                        </div>
                     </div>
 
                     <div style={dividerStyle} />

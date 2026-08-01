@@ -26,7 +26,6 @@ const PaymentSlipModal = (props) => {
 
     // ✅ 1. Ref para el contenido a imprimir
     const printRef = useRef();
-
     
     // ✅ 2. Hook de impresión con tamaño de ticket
     const handlePrint = useReactToPrint({
@@ -191,9 +190,16 @@ const PaymentSlipModal = (props) => {
                     <div style={{ fontSize: '11px' }}>
                         <div>
                             <strong>{getFormattedMessage("dashboard.recentSales.customer.label")}:</strong>{' '}
-                            {updateProducts.customer_name && updateProducts.customer_name[0]
-                                ? updateProducts.customer_name[0].label
-                                : updateProducts.customer_name && updateProducts.customer_name.label}
+                            {updateProducts?.customer?.name ?? ''}
+                        </div>
+                        <div>
+                            <strong>CI/RUC:</strong> {updateProducts?.customer?.identification ?? '9999999999'}
+                        </div>
+                        <div>
+                            <strong>Dirección:</strong> {updateProducts?.customer?.address ?? '-'}
+                        </div>
+                        <div>
+                            <strong>Atendido por:</strong> {updateProducts?.user_name ?? '-'}
                         </div>
                     </div>
 

@@ -163,6 +163,21 @@ const PosMainPage = (props) => {
             reference_code:
                 paymentDetails.attributes &&
                 paymentDetails.attributes.reference_code,
+            // Estos ya venían en la respuesta del backend, pero nunca se
+            // copiaban acá -- por eso no aparecían en el ticket aunque
+            // el backend sí los mandara.
+            customer:
+                paymentDetails.attributes &&
+                paymentDetails.attributes.customer,
+            user_name:
+                paymentDetails.attributes &&
+                paymentDetails.attributes.user_name,
+            numero_comprobante:
+                paymentDetails.attributes &&
+                paymentDetails.attributes.numero_comprobante,
+            tipo_comprobante:
+                paymentDetails.attributes &&
+                paymentDetails.attributes.tipo_comprobante,
         });
     }, [paymentDetails]);
 

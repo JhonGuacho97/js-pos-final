@@ -303,6 +303,7 @@ class SaleAPIController extends AppBaseController
             'customer',
             'payments',
             'electronicInvoice',
+            'user',
         ]);
         $keyName = [
             'email',
