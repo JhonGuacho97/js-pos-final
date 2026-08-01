@@ -217,7 +217,11 @@ const TicketSlipModal = (props) => {
                         <div style={{ fontSize: '10px', color: '#000', marginBottom: '3px' }}>
                             {getTituloDocumento().subtitulo}
                         </div>
-                        <div>No: {saleDetails?.reference_code}</div>
+                        <div>
+                            No: {saleDetails?.electronic_invoice?.tipo_comprobante === "01" && saleDetails?.electronic_invoice?.numero_comprobante
+                                ? `FACTURA ${saleDetails.electronic_invoice.numero_comprobante}`
+                                : saleDetails?.reference_code}
+                        </div>
                         <div>
                             Fecha: {getFormattedDate(saleDetails.date, allConfigData)}
                         </div>
@@ -389,11 +393,13 @@ const TicketSlipModal = (props) => {
 
                         <div>Conserve este comprobante</div>
 
-                        <Image
-                            src={'https://res.cloudinary.com/dxt0es7sj/image/upload/v1773608207/barcode-SA_1115_exsk0c.png'}
-                            height={25}
-                            width={100}
-                        />
+                        {saleDetails?.barcode_url && (
+                            <Image
+                                src={saleDetails.barcode_url}
+                                height={25}
+                                width={100}
+                            />
+                        )}
 
                         <div>{saleDetails?.reference_code}</div>
                     </div>

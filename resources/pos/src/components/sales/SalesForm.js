@@ -1,7 +1,9 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Form, InputGroup } from 'react-bootstrap-v5';
+import { Form, InputGroup, Button } from 'react-bootstrap-v5';
 import { Tab, Tabs } from 'react-bootstrap';
+import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
+import { faPlus } from '@fortawesome/free-solid-svg-icons';
 import dayjs from 'dayjs';
 import utc from 'dayjs/plugin/utc';
 import localizedFormat from 'dayjs/plugin/localizedFormat';
@@ -26,6 +28,7 @@ import { addToast } from '../../store/action/toastAction';
 import { paymentMethodOptions, salePaymentStatusOptions, saleStatusOptions, statusOptions, toastType } from '../../constants';
 import { fetchFrontSetting } from '../../store/action/frontSettingAction';
 import ReactSelect from '../../shared/select/reactSelect';
+import CustomerForm from '../../frontend/components/customerModel/CustomerForm';
 
 const SalesForm = (props) => {
     const {
@@ -54,6 +57,7 @@ const SalesForm = (props) => {
     const [newSaleUnit, setNewSaleUnit] = useState('');
     const [isPaymentType, setIsPaymentType] = useState(false)
     const [emitirFacturaSri, setEmitirFacturaSri] = useState(false);
+    const [modalShowCustomer, setModalShowCustomer] = useState(false);
 
     const [saleValue, setSaleValue] = useState({
         date: new Date(),
@@ -313,6 +317,12 @@ const SalesForm = (props) => {
         }
     }
 
+    const selectedCustomerId = saleValue.customer_id && saleValue.customer_id.value;
+    const selectedCustomer = selectedCustomerId
+        ? (customers || []).find((c) => String(c.id) === String(selectedCustomerId))
+        : null;
+    const selectedCustomerData = selectedCustomer ? selectedCustomer.attributes : null;
+
     return (
         <div className='card'>
             <div className='card-body'>
@@ -324,10 +334,48 @@ const SalesForm = (props) => {
                                 <strong>{getFormattedMessage('customer.title')}</strong>
                             </div>
                             <div className='card-body'>
-                                <ReactSelect name='customer_id' data={customers} onChange={onCustomerChange}
-                                    title={getFormattedMessage('customer.title')} errors={errors['customer_id']}
-                                    defaultValue={saleValue.customer_id} value={saleValue.customer_id}
-                                    placeholder={placeholderText('sale.select.customer.placeholder.label')} />
+                                <div className='row g-3'>
+                                    <div className='col-md-6'>
+                                        <InputGroup className='flex-nowrap dropdown-side-btn position-relative'>
+                                            <ReactSelect name='customer_id' data={customers} onChange={onCustomerChange}
+                                                title={getFormattedMessage('customer.title')} errors={errors['customer_id']}
+                                                defaultValue={saleValue.customer_id} value={saleValue.customer_id}
+                                                placeholder={placeholderText('sale.select.customer.placeholder.label')} />
+                                            <Button
+                                                onClick={() => setModalShowCustomer(true)}
+                                                className='position-absolute model-dtn'
+                                                title='Agregar nuevo cliente'
+                                            >
+                                                <FontAwesomeIcon icon={faPlus} />
+                                            </Button>
+                                        </InputGroup>
+                                    </div>
+                                    <div className='col-md-6'>
+                                        <label className='form-label'>Cédula/RUC:</label>
+                                        <input type='text' className='form-control' readOnly
+                                            value={selectedCustomerData ? (selectedCustomerData.identification || '') : ''} />
+                                    </div>
+                                    <div className='col-md-3'>
+                                        <label className='form-label'>Celular:</label>
+                                        <input type='text' className='form-control' readOnly
+                                            value={selectedCustomerData ? (selectedCustomerData.phone || '') : ''} />
+                                    </div>
+                                    <div className='col-md-3'>
+                                        <label className='form-label'>Correo:</label>
+                                        <input type='text' className='form-control' readOnly
+                                            value={selectedCustomerData ? (selectedCustomerData.email || '') : ''} />
+                                    </div>
+                                    <div className='col-md-3'>
+                                        <label className='form-label'>Razón Social:</label>
+                                        <input type='text' className='form-control' readOnly
+                                            value={selectedCustomerData ? (selectedCustomerData.name || '') : ''} />
+                                    </div>
+                                    <div className='col-md-3'>
+                                        <label className='form-label'>Dirección:</label>
+                                        <input type='text' className='form-control' readOnly
+                                            value={selectedCustomerData ? (selectedCustomerData.address || '') : ''} />
+                                    </div>
+                                </div>
                             </div>
                         </div>
                     </div>
@@ -569,6 +617,12 @@ const SalesForm = (props) => {
                     <ModelFooter onEditRecord={singleSale} onSubmit={onSubmit} link='/app/sales' />
                 </div>
             </div>
+            {modalShowCustomer && (
+                <CustomerForm
+                    show={modalShowCustomer}
+                    hide={setModalShowCustomer}
+                />
+            )}
         </div>
     )
 }
@@ -579,4 +633,3 @@ const mapStateToProps = (state) => {
 }
 
 export default connect(mapStateToProps, { editSale, fetchProductsByWarehouse, fetchFrontSetting })(SalesForm)
-

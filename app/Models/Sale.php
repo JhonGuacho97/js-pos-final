@@ -231,6 +231,13 @@ class Sale extends BaseModel implements HasMedia, JsonResourceful
             'sale_items' => $this->saleItems,
             'created_at' => $this->created_at,
             'barcode_url' => Storage::url('sales/barcode-' . $this->reference_code . '.png'),
+            // Número real del comprobante (ej. "001-001-000050001"), solo
+            // disponible una vez que el SRI (o el proceso de emisión)
+            // le asignó un secuencial a esta venta -- si todavía no
+            // existe (la emisión es asíncrona, puede tardar), queda en
+            // null y el frontend cae de vuelta al reference_code.
+            'numero_comprobante' => $this->electronicInvoice ? $this->electronicInvoice->numeroComprobante() : null,
+            'tipo_comprobante' => $this->electronicInvoice->tipo_comprobante ?? null,
         ];
 
         return $fields;

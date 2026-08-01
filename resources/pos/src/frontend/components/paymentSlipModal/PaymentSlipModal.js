@@ -174,7 +174,11 @@ const PaymentSlipModal = (props) => {
                         <div style={{ fontSize: '10px', color: '#000', marginBottom: '3px' }}>
                             {subtitulo}
                         </div>
-                        <div>No: {updateProducts?.reference_code}</div>
+                        <div>
+                            No: {tipoComprobanteSri === "01" && updateProducts?.numero_comprobante
+                                ? `FACTURA ${updateProducts.numero_comprobante}`
+                                : updateProducts?.reference_code}
+                        </div>
                         <div>
                             {getFormattedMessage("react-data-table.date.column.label")}:{' '}
                             {getFormattedDate(new Date(), allConfigData && allConfigData)}

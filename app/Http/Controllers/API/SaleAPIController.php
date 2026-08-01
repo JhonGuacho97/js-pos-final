@@ -317,6 +317,24 @@ class SaleAPIController extends AppBaseController
         ];
         $sale['company_info'] = Setting::whereIn('key', $keyName)->pluck('value', 'key')->toArray();
 
+        // El PNG del código de barras ya se genera y se guarda al crear
+        // la venta (SaleRepository::generateBarcode) -- acá solo se
+        // expone su URL pública, que antes no viajaba en la respuesta.
+        $barcodePath = 'sales/barcode-' . $sale->reference_code . '.png';
+        if (Storage::disk(config('app.media_disc'))->exists($barcodePath)) {
+            $sale['barcode_url'] = Storage::disk(config('app.media_disc'))->url($barcodePath);
+        }
+
+        // Número real del comprobante (ej. "001-001-000050001"), para
+        // mostrar "FACTURA 001-001-000050001" en vez del reference_code
+        // interno cuando esta venta ya tiene un secuencial asignado.
+        if ($sale->electronicInvoice) {
+            $sale->electronicInvoice->setAttribute(
+                'numero_comprobante',
+                $sale->electronicInvoice->numeroComprobante()
+            );
+        }
+
         return $this->sendResponse($sale, 'Sale information retrieved successfully');
     }
 
