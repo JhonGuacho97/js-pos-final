@@ -8,6 +8,7 @@ import apiConfig from "../../config/apiConfig";
 import { addToast } from "../../store/action/toastAction";
 import { getFormattedMessage } from "../../shared/sharedMethod";
 import { ElectronicInvoiceStatusBadge } from "../sri/ElectronicInvoiceStatus";
+import RutaEmisionPanel from "../sri/RutaEmisionPanel";
 
 const ESTADOS_SRI = [
     { value: "TODOS", label: "Todos" },
@@ -16,6 +17,7 @@ const ESTADOS_SRI = [
     { value: "AUTORIZADA", label: "Autorizada" },
     { value: "NO_AUTORIZADA", label: "Rechazada" },
     { value: "DEVUELTA", label: "Devuelta por el SRI" },
+    { value: "ERROR_TEMPORAL_SRI", label: "Error temporal del SRI" },
 ];
 
 const TIPOS_COMPROBANTE = [
@@ -53,6 +55,7 @@ const ElectronicInvoices = () => {
 
     const [documentos, setDocumentos] = useState([]);
     const [resumen, setResumen] = useState({ no_autorizados: 0, saldo_total: 0 });
+    const [rutaAbiertaId, setRutaAbiertaId] = useState(null);
     const [meta, setMeta] = useState({ current_page: 1, last_page: 1, total: 0 });
     const [loading, setLoading] = useState(false);
     const [pageSize, setPageSize] = useState(10);
@@ -280,10 +283,19 @@ const ElectronicInvoices = () => {
                             {!loading && documentos.map((doc) => (
                                 <tr key={doc.id}>
                                     <td>{doc.fecha ? doc.fecha.slice(0, 16).replace("T", " ") : "-"}</td>
-                                    <td>{doc.numero_comprobante}</td>
+                                    <td>
+                                        <button
+                                            type="button"
+                                            className="btn btn-link p-0"
+                                            style={{ fontSize: "inherit", textDecoration: "none" }}
+                                            onClick={() => setRutaAbiertaId(doc.id)}
+                                        >
+                                            {doc.numero_comprobante}
+                                        </button>
+                                    </td>
                                     <td>{doc.tipo_comprobante === "05" ? "Nota de débito" : "Factura"}</td>
                                     <td>{doc.cliente || "Consumidor Final"}</td>
-                                    <td style={{ minWidth: 220 }}>
+                                    <td style={{ minWidth: 140 }}>
                                         <ElectronicInvoiceStatusBadge
                                             estado={doc.estado}
                                             data={doc}
@@ -334,6 +346,16 @@ const ElectronicInvoices = () => {
                     </span>
                 </div>
             </div>
+
+            <RutaEmisionPanel
+                electronicInvoiceId={rutaAbiertaId}
+                show={Boolean(rutaAbiertaId)}
+                onHide={() => setRutaAbiertaId(null)}
+                onReintentar={() => {
+                    const doc = documentos.find((d) => d.id === rutaAbiertaId);
+                    if (doc) reintentar(doc.sale_id);
+                }}
+            />
         </MasterLayout>
     );
 };

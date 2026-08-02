@@ -81,10 +81,20 @@ class EmitirFacturaJob implements ShouldQueue
             return;
         }
 
-        $factura->update(['xml_firmado' => $xmlFirmado]);
+        $factura->update(['xml_firmado' => $xmlFirmado, 'xml_firmado_at' => now()]);
 
         // Enviar al SRI
         $respuesta = $soapService->enviarComprobante($xmlFirmado);
+
+        if ($respuesta['estado'] === 'ERROR_TEMPORAL_SRI') {
+            $factura->update([
+                'estado'       => ElectronicInvoice::ERROR_TEMPORAL_SRI,
+                'mensajes_sri' => $respuesta['mensajes'],
+            ]);
+            Log::warning("Comprobante {$factura->id}: error temporal del SRI al enviar, se reintentará automáticamente en unos minutos.");
+            ReenviarComprobanteJob::dispatch($factura->id)->delay(now()->addMinutes(5));
+            return;
+        }
 
         if ($respuesta['estado'] === 'DEVUELTA') {
             $factura->update([
@@ -95,7 +105,7 @@ class EmitirFacturaJob implements ShouldQueue
             return;
         }
 
-        $factura->update(['estado' => ElectronicInvoice::RECIBIDA]);
+        $factura->update(['estado' => ElectronicInvoice::RECIBIDA, 'enviado_sri_at' => now()]);
         AutorizarFacturaJob::dispatch($factura->id)->delay(now()->addSeconds(5));
     }
 
@@ -108,7 +118,11 @@ class EmitirFacturaJob implements ShouldQueue
         // Verificar que no exista ya una factura para esta venta
         $existente = ElectronicInvoice::where('sale_id', $sale->id)
             ->where('tipo_comprobante', ElectronicInvoice::FACTURA)
-            ->whereNotIn('estado', [ElectronicInvoice::DEVUELTA, ElectronicInvoice::NO_AUTORIZADA])
+            ->whereNotIn('estado', [
+                ElectronicInvoice::DEVUELTA,
+                ElectronicInvoice::NO_AUTORIZADA,
+                ElectronicInvoice::ERROR_TEMPORAL_SRI,
+            ])
             ->first();
 
         if ($existente) {

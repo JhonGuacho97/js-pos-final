@@ -4,6 +4,7 @@ namespace App\Http\Controllers\API;
 
 use App\Http\Controllers\AppBaseController;
 use App\Jobs\EmitirFacturaJob;
+use App\Jobs\ReenviarComprobanteJob;
 use App\Models\ElectronicInvoice;
 use App\Models\Sale;
 use App\Services\SriRideService;
@@ -97,6 +98,18 @@ class ElectronicInvoiceController extends AppBaseController
                 'success' => false,
                 'message' => 'Esta factura ya está autorizada, no se puede reintentar.',
             ], 409);
+        }
+
+        // Error temporal del SRI: reenviamos el MISMO comprobante ya
+        // firmado, sin borrar ni generar un secuencial nuevo -- ver el
+        // porqué en ReenviarComprobanteJob.
+        if ($factura->esErrorTemporalSri()) {
+            ReenviarComprobanteJob::dispatch($factura->id);
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Reintentando el envío del comprobante (era un error temporal del SRI, no de tu factura).',
+            ], 202);
         }
 
         $factura->delete();
@@ -205,6 +218,7 @@ class ElectronicInvoiceController extends AppBaseController
             ElectronicInvoice::RECIBIDA,
             ElectronicInvoice::NO_AUTORIZADA,
             ElectronicInvoice::DEVUELTA,
+            ElectronicInvoice::ERROR_TEMPORAL_SRI,
         ])->count();
 
         $saldoTotal = (float) Sale::whereHas('electronicInvoice')
@@ -249,6 +263,53 @@ class ElectronicInvoiceController extends AppBaseController
         return response($pdfContent, 200, [
             'Content-Type' => 'application/pdf',
             'Content-Disposition' => 'inline; filename="factura_' . $electronicInvoice->numeroComprobante() . '.pdf"',
+        ]);
+    }
+
+    /**
+     * Descarga el XML -- el autorizado si ya existe (incluye el sello
+     * del SRI), o el firmado si todavía no llegó a ese punto.
+     */
+    public function descargarXml(ElectronicInvoice $electronicInvoice): Response
+    {
+        $xml = $electronicInvoice->xml_autorizado ?: $electronicInvoice->xml_firmado;
+
+        if (!$xml) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Todavía no hay un XML generado para este comprobante.',
+            ], 409);
+        }
+
+        return response($xml, 200, [
+            'Content-Type' => 'application/xml',
+            'Content-Disposition' => 'attachment; filename="' . $electronicInvoice->clave_acceso . '.xml"',
+        ]);
+    }
+
+    /**
+     * La "ruta de emisión" completa del comprobante -- los 6 pasos con
+     * su estado y hora, más lo necesario para los botones de acción
+     * (ver PDF, descargar XML, reintentar).
+     */
+    public function ruta(ElectronicInvoice $electronicInvoice): JsonResponse
+    {
+        $electronicInvoice->load('sale.customer');
+
+        return response()->json([
+            'success' => true,
+            'data' => [
+                'numero_comprobante' => $electronicInvoice->numeroComprobante(),
+                'tipo_comprobante' => $electronicInvoice->tipo_comprobante,
+                'estado' => $electronicInvoice->estado,
+                'clave_acceso' => $electronicInvoice->clave_acceso,
+                'cliente' => $electronicInvoice->sale?->customer?->name,
+                'creado_en' => optional($electronicInvoice->created_at)->toIso8601String(),
+                'tiene_xml' => (bool) $electronicInvoice->xml_firmado,
+                'puede_ver_pdf' => $electronicInvoice->estaAutorizada(),
+                'puede_reintentar' => $electronicInvoice->puedeReintentarse(),
+                'pasos' => $electronicInvoice->rutaEmision(),
+            ],
         ]);
     }
 }

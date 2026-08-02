@@ -2,7 +2,6 @@
 
 use App\Http\Controllers\API\AdjustmentAPIController;
 use App\Http\Controllers\API\AuthController;
-use App\Http\Controllers\API\BackupController;
 use App\Http\Controllers\API\BaseUnitAPIController;
 use App\Http\Controllers\API\BrandAPIController;
 use App\Http\Controllers\API\CouponCodeAPIController;
@@ -61,12 +60,14 @@ use Illuminate\Support\Facades\Route;
 
 Route::get('/sri/lookup', [SriController::class, 'lookup']);
 Route::get('electronic-invoices/{electronicInvoice}/ride', [ElectronicInvoiceController::class, 'ride']);
-
+Route::get('electronic-invoices/{electronicInvoice}/xml', [ElectronicInvoiceController::class, 'descargarXml']);
 Route::middleware('auth:sanctum')->group(function () {
     // ── Facturación electrónica (SRI) ──────────────────────────────
     Route::prefix('electronic-invoices')->group(function () {
         Route::get('/', [ElectronicInvoiceController::class, 'index']);
         Route::get('/{electronicInvoice}', [ElectronicInvoiceController::class, 'show']);
+        Route::get('/{electronicInvoice}/ruta', [ElectronicInvoiceController::class, 'ruta']);
+
     });
 
     Route::prefix('sri-config')->group(function () {
@@ -447,10 +448,6 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::post('register-entry', [POSRegisterAPIController::class, 'entry']);
     Route::post('register-close', [POSRegisterAPIController::class, 'closeRegister']);
     Route::get('register-report', [POSRegisterAPIController::class, 'registerReport']);
-
-    Route::get('backup/download', [BackupController::class, 'download'])
-        ->name('backup.download');
-
 
     // Coupon Code Routes
     Route::resource('coupon-codes', CouponCodeAPIController::class);

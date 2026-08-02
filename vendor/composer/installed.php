@@ -631,6 +631,15 @@
             'aliases' => array(),
             'dev_requirement' => false,
         ),
+        'laravel/slack-notification-channel' => array(
+            'pretty_version' => 'v3.9.0',
+            'version' => '3.9.0.0',
+            'reference' => '51a875b9a6dcae218957b9221abad9f5f1c3dca3',
+            'type' => 'library',
+            'install_path' => __DIR__ . '/../laravel/slack-notification-channel',
+            'aliases' => array(),
+            'dev_requirement' => false,
+        ),
         'laravel/tinker' => array(
             'pretty_version' => 'v2.8.2',
             'version' => '2.8.2.0',

@@ -110,6 +110,7 @@ class SendRideEmailJob implements ShouldQueue
             Mail::to($customer->email)->send(
                 new MailSender('emails.mail-sender', $subject, ['data' => $content], $attachments)
             );
+            $factura->update(['correo_enviado_at' => now()]);
             Log::info("SendRideEmailJob: correo enviado a {$customer->email} para la factura {$factura->id}.");
         } catch (\Throwable $e) {
             Log::error("SendRideEmailJob: falló el envío para la factura {$factura->id}: " . $e->getMessage());

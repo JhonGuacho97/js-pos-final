@@ -73,6 +73,42 @@ return [
             'replace_placeholders' => true,
         ],
 
+        // Canal dedicado para toda la comunicación con el SRI (envío,
+        // consulta de autorización) -- separado del log general para
+        // poder revisar el historial completo de idas y vueltas con
+        // el SRI sin tener que buscarlo entre el resto de los logs de
+        // la aplicación.
+        'sri' => [
+            'driver' => 'daily',
+            'path' => storage_path('logs/sri.log'),
+            'level' => env('SRI_LOG_LEVEL', 'debug'),
+            'days' => env('SRI_LOG_DAILY_DAYS', 30),
+            'replace_placeholders' => true,
+        ],
+
+        // Un canal de Slack por operación, para que cada tipo de log
+        // caiga en su propio hilo/canal (igual que le mostró su colega)
+        // en vez de mezclarse todos juntos. Requiere:
+        //   composer require laravel/slack-notification-channel
+        // y las URLs de webhook configuradas en el .env.
+        'sri_recepcion' => [
+            'driver' => 'slack',
+            'url' => env('SRI_SLACK_WEBHOOK_RECEPCION'),
+            'username' => 'SRI - Recepción',
+            'emoji' => ':inbox_tray:',
+            'level' => env('SRI_SLACK_LOG_LEVEL', 'debug'),
+            'replace_placeholders' => true,
+        ],
+
+        'sri_autorizacion' => [
+            'driver' => 'slack',
+            'url' => env('SRI_SLACK_WEBHOOK_AUTORIZACION'),
+            'username' => 'SRI - Autorización',
+            'emoji' => ':receipt:',
+            'level' => env('SRI_SLACK_LOG_LEVEL', 'debug'),
+            'replace_placeholders' => true,
+        ],
+
         'slack' => [
             'driver' => 'slack',
             'url' => env('LOG_SLACK_WEBHOOK_URL'),

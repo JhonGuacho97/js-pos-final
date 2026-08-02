@@ -10,6 +10,7 @@ class SriSoapService
 {
     private string $wsdlRecepcion;
     private string $wsdlAutorizacion;
+    private string $ambiente;
 
     public function __construct()
     {
@@ -18,6 +19,101 @@ class SriSoapService
 
         $this->wsdlRecepcion = $config['wsdl_recepcion'];
         $this->wsdlAutorizacion = $config['wsdl_autorizacion'];
+        $this->ambiente = (string) ($config['ambiente'] ?? '');
+    }
+
+    /**
+     * Contexto común que se agrega a cada línea del log del SRI --
+     * así cualquier entrada del log dice, de un vistazo, QUÉ operación
+     * fue, EN QUÉ ambiente, y A QUÉ comprobante corresponde.
+     */
+    private function sriLogContext(string $operation, ?string $claveAcceso = null): array
+    {
+        return [
+            'operation' => $operation,
+            'ambiente' => $this->ambiente == '2' ? 'PRODUCCION' : 'PRUEBAS',
+            'clave_acceso' => $claveAcceso,
+        ];
+    }
+
+    /**
+     * A qué canal de Slack corresponde cada operación -- así "enviar"
+     * y "consultar" quedan en hilos separados, como ya lo tenía
+     * armado un colega.
+     */
+    private function canalSlackParaOperacion(string $operation): string
+    {
+        return match ($operation) {
+            'enviarComprobante' => 'sri_recepcion',
+            'consultarAutorizacion' => 'sri_autorizacion',
+            default => 'sri_recepcion',
+        };
+    }
+
+    /**
+     * Registra una respuesta SOAP exitosa (aunque el SRI haya
+     * rechazado el comprobante -- "exitosa" acá significa que la
+     * comunicación en sí funcionó, no que el comprobante haya sido
+     * aceptado). Va al archivo de siempre Y a Slack a la vez.
+     */
+    private function logSriResponse(array $context, \SoapClient $client, array $resultado): void
+    {
+        $canalSlack = $this->canalSlackParaOperacion($context['operation'] ?? '');
+
+        Log::stack(['sri', $canalSlack])->debug('SRI SOAP response', [
+            ...$context,
+            'success' => true,
+            'estado_resultante' => $resultado['estado'] ?? null,
+            'raw_request' => $client->__getLastRequest(),
+            'raw_response' => $client->__getLastResponse(),
+        ]);
+    }
+
+    /**
+     * Registra una falla de comunicación real (SoapFault, timeout,
+     * conexión rechazada, etc.) -- a diferencia de logSriResponse,
+     * acá la comunicación en sí no llegó a completarse bien. También
+     * va a ambos canales.
+     */
+    private function logSriException(array $context, \Throwable $e, ?\SoapClient $client = null): void
+    {
+        $canalSlack = $this->canalSlackParaOperacion($context['operation'] ?? '');
+
+        Log::stack(['sri', $canalSlack])->warning('SRI SOAP exception', [
+            ...$context,
+            'success' => false,
+            'exception' => $e->getMessage(),
+            'raw_request' => $client?->__getLastRequest(),
+        ]);
+    }
+
+    /**
+     * Detecta si un fallo es un problema interno del PROPIO SRI (su
+     * servidor Java/Hibernate cayéndose al procesar la petición) y no
+     * un rechazo real de nuestro comprobante. Estas firmas son las que
+     * el SRI deja ver cuando su infraestructura falla -- no tienen
+     * nada que ver con la calidad de la firma ni de los datos que
+     * mandamos.
+     */
+    private function esFalloTemporalSri(string $mensaje): bool
+    {
+        $firmas = [
+            'PersistenceException',
+            'GenericJDBCException',
+            'NullPointerException',
+            'soap:Server',
+            'Internal Server Error',
+            'HTTP/1.1 500',
+            'HTTP/1.0 500',
+        ];
+
+        foreach ($firmas as $firma) {
+            if (stripos($mensaje, $firma) !== false) {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     // ─────────────────────────────────────────────
@@ -30,6 +126,12 @@ class SriSoapService
      */
     public function enviarComprobante(string $xmlFirmado): array
     {
+        preg_match('/<claveAcceso>(.*?)<\/claveAcceso>/', $xmlFirmado, $claveMatch);
+        $claveAcceso = $claveMatch[1] ?? null;
+        $context = $this->sriLogContext('enviarComprobante', $claveAcceso);
+
+        $client = null;
+
         try {
             $client = $this->crearClienteSoap($this->wsdlRecepcion);
 
@@ -41,9 +143,27 @@ class SriSoapService
                 'xml' => $xmlBytes,
             ]);
 
-            return $this->parsearRespuestaRecepcion($response);
+            $resultado = $this->parsearRespuestaRecepcion($response);
+            $this->logSriResponse($context, $client, $resultado);
+
+            return $resultado;
         } catch (\SoapFault $e) {
+            $this->logSriException($context, $e, $client);
             Log::error('SRI SOAP Fault (recepción): ' . $e->getMessage());
+
+            if ($this->esFalloTemporalSri($e->getMessage())) {
+                return [
+                    'estado' => 'ERROR_TEMPORAL_SRI',
+                    'mensajes' => [
+                        [
+                            'identificador' => 'ERROR_TEMPORAL_SRI',
+                            'mensaje' => 'El servidor del SRI tuvo un problema interno temporal.',
+                            'informacionAdicional' => 'No es un error de tu comprobante -- se puede reintentar. Detalle técnico: ' . $e->getMessage(),
+                            'tipo' => 'ADVERTENCIA',
+                        ]
+                    ],
+                ];
+            }
 
             return [
                 'estado' => 'DEVUELTA',
@@ -56,6 +176,7 @@ class SriSoapService
                 ],
             ];
         } catch (\Exception $e) {
+            $this->logSriException($context, $e, $client);
             Log::error('Error enviando comprobante al SRI: ' . $e->getMessage());
 
             return [
@@ -81,6 +202,10 @@ class SriSoapService
      */
     public function consultarAutorizacion(string $claveAcceso): array
     {
+        $context = $this->sriLogContext('consultarAutorizacion', $claveAcceso);
+
+        $client = null;
+
         try {
             $client = $this->crearClienteSoap($this->wsdlAutorizacion);
 
@@ -88,15 +213,27 @@ class SriSoapService
                 'claveAccesoComprobante' => $claveAcceso,
             ]);
 
-            return $this->parsearRespuestaAutorizacion($response);
+            $resultado = $this->parsearRespuestaAutorizacion($response);
+            $this->logSriResponse($context, $client, $resultado);
+
+            return $resultado;
         } catch (\SoapFault $e) {
+            $this->logSriException($context, $e, $client);
             Log::error('SRI SOAP Fault (autorización): ' . $e->getMessage());
+
+            if ($this->esFalloTemporalSri($e->getMessage())) {
+                return [
+                    'estado' => 'ERROR_TEMPORAL_SRI',
+                    'mensaje' => 'El servidor del SRI tuvo un problema interno temporal: ' . $e->getMessage(),
+                ];
+            }
 
             return [
                 'estado' => 'ERROR',
                 'mensaje' => $e->getMessage(),
             ];
         } catch (\Exception $e) {
+            $this->logSriException($context, $e, $client);
             Log::error('Error consultando autorización SRI: ' . $e->getMessage());
 
             return [

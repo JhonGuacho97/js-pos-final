@@ -85,6 +85,27 @@ class AutorizarFacturaJob implements ShouldQueue
                 ]);
                 break;
 
+            case 'ERROR_TEMPORAL_SRI':
+                // Mismo criterio que EN_PROCESO -- se reintenta con el
+                // backoff configurado. Si se agotan los intentos, se
+                // marca con su propio estado (no NO_AUTORIZADA), para
+                // que quede claro que el problema fue del SRI, no del
+                // comprobante.
+                if ($factura->intentos >= $this->tries) {
+                    $factura->update([
+                        'estado'       => ElectronicInvoice::ERROR_TEMPORAL_SRI,
+                        'mensajes_sri' => [[
+                            'identificador'        => 'ERROR_TEMPORAL_SRI',
+                            'mensaje'              => 'El SRI tuvo problemas internos repetidos al consultar este comprobante.',
+                            'informacionAdicional' => $resultado['mensaje'] ?? '',
+                            'tipo'                 => 'ADVERTENCIA',
+                        ]],
+                    ]);
+                    return;
+                }
+
+                throw new \Exception("Comprobante {$factura->clave_acceso}: error temporal del SRI, reintentando...");
+
             case 'EN_PROCESO':
             default:
                 // Si se acabaron los intentos, marcar como no autorizada
