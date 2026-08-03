@@ -113,6 +113,11 @@ const PurchaseTable = (props) => {
                         <span className="badge bg-light-success">
                             <span>{singleProduct.name}</span>
                         </span>
+                        {singleProduct.variation_type_name && (
+                            <span className="badge bg-light-primary ms-1">
+                                <span>{singleProduct.variation_type_name}</span>
+                            </span>
+                        )}
                         <span className="badge bg-light-primary p-1 ms-1">
                             <FontAwesomeIcon
                                 icon={faPencil}

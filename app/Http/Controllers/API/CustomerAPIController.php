@@ -10,6 +10,7 @@ use App\Http\Resources\CustomerResource;
 use App\Imports\CustomerImport;
 use App\Models\Customer;
 use App\Models\Sale;
+use App\Models\SaleItem;
 use App\Models\SalesPayment;
 use App\Repositories\CustomerRepository;
 use Barryvdh\DomPDF\Facade\Pdf;
@@ -169,6 +170,131 @@ class CustomerAPIController extends AppBaseController
         $data['customers_sales_pdf_url'] = Storage::url('pdf/customer-sales-'.$customer->id.'.pdf');
 
         return $this->sendResponse($data, 'pdf retrieved Successfully');
+    }
+
+    private const FORMA_PAGO_LABELS = [
+        1 => 'EFECTIVO',
+        2 => 'CHEQUE',
+        3 => 'TRANSFERENCIA',
+        4 => 'OTRO',
+    ];
+
+    /**
+     * Resumen de ventas de un cliente -- una fila por venta. Usado por
+     * el modal de "Historial de Ventas" que se abre desde Crear Venta.
+     */
+    public function salesSummary(Request $request, Customer $customer): JsonResponse
+    {
+        $perPage = $request->input('per_page', 15);
+        $search = $request->get('search');
+
+        $query = Sale::where('customer_id', $customer->id)
+            ->with(['electronicInvoice', 'payments'])
+            ->latest();
+
+        if ($search) {
+            $searchNumerico = ltrim($search, '0') ?: '0';
+            $query->where(function ($q) use ($search, $searchNumerico) {
+                $q->where('reference_code', 'like', "%{$search}%")
+                    ->orWhere('id', 'like', "%{$searchNumerico}%")
+                    ->orWhereHas('electronicInvoice', function ($qe) use ($search) {
+                        $qe->where('secuencial', 'like', "%{$search}%")
+                            ->orWhere('clave_acceso', 'like', "%{$search}%");
+                    });
+            });
+        }
+
+        $ventas = $query->paginate($perPage, ['*'], 'page', (int) $request->input('page', 1));
+
+        $ventas->getCollection()->transform(function (Sale $sale) {
+            $ei = $sale->electronicInvoice;
+
+            $tipoDocumento = 'RECIBO ELECTRONICO';
+            if ($ei) {
+                $tipoDocumento = $ei->tipo_comprobante === '05'
+                    ? 'NOTA DE DEBITO ELECTRONICA'
+                    : 'FACTURA ELECTRONICA';
+            }
+
+            $formasPago = $sale->payments->isNotEmpty()
+                ? $sale->payments->pluck('payment_type')
+                    ->map(fn ($tipo) => self::FORMA_PAGO_LABELS[$tipo] ?? 'OTRO')
+                    ->unique()
+                    ->implode(' + ')
+                : (self::FORMA_PAGO_LABELS[$sale->payment_type] ?? 'OTRO');
+
+            return [
+                'nro_orden' => str_pad((string) $sale->id, 9, '0', STR_PAD_LEFT),
+                'nro_documento' => $ei ? $ei->numeroComprobante() : $sale->reference_code,
+                'fecha_venta' => optional($sale->created_at)->format('Y-m-d'),
+                'tipo_documento' => $tipoDocumento,
+                'canal_venta' => 'VENTA DIRECTA',
+                'forma_pago' => $formasPago,
+                'total' => $sale->grand_total,
+            ];
+        });
+
+        return response()->json(['success' => true, 'data' => $ventas]);
+    }
+
+    /**
+     * Detalle de ventas de un cliente -- una fila por línea de
+     * producto, a través de todas sus ventas.
+     */
+    public function salesDetail(Request $request, Customer $customer): JsonResponse
+    {
+        $perPage = $request->input('per_page', 15);
+        $search = $request->get('search');
+
+        $query = SaleItem::whereHas('sale', function ($q) use ($customer) {
+            $q->where('customer_id', $customer->id);
+        })
+            ->with(['sale.electronicInvoice', 'product'])
+            ->latest('id');
+
+        if ($search) {
+            $searchNumerico = ltrim($search, '0') ?: '0';
+            $query->where(function ($q) use ($search, $searchNumerico) {
+                $q->whereHas('product', function ($qp) use ($search) {
+                    $qp->where('name', 'like', "%{$search}%")
+                        ->orWhere('code', 'like', "%{$search}%");
+                })
+                    ->orWhereHas('sale', function ($qs) use ($search, $searchNumerico) {
+                        $qs->where('reference_code', 'like', "%{$search}%")
+                            ->orWhere('id', 'like', "%{$searchNumerico}%")
+                            ->orWhereHas('electronicInvoice', function ($qe) use ($search) {
+                                $qe->where('secuencial', 'like', "%{$search}%")
+                                    ->orWhere('clave_acceso', 'like', "%{$search}%");
+                            });
+                    });
+            });
+        }
+
+        $items = $query->paginate($perPage, ['*'], 'page', (int) $request->input('page', 1));
+
+        $items->getCollection()->transform(function (SaleItem $item) {
+            $sale = $item->sale;
+            $ei = $sale?->electronicInvoice;
+
+            $unidadMedida = $item->product ? $item->product->getProductUnitName() : null;
+
+            return [
+                'nro_orden' => str_pad((string) $sale?->id, 9, '0', STR_PAD_LEFT),
+                'nro_documento' => $ei ? $ei->numeroComprobante() : $sale?->reference_code,
+                'fecha_venta' => optional($sale?->created_at)->format('Y-m-d'),
+                'codigo_producto' => $item->product?->code,
+                'producto' => $item->product?->name,
+                'unidad_medida' => is_array($unidadMedida) ? ($unidadMedida['name'] ?? '') : $unidadMedida,
+                'unidades' => $item->quantity,
+                'precio' => $item->product_price,
+                'descuento' => $item->discount_amount,
+                'iva' => $item->tax_amount,
+                'subtotal' => $item->sub_total,
+                'total' => $item->sub_total + $item->tax_amount,
+            ];
+        });
+
+        return response()->json(['success' => true, 'data' => $items]);
     }
 
     public function customerQuotationsPdfDownload(Customer $customer): JsonResponse

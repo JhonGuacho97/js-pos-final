@@ -145,7 +145,8 @@ const ProductSearch = (props) => {
                 items={filterProducts}
                 onSearch={handleOnSearch}
                 inputSearchString={searchString}
-                fuseOptions={{keys: ['code', 'name']}}
+                fuseOptions={{keys: ['code', 'name', 'variationLabel']}}
+                maxResults={30}
                 resultStringKeyName='code'
                 placeholder={placeholderText('globally.search.field.label')}
                 onSelect={handleOnSelect}

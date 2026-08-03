@@ -4,6 +4,7 @@ export const preparePurchaseProductArray = (products, isBarcode) => {
         purchaseProductRowArray.push({
             name: product.attributes.name,
             code: product.attributes.code,
+            variation_type_name: product.attributes.variation_product?.variation_type_name || null,
             barcode_url: product.attributes.barcode_url,
             stock: product.attributes.stock ? product.attributes.stock.quantity : "",
             // Desglose de stock por CADA almacén (id/nombre/cantidad) --

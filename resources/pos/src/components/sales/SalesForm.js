@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { Form, InputGroup, Button } from 'react-bootstrap-v5';
 import { Tab, Tabs } from 'react-bootstrap';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import { faPlus } from '@fortawesome/free-solid-svg-icons';
+import { faPlus, faPen, faClockRotateLeft } from '@fortawesome/free-solid-svg-icons';
 import dayjs from 'dayjs';
 import utc from 'dayjs/plugin/utc';
 import localizedFormat from 'dayjs/plugin/localizedFormat';
@@ -29,6 +29,7 @@ import { paymentMethodOptions, salePaymentStatusOptions, saleStatusOptions, stat
 import { fetchFrontSetting } from '../../store/action/frontSettingAction';
 import ReactSelect from '../../shared/select/reactSelect';
 import CustomerForm from '../../frontend/components/customerModel/CustomerForm';
+import CustomerSalesHistoryModal from '../customer/CustomerSalesHistoryModal';
 
 const SalesForm = (props) => {
     const {
@@ -58,6 +59,8 @@ const SalesForm = (props) => {
     const [isPaymentType, setIsPaymentType] = useState(false)
     const [emitirFacturaSri, setEmitirFacturaSri] = useState(false);
     const [modalShowCustomer, setModalShowCustomer] = useState(false);
+    const [modalEditCustomer, setModalEditCustomer] = useState(false);
+    const [modalHistorial, setModalHistorial] = useState(false);
 
     const [saleValue, setSaleValue] = useState({
         date: new Date(),
@@ -322,6 +325,9 @@ const SalesForm = (props) => {
         ? (customers || []).find((c) => String(c.id) === String(selectedCustomerId))
         : null;
     const selectedCustomerData = selectedCustomer ? selectedCustomer.attributes : null;
+    const selectedCustomerFlat = selectedCustomer
+        ? { id: selectedCustomer.id, ...selectedCustomerData }
+        : null;
 
     return (
         <div className='card'>
@@ -352,8 +358,30 @@ const SalesForm = (props) => {
                                     </div>
                                     <div className='col-md-6'>
                                         <label className='form-label'>Cédula/RUC:</label>
-                                        <input type='text' className='form-control' readOnly
-                                            value={selectedCustomerData ? (selectedCustomerData.identification || '') : ''} />
+                                        <div className='d-flex gap-2'>
+                                            <input type='text' className='form-control' readOnly
+                                                value={selectedCustomerData ? (selectedCustomerData.identification || '') : ''} />
+                                            {selectedCustomerFlat && (
+                                                <>
+                                                    <Button
+                                                        variant='outline-primary'
+                                                        className='flex-shrink-0'
+                                                        onClick={() => setModalEditCustomer(true)}
+                                                        title='Editar cliente'
+                                                    >
+                                                        <FontAwesomeIcon icon={faPen} />
+                                                    </Button>
+                                                    <Button
+                                                        variant='outline-primary'
+                                                        className='flex-shrink-0'
+                                                        onClick={() => setModalHistorial(true)}
+                                                        title='Historial de ventas'
+                                                    >
+                                                        <FontAwesomeIcon icon={faClockRotateLeft} />
+                                                    </Button>
+                                                </>
+                                            )}
+                                        </div>
                                     </div>
                                     <div className='col-md-3'>
                                         <label className='form-label'>Celular:</label>
@@ -623,6 +651,18 @@ const SalesForm = (props) => {
                     hide={setModalShowCustomer}
                 />
             )}
+            {modalEditCustomer && selectedCustomerFlat && (
+                <CustomerForm
+                    show={modalEditCustomer}
+                    hide={setModalEditCustomer}
+                    singleCustomer={[selectedCustomerFlat]}
+                />
+            )}
+            <CustomerSalesHistoryModal
+                show={modalHistorial}
+                onHide={() => setModalHistorial(false)}
+                customer={selectedCustomerFlat}
+            />
         </div>
     )
 }

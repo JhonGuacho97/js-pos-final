@@ -4,6 +4,7 @@ export const prepareSaleProductArray = (products) => {
         saleProductRowArray.push({
             name: product.attributes.name,
             code: product.attributes.code,
+            variation_type_name: product.attributes.variation_product?.variation_type_name || null,
             stock: product.attributes.stock ? product.attributes.stock.quantity : "",
             short_name: product.attributes?.sale_unit_name?.short_name,
             product_unit: product.attributes.product_unit,

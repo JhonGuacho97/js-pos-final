@@ -60,6 +60,8 @@ const CustomerForm = (props) => {
                                     >
                                         <option value="05">Cédula</option>
                                         <option value="04">RUC</option>
+                                        <option value="06">Pasaporte</option>
+                                        <option value="07">Consumidor Final</option>
                                     </select>
                                 </div>
 
@@ -69,7 +71,7 @@ const CustomerForm = (props) => {
                                     value={customerValue.identification}
                                     onChange={onChangeInput}
                                     error={errors.identification}
-                                    isEdit={false}
+                                    isEdit={Boolean(singleCustomer)}
                                     sriLoading={sriLoading}
                                     onSriLookup={handleSriLookup}
                                 />
@@ -87,6 +89,7 @@ const CustomerForm = (props) => {
                                         placeholder={placeholderText('globally.input.name.placeholder.label')}
                                         value={customerValue.name}
                                         onChange={onChangeInput}
+                                        disabled={Boolean(singleCustomer)}
                                         autoFocus
                                     />
                                     {errors.name && (
@@ -207,8 +210,7 @@ const CustomerForm = (props) => {
                                     onSubmit={onSubmit}
                                     editDisabled={isDisabled}
                                     addDisabled={!customerValue.name}
-                                    link="/app/pos"
-                                    modelhide={hide}
+                                    clearField={hide}
                                 />
                             </div>
                         </Form>

@@ -186,6 +186,11 @@ const ProductTableBody = (props) => {
                         <span className="badge bg-light-success">
                             <span>{singleProduct.name}</span>
                         </span>
+                        {singleProduct.variation_type_name && (
+                            <span className="badge bg-light-primary ms-1">
+                                <span>{singleProduct.variation_type_name}</span>
+                            </span>
+                        )}
                         {singleProduct.product_presentation && (
                             <span className="badge bg-light-info ms-1">
                                 <span>

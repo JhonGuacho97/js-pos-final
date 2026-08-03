@@ -18,7 +18,7 @@ const IdentificacionField = ({ tipo, value, onChange, error, isEdit, sriLoading,
                 maxLength={maxLengthPorTipo(tipo)}
                 value={value || ""}
                 onChange={onChange}
-                disabled={tipo === "07"}
+                disabled={tipo === "07" || isEdit}
                 placeholder={placeholderPorTipo(tipo)}
             />
             {!isEdit && (tipo === "05" || tipo === "04") && (
