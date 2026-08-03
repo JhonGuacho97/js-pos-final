@@ -81,6 +81,8 @@ class SriXmlService
 
     public function generarXmlFactura(Sale $sale): array
     {
+        $this->validarCalculos($sale);
+
         $secuencial = $this->proximoSecuencial(ElectronicInvoice::FACTURA);
         $fechaEmision = $sale->fechaEmisionSri();
         $claveAcceso = $this->generarClaveAcceso(
@@ -114,6 +116,7 @@ class SriXmlService
         $this->nodo($dom, $infoTrib, 'ptoEmi', $cfg['pto_emi']);
         $this->nodo($dom, $infoTrib, 'secuencial', $secuencial);
         $this->nodo($dom, $infoTrib, 'dirMatriz', $cfg['dir_matriz']);
+        $this->agregarContribuyenteRimpe($dom, $infoTrib, $cfg);
         $factura->appendChild($infoTrib);
 
         // ── infoFactura ───────────────────────────
@@ -129,12 +132,21 @@ class SriXmlService
 
         // totalConImpuestos
         $totalConImp = $dom->createElement('totalConImpuestos');
+        // Mismo criterio que en subtotalSinIvaSri(): el IVA vive por
+        // producto (Inclusivo/Exclusivo), no en un campo global de la
+        // venta -- sumar $sale->tax_amount acá era el mismo bug que en
+        // el RIDE, solo que directo en el XML que se manda al SRI.
+        $ivaFactura = $sale->saleItems->sum(fn ($item) => $item->valorIvaSri());
+        $itemConIvaFactura = $sale->saleItems->first(fn ($item) => ($item->tax_value ?: $sale->tax_rate) > 0);
+        $tarifaFactura = $itemConIvaFactura
+            ? ($itemConIvaFactura->tax_value ?: $sale->tax_rate)
+            : ($sale->tax_rate ?? 0);
         $this->agregarTotalImpuesto(
             $dom,
             $totalConImp,
             $sale->subtotalSinIvaSri(),
-            $sale->tax_amount ?? 0,
-            $sale->tax_rate ?? 15
+            $ivaFactura,
+            $tarifaFactura
         );
         $infoFact->appendChild($totalConImp);
 
@@ -181,26 +193,35 @@ class SriXmlService
         $factura->appendChild($detalles);
 
         // ── infoAdicional ─────────────────────────
+        // Importante: createElement($tag, $valor) escapa MENOS
+        // caracteres que createTextNode() (así lo advierte la propia
+        // documentación de PHP) -- si el correo/teléfono/dirección del
+        // cliente tuviera un "&" suelto, podía romper el XML igual que
+        // pasó con la dirección de la empresa. Se arma con
+        // createTextNode(), el mismo patrón seguro que usa nodo().
         $infoAdicional = $dom->createElement('infoAdicional');
         $hasAdicional = false;
 
         if ($customer->email) {
-            $campo = $dom->createElement('campoAdicional', $customer->email);
+            $campo = $dom->createElement('campoAdicional');
             $campo->setAttribute('nombre', 'Email');
+            $campo->appendChild($dom->createTextNode((string) $customer->email));
             $infoAdicional->appendChild($campo);
             $hasAdicional = true;
         }
 
         if ($customer->phone) {
-            $campo = $dom->createElement('campoAdicional', $customer->phone);
+            $campo = $dom->createElement('campoAdicional');
             $campo->setAttribute('nombre', 'Telefono');
+            $campo->appendChild($dom->createTextNode((string) $customer->phone));
             $infoAdicional->appendChild($campo);
             $hasAdicional = true;
         }
 
         if ($customer->address) {
-            $campo = $dom->createElement('campoAdicional', $customer->address);
+            $campo = $dom->createElement('campoAdicional');
             $campo->setAttribute('nombre', 'Direccion');
+            $campo->appendChild($dom->createTextNode((string) $customer->address));
             $infoAdicional->appendChild($campo);
             $hasAdicional = true;
         }
@@ -263,6 +284,7 @@ class SriXmlService
         $this->nodo($dom, $infoTrib, 'ptoEmi', $cfg['pto_emi']);
         $this->nodo($dom, $infoTrib, 'secuencial', $secuencial);
         $this->nodo($dom, $infoTrib, 'dirMatriz', $cfg['dir_matriz']);
+        $this->agregarContribuyenteRimpe($dom, $infoTrib, $cfg);
         $notaDebito->appendChild($infoTrib);
 
         // ── infoNotaDebito ────────────────────────
@@ -332,11 +354,84 @@ class SriXmlService
     // HELPERS PRIVADOS
     // ─────────────────────────────────────────────
 
+    /**
+     * Verifica que cantidad × precio − descuento coincida con lo que se
+     * va a reportar como "sin impuestos", y que el IVA calculado
+     * coincida con la tarifa configurada -- ANTES de pedir un
+     * secuencial nuevo. Pensada para atrapar inconsistencias como la
+     * que encontramos en una prueba manual (un producto marcado como
+     * "Sin IVA" pero con el monto guardado incluyendo el IVA de
+     * todas formas), que el SRI rechazaría con su código de error 52
+     * "Error en diferencias" -- mejor frenarla acá que gastar un
+     * secuencial en una factura que se va a devolver.
+     */
+    private function validarCalculos(Sale $sale): void
+    {
+        $tolerancia = 0.02; // margen de redondeo aceptable
+
+        foreach ($sale->saleItems as $item) {
+            $bruto = round(
+                ($item->quantity * $item->product_price) - ($item->discount_amount ?? 0),
+                2
+            );
+            $base = $item->precioTotalSinImpuestoSri();
+            $iva = $item->valorIvaSri();
+
+            // "cantidad × precio" significa cosas distintas según el tipo
+            // de impuesto -- comparar siempre el MISMO concepto fiscal
+            // contra el mismo concepto, nunca bruto contra neto:
+            //   - Exclusivo: el precio YA es neto -> cantidad × precio == base
+            //   - Inclusivo: el precio incluye IVA -> cantidad × precio == base + iva
+            $esperado = ($item->tax_type == Sale::INCLUSIVE) ? ($base + $iva) : $base;
+
+            if (abs($bruto - $esperado) > $tolerancia) {
+                throw new \RuntimeException(
+                    "No se puede emitir: el producto \"{$item->product?->name}\" tiene una inconsistencia de cálculo ".
+                    "(cantidad × precio − descuento = \${$bruto}, pero se reportaría \${$esperado} entre base e IVA). ".
+                    'Revisá el campo "Impuesto Inclusivo/Exclusivo" configurado en ese producto antes de reintentar.'
+                );
+            }
+
+            // Esta relación sí vale igual para los dos tipos: el IVA
+            // reportado siempre debe ser la tarifa aplicada sobre la base.
+            $tarifa = ($item->tax_value > 0) ? $item->tax_value : ($sale->tax_rate ?? 0);
+            $ivaEsperado = round($base * $tarifa / 100, 2);
+
+            if (abs($ivaEsperado - $iva) > $tolerancia) {
+                throw new \RuntimeException(
+                    "No se puede emitir: el IVA del producto \"{$item->product?->name}\" no coincide con su tarifa configurada ".
+                    "(esperado \${$ivaEsperado} al {$tarifa}%, pero hay \${$iva} guardado)."
+                );
+            }
+        }
+    }
+
     private function nodo(\DOMDocument $dom, \DOMElement $parent, string $tag, $value): void
     {
         $node = $dom->createElement($tag);
         $node->appendChild($dom->createTextNode((string) $value));
         $parent->appendChild($node);
+    }
+
+    /**
+     * <contribuyenteRimpe> -- obligatoria SOLO para contribuyentes bajo
+     * régimen RIMPE (Anexo 22 de la ficha técnica del SRI). Configurable
+     * porque este mismo sistema puede usarse para negocios que no estén
+     * bajo RIMPE -- en ese caso $cfg['regimen_rimpe'] queda vacío y esta
+     * etiqueta simplemente no se agrega, sin afectar en nada al resto.
+     */
+    private function agregarContribuyenteRimpe(\DOMDocument $dom, \DOMElement $infoTrib, array $cfg): void
+    {
+        $textos = [
+            'EMPRENDEDOR' => 'CONTRIBUYENTE RÉGIMEN RIMPE',
+            'NEGOCIO_POPULAR' => 'CONTRIBUYENTE NEGOCIO POPULAR - RÉGIMEN RIMPE',
+        ];
+
+        $texto = $textos[$cfg['regimen_rimpe'] ?? ''] ?? null;
+
+        if ($texto) {
+            $this->nodo($dom, $infoTrib, 'contribuyenteRimpe', $texto);
+        }
     }
 
     private function agregarTotalImpuesto(

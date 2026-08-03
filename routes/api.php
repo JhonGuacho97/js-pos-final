@@ -60,14 +60,14 @@ use Illuminate\Support\Facades\Route;
 
 Route::get('/sri/lookup', [SriController::class, 'lookup']);
 Route::get('electronic-invoices/{electronicInvoice}/ride', [ElectronicInvoiceController::class, 'ride']);
-
+Route::get('electronic-invoices/{electronicInvoice}/xml', [ElectronicInvoiceController::class, 'descargarXml']);
 Route::middleware('auth:sanctum')->group(function () {
     // ── Facturación electrónica (SRI) ──────────────────────────────
     Route::prefix('electronic-invoices')->group(function () {
         Route::get('/', [ElectronicInvoiceController::class, 'index']);
         Route::get('/{electronicInvoice}', [ElectronicInvoiceController::class, 'show']);
         Route::get('/{electronicInvoice}/ruta', [ElectronicInvoiceController::class, 'ruta']);
-        Route::get('/{electronicInvoice}/xml', [ElectronicInvoiceController::class, 'descargarXml']);
+        // Route::get('/{electronicInvoice}/xml', [ElectronicInvoiceController::class, 'descargarXml']);
     });
 
     Route::prefix('sri-config')->group(function () {

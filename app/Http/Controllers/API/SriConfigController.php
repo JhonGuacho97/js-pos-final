@@ -30,6 +30,7 @@ class SriConfigController extends AppBaseController
             'sri_pto_emi',
             'sri_ambiente',
             'sri_obligado_contabilidad',
+            'sri_regimen_rimpe',
             'sri_certificado_path',
         ];
 
@@ -262,6 +263,7 @@ class SriConfigController extends AppBaseController
             'sri_pto_emi' => 'required|digits:3',
             'sri_ambiente' => 'required|in:1,2',
             'sri_obligado_contabilidad' => 'required|in:SI,NO',
+            'sri_regimen_rimpe' => 'nullable|in:,EMPRENDEDOR,NEGOCIO_POPULAR',
         ]);
 
         if ($validator->fails()) {
@@ -280,6 +282,7 @@ class SriConfigController extends AppBaseController
             'sri_pto_emi',
             'sri_ambiente',
             'sri_obligado_contabilidad',
+            'sri_regimen_rimpe',
         ];
 
         foreach ($campos as $campo) {

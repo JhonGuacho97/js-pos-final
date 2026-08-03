@@ -1508,6 +1508,9 @@ const ProductForm = (props) => {
                                         />
                                         <InputGroup.Text>%</InputGroup.Text>
                                     </InputGroup>
+                                    <div className="form-text">
+                                        Porcentaje de IVA que aplica a este producto (ej: 15 para 15%, 0 si no aplica).
+                                    </div>
                                     <span className="text-danger d-block fw-400 fs-small mt-2">
                                         {errors["order_tax"]
                                             ? errors["order_tax"]
@@ -1532,6 +1535,15 @@ const ProductForm = (props) => {
                                             "product.input.tax-type.placeholder.label"
                                         )}
                                     />
+                                    <div className="form-text">
+                                        <strong>Exclusivo</strong>: el precio que cargás abajo NO incluye IVA, se suma aparte al cobrar
+                                        (precio $6.00 + 15% = $6.90 al cliente).
+                                        <br />
+                                        <strong>Inclusivo</strong>: el precio que cargás abajo YA incluye el IVA adentro
+                                        (cargás $6.90, el sistema calcula el IVA hacia atrás).
+                                        <br />
+                                        ⚠️ Elegir mal esta opción hace que la factura electrónica salga con el cálculo incorrecto.
+                                    </div>
                                 </div>
                                 {!singleProduct &&
                                     <div className="col-md-3 mb-3">

@@ -329,9 +329,19 @@
                         <td class="label">Descuento</td>
                         <td class="value">${{ number_format($venta->discount ?? 0, 2) }}</td>
                     </tr>
+                    @php
+                        // La tarifa de IVA vive por producto, no a nivel
+                        // de venta -- se suma el IVA real de cada línea.
+                        // Se muestra la tarifa del primer producto con
+                        // IVA > 0 como referencia (asume una sola tarifa
+                        // por venta, el caso normal).
+                        $ivaTotal = $venta->saleItems->sum(fn ($item) => $item->valorIvaSri());
+                        $itemConIva = $venta->saleItems->first(fn ($item) => ($item->tax_value ?: $venta->tax_rate) > 0);
+                        $tarifaMostrada = $itemConIva ? ($itemConIva->tax_value ?: $venta->tax_rate) : ($venta->tax_rate ?? 0);
+                    @endphp
                     <tr>
-                        <td class="label">IVA {{ number_format($venta->tax_rate ?? 0, 0) }}%</td>
-                        <td class="value">${{ number_format($venta->tax_amount ?? 0, 2) }}</td>
+                        <td class="label">IVA {{ number_format($tarifaMostrada, 0) }}%</td>
+                        <td class="value">${{ number_format($ivaTotal, 2) }}</td>
                     </tr>
                     <tr class="total-row">
                         <td class="label">Valor total</td>

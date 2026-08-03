@@ -266,6 +266,22 @@ class Sale extends BaseModel implements HasMedia, JsonResourceful
      */
     public function subtotalSinIvaSri(): float
     {
+        // Suma la base real de cada línea (cada una ya sabe si su
+        // propio producto es Inclusivo o Exclusivo) -- usar
+        // grand_total - tax_amount (campos globales de la venta, el
+        // "Impuesto de pedido" del formulario) daba mal cuando el
+        // impuesto real vive a nivel de producto y ese campo global
+        // nunca se tocó (quedaba en 0, aunque los productos sí tuvieran
+        // IVA configurado).
+        $items = $this->saleItems;
+
+        if ($items->isNotEmpty()) {
+            return round(
+                $items->sum(fn (SaleItem $item) => $item->precioTotalSinImpuestoSri()),
+                2
+            );
+        }
+
         if (!empty($this->subtotal_sin_iva)) {
             return round($this->subtotal_sin_iva, 2);
         }

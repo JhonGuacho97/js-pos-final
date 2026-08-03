@@ -56,7 +56,6 @@ class SaleItem extends BaseModel implements JsonResourceful
 
     protected $table = 'sale_items';
 
-
     public const JSON_API_TYPE = 'sales_items';
 
     protected $fillable = [
@@ -149,12 +148,11 @@ class SaleItem extends BaseModel implements JsonResourceful
      */
     public function precioUnitarioSri(): float
     {
-        if ($this->tax_type === Sale::INCLUSIVE) {
-            // Descontar el IVA incluido para obtener precio neto
-            $tarifa = $this->tax_value ?? 15;
-            return round($this->net_unit_price / (1 + $tarifa / 100), 6);
-        }
-
+        // net_unit_price YA viene neto (sin IVA) desde SaleRepository --
+        // ahí se resta el IVA una vez si el tipo es Inclusivo, antes de
+        // guardar. Restarlo de nuevo acá era una doble resta (bug real,
+        // confirmado con un caso real: $10 con 15% Inclusivo daba
+        // $7.56 en vez de $8.70).
         return round($this->net_unit_price, 6);
     }
 
@@ -230,13 +228,9 @@ class SaleItem extends BaseModel implements JsonResourceful
      */
     public function descripcionSri(): string
     {
-        $variation = $this->ProductPresentation?->variationType?->name;
-
-        return strtoupper(
-            $this->product->name .
-            ($variation ? " ({$variation})" : '')
-        );
+        return strtoupper($this->product->name ?? 'PRODUCTO');
     }
+
     /**
      * Descuento en valor absoluto para el XML.
      */

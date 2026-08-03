@@ -19,6 +19,7 @@ const SriConfigPage = () => {
         sri_pto_emi: "001",
         sri_ambiente: "1",
         sri_obligado_contabilidad: "SI",
+        sri_regimen_rimpe: "",
     });
 
     const [certInfo, setCertInfo] = useState(null);
@@ -323,6 +324,23 @@ const SriConfigPage = () => {
                                 <option value="SI">Sí</option>
                                 <option value="NO">No</option>
                             </select>
+                        </div>
+
+                        <div className="col-md-4">
+                            <label className="form-label">Régimen RIMPE</label>
+                            <select
+                                name="sri_regimen_rimpe"
+                                className="form-select"
+                                value={config.sri_regimen_rimpe}
+                                onChange={handleChange}
+                            >
+                                <option value="">No aplica</option>
+                                <option value="EMPRENDEDOR">RIMPE Emprendedor</option>
+                                <option value="NEGOCIO_POPULAR">RIMPE Negocio Popular</option>
+                            </select>
+                            <div className="form-text">
+                                Solo si tu RUC está bajo este régimen -- agrega la leyenda obligatoria en el XML.
+                            </div>
                         </div>
 
                     </div>

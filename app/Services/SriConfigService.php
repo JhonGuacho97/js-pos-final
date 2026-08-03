@@ -22,6 +22,10 @@ class SriConfigService
             'estab' => $settings['sri_estab'] ?? '001',
             'pto_emi' => $settings['sri_pto_emi'] ?? '001',
             'obligado_contabilidad' => $settings['sri_obligado_contabilidad'] ?? 'NO',
+            // Vacío por defecto -- el sistema puede usarse para negocios que
+            // no estén bajo RIMPE, en cuyo caso esto simplemente no aplica y
+            // no se agrega ninguna etiqueta al XML.
+            'regimen_rimpe' => $settings['sri_regimen_rimpe'] ?? '',
             'certificado_path' => $settings['sri_certificado_path'],
             'certificado_clave' => !empty($settings['sri_certificado_clave'])
                 ? Crypt::decryptString($settings['sri_certificado_clave'])
