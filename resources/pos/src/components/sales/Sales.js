@@ -21,6 +21,9 @@ import {
     placeholderText,
 } from "../../shared/sharedMethod";
 import { downloadPdf } from "../../store/action/downloadReportAction";
+import apiConfig from "../../config/apiConfig";
+import { addToast } from "../../store/action/toastAction";
+import { toastType } from "../../constants";
 import ActionDropDownButton from "../../shared/action-buttons/ActionDropDownButton";
 import { fetchFrontSetting } from "../../store/action/frontSettingAction";
 import ShowPayment from "../../shared/showPayment/ShowPayment";
@@ -111,6 +114,18 @@ const Sales = (props) => {
         setModalShowPaymentSlip(true);
     };
 
+    const onEmitirFacturaClick = (item) => {
+        apiConfig
+            .post(`/sales/${item.id}/electronic-invoice/emitir`)
+            .then((res) => {
+                dispatch(addToast({ text: res.data.message }));
+            })
+            .catch((error) => {
+                const mensaje = error?.response?.data?.message || 'No se pudo emitir la factura electrónica.';
+                dispatch(addToast({ text: mensaje, type: toastType.ERROR }));
+            });
+    };
+
     const handleCloseTicketModal = () => {
         setModalShowPaymentSlip(false);
         setSelectedSale(null);
@@ -148,6 +163,8 @@ const Sales = (props) => {
             id: sale.id,
             currency: currencySymbol,
             is_return: sale.attributes.is_return,
+            numero_comprobante: sale.attributes.numero_comprobante,
+            tipo_comprobante: sale.attributes.tipo_comprobante,
         }));
 
     useEffect(() => {
@@ -382,6 +399,8 @@ const Sales = (props) => {
                         /* NUEVO */
                         isReceiptShow={true}
                         onShowReceiptClick={onShowReceiptClick}
+                        isEmitirFacturaShow={true}
+                        onEmitirFacturaClick={onEmitirFacturaClick}
                     />
                 ),
         },

@@ -3,7 +3,7 @@ import { Dropdown } from 'react-bootstrap';
 import { getFormattedMessage } from '../sharedMethod';
 import {
     faEye, faFilePdf, faDollarSign, faTrash, faAngleDown, faCartShopping, faPenToSquare, faEllipsisVertical,
-    faFileInvoice, faFileContract
+    faFileInvoice, faFileContract, faPaperPlane
 } from '@fortawesome/free-solid-svg-icons';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { Permissions } from '../../constants';
@@ -17,7 +17,8 @@ const ActionDropDownButton = (props) => {
         title, isPaymentShow = false, onShowPaymentClick,
         onCreatePaymentClick, onCreateSaleClick, isCreatesSales,
         isReceiptShow = false, onShowReceiptClick,
-        isRideDownload = false, rideUrl = null
+        isRideDownload = false, rideUrl = null,
+        isEmitirFacturaShow = false, onEmitirFacturaClick
     } = props;
 
 
@@ -87,6 +88,20 @@ const ActionDropDownButton = (props) => {
                     </Dropdown.Item>
                     : null}
 
+
+                {isEmitirFacturaShow && !item.numero_comprobante ?
+                    <Dropdown.Item
+                        onClick={(e) => {
+                            e.stopPropagation();
+                            onEmitirFacturaClick(item);
+                        }}
+                        eventKey='emitir-factura'
+                        className='py-3 px-4 d-flex align-items-center fs-6'
+                    >
+                        <img src="https://res.cloudinary.com/dxt0es7sj/image/upload/v1785960274/sri_negro_ct8qgt.svg" alt="SRI" className='me-2' />
+                        Emitir Factura
+                    </Dropdown.Item>
+                    : null}
 
                 {item.payment_status !== 2 && isPaymentShow ?
                     <Dropdown.Item onClick={(e) => {
