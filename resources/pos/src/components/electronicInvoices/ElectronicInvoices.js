@@ -23,8 +23,15 @@ const ESTADOS_SRI = [
 const TIPOS_COMPROBANTE = [
     { value: "TODOS", label: "Todos" },
     { value: "01", label: "Factura" },
+    { value: "04", label: "Nota de crédito" },
     { value: "05", label: "Nota de débito" },
 ];
+
+const TIPO_COMPROBANTE_LABEL = {
+    "01": "Factura",
+    "04": "Nota de crédito",
+    "05": "Nota de débito",
+};
 
 const hoy = () => new Date().toISOString().slice(0, 10);
 const inicioDeMes = () => {
@@ -293,7 +300,7 @@ const ElectronicInvoices = () => {
                                             {doc.numero_comprobante}
                                         </button>
                                     </td>
-                                    <td>{doc.tipo_comprobante === "05" ? "Nota de débito" : "Factura"}</td>
+                                    <td>{TIPO_COMPROBANTE_LABEL[doc.tipo_comprobante] || "Factura"}</td>
                                     <td>{doc.cliente || "Consumidor Final"}</td>
                                     <td style={{ minWidth: 140 }}>
                                         <ElectronicInvoiceStatusBadge

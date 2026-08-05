@@ -60,6 +60,56 @@ class SriRideService
     }
 
     /**
+     * RIDE de Nota de Crédito -- misma idea que generarPdf() pero
+     * partiendo de CreditNote en vez de Sale, con su propia plantilla
+     * (referencia al documento que corrige, motivo, sin datos de pago).
+     */
+    public function generarPdfNotaCredito(ElectronicInvoice $comprobante): string
+    {
+        $creditNote = $comprobante->creditNote()
+            ->with(['customer', 'creditNoteItems.product'])
+            ->first();
+
+        $qrSvg = QrCode::format('svg')
+            ->size(200)
+            ->generate($comprobante->clave_acceso);
+        $qrBase64 = 'data:image/svg+xml;base64,' . base64_encode($qrSvg);
+
+        $logoBase64 = $this->obtenerLogoBase64();
+
+        $conceptoTexto = match ($creditNote->concepto) {
+            'POR_DEVOLUCION' => 'Por Devolución',
+            'POR_DESCUENTO' => 'Por Descuento',
+            'POR_CORRECCION_PRECIO' => 'Por Corrección de Precio',
+            'POR_ERROR_FACTURACION' => 'Por Error de Facturación',
+            default => 'Otro',
+        };
+
+        $pdf = Pdf::loadView('sri.ride-nota-credito', [
+            'comprobante' => $comprobante,
+            'creditNote' => $creditNote,
+            'sri' => SriConfigService::get(),
+            'qrBase64' => $qrBase64,
+            'logoBase64' => $logoBase64,
+            'conceptoTexto' => $conceptoTexto,
+        ])->setPaper('a4', 'portrait')->setOption([
+            'tempDir' => public_path(),
+            'chroot' => public_path(),
+        ]);
+
+        return $pdf->output();
+    }
+
+    public function guardarYObtenerRutaNotaCredito(ElectronicInvoice $comprobante): string
+    {
+        $pdfContent = $this->generarPdfNotaCredito($comprobante);
+        $nombreArchivo = "rides/nota_credito_{$comprobante->clave_acceso}.pdf";
+        Storage::disk('local')->put($nombreArchivo, $pdfContent);
+
+        return Storage::disk('local')->path($nombreArchivo);
+    }
+
+    /**
      * Obtiene el logo de la empresa como data URI base64, usando el mismo
      * helper getLogoUrl() que ya usa el flujo de venta (pdf.sale-pdf).
      */

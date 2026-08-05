@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\Models\CreditNote;
 use App\Models\ElectronicInvoice;
 use App\Models\Sale;
 
@@ -351,6 +352,162 @@ class SriXmlService
     }
 
     // ─────────────────────────────────────────────
+    // GENERAR XML NOTA DE CRÉDITO (versión 1.1.0)
+    // ─────────────────────────────────────────────
+
+    public function generarXmlNotaCredito(CreditNote $creditNote): array
+    {
+        $this->validarCalculosNotaCredito($creditNote);
+
+        $secuencial = $this->proximoSecuencial(ElectronicInvoice::NOTA_CREDITO);
+        $fechaEmision = optional($creditNote->date)->format('d/m/Y') ?: now()->format('d/m/Y');
+        $claveAcceso = $this->generarClaveAcceso(
+            $fechaEmision,
+            ElectronicInvoice::NOTA_CREDITO,
+            $secuencial
+        );
+
+        $cfg = SriConfigService::get();
+        $sale = $creditNote->sale;
+        $customer = $creditNote->customer;
+
+        $dom = new \DOMDocument('1.0', 'UTF-8');
+        $dom->formatOutput = true;
+
+        // ── Raíz ──────────────────────────────────
+        $notaCredito = $dom->createElement('notaCredito');
+        $notaCredito->setAttribute('id', 'comprobante');
+        $notaCredito->setAttribute('version', '1.1.0');
+        $dom->appendChild($notaCredito);
+
+        // ── infoTributaria ────────────────────────
+        $infoTrib = $dom->createElement('infoTributaria');
+        $this->nodo($dom, $infoTrib, 'ambiente', $cfg['ambiente']);
+        $this->nodo($dom, $infoTrib, 'tipoEmision', '1');
+        $this->nodo($dom, $infoTrib, 'razonSocial', $cfg['razon_social']);
+        $this->nodo($dom, $infoTrib, 'nombreComercial', $cfg['nombre_comercial']);
+        $this->nodo($dom, $infoTrib, 'ruc', $cfg['ruc']);
+        $this->nodo($dom, $infoTrib, 'claveAcceso', $claveAcceso);
+        $this->nodo($dom, $infoTrib, 'codDoc', ElectronicInvoice::NOTA_CREDITO);
+        $this->nodo($dom, $infoTrib, 'estab', $cfg['estab']);
+        $this->nodo($dom, $infoTrib, 'ptoEmi', $cfg['pto_emi']);
+        $this->nodo($dom, $infoTrib, 'secuencial', $secuencial);
+        $this->nodo($dom, $infoTrib, 'dirMatriz', $cfg['dir_matriz']);
+        $this->agregarContribuyenteRimpe($dom, $infoTrib, $cfg);
+        $notaCredito->appendChild($infoTrib);
+
+        // ── infoNotaCredito ────────────────────────
+        $infoNC = $dom->createElement('infoNotaCredito');
+        $this->nodo($dom, $infoNC, 'fechaEmision', $fechaEmision);
+        $this->nodo($dom, $infoNC, 'dirEstablecimiento', $cfg['dir_matriz']);
+        $this->nodo($dom, $infoNC, 'tipoIdentificacionComprador', $customer->tipoIdentificacionSri());
+        $this->nodo($dom, $infoNC, 'razonSocialComprador', $customer->razonSocialSri());
+        $this->nodo($dom, $infoNC, 'identificacionComprador', $customer->identificacionSri());
+        $this->nodo($dom, $infoNC, 'obligadoContabilidad', $cfg['obligado_contabilidad']);
+
+        // Documento que se está corrigiendo -- '01' Factura, '05' Nota
+        // de Débito, según lo que guardó la nota al crearse.
+        $codDocModificado = $creditNote->tipo_comprobante_modificado === 'NOTA DE DEBITO'
+            ? ElectronicInvoice::NOTA_DEBITO
+            : ElectronicInvoice::FACTURA;
+        $this->nodo($dom, $infoNC, 'codDocModificado', $codDocModificado);
+        $this->nodo($dom, $infoNC, 'numDocModificado', $creditNote->numero_comprobante_modificado);
+        $this->nodo(
+            $dom,
+            $infoNC,
+            'fechaEmisionDocSustento',
+            optional($sale?->created_at)->format('d/m/Y') ?: $fechaEmision
+        );
+
+        $totalSinImp = $creditNote->subtotalSinIvaSri();
+        $this->nodo($dom, $infoNC, 'totalSinImpuestos', $this->decimal2($totalSinImp));
+        $this->nodo($dom, $infoNC, 'valorModificacion', $this->decimal2($creditNote->grand_total ?? 0));
+        $this->nodo($dom, $infoNC, 'moneda', 'DOLAR');
+
+        // totalConImpuestos -- mismo criterio que Factura: el IVA vive
+        // por producto (Inclusivo/Exclusivo), se suma real de las líneas.
+        $totalConImp = $dom->createElement('totalConImpuestos');
+        $ivaNota = $creditNote->creditNoteItems->sum(fn ($item) => $item->valorIvaSri());
+        $itemConIva = $creditNote->creditNoteItems->first(
+            fn ($item) => ($item->tax_value ?: $creditNote->tax_rate) > 0
+        );
+        $tarifaNota = $itemConIva
+            ? ($itemConIva->tax_value ?: $creditNote->tax_rate)
+            : ($creditNote->tax_rate ?? 0);
+        $this->agregarTotalImpuesto($dom, $totalConImp, $totalSinImp, $ivaNota, $tarifaNota);
+        $infoNC->appendChild($totalConImp);
+
+        $this->nodo($dom, $infoNC, 'motivo', $creditNote->motivo);
+        $notaCredito->appendChild($infoNC);
+
+        // ── detalles ──────────────────────────────
+        $detalles = $dom->createElement('detalles');
+
+        foreach ($creditNote->creditNoteItems as $item) {
+            $detalle = $dom->createElement('detalle');
+            // Nota de Crédito usa <codigoInterno>, no <codigoPrincipal>
+            // como Factura -- diferencia real del esquema del SRI.
+            $this->nodo($dom, $detalle, 'codigoInterno', $item->codigoPrincipalSri());
+            $this->nodo($dom, $detalle, 'descripcion', $item->descripcionSri());
+            $this->nodo($dom, $detalle, 'cantidad', $this->decimal6($item->quantity ?? 1));
+            $this->nodo($dom, $detalle, 'precioUnitario', $this->decimal6($item->precioUnitarioSri()));
+            $this->nodo($dom, $detalle, 'descuento', $this->decimal2($item->descuentoSri()));
+            $this->nodo($dom, $detalle, 'precioTotalSinImpuesto', $this->decimal2($item->precioTotalSinImpuestoSri()));
+
+            $impuestos = $dom->createElement('impuestos');
+            $impuesto = $dom->createElement('impuesto');
+            $this->nodo($dom, $impuesto, 'codigo', '2');
+            $this->nodo($dom, $impuesto, 'codigoPorcentaje', $item->codigoPorcentajeIvaSri());
+            $this->nodo($dom, $impuesto, 'tarifa', $this->decimal2($item->tarifaIvaSri()));
+            $this->nodo($dom, $impuesto, 'baseImponible', $this->decimal2($item->precioTotalSinImpuestoSri()));
+            $this->nodo($dom, $impuesto, 'valor', $this->decimal2($item->valorIvaSri()));
+            $impuestos->appendChild($impuesto);
+            $detalle->appendChild($impuestos);
+            $detalles->appendChild($detalle);
+        }
+
+        $notaCredito->appendChild($detalles);
+
+        // ── infoAdicional ─────────────────────────
+        $infoAdicional = $dom->createElement('infoAdicional');
+        $hasAdicional = false;
+
+        if ($customer->email) {
+            $campo = $dom->createElement('campoAdicional');
+            $campo->setAttribute('nombre', 'Email');
+            $campo->appendChild($dom->createTextNode((string) $customer->email));
+            $infoAdicional->appendChild($campo);
+            $hasAdicional = true;
+        }
+
+        if ($customer->phone) {
+            $campo = $dom->createElement('campoAdicional');
+            $campo->setAttribute('nombre', 'Telefono');
+            $campo->appendChild($dom->createTextNode((string) $customer->phone));
+            $infoAdicional->appendChild($campo);
+            $hasAdicional = true;
+        }
+
+        if ($customer->address) {
+            $campo = $dom->createElement('campoAdicional');
+            $campo->setAttribute('nombre', 'Direccion');
+            $campo->appendChild($dom->createTextNode((string) $customer->address));
+            $infoAdicional->appendChild($campo);
+            $hasAdicional = true;
+        }
+
+        if ($hasAdicional) {
+            $notaCredito->appendChild($infoAdicional);
+        }
+
+        return [
+            'xml' => $dom->saveXML(),
+            'clave_acceso' => $claveAcceso,
+            'secuencial' => $secuencial,
+        ];
+    }
+
+    // ─────────────────────────────────────────────
     // HELPERS PRIVADOS
     // ─────────────────────────────────────────────
 
@@ -365,6 +522,47 @@ class SriXmlService
      * "Error en diferencias" -- mejor frenarla acá que gastar un
      * secuencial en una factura que se va a devolver.
      */
+    /**
+     * Misma validación que validarCalculos() para Factura, pero para
+     * Nota de Crédito -- se agrega ahora que también hay un recálculo
+     * autoritativo en CreditNoteRepository::storeCreditNote(), como una
+     * segunda capa de defensa antes de gastar un secuencial (por si en
+     * el futuro algo escribe en la tabla sin pasar por ese repositorio).
+     */
+    private function validarCalculosNotaCredito(CreditNote $creditNote): void
+    {
+        $tolerancia = 0.02;
+
+        foreach ($creditNote->creditNoteItems as $item) {
+            $bruto = round(
+                ($item->quantity * $item->product_price) - ($item->discount_amount ?? 0),
+                2
+            );
+            $base = $item->precioTotalSinImpuestoSri();
+            $iva = $item->valorIvaSri();
+
+            $esperado = ($item->tax_type == Sale::INCLUSIVE) ? ($base + $iva) : $base;
+
+            if (abs($bruto - $esperado) > $tolerancia) {
+                throw new \RuntimeException(
+                    "No se puede emitir: el producto \"{$item->product?->name}\" tiene una inconsistencia de cálculo ".
+                    "(cantidad × precio − descuento = \${$bruto}, pero se reportaría \${$esperado} entre base e IVA). ".
+                    'Revisá el campo "Impuesto Inclusivo/Exclusivo" configurado en ese producto antes de reintentar.'
+                );
+            }
+
+            $tarifa = ($item->tax_value > 0) ? $item->tax_value : ($creditNote->tax_rate ?? 0);
+            $ivaEsperado = round($base * $tarifa / 100, 2);
+
+            if (abs($ivaEsperado - $iva) > $tolerancia) {
+                throw new \RuntimeException(
+                    "No se puede emitir: el IVA del producto \"{$item->product?->name}\" no coincide con su tarifa configurada ".
+                    "(esperado \${$ivaEsperado} al {$tarifa}%, pero hay \${$iva} guardado)."
+                );
+            }
+        }
+    }
+
     private function validarCalculos(Sale $sale): void
     {
         $tolerancia = 0.02; // margen de redondeo aceptable

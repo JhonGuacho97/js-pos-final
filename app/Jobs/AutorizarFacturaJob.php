@@ -79,6 +79,7 @@ class AutorizarFacturaJob implements ShouldQueue
                 break;
 
             case ElectronicInvoice::NO_AUTORIZADA:
+                \App\Services\CreditNoteStockRollbackService::revertirSiAplica($factura);
                 $factura->update([
                     'estado'       => ElectronicInvoice::NO_AUTORIZADA,
                     'mensajes_sri' => $resultado['mensajes'],
@@ -111,6 +112,7 @@ class AutorizarFacturaJob implements ShouldQueue
                 // Si se acabaron los intentos, marcar como no autorizada
                 // con un mensaje explicativo, en vez de dejarla pendiente para siempre.
                 if ($factura->intentos >= $this->tries) {
+                    \App\Services\CreditNoteStockRollbackService::revertirSiAplica($factura);
                     $factura->update([
                         'estado'       => ElectronicInvoice::NO_AUTORIZADA,
                         'mensajes_sri' => [[
@@ -136,6 +138,7 @@ class AutorizarFacturaJob implements ShouldQueue
         $factura = ElectronicInvoice::find($this->electronicInvoiceId);
 
         if ($factura && $factura->estaPendiente()) {
+            \App\Services\CreditNoteStockRollbackService::revertirSiAplica($factura);
             $factura->update([
                 'estado'       => ElectronicInvoice::NO_AUTORIZADA,
                 'mensajes_sri' => [[

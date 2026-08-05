@@ -25,7 +25,8 @@ class EmitirFacturaJob implements ShouldQueue
         public int    $saleId,
         public string $tipoComprobante = ElectronicInvoice::FACTURA,
         public array  $motivos = [],           // solo para nota de débito
-        public ?int   $facturaOrigenId = null  // solo para nota de débito
+        public ?int   $facturaOrigenId = null, // solo para nota de débito
+        public ?int   $creditNoteId = null     // solo para nota de crédito
     ) {}
 
     public function handle(
@@ -44,8 +45,9 @@ class EmitirFacturaJob implements ShouldQueue
         // Generar XML según tipo de comprobante
         try {
             $result = match ($this->tipoComprobante) {
-                ElectronicInvoice::FACTURA     => $this->generarFactura($xmlService, $sale),
-                ElectronicInvoice::NOTA_DEBITO => $this->generarNotaDebito($xmlService),
+                ElectronicInvoice::FACTURA      => $this->generarFactura($xmlService, $sale),
+                ElectronicInvoice::NOTA_DEBITO  => $this->generarNotaDebito($xmlService),
+                ElectronicInvoice::NOTA_CREDITO => $this->generarNotaCredito($xmlService),
                 default => throw new \RuntimeException(
                     "Tipo de comprobante no soportado: {$this->tipoComprobante}"
                 ),
@@ -58,6 +60,7 @@ class EmitirFacturaJob implements ShouldQueue
         // Crear registro PENDIENTE
         $factura = ElectronicInvoice::create([
             'sale_id'          => $sale->id,
+            'credit_note_id'   => $this->creditNoteId,
             'tipo_comprobante' => $this->tipoComprobante,
             'clave_acceso'     => $result['clave_acceso'],
             'secuencial'       => $result['secuencial'],
@@ -97,6 +100,7 @@ class EmitirFacturaJob implements ShouldQueue
         }
 
         if ($respuesta['estado'] === 'DEVUELTA') {
+            \App\Services\CreditNoteStockRollbackService::revertirSiAplica($factura);
             $factura->update([
                 'estado'       => ElectronicInvoice::DEVUELTA,
                 'mensajes_sri' => $respuesta['mensajes'],
@@ -163,6 +167,43 @@ class EmitirFacturaJob implements ShouldQueue
         }
 
         return $xmlService->generarXmlNotaDebito($facturaOrigen, $this->motivos);
+    }
+
+    private function generarNotaCredito(SriXmlService $xmlService): array
+    {
+        if (!$this->creditNoteId) {
+            throw new \RuntimeException(
+                "Se requiere creditNoteId para emitir una nota de crédito."
+            );
+        }
+
+        $creditNote = \App\Models\CreditNote::with(['customer', 'sale', 'creditNoteItems.product'])
+            ->find($this->creditNoteId);
+
+        if (!$creditNote) {
+            throw new \RuntimeException(
+                "Nota de crédito {$this->creditNoteId} no encontrada."
+            );
+        }
+
+        // Verificar que no exista ya un comprobante activo para esta
+        // nota específica -- una nota de crédito es un registro único,
+        // a diferencia de la factura que agrupa por venta.
+        $existente = ElectronicInvoice::where('credit_note_id', $creditNote->id)
+            ->whereNotIn('estado', [
+                ElectronicInvoice::DEVUELTA,
+                ElectronicInvoice::NO_AUTORIZADA,
+                ElectronicInvoice::ERROR_TEMPORAL_SRI,
+            ])
+            ->first();
+
+        if ($existente) {
+            throw new \RuntimeException(
+                "Esta nota de crédito ya tiene un comprobante electrónico activo."
+            );
+        }
+
+        return $xmlService->generarXmlNotaCredito($creditNote);
     }
 
     public function failed(\Throwable $exception): void

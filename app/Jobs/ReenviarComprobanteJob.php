@@ -79,6 +79,7 @@ class ReenviarComprobanteJob implements ShouldQueue
         }
 
         if ($respuesta['estado'] === 'DEVUELTA') {
+            \App\Services\CreditNoteStockRollbackService::revertirSiAplica($factura);
             $factura->update([
                 'estado'       => ElectronicInvoice::DEVUELTA,
                 'mensajes_sri' => $respuesta['mensajes'],

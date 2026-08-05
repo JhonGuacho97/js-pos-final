@@ -76,7 +76,7 @@ const RutaEmisionPanel = ({ electronicInvoiceId, show, onHide, onReintentar }) =
         <Modal show={show} onHide={onHide} centered scrollable>
             <Modal.Header closeButton className="border-bottom">
                 <Modal.Title style={{ fontSize: "1rem" }}>
-                    {datos ? `${datos.tipo_comprobante === "05" ? "Nota de débito" : "Factura"} ${datos.numero_comprobante}` : "Ruta de emisión"}
+                    {datos ? `${datos.tipo_comprobante === "04" ? "Nota de crédito" : (datos.tipo_comprobante === "05" ? "Nota de débito" : "Factura")} ${datos.numero_comprobante}` : "Ruta de emisión"}
                 </Modal.Title>
             </Modal.Header>
             <Modal.Body style={{ maxHeight: "75vh" }}>

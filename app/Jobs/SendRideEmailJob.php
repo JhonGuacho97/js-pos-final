@@ -53,6 +53,7 @@ class SendRideEmailJob implements ShouldQueue
 
         $tipoDocumentoLabel = [
             ElectronicInvoice::FACTURA => 'Factura',
+            ElectronicInvoice::NOTA_CREDITO => 'Nota de Crédito',
             ElectronicInvoice::NOTA_DEBITO => 'Nota de Débito',
         ][$factura->tipo_comprobante] ?? 'Comprobante';
 
@@ -85,7 +86,9 @@ class SendRideEmailJob implements ShouldQueue
         $attachments = [];
 
         try {
-            $ridePath = $rideService->guardarYObtenerRuta($factura);
+            $ridePath = $factura->tipo_comprobante === ElectronicInvoice::NOTA_CREDITO
+                ? $rideService->guardarYObtenerRutaNotaCredito($factura)
+                : $rideService->guardarYObtenerRuta($factura);
             $attachments[] = [
                 'path' => $ridePath,
                 'name' => $factura->numeroComprobante() . '.pdf',

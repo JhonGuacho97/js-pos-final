@@ -258,7 +258,9 @@ class ElectronicInvoiceController extends AppBaseController
             ], 409);
         }
 
-        $pdfContent = $rideService->generarPdf($electronicInvoice);
+        $pdfContent = $electronicInvoice->tipo_comprobante === \App\Models\ElectronicInvoice::NOTA_CREDITO
+            ? $rideService->generarPdfNotaCredito($electronicInvoice)
+            : $rideService->generarPdf($electronicInvoice);
 
         return response($pdfContent, 200, [
             'Content-Type' => 'application/pdf',

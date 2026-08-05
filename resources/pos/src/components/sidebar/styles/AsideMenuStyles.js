@@ -174,7 +174,23 @@ export const asideStyles = `
 
   .aside-menu-container .pro-sub-menu .pro-menu-item > .pro-inner-item {
     padding-left: 20px !important;
+    padding-right: 10px !important;
     font-size: 13px !important;
+    white-space: normal !important;
+    overflow: visible !important;
+    text-overflow: unset !important;
+    line-height: 1.35 !important;
+    height: auto !important;
+    min-height: 34px !important;
+    display: flex !important;
+    align-items: center !important;
+  }
+
+  .aside-menu-container .pro-sub-menu .pro-menu-item .pro-item-content {
+    white-space: normal !important;
+    overflow: visible !important;
+    text-overflow: unset !important;
+    word-break: break-word !important;
   }
 
   /* Flecha del submenu */

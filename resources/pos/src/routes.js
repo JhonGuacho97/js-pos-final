@@ -75,6 +75,9 @@ const CreateSaleReturn = lazyWithRetry(() => import(/* webpackChunkName: "sale-r
 const EditSaleReturn = lazyWithRetry(() => import(/* webpackChunkName: "sale-return" */ "./components/saleReturn/EditSaleReturn"), "EditSaleReturn");
 const SaleReturnDetails = lazyWithRetry(() => import(/* webpackChunkName: "sale-return" */ "./components/saleReturn/SaleReturnDetails"), "SaleReturnDetails");
 const EditSaleReturnFromSale = lazyWithRetry(() => import(/* webpackChunkName: "sale-return" */ "./components/saleReturn/EditSaleReturnFromSale"), "EditSaleReturnFromSale");
+const CreditNotes = lazyWithRetry(() => import(/* webpackChunkName: "credit-note" */ "./components/creditNote/CreditNotes"), "CreditNotes");
+const CreateCreditNote = lazyWithRetry(() => import(/* webpackChunkName: "credit-note" */ "./components/creditNote/CreateCreditNote"), "CreateCreditNote");
+const CreditNoteDetails = lazyWithRetry(() => import(/* webpackChunkName: "credit-note" */ "./components/creditNote/CreditNoteDetails"), "CreditNoteDetails");
 
 // Devoluciones de compra.
 const PurchaseReturn = lazyWithRetry(() => import(/* webpackChunkName: "purchase-return" */ "./components/purchaseReturn/PurchaseReturn"), "PurchaseReturn");
@@ -121,9 +124,9 @@ const CreateAdjustment = lazyWithRetry(() => import(/* webpackChunkName: "adjust
 const EditAdjustMent = lazyWithRetry(() => import(/* webpackChunkName: "adjustments" */ "./components/adjustments/EditAdjustMent"), "EditAdjustMent");
 
 // Transferencias entre sucursales.
-const Transfers = lazyWithRetry(() => import(/* webpackChunkName: "transfers" */ "./components/transfers/Transfers"), "Transfers");
-const EditTransfer = lazyWithRetry(() => import(/* webpackChunkName: "transfers" */ "./components/transfers/EditTransfer"), "EditTransfer");
-const CreateTransfer = lazyWithRetry(() => import(/* webpackChunkName: "transfers" */ "./components/transfers/CreateTransfer"), "CreateTransfer");
+import Transfers from "./components/transfers/Transfers";
+import EditTransfer from "./components/transfers/EditTransfer";
+import CreateTransfer from "./components/transfers/CreateTransfer";
 
 // Plantillas de correo/SMS.
 const EmailTemplates = lazyWithRetry(() => import(/* webpackChunkName: "templates" */ "./components/Email-templates/EmailTemplates"), "EmailTemplates");
@@ -412,6 +415,21 @@ export const route = [
         path: "sales/return/edit/:id",
         ele: <EditSaleReturnFromSale />,
         permission: Permissions.MANAGE_SALE_RETURN,
+    },
+    {
+        path: "credit-notes",
+        ele: <CreditNotes />,
+        permission: Permissions.MANAGE_SALE,
+    },
+    {
+        path: "credit-notes/create",
+        ele: <CreateCreditNote />,
+        permission: Permissions.MANAGE_SALE,
+    },
+    {
+        path: "credit-notes/:id",
+        ele: <CreditNoteDetails />,
+        permission: Permissions.MANAGE_SALE,
     },
     {
         path: "quotations",

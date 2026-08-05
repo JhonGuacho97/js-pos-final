@@ -2776,6 +2776,24 @@ div .rdt_Pagination div:first-of-type svg {
     height: -webkit-fill-available;
 }
 
+.clear-btn {
+    top: 29px;
+    right: 1px;
+    position: absolute !important;
+    width: 70px;
+    height: calc(100% - 29px);
+    border-radius: 0 0.475rem 0.475rem 0 !important;
+    z-index: 10;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0;
+}
+
+.clear-btn svg {
+    font-size: 13px;
+}
+
 .dropdown-menu {
     position: absolute !important;
     padding: 1rem 0 !important;

@@ -3,6 +3,8 @@
 namespace App\Repositories;
 
 use App\Mail\MailSender;
+use App\Models\CreditNote;
+use App\Models\CreditNoteItem;
 use App\Models\Customer;
 use App\Models\MailTemplate;
 use App\Models\ManageStock;
@@ -85,6 +87,53 @@ class SaleReturnRepository extends BaseRepository
             }
 
             $input['date'] = $input['date'] ?? date('Y/m/d');
+
+            // ── Validación de cantidad disponible para devolver ──
+            // "Ya devuelto" tiene que sumar tanto devoluciones de venta
+            // anteriores COMO notas de crédito por devolución -- son
+            // dos mecanismos distintos para el MISMO evento real
+            // (mercadería que vuelve al stock). Sin esto, el mismo
+            // producto se podía devolver dos veces por caminos
+            // distintos y el sistema sumaba el stock de más.
+            if (!empty($input['sale_return_items'])) {
+                $vendidoPorProducto = SaleItem::where('sale_id', $saleID)
+                    ->get()
+                    ->groupBy('product_id')
+                    ->map(fn ($items) => $items->sum('quantity'));
+
+                $yaDevueltoPorSaleReturn = SaleReturnItem::whereHas('saleReturn', function ($q) use ($saleID) {
+                    $q->where('sale_id', $saleID);
+                })
+                    ->get()
+                    ->groupBy('product_id')
+                    ->map(fn ($items) => $items->sum('quantity'));
+
+                $yaAcreditadoPorCreditNote = CreditNoteItem::whereHas('creditNote', function ($q) use ($saleID) {
+                    $q->where('sale_id', $saleID)
+                        ->where('concepto', CreditNote::CONCEPTO_DEVOLUCION);
+                })
+                    ->get()
+                    ->groupBy('product_id')
+                    ->map(fn ($items) => $items->sum('quantity'));
+
+                foreach ($input['sale_return_items'] as $item) {
+                    $productId = $item['product_id'];
+                    $vendido = $vendidoPorProducto->get($productId, 0);
+                    $yaDevuelto = $yaDevueltoPorSaleReturn->get($productId, 0)
+                        + $yaAcreditadoPorCreditNote->get($productId, 0);
+                    $disponible = $vendido - $yaDevuelto;
+
+                    if ($item['quantity'] > $disponible + 0.001) {
+                        throw new UnprocessableEntityHttpException(
+                            "No se puede devolver {$item['quantity']} unidades de ese producto -- ".
+                            "la venta solo tiene {$disponible} disponibles para devolver ".
+                            "(ya se vendieron {$vendido}, y ya se devolvieron {$yaDevuelto} entre devoluciones ".
+                            "y notas de crédito anteriores)."
+                        );
+                    }
+                }
+            }
+
             $saleReturnInputArray = Arr::only($input, [
                 'customer_id', 'warehouse_id', 'tax_rate', 'tax_amount', 'discount', 'shipping', 'grand_total',
                 'paid_amount', 'payment_type', 'note', 'date', 'status', 'sale_id',

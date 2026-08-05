@@ -51,6 +51,7 @@ class ElectronicInvoice extends BaseModel
 
     // ── Tipos de comprobante ──────────────────────
     const FACTURA = '01';
+    const NOTA_CREDITO = '04';
     const NOTA_DEBITO = '05';
 
     // ── Estados del comprobante ───────────────────
@@ -69,6 +70,7 @@ class ElectronicInvoice extends BaseModel
 
     protected $fillable = [
         'sale_id',
+        'credit_note_id',
         'tipo_comprobante',
         'clave_acceso',
         'numero_autorizacion',
@@ -98,6 +100,11 @@ class ElectronicInvoice extends BaseModel
     public function sale(): BelongsTo
     {
         return $this->belongsTo(Sale::class, 'sale_id', 'id');
+    }
+
+    public function creditNote(): BelongsTo
+    {
+        return $this->belongsTo(CreditNote::class, 'credit_note_id', 'id');
     }
 
     // ── Helpers de estado ─────────────────────────

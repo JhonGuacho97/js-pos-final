@@ -25,6 +25,8 @@ use App\Http\Controllers\API\ReportAPIController;
 use App\Http\Controllers\API\RoleAPIController;
 use App\Http\Controllers\API\SaleAPIController;
 use App\Http\Controllers\API\SaleReturnAPIController;
+use App\Http\Controllers\API\CreditNoteAPIController;
+use App\Http\Controllers\API\CreditNoteCategoryAPIController;
 use App\Http\Controllers\API\SalesPaymentAPIController;
 use App\Http\Controllers\API\SettingAPIController;
 use App\Http\Controllers\API\SmsSettingAPIController;
@@ -251,6 +253,13 @@ Route::middleware('auth:sanctum')->group(function () {
         'sale-return-pdf-download/{sale_return}',
         [SaleReturnAPIController::class, 'pdfDownload']
     )->name('sale-return-pdf-download');
+
+    // credit notes
+    Route::get('credit-notes/buscar-factura', [CreditNoteAPIController::class, 'buscarFactura']);
+    Route::get('credit-notes/facturas-cliente/{customer}', [CreditNoteAPIController::class, 'facturasDeCliente']);
+    Route::post('credit-notes/{credit_note}/emitir', [CreditNoteAPIController::class, 'emitir']);
+    Route::resource('credit-notes', CreditNoteAPIController::class)->only(['index', 'store', 'show']);
+    Route::resource('credit-note-categories', CreditNoteCategoryAPIController::class)->only(['index', 'store']);
     //    });
 
     //expense category route

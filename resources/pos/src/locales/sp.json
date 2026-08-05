@@ -6,6 +6,7 @@
     "sri.settings.title": "Configuración SRI",
     "general-settings.title": "Configuración General",
     "electronic-invoices.title": "Documentos Electrónicos",
+    "credit-notes.title": "Notas de Crédito",
     "header.pos.title": "POS",
     "header.profile-menu.profile.label": "Perfil",
     "header.profile-menu.change-password.label": "Cambia la contraseña",
@@ -15,7 +16,7 @@
     "login-logs.title": "Inicios de Sesión",
     "globally.input.identification.label": "Identificación",
     "purchase.order-item.table.quantity.column.label": "Cantidad",
-    "globally.total-record.label": "Total Ventas Completadas",
+    "globally.total-record.label":"Total Ventas Completadas",
     "globally.add-cart-btn": "Agregar al carrito",
     "login.status.success": "Exitoso",
     "login.status.failed": "Fallido",
@@ -530,6 +531,7 @@
     "preview.title": "Avance",
     "toast.successful.title": "Exitoso",
     "toast.error.title": "¡Algo salió mal!",
+    "toast.warning.title": "Aviso del sistema",
     "unit.filter.all.label": "Todos",
     "unit.filter.piece.label": "Pieza",
     "unit.filter.meter.label": "Metro",
@@ -580,7 +582,7 @@
     "pos-make-Payment.title": "Hacer el pago",
     "pos-received-amount.title": "Cantidad recibida",
     "pos-total-amount.title": "Cantidad total",
-    "pos-sale.detail.invoice.info": "Nota de Venta",
+    "pos-sale.detail.invoice.info": "Factura",
     "pos-sale.detail.Phone.info": "Teléfono",
     "pos-sale.detail.Paid-bt.title": "Pagado por",
     "pos-close-btn.title": "Cerrar",
@@ -823,12 +825,5 @@
     "variation.type.select.validate.error.message": "Por favor, seleccione tipos de variante",
     "products.warehouse.title": "Almacén de productos",
     "barcode-symbol-uppercase-validation-message": "Ingrese solo letras mayúsculas y números para el código de barras Código 39.",
-    "sale.product-qty.limit.validate.message": "No puedes comprar más que la cantidad límite.",
-
-    "settings.backup.title": "Backup de Base de Datos",
-    "settings.backup.description": "Descarga un backup completo en SQL de tu base de datos. Guarda este archivo en un lugar seguro.",
-    "settings.backup.button": "Descargar Backup",
-    "settings.backup.generating": "Generando...",
-    "backup.success.message": "Backup descargado correctamente",
-    "backup.error.message": "Error al generar el backup. Inténtalo de nuevo."
+    "sale.product-qty.limit.validate.message": "No puedes comprar más que la cantidad límite."
 }

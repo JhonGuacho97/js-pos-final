@@ -7,10 +7,13 @@ use App\Http\Requests\CreateSaleRequest;
 use App\Http\Requests\UpdateSaleRequest;
 use App\Http\Resources\SaleCollection;
 use App\Http\Resources\SaleResource;
+use App\Models\CreditNote;
+use App\Models\CreditNoteItem;
 use App\Models\Customer;
 use App\Models\Hold;
 use App\Models\Sale;
 use App\Models\SalesPayment;
+use App\Models\SaleReturnItem;
 use App\Models\Setting;
 use App\Models\Warehouse;
 use App\Repositories\SaleRepository;
@@ -254,8 +257,31 @@ class SaleAPIController extends AppBaseController
         try {
             DB::beginTransaction();
             $sale = $this->saleRepository->with('saleItems')->where('id', $id)->first();
+
+            // "Ya devuelto" suma notas de crédito por devolución y
+            // devoluciones de venta -- si una parte de lo vendido ya
+            // volvió al stock por cualquiera de esos dos caminos, no
+            // hay que volver a sumarla acá; si no, se duplica.
+            $yaAcreditadoPorCreditNote = CreditNoteItem::whereHas('creditNote', function ($q) use ($id) {
+                $q->where('sale_id', $id)
+                    ->where('concepto', CreditNote::CONCEPTO_DEVOLUCION);
+            })
+                ->get()
+                ->groupBy('product_id')
+                ->map(fn ($items) => $items->sum('quantity'));
+
+            $yaDevueltoPorSaleReturn = SaleReturnItem::whereHas('saleReturn', function ($q) use ($id) {
+                $q->where('sale_id', $id);
+            })
+                ->get()
+                ->groupBy('product_id')
+                ->map(fn ($items) => $items->sum('quantity'));
+
             foreach ($sale->saleItems as $saleItem) {
-                manageStock($sale->warehouse_id, $saleItem['product_id'], $saleItem['quantity']);
+                $yaDevuelto = $yaAcreditadoPorCreditNote->get($saleItem['product_id'], 0)
+                    + $yaDevueltoPorSaleReturn->get($saleItem['product_id'], 0);
+                $cantidadARestaurar = max(0, $saleItem['quantity'] - $yaDevuelto);
+                manageStock($sale->warehouse_id, $saleItem['product_id'], $cantidadARestaurar);
             }
             if (File::exists(Storage::path('sales/barcode-' . $sale->reference_code . '.png'))) {
                 File::delete(Storage::path('sales/barcode-' . $sale->reference_code . '.png'));
