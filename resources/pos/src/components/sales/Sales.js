@@ -24,6 +24,7 @@ import { downloadPdf } from "../../store/action/downloadReportAction";
 import apiConfig from "../../config/apiConfig";
 import { addToast } from "../../store/action/toastAction";
 import { toastType } from "../../constants";
+import SweetAlert from "react-bootstrap-sweetalert";
 import ActionDropDownButton from "../../shared/action-buttons/ActionDropDownButton";
 import { fetchFrontSetting } from "../../store/action/frontSettingAction";
 import ShowPayment from "../../shared/showPayment/ShowPayment";
@@ -114,7 +115,19 @@ const Sales = (props) => {
         setModalShowPaymentSlip(true);
     };
 
+    const [ventaAEmitir, setVentaAEmitir] = useState(null);
+
     const onEmitirFacturaClick = (item) => {
+        // Solo pide confirmación acá -- la emisión real ocurre en
+        // confirmarEmitirFactura(), para que un clic de más (por
+        // ejemplo, apuntando a "Ver Ticket" y errando al botón de al
+        // lado) no gaste un secuencial real por accidente.
+        setVentaAEmitir(item);
+    };
+
+    const confirmarEmitirFactura = () => {
+        const item = ventaAEmitir;
+        setVentaAEmitir(null);
         apiConfig
             .post(`/sales/${item.id}/electronic-invoice/emitir`)
             .then((res) => {
@@ -434,6 +447,25 @@ const Sales = (props) => {
                 deleteModel={deleteModel}
                 onDelete={isDelete}
             />
+            {ventaAEmitir && (
+                <SweetAlert
+                    custom
+                    confirmBtnBsStyle='primary mb-3 fs-5 rounded'
+                    cancelBtnBsStyle='secondary mb-3 fs-5 rounded text-white'
+                    confirmBtnText='Sí, emitir'
+                    cancelBtnText='Cancelar'
+                    title='¿Emitir factura electrónica?'
+                    onConfirm={confirmarEmitirFactura}
+                    onCancel={() => setVentaAEmitir(null)}
+                    showCancel
+                    focusCancelBtn
+                >
+                    <span className='sweet-text'>
+                        Se va a generar un comprobante electrónico real ante el SRI para la venta '{ventaAEmitir.reference_code}'.
+                        Esta acción no se puede deshacer. ¿Continuar?
+                    </span>
+                </SweetAlert>
+            )}
             <ShowPayment
                 allConfigData={allConfigData}
                 setIsShowPaymentModel={setIsShowPaymentModel}
