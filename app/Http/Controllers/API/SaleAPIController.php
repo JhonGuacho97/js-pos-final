@@ -90,6 +90,12 @@ class SaleAPIController extends AppBaseController
             $sales->where('payment_type', $request->get('payment_type'));
         }
 
+        // Un usuario no-admin con sucursal asignada solo ve ventas de esa
+        // sucursal, sin importar qué warehouse_id haya pedido en el filtro.
+        if ($restricted = $this->restrictedWarehouseId()) {
+            $sales->where('warehouse_id', $restricted);
+        }
+
         $sales = $sales->paginate($perPage);
 
         // Totales de TODOS los registros que calzan con el filtro (no solo
@@ -163,6 +169,10 @@ class SaleAPIController extends AppBaseController
             $query->where('payment_type', $request->get('payment_type'));
         }
 
+        if ($restricted = $this->restrictedWarehouseId()) {
+            $query->where('warehouse_id', $restricted);
+        }
+
         return $query;
     }
 
@@ -218,6 +228,7 @@ class SaleAPIController extends AppBaseController
 
     public function store(CreateSaleRequest $request): SaleResource
     {
+        $this->authorizeWarehouseAccess($request->input('warehouse_id'));
         if (isset($request->hold_ref_no)) {
             $holdExist = Hold::whereReferenceCode($request->hold_ref_no)->first();
             if (!empty($holdExist)) {
@@ -233,12 +244,14 @@ class SaleAPIController extends AppBaseController
     public function show($id): SaleResource
     {
         $sale = $this->saleRepository->find($id);
+        $this->authorizeWarehouseAccess($sale->warehouse_id);
 
         return new SaleResource($sale);
     }
 
     public function edit(Sale $sale): SaleResource
     {
+        $this->authorizeWarehouseAccess($sale->warehouse_id);
         $sale = $sale->load('saleItems.product.stocks', 'saleItems.productPresentation.variationType', 'warehouse');
 
         return new SaleResource($sale);
@@ -246,6 +259,7 @@ class SaleAPIController extends AppBaseController
 
     public function update(UpdateSaleRequest $request, $id): SaleResource
     {
+        $this->authorizeWarehouseAccess(Sale::findOrFail($id)->warehouse_id);
         $input = $request->all();
         $sale = $this->saleRepository->updateSale($input, $id);
 
@@ -257,6 +271,7 @@ class SaleAPIController extends AppBaseController
         try {
             DB::beginTransaction();
             $sale = $this->saleRepository->with('saleItems')->where('id', $id)->first();
+            $this->authorizeWarehouseAccess($sale->warehouse_id);
 
             // "Ya devuelto" suma notas de crédito por devolución y
             // devoluciones de venta -- si una parte de lo vendido ya
@@ -302,6 +317,7 @@ class SaleAPIController extends AppBaseController
      */
     public function pdfDownload(Sale $sale): JsonResponse
     {
+        $this->authorizeWarehouseAccess($sale->warehouse_id);
         $sale = $sale->load('customer', 'saleItems.product', 'payments');
         $data = [];
 
@@ -322,6 +338,7 @@ class SaleAPIController extends AppBaseController
 
     public function saleInfo(Sale $sale): JsonResponse
     {
+        $this->authorizeWarehouseAccess($sale->warehouse_id);
         $sale = $sale->load([
             'saleItems.product.variationType',
             'saleItems.productPresentation.variationType',
@@ -372,6 +389,10 @@ class SaleAPIController extends AppBaseController
         $sales = $this->saleRepository->whereHas('saleItems', function ($q) use ($productId) {
             $q->where('product_id', '=', $productId);
         })->with(['saleItems.product.variationType', 'customer']);
+
+        if ($restricted = $this->restrictedWarehouseId()) {
+            $sales->where('warehouse_id', $restricted);
+        }
 
         $sales = $sales->paginate($perPage);
 

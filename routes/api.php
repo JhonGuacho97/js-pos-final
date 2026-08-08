@@ -85,12 +85,12 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::post('/reintentar', [ElectronicInvoiceController::class, 'reintentar']);
     });
 
-    //    Route::middleware('permission:manage_brands')->group(function () {
-    Route::post('/brands', [BrandAPIController::class, 'store']);
-    Route::get('/brands/{id}', [BrandAPIController::class, 'show'])->name('brands.show');
-    Route::post('/brands/{id}', [BrandAPIController::class, 'update']);
-    Route::delete('/brands/{brand}', [BrandAPIController::class, 'destroy']);
-    //    });
+    Route::middleware('permission:manage_brands')->group(function () {
+        Route::post('/brands', [BrandAPIController::class, 'store']);
+        Route::get('/brands/{id}', [BrandAPIController::class, 'show'])->name('brands.show');
+        Route::post('/brands/{id}', [BrandAPIController::class, 'update']);
+        Route::delete('/brands/{brand}', [BrandAPIController::class, 'destroy']);
+    });
     Route::get('/brands', [BrandAPIController::class, 'index']);
     Route::get('ip-location/{ip}', [LoginLogController::class, 'getIpLocation']);
 
@@ -108,39 +108,39 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('/permissions', [PermissionController::class, 'getPermissions'])->name('get-permissions');
 
     // roles route
-    //    Route::middleware('permission:manage_roles')->group(function () {
-    Route::resource('roles', RoleAPIController::class);
-    //    });
+    Route::middleware('permission:manage_roles')->group(function () {
+        Route::resource('roles', RoleAPIController::class)->except(['index']);
+    });
     Route::get('roles', [RoleAPIController::class, 'index']);
 
     // product category route
-    //    Route::middleware('permission:manage_product_categories')->group(function () {
-    Route::resource('product-categories', ProductCategoryAPIController::class);
-    Route::post(
-        'product-categories/{product_category}',
-        [ProductCategoryAPIController::class, 'update']
-    )->name('product-category');
-    //    });
+    Route::middleware('permission:manage_product_categories')->group(function () {
+        Route::resource('product-categories', ProductCategoryAPIController::class)->except(['index']);
+        Route::post(
+            'product-categories/{product_category}',
+            [ProductCategoryAPIController::class, 'update']
+        )->name('product-category');
+    });
 
     Route::get('product-categories', [ProductCategoryAPIController::class, 'index']);
 
-    //    Route::middleware('permission:manage_currency')->group(function () {
-    Route::resource('currencies', CurrencyAPIController::class);
-    //    });
+    Route::middleware('permission:manage_currency')->group(function () {
+        Route::resource('currencies', CurrencyAPIController::class)->except(['index']);
+    });
     Route::get('currencies', [CurrencyAPIController::class, 'index']);
 
     // warehouses route
-    //    Route::middleware('permission:manage_warehouses')->group(function () {
-    Route::resource('warehouses', WarehouseAPIController::class);
-    Route::get('warehouse-details/{id}', [WarehouseAPIController::class, 'warehouseDetails']);
-    //    });
+    Route::middleware('permission:manage_warehouses')->group(function () {
+        Route::resource('warehouses', WarehouseAPIController::class)->except(['index']);
+        Route::get('warehouse-details/{id}', [WarehouseAPIController::class, 'warehouseDetails']);
+    });
     Route::get('warehouses', [WarehouseAPIController::class, 'index']);
 
     // units route
-    //    Route::middleware('permission:manage_units')->group(function () {
-    Route::resource('units', UnitAPIController::class);
-    Route::resource('base-units', BaseUnitAPIController::class);
-    //    });
+    Route::middleware('permission:manage_units')->group(function () {
+        Route::resource('units', UnitAPIController::class)->except(['index']);
+        Route::resource('base-units', BaseUnitAPIController::class);
+    });
     Route::get('units', [UnitAPIController::class, 'index']);
 
     // products route
@@ -173,9 +173,9 @@ Route::middleware('auth:sanctum')->group(function () {
 
     Route::resource('variations', VariationAPIController::class);
 
-    //    Route::middleware('permission:manage_transfers')->group(function () {
-    Route::resource('transfers', TransferAPIController::class);
-    //    });
+    Route::middleware('permission:manage_transfers')->group(function () {
+        Route::resource('transfers', TransferAPIController::class);
+    });
 
     Route::post('import-products', [ProductAPIController::class, 'importProducts']);
     Route::post('import-customers', [CustomerAPIController::class, 'importCustomers']);
@@ -185,48 +185,48 @@ Route::middleware('auth:sanctum')->group(function () {
         [ProductAPIController::class, 'getProductExportExcel']
     )->name('products-export-excel');
 
-    Route::resource('transfers', TransferAPIController::class);
-
     // customers route
-    //    Route::middleware('permission:manage_customers')->group(function () {
-    Route::resource('customers', CustomerAPIController::class);
-    //    });
+    Route::middleware('permission:manage_customers')->group(function () {
+        Route::resource('customers', CustomerAPIController::class)->except(['index']);
+    });
 
     Route::get('customers', [CustomerAPIController::class, 'index']);
 
     //Users route
-    //    Route::middleware('permission:manage_users')->group(function () {
-    Route::resource('users', UserAPIController::class);
-    Route::post('users/{user}', [UserAPIController::class, 'update']);
-    //    });
+    Route::middleware('permission:manage_users')->group(function () {
+        Route::resource('users', UserAPIController::class);
+        Route::post('users/{user}', [UserAPIController::class, 'update']);
+        Route::post('users/{user}/change-password', [UserAPIController::class, 'updateUserPassword']);
+    });
     // update user profile
     Route::get('edit-profile', [UserAPIController::class, 'editProfile'])->name('edit-profile');
     Route::post('update-profile', [UserAPIController::class, 'updateProfile'])->name('update-profile');
     Route::patch('/change-password', [UserAPIController::class, 'changePassword'])->name('user.changePassword');
-    Route::get('login-logs', [LoginLogController::class, 'index']);
     Route::get('kardex', [KardexAPIController::class, 'index']);
-    Route::delete('login-logs/bulk-delete', [LoginLogController::class, 'bulkDestroy']);
-    Route::delete('login-logs/{id}', [LoginLogController::class, 'destroy']);
-    Route::post('users/{user}/change-password', [UserAPIController::class, 'updateUserPassword']);
+    Route::middleware('permission:manage_login_logs')->group(function () {
+        Route::get('login-logs', [LoginLogController::class, 'index']);
+        Route::delete('login-logs/bulk-delete', [LoginLogController::class, 'bulkDestroy']);
+        Route::delete('login-logs/{id}', [LoginLogController::class, 'destroy']);
+    });
 
     //suppliers route
-    //    Route::middleware('permission:manage_suppliers')->group(function () {
-    Route::resource('suppliers', SupplierAPIController::class);
-    //    });
+    Route::middleware('permission:manage_suppliers')->group(function () {
+        Route::resource('suppliers', SupplierAPIController::class)->except(['index']);
+    });
     Route::get('suppliers', [SupplierAPIController::class, 'index']);
     Route::post('import-suppliers', [SupplierAPIController::class, 'importSuppliers']);
 
     //sale
-    //    Route::middleware('permission:manage_sale')->group(function () {
-    Route::resource('sales', SaleAPIController::class);
-    Route::get('sale-pdf-download/{sale}', [SaleAPIController::class, 'pdfDownload'])->name('sale-pdf-download');
-    Route::get('sale-info/{sale}', [SaleAPIController::class, 'saleInfo'])->name('sale-info');
+    Route::middleware('permission:manage_sale')->group(function () {
+        Route::resource('sales', SaleAPIController::class);
+        Route::get('sale-pdf-download/{sale}', [SaleAPIController::class, 'pdfDownload'])->name('sale-pdf-download');
+        Route::get('sale-info/{sale}', [SaleAPIController::class, 'saleInfo'])->name('sale-info');
 
-    Route::post('sales/{sale}/capture-payment', [SalesPaymentAPIController::class, 'createSalePayment']);
-    Route::get('sales/{sale}/payments', [SalesPaymentAPIController::class, 'getAllPayments']);
-    Route::post('sales/{salesPayment}/payment', [SalesPaymentAPIController::class, 'updateSalePayment']);
-    Route::delete('sales/{id}/payment', [SalesPaymentAPIController::class, 'deletePayment']);
-    //    });
+        Route::post('sales/{sale}/capture-payment', [SalesPaymentAPIController::class, 'createSalePayment']);
+        Route::get('sales/{sale}/payments', [SalesPaymentAPIController::class, 'getAllPayments']);
+        Route::post('sales/{salesPayment}/payment', [SalesPaymentAPIController::class, 'updateSalePayment']);
+        Route::delete('sales/{id}/payment', [SalesPaymentAPIController::class, 'deletePayment']);
+    });
 
     Route::resource('holds', HoldAPIController::class);
 
@@ -242,51 +242,52 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::post('sms-template-status/{id}', [SmsTemplateAPIController::class, 'changeActiveStatus']);
 
     //sale return
-    //    Route::middleware('permission:manage_sale_return')->group(function () {
-    Route::resource('sales-return', SaleReturnAPIController::class);
-    Route::get('sales-return-edit/{id}', [SaleReturnAPIController::class, 'editBySale']);
-    Route::get(
-        'sale-return-info/{sales_return}',
-        [SaleReturnAPIController::class, 'saleReturnInfo']
-    )->name('sale-return-info');
-    Route::get(
-        'sale-return-pdf-download/{sale_return}',
-        [SaleReturnAPIController::class, 'pdfDownload']
-    )->name('sale-return-pdf-download');
+    Route::middleware('permission:manage_sale_return')->group(function () {
+        Route::resource('sales-return', SaleReturnAPIController::class);
+        Route::get('sales-return-edit/{id}', [SaleReturnAPIController::class, 'editBySale']);
+        Route::get(
+            'sale-return-info/{sales_return}',
+            [SaleReturnAPIController::class, 'saleReturnInfo']
+        )->name('sale-return-info');
+        Route::get(
+            'sale-return-pdf-download/{sale_return}',
+            [SaleReturnAPIController::class, 'pdfDownload']
+        )->name('sale-return-pdf-download');
 
-    // credit notes
-    Route::get('credit-notes/buscar-factura', [CreditNoteAPIController::class, 'buscarFactura']);
-    Route::get('credit-notes/facturas-cliente/{customer}', [CreditNoteAPIController::class, 'facturasDeCliente']);
-    Route::post('credit-notes/{credit_note}/emitir', [CreditNoteAPIController::class, 'emitir']);
-    Route::resource('credit-notes', CreditNoteAPIController::class)->only(['index', 'store', 'show']);
-    Route::resource('credit-note-categories', CreditNoteCategoryAPIController::class)->only(['index', 'store']);
-    //    });
+        // credit notes
+        Route::get('credit-notes/buscar-factura', [CreditNoteAPIController::class, 'buscarFactura']);
+        Route::get('credit-notes/facturas-cliente/{customer}', [CreditNoteAPIController::class, 'facturasDeCliente']);
+        Route::post('credit-notes/{credit_note}/emitir', [CreditNoteAPIController::class, 'emitir']);
+        Route::post('credit-notes/{credit_note}/cancelar', [CreditNoteAPIController::class, 'cancelar']);
+        Route::resource('credit-notes', CreditNoteAPIController::class)->only(['index', 'store', 'show']);
+        Route::resource('credit-note-categories', CreditNoteCategoryAPIController::class)->only(['index', 'store']);
+    });
 
     //expense category route
-    //    Route::middleware('permission:manage_expense_categories')->group(function () {
-    Route::resource('expense-categories', ExpenseCategoryAPIController::class);
-    //    });
+    Route::middleware('permission:manage_expense_categories')->group(function () {
+        Route::resource('expense-categories', ExpenseCategoryAPIController::class)->except(['index']);
+    });
     Route::get('expense-categories', [ExpenseCategoryAPIController::class, 'index']);
 
     //expense route
-    //    Route::middleware('permission:manage_expenses')->group(function () {
-    Route::resource('expenses', ExpenseAPIController::class);
-    //    });
+    Route::middleware('permission:manage_expenses')->group(function () {
+        Route::resource('expenses', ExpenseAPIController::class);
+    });
 
     //setting route
-    //    Route::middleware('permission:manage_setting')->group(function () {
-    Route::resource('settings', SettingAPIController::class);
-    Route::post('settings', [SettingAPIController::class, 'update']);
-    Route::get('states/{id}', [SettingAPIController::class, 'getStates']);
-    Route::get('mail-settings', [SettingAPIController::class, 'getMailSettings']);
-    Route::post('mail-settings/update', [SettingAPIController::class, 'updateMailSettings']);
-    //    });
+    Route::middleware('permission:manage_setting')->group(function () {
+        Route::resource('settings', SettingAPIController::class)->except(['index']);
+        Route::post('settings', [SettingAPIController::class, 'update']);
+        Route::get('states/{id}', [SettingAPIController::class, 'getStates']);
+        Route::get('mail-settings', [SettingAPIController::class, 'getMailSettings']);
+        Route::post('mail-settings/update', [SettingAPIController::class, 'updateMailSettings']);
+    });
 
-    //    Route::middleware('permission:manage_language')->group(function () {
-    Route::resource('languages', LanguageAPIController::class);
-    Route::get('languages/translation/{language}', [LanguageAPIController::class, 'showTranslation']);
-    Route::post('languages/translation/{language}/update', [LanguageAPIController::class, 'updateTranslation']);
-    //    });
+    Route::middleware('permission:manage_language')->group(function () {
+        Route::resource('languages', LanguageAPIController::class);
+        Route::get('languages/translation/{language}', [LanguageAPIController::class, 'showTranslation']);
+        Route::post('languages/translation/{language}/update', [LanguageAPIController::class, 'updateTranslation']);
+    });
 
     Route::resource('sms-settings', SmsSettingAPIController::class);
     Route::post('sms-settings', [SmsSettingAPIController::class, 'update']);
@@ -305,9 +306,9 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('purchase-info/{purchase}', [PurchaseAPIController::class, 'purchaseInfo'])->name('purchase-info');
     Route::post('logout', [AuthController::class, 'logout']);
 
-    //    Route::middleware('permission:manage_adjustments')->group(function () {
-    Route::resource('adjustments', AdjustmentAPIController::class);
-    //    });
+    Route::middleware('permission:manage_adjustments')->group(function () {
+        Route::resource('adjustments', AdjustmentAPIController::class);
+    });
 
     //purchase return routes
     Route::resource('purchases-return', PurchaseReturnAPIController::class);
@@ -464,8 +465,7 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::resource('coupon-codes', CouponCodeAPIController::class);
 });
 
-Route::post('login', [AuthController::class, 'login'])->name('login');
-Route::post('register', [AuthController::class, 'register']);
+Route::post('login', [AuthController::class, 'login'])->middleware('throttle:5,1')->name('login');
 
 Route::post(
     '/forgot-password',

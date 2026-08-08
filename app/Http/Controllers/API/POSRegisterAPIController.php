@@ -10,6 +10,7 @@ use App\Models\POSRegister;
 use App\Models\Sale;
 use App\Models\SaleReturn;
 use App\Models\SalesPayment;
+use App\Models\Role;
 use App\Repositories\POSRegisterRepository;
 use Carbon\Carbon;
 use Illuminate\Database\Eloquent\Builder;
@@ -97,8 +98,15 @@ class POSRegisterAPIController extends AppBaseController
 
         $register = $this->posReg;
 
-        if (! empty($input['user_id'])) {
-            $register->where('user_id', $input['user_id']);
+        // Un usuario no-admin solo puede ver el historial de arqueo de su
+        // propia caja -- antes cualquiera podía pedir el de otro usuario
+        // pasando user_id, exponiendo montos y descuadres ajenos.
+        if (Auth::user()->hasRole(Role::ADMIN)) {
+            if (! empty($input['user_id'])) {
+                $register->where('user_id', $input['user_id']);
+            }
+        } else {
+            $register->where('user_id', Auth::id());
         }
 
         if (! empty($input['start_date'])) {
@@ -164,9 +172,22 @@ class POSRegisterAPIController extends AppBaseController
             ->sum('amount');
 
         $data['today_sales_payment_amount'] = $data['today_sales_amount'] - $data['today_sales_return_amount'];
+        // Antes filtraba por sale.payment_type == CASH -- ese campo solo
+        // guarda el PRIMER método de pago recibido (ver SaleRepository),
+        // así que una venta pagada mitad tarjeta / mitad efectivo (tarjeta
+        // registrada primero) quedaba fuera de este cálculo aunque sí
+        // hubiera efectivo real de por medio que devolver. Se cambia a
+        // comprobar si la venta tuvo ALGÚN pago en efectivo real
+        // (SalesPayment), no solo el primero.
+        // Nota: esto sigue asumiendo la devolución completa como "en
+        // efectivo" cuando hubo cualquier pago en efectivo -- repartir el
+        // monto exacto proporcionalmente entre los métodos de pago
+        // originales es una decisión de negocio que no está definida hoy
+        // (¿se devuelve en el mismo método que se cobró? ¿a criterio del
+        // cajero?) y queda fuera de este fix.
         $data['refunded_cash'] = SaleReturn::whereIn('sale_id', $saleIds)
-            ->whereHas('sale', function (Builder $query) {
-                $query->where('payment_type', Sale::CASH);
+            ->whereHas('sale.payments', function (Builder $query) {
+                $query->where('payment_type', SalesPayment::CASH);
             })
             ->sum('grand_total');
 

@@ -15,7 +15,7 @@ use Illuminate\Support\Facades\Route;
 
 Route::prefix('m1')->as('m1.')->group(function () {
     // login
-    Route::post('login', [AuthController::class, 'login']);
+    Route::post('login', [AuthController::class, 'login'])->middleware('throttle:5,1');
     Route::post(
         '/forgot-password',
         [AuthController::class, 'sendPasswordResetLinkEmail']

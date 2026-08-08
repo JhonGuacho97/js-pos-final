@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\API\M1;
 
 use App\Http\Controllers\AppBaseController;
+use App\Models\LoginLog;
 use App\Models\User;
 use Illuminate\Auth\Events\PasswordReset;
 use Illuminate\Http\JsonResponse;
@@ -25,13 +26,44 @@ class AuthController extends AppBaseController
         }
         $user = User::whereRaw('lower(email) = ?', [$email])->first();
 
+        // Antes este canal de login (usado por el m1) no dejaba ningún
+        // rastro en LoginLog, a diferencia del AuthController principal --
+        // perdiendo trazabilidad forense de intentos fallidos/exitosos
+        // que entraran por acá.
         if (empty($user)) {
+            LoginLog::create([
+                'user_id' => null,
+                'email' => $email,
+                'ip_address' => $request->ip(),
+                'user_agent' => $request->userAgent(),
+                'status' => 'failed',
+                'logged_at' => now(),
+            ]);
+
             return $this->sendError('Invalid username or password', 422);
         }
 
         if (! Hash::check($password, $user->password)) {
+            LoginLog::create([
+                'user_id' => $user->id,
+                'email' => $email,
+                'ip_address' => $request->ip(),
+                'user_agent' => $request->userAgent(),
+                'status' => 'failed',
+                'logged_at' => now(),
+            ]);
+
             return $this->sendError('Invalid username or password', 422);
         }
+
+        LoginLog::create([
+            'user_id' => $user->id,
+            'email' => $user->email,
+            'ip_address' => $request->ip(),
+            'user_agent' => $request->userAgent(),
+            'status' => 'success',
+            'logged_at' => now(),
+        ]);
 
         $token = $user->createToken('token')->plainTextToken;
         $user->last_name = $user->last_name ?? '';

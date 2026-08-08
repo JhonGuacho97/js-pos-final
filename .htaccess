@@ -1,3 +1,36 @@
+# Defensa en profundidad: estas reglas usan directivas del núcleo de
+# Apache (no de mod_rewrite), así que siguen aplicando aunque el
+# hosting tenga mod_rewrite/AllowOverride restringido y el bloque de
+# abajo no llegue a ejecutarse -- en ese escenario, sin esto, .env,
+# database/pos.sql y vendor/ quedarían servidos como archivos
+# estáticos directamente por Apache.
+<IfModule mod_authz_core.c>
+    # Apache 2.4+
+    <FilesMatch "^\.">
+        Require all denied
+    </FilesMatch>
+    <FilesMatch "\.(sql|log|lock)$">
+        Require all denied
+    </FilesMatch>
+    <IfModule mod_alias.c>
+        RedirectMatch 403 ^/(vendor|database|storage|bootstrap|tests)(/|$)
+    </IfModule>
+</IfModule>
+<IfModule !mod_authz_core.c>
+    # Apache 2.2 (algunos planes cPanel económicos todavía lo usan)
+    <FilesMatch "^\.">
+        Order allow,deny
+        Deny from all
+    </FilesMatch>
+    <FilesMatch "\.(sql|log|lock)$">
+        Order allow,deny
+        Deny from all
+    </FilesMatch>
+    <IfModule mod_alias.c>
+        RedirectMatch 403 ^/(vendor|database|storage|bootstrap|tests)(/|$)
+    </IfModule>
+</IfModule>
+
 <IfModule mod_rewrite.c>
     <IfModule mod_negotiation.c>
         Options -MultiViews -Indexes
