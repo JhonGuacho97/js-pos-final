@@ -123,10 +123,10 @@ class Sale extends BaseModel implements HasMedia, JsonResourceful
         'date' => 'date|required',
         'customer_id' => 'required|exists:customers,id',
         'warehouse_id' => 'required|exists:warehouses,id',
-        'tax_rate' => 'nullable|numeric',
-        'tax_amount' => 'nullable|numeric',
-        'discount' => 'nullable|numeric',
-        'shipping' => 'nullable|numeric',
+        'tax_rate' => 'nullable|numeric|min:0',
+        'tax_amount' => 'nullable|numeric|min:0',
+        'discount' => 'nullable|numeric|min:0',
+        'shipping' => 'nullable|numeric|min:0',
         'grand_total' => 'nullable|numeric',
         'received_amount' => 'numeric|nullable',
         'paid_amount' => 'numeric|nullable',
@@ -318,7 +318,13 @@ class Sale extends BaseModel implements HasMedia, JsonResourceful
      */
     public function electronicInvoice(): HasOne
     {
-        return $this->hasOne(ElectronicInvoice::class, 'sale_id', 'id');
+        // latestOfMany() -- una venta puede terminar con más de un
+        // ElectronicInvoice si una emisión se rechaza y se reintenta (ver
+        // ElectronicInvoiceController::reintentar(), que ya NO borra el
+        // registro rechazado para no perder el secuencial/historial). Sin
+        // esto, un hasOne() plano devuelve el primero por id (el
+        // rechazado viejo) en vez del más reciente.
+        return $this->hasOne(ElectronicInvoice::class, 'sale_id', 'id')->latestOfMany();
     }
 
     public function customer(): BelongsTo
@@ -354,8 +360,34 @@ class Sale extends BaseModel implements HasMedia, JsonResourceful
         $grandTotal = Sale::whereId($id)->value('grand_total');
         $paidAmount = SalesPayment::whereSaleId($id)->sum('amount');
 
-        $dueAmount = $grandTotal - $paidAmount;
+        // Antes esto ignoraba por completo las notas de crédito: una
+        // factura ya pagada al 100% que recibía una NC seguía mostrando
+        // "Due: $0.00" sin reflejar que ahora se le acreditó algo al
+        // cliente. Se descuenta lo ya acreditado en notas de crédito
+        // válidas (mismo criterio de "válida" que usa
+        // CreditNoteRepository: se excluyen solo las que el SRI rechazó
+        // de forma permanente).
+        $creditedAmount = CreditNote::where('sale_id', $id)
+            ->noCanceladas()
+            ->where(function ($q) {
+                $q->whereDoesntHave('electronicInvoice')
+                    ->orWhereHas('electronicInvoice', function ($qe) {
+                        $qe->whereNotIn('estado', [
+                            ElectronicInvoice::NO_AUTORIZADA,
+                            ElectronicInvoice::DEVUELTA,
+                        ]);
+                    });
+            })
+            ->sum('grand_total');
 
+        $dueAmount = $grandTotal - $paidAmount - $creditedAmount;
+
+        // NOTA: esto sigue sin distinguir "no debe nada" de "se le debe
+        // dinero de vuelta al cliente" (ambos casos quedan en 0) -- para
+        // eso hace falta un concepto de saldo a favor del cliente
+        // separado, que es un cambio de producto más grande (requiere
+        // decidir cómo se salda: efectivo, nota de crédito para
+        // próxima compra, etc.) y no se implementó acá.
         if ($dueAmount < 0) {
             $dueAmount = 0;
         }

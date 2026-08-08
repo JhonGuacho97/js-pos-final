@@ -45,6 +45,7 @@ class CreditNoteStockRollbackService
             foreach ($creditNote->creditNoteItems as $item) {
                 $stock = ManageStock::where('warehouse_id', $creditNote->warehouse_id)
                     ->where('product_id', $item->product_id)
+                    ->lockForUpdate()
                     ->first();
 
                 if ($stock) {

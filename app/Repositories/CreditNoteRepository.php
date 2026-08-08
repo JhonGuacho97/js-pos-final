@@ -6,6 +6,7 @@ use App\Models\CreditNote;
 use App\Models\CreditNoteItem;
 use App\Models\ElectronicInvoice;
 use App\Models\ManageStock;
+use App\Models\Product;
 use App\Models\Sale;
 use App\Models\SaleReturnItem;
 use Illuminate\Support\Arr;
@@ -46,6 +47,43 @@ class CreditNoteRepository extends BaseRepository
                 throw new UnprocessableEntityHttpException('La factura seleccionada no existe.');
             }
 
+            // Se calcula UNA sola vez acá (no en el loop de inserción de
+            // más abajo) porque 'quantity' de cada item calculado ya
+            // viene en UNIDADES BASE (conversión de presentación
+            // aplicada, igual que SaleItem.quantity) -- tanto la
+            // validación de disponible como el descuento de stock más
+            // abajo necesitan esa misma escala para comparar
+            // correctamente contra lo vendido.
+            $calculatedItems = array_map(
+                fn ($item) => $this->calculationCreditNoteItem($item),
+                $input['credit_note_items']
+            );
+
+            // ── Total de la nota: SIEMPRE recalculado en servidor desde
+            // la suma real de líneas, nunca confiado del payload del
+            // frontend (mismo criterio que SaleRepository::storeSaleItems).
+            $subTotalAmount = array_sum(array_column($calculatedItems, 'sub_total'));
+
+            $discount = (float) ($input['discount'] ?? 0);
+            if ($discount < 0 || $discount > $subTotalAmount) {
+                throw new UnprocessableEntityHttpException('El descuento no puede ser mayor al subtotal de la nota.');
+            }
+            $grandTotal = $subTotalAmount - $discount;
+
+            $taxRate = (float) ($input['tax_rate'] ?? 0);
+            if ($taxRate < 0 || $taxRate > 100) {
+                throw new UnprocessableEntityHttpException('Por favor ingrese una tarifa de impuesto entre 0 y 100.');
+            }
+            $taxAmount = $grandTotal * $taxRate / 100;
+            $grandTotal += $taxAmount;
+
+            $shipping = (float) ($input['shipping'] ?? 0);
+            if ($shipping < 0 || $shipping > $grandTotal) {
+                throw new UnprocessableEntityHttpException('El flete no puede ser mayor al total de la nota.');
+            }
+            $grandTotal += $shipping;
+            $grandTotal = round($grandTotal, 2);
+
             // ── Validación de disponible para acreditar ──
             // El techo correcto es el valor ORIGINAL de la factura
             // menos lo YA acreditado en notas de crédito válidas --
@@ -62,6 +100,7 @@ class CreditNoteRepository extends BaseRepository
             // no permitir crear varias que sumadas excedan el total
             // antes de que ninguna se termine de emitir.
             $yaAcreditado = CreditNote::where('sale_id', $input['sale_id'])
+                ->noCanceladas()
                 ->where(function ($q) {
                     $q->whereDoesntHave('electronicInvoice')
                         ->orWhereHas('electronicInvoice', function ($qe) {
@@ -74,7 +113,7 @@ class CreditNoteRepository extends BaseRepository
                 ->sum('grand_total');
 
             $montoDisponible = round(($sale->grand_total ?? 0) - $yaAcreditado, 2);
-            $totalNota = round((float) ($input['grand_total'] ?? 0), 2);
+            $totalNota = $grandTotal;
 
             if ($totalNota > $montoDisponible + 0.02) { // margen de redondeo
                 throw new UnprocessableEntityHttpException(
@@ -95,13 +134,23 @@ class CreditNoteRepository extends BaseRepository
             // devuelta), y si no se consideran juntos, alguien podría
             // devolver el mismo producto por los dos caminos y el
             // sistema sumaría el stock dos veces.
+            //
+            // Todas las cantidades comparadas acá están en UNIDADES BASE:
+            // $vendidoPorProducto viene de SaleItem.quantity (ya en base),
+            // $yaAcreditadoPorProducto de CreditNoteItem.quantity (ahora
+            // también en base, ver calculationCreditNoteItem), y
+            // $calculatedItems[]['quantity'] igual -- antes se comparaba
+            // esto último todavía en unidades de PRESENTACIÓN, permitiendo
+            // acreditar de más si el item se agregó con una presentación
+            // con equivalencia > 1.
             if (in_array($input['concepto'], CreditNote::CONCEPTOS_QUE_TOCAN_STOCK)) {
                 $vendidoPorProducto = $sale->saleItems->groupBy('product_id')
                     ->map(fn ($items) => $items->sum('quantity'));
 
                 $yaAcreditadoPorProducto = CreditNoteItem::whereHas('creditNote', function ($q) use ($input) {
                     $q->where('sale_id', $input['sale_id'])
-                        ->where('concepto', CreditNote::CONCEPTO_DEVOLUCION);
+                        ->where('concepto', CreditNote::CONCEPTO_DEVOLUCION)
+                        ->noCanceladas();
                 })
                     ->get()
                     ->groupBy('product_id')
@@ -114,16 +163,16 @@ class CreditNoteRepository extends BaseRepository
                     ->groupBy('product_id')
                     ->map(fn ($items) => $items->sum('quantity'));
 
-                foreach ($input['credit_note_items'] as $item) {
-                    $productId = $item['product_id'];
+                foreach ($calculatedItems as $calculado) {
+                    $productId = $calculado['product_id'];
                     $vendido = $vendidoPorProducto->get($productId, 0);
                     $yaAcreditado = $yaAcreditadoPorProducto->get($productId, 0)
                         + $yaDevueltoPorSaleReturn->get($productId, 0);
                     $disponible = $vendido - $yaAcreditado;
 
-                    if ($item['quantity'] > $disponible + 0.001) {
+                    if ($calculado['quantity'] > $disponible + 0.001) {
                         throw new UnprocessableEntityHttpException(
-                            "No se puede devolver {$item['quantity']} unidades de ese producto -- ".
+                            "No se puede devolver {$calculado['quantity']} unidades de ese producto -- ".
                             "la factura solo tiene {$disponible} disponibles para devolver ".
                             "(ya se vendieron {$vendido}, y ya se devolvieron {$yaAcreditado} entre notas de crédito ".
                             "y devoluciones de venta anteriores)."
@@ -134,9 +183,17 @@ class CreditNoteRepository extends BaseRepository
 
             $creditNoteInput = Arr::only($input, [
                 'date', 'sale_id', 'customer_id', 'warehouse_id', 'credit_note_category_id',
-                'vendedor', 'generar_como', 'concepto', 'motivo', 'tax_rate', 'tax_amount',
-                'discount', 'shipping', 'grand_total', 'status', 'note',
+                'vendedor', 'generar_como', 'concepto', 'motivo',
+                'discount', 'shipping', 'note',
             ]);
+            $creditNoteInput['tax_rate'] = $taxRate;
+            $creditNoteInput['tax_amount'] = round($taxAmount, 2);
+            $creditNoteInput['grand_total'] = $grandTotal;
+            // Ignora cualquier 'status' que mande el frontend (antes se
+            // guardaba un valor fijo sin significado) -- toda nota nueva
+            // arranca ACTIVA, el único otro estado posible es CANCELADA,
+            // que solo se puede llegar a través de cancelarCreditNote().
+            $creditNoteInput['status'] = CreditNote::STATUS_ACTIVA;
 
             $creditNoteInput['tipo_comprobante_modificado'] = $sale->electronicInvoice
                 ? ($sale->electronicInvoice->tipo_comprobante === '05' ? 'NOTA DE DEBITO' : 'FACTURA')
@@ -157,12 +214,13 @@ class CreditNoteRepository extends BaseRepository
                 $sale->update(['is_return' => 1]);
             }
 
-            foreach ($input['credit_note_items'] as $item) {
-                $calculado = $this->calculationCreditNoteItem($item);
-
+            foreach ($calculatedItems as $calculado) {
                 CreditNoteItem::create([
                     'credit_note_id' => $creditNote->id,
                     'product_id' => $calculado['product_id'],
+                    'product_presentation_id' => $calculado['product_presentation_id'],
+                    'presentation_quantity' => $calculado['presentation_quantity'],
+                    'presentation_equivalence' => $calculado['presentation_equivalence'],
                     'product_price' => $calculado['product_price'],
                     'net_unit_price' => $calculado['net_unit_price'],
                     'tax_type' => $calculado['tax_type'],
@@ -179,18 +237,24 @@ class CreditNoteRepository extends BaseRepository
                 // Solo se toca stock si el concepto es una devolución
                 // física de mercadería -- descuentos, correcciones de
                 // precio o errores de facturación no mueven inventario.
+                // $calculado['quantity'] ya está en unidades base (ver
+                // calculationCreditNoteItem), igual que hace SaleRepository
+                // al descontar stock -- antes acá se usaba $item['quantity']
+                // crudo (unidades de presentación), descuadrando el
+                // inventario cuando la presentación tenía equivalencia > 1.
                 if ($creditNote->tocaStock() && !empty($input['warehouse_id'])) {
                     $stock = ManageStock::where('warehouse_id', $input['warehouse_id'])
-                        ->where('product_id', $item['product_id'])
+                        ->where('product_id', $calculado['product_id'])
+                        ->lockForUpdate()
                         ->first();
 
                     if ($stock) {
-                        $stock->update(['quantity' => $stock->quantity + $item['quantity']]);
+                        $stock->update(['quantity' => $stock->quantity + $calculado['quantity']]);
                     } else {
                         ManageStock::create([
                             'warehouse_id' => $input['warehouse_id'],
-                            'product_id' => $item['product_id'],
-                            'quantity' => $item['quantity'],
+                            'product_id' => $calculado['product_id'],
+                            'quantity' => $calculado['quantity'],
                         ]);
                     }
                 }
@@ -199,6 +263,90 @@ class CreditNoteRepository extends BaseRepository
             DB::commit();
 
             return $creditNote->load('creditNoteItems', 'customer', 'warehouse', 'sale', 'category');
+        } catch (\Throwable $e) {
+            DB::rollBack();
+            throw $e;
+        }
+    }
+
+    /**
+     * Cancela/anula una nota de crédito que quedó "huérfana" -- creada
+     * por error, o cuya emisión ante el SRI nunca se completó (falló,
+     * o ni siquiera se intentó). Antes no existía ningún camino para
+     * revertir esto: la nota quedaba para siempre descontando saldo
+     * disponible de la factura y, si el concepto era POR_DEVOLUCION,
+     * con el stock ya incrementado sin posibilidad de deshacerlo salvo
+     * editando la base de datos a mano.
+     *
+     * Solo se puede cancelar si CreditNote::puedeCancelarse() es true
+     * (sin comprobante electrónico, o con uno que falló/fue rechazado
+     * -- nunca si ya está autorizada o en trámite ante el SRI).
+     */
+    public function cancelarCreditNote(int $creditNoteId): CreditNote
+    {
+        try {
+            DB::beginTransaction();
+
+            $creditNote = CreditNote::with('electronicInvoice', 'creditNoteItems')
+                ->lockForUpdate()
+                ->findOrFail($creditNoteId);
+
+            if (!$creditNote->puedeCancelarse()) {
+                throw new UnprocessableEntityHttpException(
+                    'Esta nota de crédito no se puede cancelar: ya está anulada, o tiene un '.
+                    'comprobante electrónico autorizado o en trámite ante el SRI.'
+                );
+            }
+
+            // Revierte el stock que esta nota había incrementado --
+            // misma cantidad en unidades base (CreditNoteItem.quantity)
+            // que se sumó en storeCreditNote(). Si el disponible actual
+            // no alcanza para revertir (porque esa mercadería ya se
+            // volvió a vender o transferir), se bloquea la cancelación
+            // en vez de dejar el stock en negativo.
+            if ($creditNote->tocaStock() && $creditNote->warehouse_id) {
+                foreach ($creditNote->creditNoteItems as $item) {
+                    $stock = ManageStock::where('warehouse_id', $creditNote->warehouse_id)
+                        ->where('product_id', $item->product_id)
+                        ->lockForUpdate()
+                        ->first();
+
+                    $disponible = $stock->quantity ?? 0;
+                    if ($disponible < $item->quantity) {
+                        throw new UnprocessableEntityHttpException(
+                            "No se puede cancelar: el stock del producto #{$item->product_id} ".
+                            "ya se movió (disponible {$disponible}, se necesita revertir {$item->quantity})."
+                        );
+                    }
+
+                    $stock->update(['quantity' => $disponible - $item->quantity]);
+                }
+            }
+
+            $creditNote->update(['status' => CreditNote::STATUS_CANCELADA]);
+
+            // Si esta era la única nota/devolución que marcaba la venta
+            // como "con devolución", se limpia el indicador -- si quedan
+            // otras notas activas que también tocan stock, se deja como
+            // estaba (todavía es cierto que la venta tuvo una devolución).
+            if ($creditNote->tocaStock() && $creditNote->sale) {
+                $quedanOtras = CreditNote::where('sale_id', $creditNote->sale_id)
+                    ->where('id', '!=', $creditNote->id)
+                    ->noCanceladas()
+                    ->whereIn('concepto', CreditNote::CONCEPTOS_QUE_TOCAN_STOCK)
+                    ->exists();
+                $tieneSaleReturn = SaleReturnItem::whereHas('saleReturn', function ($q) use ($creditNote) {
+                    $q->where('sale_id', $creditNote->sale_id);
+                })->exists();
+
+                if (!$quedanOtras && !$tieneSaleReturn) {
+                    $creditNote->sale->update(['is_return' => 0]);
+                }
+            }
+
+            DB::commit();
+
+            return $creditNote->fresh(['creditNoteItems', 'customer', 'warehouse', 'sale', 'category']);
         } catch (\Throwable $e) {
             DB::rollBack();
             throw $e;
@@ -215,11 +363,15 @@ class CreditNoteRepository extends BaseRepository
      * -- usado por el modal "Listado de Comprobante" que se abre al
      * elegir un cliente y presionar el botón de buscar.
      */
-    public function facturasDeCliente(int $customerId, int $perPage, int $page, string $search = ''): array
+    public function facturasDeCliente(int $customerId, int $perPage, int $page, string $search = '', ?int $warehouseId = null): array
     {
         $query = Sale::with(['electronicInvoice', 'payments'])
             ->where('customer_id', $customerId)
             ->latest();
+
+        if ($warehouseId) {
+            $query->where('warehouse_id', $warehouseId);
+        }
 
         if ($search) {
             $query->where(function ($q) use ($search) {
@@ -265,7 +417,7 @@ class CreditNoteRepository extends BaseRepository
         4 => 'OTRO',
     ];
 
-    public function buscarFactura(string $busqueda): ?array
+    public function buscarFactura(string $busqueda, ?int $warehouseId = null): ?array
     {
         $limpio = trim($busqueda);
 
@@ -294,6 +446,7 @@ class CreditNoteRepository extends BaseRepository
                         }
                     });
             })
+            ->when($warehouseId, fn ($q) => $q->where('warehouse_id', $warehouseId))
             ->first();
 
         if (!$sale) {
@@ -359,6 +512,11 @@ class CreditNoteRepository extends BaseRepository
     private function calculationCreditNoteItem(array $item): array
     {
         $productPrice = (float) ($item['product_price'] ?? 0);
+        // 'quantity' que llega acá es la cantidad de la PRESENTACIÓN
+        // elegida (ej: 2 cajas), igual que en SaleRepository::calculationSaleItems
+        // -- se usa tal cual para el cálculo monetario (el precio también
+        // es el de esa presentación), y solo al final se convierte a
+        // unidades base para 'quantity' (stock, validación de disponible).
         $quantity = (float) ($item['quantity'] ?? 0);
         $discountType = (int) ($item['discount_type'] ?? Sale::FIXED);
         $discountValue = (float) ($item['discount_value'] ?? 0);
@@ -403,8 +561,31 @@ class CreditNoteRepository extends BaseRepository
 
         $subTotal = ($netUnitPrice + $perItemTaxAmount) * $quantity;
 
+        // Equivalencia de presentación (caja/six-pack/etc.) -- mismo
+        // patrón que SaleRepository::calculationSaleItems(). Antes esto no
+        // se aplicaba acá: si se devolvía "1 caja = 6u", el stock solo
+        // recibía +1 en vez de +6, y 'quantity' quedaba en una escala
+        // distinta a la de SaleItem.quantity (unidades base), rompiendo la
+        // comparación de "cantidad disponible para devolver".
+        $presentationQuantity = $quantity;
+        $equivalence = 1;
+
+        if (!empty($item['product_presentation_id'])) {
+            $product = Product::whereId($item['product_id'])->first();
+            if ($product && $product->manage_presentations) {
+                $presentation = $product->presentations()->whereId($item['product_presentation_id'])->first();
+                if (!$presentation) {
+                    throw new UnprocessableEntityHttpException('Presentación inválida para el producto ' . $product->name);
+                }
+                $equivalence = $presentation->equivalence;
+            }
+        }
+
         return [
             'product_id' => $item['product_id'],
+            'product_presentation_id' => $item['product_presentation_id'] ?? null,
+            'presentation_quantity' => $presentationQuantity,
+            'presentation_equivalence' => $equivalence,
             'product_price' => $productPrice,
             'net_unit_price' => $netUnitPrice,
             'tax_type' => $taxType,
@@ -414,7 +595,10 @@ class CreditNoteRepository extends BaseRepository
             'discount_value' => $discountValue,
             'discount_amount' => $discountAmount,
             'sale_unit' => is_array($item['sale_unit'] ?? null) ? ($item['sale_unit']['id'] ?? 1) : ($item['sale_unit'] ?? 1),
-            'quantity' => $quantity,
+            // A partir de acá 'quantity' pasa a representar unidades base
+            // de inventario, igual que en SaleItem -- todo lo que compara
+            // o descuenta stock más abajo depende de esto.
+            'quantity' => $presentationQuantity * $equivalence,
             'sub_total' => $subTotal,
         ];
     }
