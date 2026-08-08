@@ -86,7 +86,7 @@ class SaleItem extends BaseModel implements JsonResourceful
         'discount_value' => 'nullable|numeric',
         'discount_amount' => 'nullable|numeric',
         'sale_unit' => 'nullable|numeric',
-        'quantity' => 'nullable|numeric',
+        'quantity' => 'required|numeric|min:0.01',
         'sub_total' => 'nullable|numeric',
     ];
 
@@ -158,16 +158,17 @@ class SaleItem extends BaseModel implements JsonResourceful
 
     /**
      * Precio total sin impuesto para el XML (<precioTotalSinImpuesto>).
-     * sub_total ya viene calculado correctamente en tu sistema.
+     * sub_total siempre viene bruto (con IVA incluido) desde
+     * SaleRepository::calculationSaleItems(), tanto para Inclusivo como
+     * para Exclusivo -- tax_amount es exactamente la porción de IVA dentro
+     * de ese bruto en ambos casos, así que restarlo da la base imponible
+     * real sin volver a derivar la tarifa (bug real, confirmado con un
+     * caso real: $10 con 15% Exclusivo devolvía $11.50 de base en vez de
+     * $10.00, porque el caso Exclusivo nunca restaba el IVA del bruto).
      */
     public function precioTotalSinImpuestoSri(): float
     {
-        if ($this->tax_type === Sale::INCLUSIVE) {
-            $tarifa = $this->tax_value ?? 15;
-            return round($this->sub_total / (1 + $tarifa / 100), 2);
-        }
-
-        return round($this->sub_total, 2);
+        return round($this->sub_total - $this->tax_amount, 2);
     }
 
     /**

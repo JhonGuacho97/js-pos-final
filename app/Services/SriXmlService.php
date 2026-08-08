@@ -68,7 +68,24 @@ class SriXmlService
         // calcular el mismo número (que el SRI ya conoce y va a volver a
         // rechazar por "ERROR SECUENCIAL REGISTRADO"), quedando atascado
         // en un bucle para siempre.
+        //
+        // Sí se excluyen los registros de error de EmitirFacturaJob
+        // (clave_acceso sintética con prefijo 'ERR', nunca llegó a tener
+        // un secuencial real del SRI) -- esos usan un valor placeholder
+        // no numérico solo para poder existir en la tabla, y no deben
+        // interferir en el cálculo de MAX().
+        //
+        // lockForUpdate() acá ayuda cuando este método se llama dentro de
+        // una transacción que también hace el INSERT final en la misma
+        // conexión -- no elimina por completo la carrera si se llama
+        // fuera de una transacción, pero el índice único
+        // (tipo_comprobante, secuencial) en la tabla garantiza que un
+        // secuencial duplicado nunca quede persistido en silencio: si
+        // ocurre, el INSERT falla con un error de BD explícito en vez de
+        // corromper la numeración.
         $ultimo = ElectronicInvoice::where('tipo_comprobante', $tipoDoc)
+            ->where('clave_acceso', 'not like', 'ERR%')
+            ->lockForUpdate()
             ->max('secuencial');
 
         $siguiente = $ultimo ? ((int) $ultimo + 1) : 1;
@@ -561,6 +578,23 @@ class SriXmlService
                 );
             }
         }
+
+        // Mismo criterio que validarCalculos() para Factura -- ver ese
+        // comentario. Acá 'valorModificacion' hace de importeTotal.
+        $totalSinImpuestos = $creditNote->subtotalSinIvaSri();
+        $totalImpuesto = round($creditNote->creditNoteItems->sum(fn ($item) => $item->valorIvaSri()), 2);
+        $valorModificacionEsperado = round($totalSinImpuestos + $totalImpuesto, 2);
+        $valorModificacionDeclarado = round($creditNote->grand_total ?? 0, 2);
+
+        if (abs($valorModificacionEsperado - $valorModificacionDeclarado) > $tolerancia) {
+            throw new \RuntimeException(
+                "No se puede emitir: el total de la nota de crédito (\${$valorModificacionDeclarado}) no coincide ".
+                "con la suma de bases + IVA por línea (\${$valorModificacionEsperado}). Esto pasa cuando se usan los ".
+                'campos globales "Descuento" o "Flete" del formulario -- el sistema no puede repartirlos de forma '.
+                'confiable entre las líneas del comprobante SRI todavía. Aplicá el descuento directamente en cada '.
+                'producto en vez de a nivel de nota, o contactá soporte.'
+            );
+        }
     }
 
     private function validarCalculos(Sale $sale): void
@@ -601,6 +635,35 @@ class SriXmlService
                     "(esperado \${$ivaEsperado} al {$tarifa}%, pero hay \${$iva} guardado)."
                 );
             }
+        }
+
+        // ── Consistencia a nivel de cabecera ──────────
+        // El XML declara 'totalSinImpuestos' (suma de bases por línea) y
+        // 'totalImpuesto.valor' (suma de IVA por línea) por separado, y el
+        // SRI espera que 'importeTotal' = esa suma. Eso siempre cuadra
+        // cuando el descuento/flete/impuesto vive por línea -- pero
+        // 'discount', 'shipping' y 'tax_amount' de la VENTA (los campos
+        // "Descuento", "Flete" e "Impuesto de la orden" del formulario)
+        // se aplican sobre el total global y nunca se reflejan en las
+        // líneas, así que si se usa cualquiera de esos tres, el XML queda
+        // aritméticamente inconsistente sin que nada lo detectara antes.
+        // No existe hoy una forma segura de repartir esos valores por
+        // línea sin arriesgar corromper otro cálculo ya validado, así que
+        // se bloquea la emisión con un mensaje accionable en vez de
+        // mandar al SRI un comprobante que no cuadra.
+        $totalSinImpuestos = $sale->subtotalSinIvaSri();
+        $totalImpuesto = round($sale->saleItems->sum(fn ($item) => $item->valorIvaSri()), 2);
+        $importeTotalEsperado = round($totalSinImpuestos + $totalImpuesto, 2);
+        $importeTotalDeclarado = round($sale->grand_total ?? 0, 2);
+
+        if (abs($importeTotalEsperado - $importeTotalDeclarado) > $tolerancia) {
+            throw new \RuntimeException(
+                "No se puede emitir: el total de la venta (\${$importeTotalDeclarado}) no coincide con la suma de ".
+                "bases + IVA por línea (\${$importeTotalEsperado}). Esto pasa cuando se usan los campos globales ".
+                '"Descuento", "Flete" o "Impuesto de la orden" del formulario de venta -- el sistema no puede '.
+                'repartirlos de forma confiable entre las líneas del comprobante SRI todavía. '.
+                'Aplicá el descuento/impuesto directamente en cada producto en vez de a nivel de venta, o contactá soporte.'
+            );
         }
     }
 

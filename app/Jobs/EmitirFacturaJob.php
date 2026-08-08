@@ -54,6 +54,32 @@ class EmitirFacturaJob implements ShouldQueue
             };
         } catch (\Throwable $e) {
             Log::error("EmitirFacturaJob: error generando XML: " . $e->getMessage());
+
+            // Antes esto terminaba acá sin dejar ningún registro visible:
+            // la venta quedaba sin factura y el frontend mostraba
+            // "procesando" indefinidamente, sin ningún error ni forma de
+            // reintentar. clave_acceso/secuencial reales no existen porque
+            // la generación del XML es justamente lo que falló -- se usan
+            // valores sintéticos únicos solo para satisfacer las columnas
+            // únicas (clave_acceso, y el índice único tipo+secuencial),
+            // nunca se envían al SRI. El secuencial placeholder no puede
+            // ser fijo ('000000000') -- dos fallos del mismo tipo de
+            // comprobante violarían el índice único al crear el segundo.
+            ElectronicInvoice::create([
+                'sale_id'          => $sale->id,
+                'credit_note_id'   => $this->creditNoteId,
+                'tipo_comprobante' => $this->tipoComprobante,
+                'clave_acceso'     => 'ERR' . str_pad((string) $sale->id, 10, '0', STR_PAD_LEFT) . strtoupper(\Illuminate\Support\Str::random(20)),
+                'secuencial'       => 'E' . strtoupper(\Illuminate\Support\Str::random(8)),
+                'estado'           => ElectronicInvoice::NO_AUTORIZADA,
+                'mensajes_sri'     => [[
+                    'identificador'        => 'GENERACION_XML_ERROR',
+                    'mensaje'              => 'Error al generar el comprobante electrónico',
+                    'informacionAdicional' => $e->getMessage(),
+                    'tipo'                 => 'ERROR',
+                ]],
+            ]);
+
             return;
         }
 

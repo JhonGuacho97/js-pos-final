@@ -79,8 +79,11 @@ class ElectronicInvoiceController extends AppBaseController
 
     /**
      * Reintenta manualmente la emisión de una factura DEVUELTA o NO_AUTORIZADA.
-     * Borra el registro fallido y vuelve a generar todo desde cero
-     * (nueva clave de acceso, nuevo secuencial).
+     * Genera todo desde cero (nueva clave de acceso, nuevo secuencial) --
+     * el registro fallido YA NO se borra (antes se borraba acá, lo cual
+     * rompía la protección anti-loop de proximoSecuencial(), que necesita
+     * ver los secuenciales ya rechazados para no volver a calcular el
+     * mismo número que el SRI ya conoce y rechazaría de nuevo).
      */
     public function reintentar(Sale $sale): JsonResponse
     {
@@ -111,8 +114,6 @@ class ElectronicInvoiceController extends AppBaseController
                 'message' => 'Reintentando el envío del comprobante (era un error temporal del SRI, no de tu factura).',
             ], 202);
         }
-
-        $factura->delete();
 
         EmitirFacturaJob::dispatch($sale->id);
 
