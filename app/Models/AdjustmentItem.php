@@ -47,6 +47,9 @@ class AdjustmentItem extends BaseModel implements JsonResourceful
     protected $fillable = [
         'adjustment_id',
         'product_id',
+        'product_presentation_id',
+        'presentation_quantity',
+        'presentation_equivalence',
         'method_type',
         'quantity',
     ];
@@ -54,11 +57,13 @@ class AdjustmentItem extends BaseModel implements JsonResourceful
     public static $rules = [
         'product_id' => 'required|exists:products,id',
         'method_type' => 'required',
-        'quantity' => 'nullable|numeric',
+        'quantity' => 'required|numeric|min:0.01',
     ];
 
     public $casts = [
         'quantity' => 'double',
+        'presentation_quantity' => 'double',
+        'presentation_equivalence' => 'double',
     ];
 
     protected $appends = ['sale_unit'];

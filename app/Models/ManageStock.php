@@ -5,7 +5,6 @@ namespace App\Models;
 use App\Models\Contracts\JsonResourceful;
 use App\Traits\HasJsonResourcefulData;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Support\Facades\Log;
 
 /**
  * App\Models\ManageStock
@@ -72,8 +71,6 @@ class ManageStock extends BaseModel implements JsonResourceful
 
         static::updating(function ($model) {
             $product = Product::find($model->product_id);
-            Log::info('Updating '.$model->quantity);
-            Log::info('Updating 1 '.$product->stock_alert);
 
             if ($model->quantity <= $product->stock_alert) {
                 $model->alert = true;
@@ -84,8 +81,6 @@ class ManageStock extends BaseModel implements JsonResourceful
 
         static::creating(function ($model) {
             $product = Product::find($model->product_id);
-            Log::info('Creating '.$model->quantity);
-            Log::info('Creating 1 '.$product->stock_alert);
 
             if ($model->quantity <= $product->stock_alert) {
                 $model->alert = true;

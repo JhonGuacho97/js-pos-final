@@ -8,6 +8,7 @@ use App\Models\CreditNoteItem;
 use App\Models\Customer;
 use App\Models\MailTemplate;
 use App\Models\ManageStock;
+use App\Models\Product;
 use App\Models\Sale;
 use App\Models\SaleItem;
 use App\Models\SaleReturn;
@@ -123,9 +124,14 @@ class SaleReturnRepository extends BaseRepository
                         + $yaAcreditadoPorCreditNote->get($productId, 0);
                     $disponible = $vendido - $yaDevuelto;
 
-                    if ($item['quantity'] > $disponible + 0.001) {
+                    // $vendido/$yaDevuelto están en unidades base -- hay
+                    // que convertir la cantidad del request (que puede
+                    // venir en unidades de presentación) antes de comparar.
+                    $cantidadBase = $this->baseUnitsQuantity($item);
+
+                    if ($cantidadBase > $disponible + 0.001) {
                         throw new UnprocessableEntityHttpException(
-                            "No se puede devolver {$item['quantity']} unidades de ese producto -- ".
+                            "No se puede devolver {$cantidadBase} unidades de ese producto -- ".
                             "la venta solo tiene {$disponible} disponibles para devolver ".
                             "(ya se vendieron {$vendido}, y ya se devolvieron {$yaDevuelto} entre devoluciones ".
                             "y notas de crédito anteriores)."
@@ -145,8 +151,10 @@ class SaleReturnRepository extends BaseRepository
             $saleReturn = $this->storeSaleReturnItems($saleReturn, $input);
 
             foreach ($input['sale_return_items'] as $purchaseItem) {
+                $cantidadBase = $this->baseUnitsQuantity($purchaseItem);
                 $product = ManageStock::whereWarehouseId($input['warehouse_id'])
                     ->whereProductId($purchaseItem['product_id'])
+                    ->lockForUpdate()
                     ->first();
                 $saleExist = SaleItem::where('product_id', $purchaseItem['product_id'])->whereHas('sale',
                     function (Builder $q) use ($input) {
@@ -155,16 +163,14 @@ class SaleReturnRepository extends BaseRepository
                     })->exists();
                 if ($saleExist) {
                     if ($product) {
-                        if ($product->quantity >= $purchaseItem['quantity']) {
-                            $product->update([
-                                'quantity' => $product->quantity + $purchaseItem['quantity'],
-                            ]);
-                        }
+                        $product->update([
+                            'quantity' => $product->quantity + $cantidadBase,
+                        ]);
                     } else {
                         ManageStock::create([
                             'warehouse_id' => $input['warehouse_id'],
                             'product_id' => $purchaseItem['product_id'],
-                            'quantity' => $purchaseItem['quantity'],
+                            'quantity' => $cantidadBase,
                         ]);
                     }
                 } else {
@@ -266,8 +272,11 @@ class SaleReturnRepository extends BaseRepository
             //                throw new UnprocessableEntityHttpException('There is no quantity remains to return.');
             //            }
 
-            if ($saleReturnItem['quantity'] > $saleOfProduct) {
-                throw new UnprocessableEntityHttpException('Sales quantity is '.$saleOfProduct.' and you are trying to return '.$saleReturnItem['quantity']);
+            // $saleOfProduct viene de SaleItem.quantity (unidades base) --
+            // hay que convertir antes de comparar, igual que arriba.
+            $cantidadBaseDevuelta = $this->baseUnitsQuantity($saleReturnItem);
+            if ($cantidadBaseDevuelta > $saleOfProduct) {
+                throw new UnprocessableEntityHttpException('Sales quantity is '.$saleOfProduct.' and you are trying to return '.$cantidadBaseDevuelta);
             }
 
             //            $existingReturnProducts = SaleReturnItem::where('product_id',  $saleReturnItem['product_id'])
@@ -319,6 +328,30 @@ class SaleReturnRepository extends BaseRepository
         $saleReturn->update($input);
 
         return $saleReturn;
+    }
+
+    /**
+     * Solo la conversión de presentación (caja/six-pack/etc.) a unidades
+     * base -- sin recalcular precio/descuento/impuesto. Reutilizable en
+     * los puntos que necesitan comparar o mover stock con la cantidad
+     * real sin pasar por calculationSaleReturnItems() completo.
+     */
+    private function baseUnitsQuantity(array $item): float
+    {
+        $quantity = (float) ($item['quantity'] ?? 0);
+        if (empty($item['product_presentation_id'])) {
+            return $quantity;
+        }
+        $product = Product::whereId($item['product_id'])->first();
+        if (!$product || !$product->manage_presentations) {
+            return $quantity;
+        }
+        $presentation = $product->presentations()->whereId($item['product_presentation_id'])->first();
+        if (!$presentation) {
+            throw new UnprocessableEntityHttpException('Presentación inválida para el producto ' . $product->name);
+        }
+
+        return $quantity * $presentation->equivalence;
     }
 
     /**
@@ -385,6 +418,25 @@ class SaleReturnRepository extends BaseRepository
         }
         $saleReturnItem['sub_total'] = ($saleReturnItem['net_unit_price'] + $perItemTaxAmount) * $saleReturnItem['quantity'];
 
+        // Equivalencia de presentación -- mismo patrón que
+        // SaleRepository/CreditNoteRepository. 'quantity' pasa a
+        // representar unidades base de inventario a partir de acá.
+        $presentationQuantity = $saleReturnItem['quantity'];
+        $equivalence = 1;
+        if (!empty($saleReturnItem['product_presentation_id'])) {
+            $product = Product::whereId($saleReturnItem['product_id'])->first();
+            if ($product && $product->manage_presentations) {
+                $presentation = $product->presentations()->whereId($saleReturnItem['product_presentation_id'])->first();
+                if (!$presentation) {
+                    throw new UnprocessableEntityHttpException('Presentación inválida para el producto ' . $product->name);
+                }
+                $equivalence = $presentation->equivalence;
+            }
+        }
+        $saleReturnItem['presentation_quantity'] = $presentationQuantity;
+        $saleReturnItem['presentation_equivalence'] = $equivalence;
+        $saleReturnItem['quantity'] = $presentationQuantity * $equivalence;
+
         return $saleReturnItem;
     }
 
@@ -429,8 +481,9 @@ class SaleReturnRepository extends BaseRepository
                 //                throw new UnprocessableEntityHttpException('There is no quantity remains to return.');
                 //            }
 
-                if ($saleReturnItemArray['quantity'] > $saleOfProduct) {
-                    throw new UnprocessableEntityHttpException('Sales quantity is '.$saleOfProduct.' and you are trying to return '.$saleReturnItemArray['quantity']);
+                $cantidadBaseDevuelta = $this->baseUnitsQuantity($saleReturnItemArray);
+                if ($cantidadBaseDevuelta > $saleOfProduct) {
+                    throw new UnprocessableEntityHttpException('Sales quantity is '.$saleOfProduct.' and you are trying to return '.$cantidadBaseDevuelta);
                 }
 
                 $existingReturnProducts = SaleReturnItem::where('product_id', $saleReturnItemArray['product_id'])

@@ -3,6 +3,7 @@
 namespace App\Repositories;
 
 use App\Models\ManageStock;
+use App\Models\Product;
 use App\Models\PurchaseItem;
 use App\Models\PurchaseReturn;
 use App\Models\PurchaseReturnItem;
@@ -88,14 +89,18 @@ class PurchaseReturnRepository extends BaseRepository
 
             $purchaseReturn = $this->storePurchaseReturnItems($purchaseReturn, $input);
             foreach ($input['purchase_return_items'] as $saleItem) {
-                $product = ManageStock::whereWarehouseId($input['warehouse_id'])->whereProductId($saleItem['product_id'])->first();
+                // Cantidad real en unidades base -- antes acá se usaba
+                // $saleItem['quantity'] crudo (unidades de presentación
+                // si se eligió una), descontando de menos del stock.
+                $cantidadBase = $this->baseUnitsQuantity($saleItem);
+                $product = ManageStock::whereWarehouseId($input['warehouse_id'])->whereProductId($saleItem['product_id'])->lockForUpdate()->first();
                 $purchaseExist = PurchaseItem::where('product_id', $saleItem['product_id'])->whereHas('purchase',
                     function (Builder $q) use ($input) {
                         $q->where('supplier_id', $input['supplier_id'])->where('warehouse_id', $input['warehouse_id']);
                     })->exists();
                 if ($purchaseExist) {
-                    if ($product && $product->quantity >= $saleItem['quantity']) {
-                        $totalQuantity = $product->quantity - $saleItem['quantity'];
+                    if ($product && $product->quantity >= $cantidadBase) {
+                        $totalQuantity = $product->quantity - $cantidadBase;
                         $product->update([
                             'quantity' => $totalQuantity,
                         ]);
@@ -155,6 +160,28 @@ class PurchaseReturnRepository extends BaseRepository
     }
 
     /**
+     * Solo la conversión de presentación a unidades base -- ver el mismo
+     * helper en SaleReturnRepository.
+     */
+    private function baseUnitsQuantity(array $item): float
+    {
+        $quantity = (float) ($item['quantity'] ?? 0);
+        if (empty($item['product_presentation_id'])) {
+            return $quantity;
+        }
+        $product = Product::whereId($item['product_id'])->first();
+        if (!$product || !$product->manage_presentations) {
+            return $quantity;
+        }
+        $presentation = $product->presentations()->whereId($item['product_presentation_id'])->first();
+        if (!$presentation) {
+            throw new UnprocessableEntityHttpException('Presentación inválida para el producto ' . $product->name);
+        }
+
+        return $quantity * $presentation->equivalence;
+    }
+
+    /**
      * @return mixed
      */
     public function calculationPurchaseReturnItems($purchaseReturnItem)
@@ -199,6 +226,24 @@ class PurchaseReturnRepository extends BaseRepository
             throw new UnprocessableEntityHttpException('Please enter tax value between 0 to 100 ');
         }
         $purchaseReturnItem['sub_total'] = ($purchaseReturnItem['net_unit_cost'] + $perItemTaxAmount) * $purchaseReturnItem['quantity'];
+
+        // Equivalencia de presentación -- 'quantity' pasa a representar
+        // unidades base de inventario a partir de acá.
+        $presentationQuantity = $purchaseReturnItem['quantity'];
+        $equivalence = 1;
+        if (!empty($purchaseReturnItem['product_presentation_id'])) {
+            $product = Product::whereId($purchaseReturnItem['product_id'])->first();
+            if ($product && $product->manage_presentations) {
+                $presentation = $product->presentations()->whereId($purchaseReturnItem['product_presentation_id'])->first();
+                if (!$presentation) {
+                    throw new UnprocessableEntityHttpException('Presentación inválida para el producto ' . $product->name);
+                }
+                $equivalence = $presentation->equivalence;
+            }
+        }
+        $purchaseReturnItem['presentation_quantity'] = $presentationQuantity;
+        $purchaseReturnItem['presentation_equivalence'] = $equivalence;
+        $purchaseReturnItem['quantity'] = $presentationQuantity * $equivalence;
 
         return $purchaseReturnItem;
     }
