@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { useParams, Link } from "react-router-dom";
+import SweetAlert from "react-bootstrap-sweetalert";
 import apiConfig from "../../config/apiConfig";
 import MasterLayout from "../MasterLayout";
 
@@ -22,9 +23,31 @@ const CreditNoteDetails = () => {
     const [cargando, setCargando] = useState(true);
     const [emitiendo, setEmitiendo] = useState(false);
     const [mensajeEmision, setMensajeEmision] = useState(null);
+    const [confirmandoCancelacion, setConfirmandoCancelacion] = useState(false);
+    const [cancelando, setCancelando] = useState(false);
 
     const recargar = () => {
         apiConfig.get(`/credit-notes/${id}`).then((res) => setCreditNote(res.data.data));
+    };
+
+    const cancelarNota = () => {
+        setCancelando(true);
+        apiConfig
+            .post(`/credit-notes/${id}/cancelar`)
+            .then((res) => {
+                setMensajeEmision({ tipo: 'success', texto: res.data.message });
+                recargar();
+            })
+            .catch((error) => {
+                setMensajeEmision({
+                    tipo: 'danger',
+                    texto: error?.response?.data?.message || 'No se pudo cancelar la nota de crédito.',
+                });
+            })
+            .finally(() => {
+                setCancelando(false);
+                setConfirmandoCancelacion(false);
+            });
     };
 
     const emitir = () => {
@@ -74,9 +97,14 @@ const CreditNoteDetails = () => {
     return (
         <MasterLayout>
             <div className="d-flex justify-content-between align-items-center mb-4">
-                <h4 className="mb-0">Nota de Crédito {creditNote.reference_code}</h4>
+                <h4 className="mb-0 d-flex align-items-center gap-2">
+                    Nota de Crédito {creditNote.reference_code}
+                    {creditNote.esta_cancelada && (
+                        <span className="badge bg-secondary">Cancelada</span>
+                    )}
+                </h4>
                 <div className="d-flex gap-2">
-                    {!creditNote.electronic_invoice_estado && (
+                    {!creditNote.electronic_invoice_estado && !creditNote.esta_cancelada && (
                         <button
                             className="btn btn-primary d-inline-flex align-items-center gap-2"
                             onClick={emitir}
@@ -95,9 +123,41 @@ const CreditNoteDetails = () => {
                             )}
                         </button>
                     )}
+                    {creditNote.puede_cancelarse && (
+                        <button
+                            className="btn btn-outline-danger d-inline-flex align-items-center gap-2"
+                            onClick={() => setConfirmandoCancelacion(true)}
+                            disabled={cancelando}
+                        >
+                            <i className="bi bi-x-circle" style={{ fontSize: 14 }} />
+                            Cancelar nota
+                        </button>
+                    )}
                     <Link to="/app/credit-notes" className="btn btn-outline-primary">‹ Volver al listado</Link>
                 </div>
             </div>
+
+            {confirmandoCancelacion && (
+                <SweetAlert
+                    custom
+                    confirmBtnBsStyle='danger mb-3 fs-5 rounded'
+                    cancelBtnBsStyle='secondary mb-3 fs-5 rounded text-white'
+                    confirmBtnText='Sí, cancelar nota'
+                    cancelBtnText='Volver'
+                    title='¿Cancelar esta nota de crédito?'
+                    onConfirm={cancelarNota}
+                    onCancel={() => setConfirmandoCancelacion(false)}
+                    showCancel
+                    focusCancelBtn
+                    disabled={cancelando}
+                >
+                    <span className='sweet-text'>
+                        {creditNote.concepto === 'POR_DEVOLUCION'
+                            ? 'Esto revierte el stock que esta nota había devuelto al inventario y anula su efecto sobre el saldo disponible de la factura. Esta acción no se puede deshacer.'
+                            : 'Esto anula el efecto de esta nota sobre el saldo disponible de la factura. Esta acción no se puede deshacer.'}
+                    </span>
+                </SweetAlert>
+            )}
 
             {mensajeEmision && (() => {
                 const iconMap = {

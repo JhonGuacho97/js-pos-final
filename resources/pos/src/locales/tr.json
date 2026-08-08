@@ -808,5 +808,11 @@
     "variation.type.select.validate.error.message": "Lütfen varyasyon türleri seçin",
     "products.warehouse.title": "Ürün Deposu",
     "barcode-symbol-uppercase-validation-message": "Kod 39 barkodu için lütfen yalnızca büyük harf ve rakam girin.",
-    "sale.product-qty.limit.validate.message": "Limit miktarından fazlasını satın alamazsınız."
+    "sale.product-qty.limit.validate.message": "Limit miktarından fazlasını satın alamazsınız.",
+    "settings.backup.title": "Veritabanı Yedeği",
+    "settings.backup.description": "Veritabanınızın tam bir yedeğini indirin.",
+    "settings.backup.generating": "Yedek oluşturuluyor...",
+    "settings.backup.button": "Yedeği İndir",
+    "backup.success.message": "Yedek başarıyla indirildi.",
+    "backup.error.message": "Yedek oluşturulurken bir hata oluştu."
 }

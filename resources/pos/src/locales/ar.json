@@ -808,5 +808,11 @@
     "product.type.input.validation.error": "الرجاء تحديد نوع المنتج",
     "products.warehouse.title": "مستودع المنتج",
     "barcode-symbol-uppercase-validation-message": "الرجاء إدخال الأحرف الكبيرة والأرقام فقط للرمز الشريطي Code 39.",
-    "sale.product-qty.limit.validate.message": "لا يمكنك شراء أكثر من الكمية المحددة"
+    "sale.product-qty.limit.validate.message": "لا يمكنك شراء أكثر من الكمية المحددة",
+    "settings.backup.title": "نسخ احتياطي لقاعدة البيانات",
+    "settings.backup.description": "قم بتنزيل نسخة احتياطية كاملة من قاعدة بياناتك.",
+    "settings.backup.generating": "جارٍ إنشاء النسخة الاحتياطية...",
+    "settings.backup.button": "تنزيل النسخة الاحتياطية",
+    "backup.success.message": "تم تنزيل النسخة الاحتياطية بنجاح.",
+    "backup.error.message": "حدث خطأ أثناء إنشاء النسخة الاحتياطية."
 }

@@ -813,5 +813,11 @@
     "variation.type.select.validate.error.message": "Vui lòng chọn loại biến thể",
     "products.warehouse.title": "Kho sản phẩm",
     "barcode-symbol-uppercase-validation-message": "Vui lòng chỉ nhập chữ in hoa và số cho mã vạch Mã 39.",
-    "sale.product-qty.limit.validate.message": "Bạn không thể mua nhiều hơn số lượng giới hạn"
+    "sale.product-qty.limit.validate.message": "Bạn không thể mua nhiều hơn số lượng giới hạn",
+    "settings.backup.title": "Sao lưu cơ sở dữ liệu",
+    "settings.backup.description": "Tải xuống bản sao lưu đầy đủ của cơ sở dữ liệu của bạn.",
+    "settings.backup.generating": "Đang tạo bản sao lưu...",
+    "settings.backup.button": "Tải xuống bản sao lưu",
+    "backup.success.message": "Đã tải xuống bản sao lưu thành công.",
+    "backup.error.message": "Đã xảy ra lỗi khi tạo bản sao lưu."
 }

@@ -18,7 +18,7 @@ const ActionDropDownButton = (props) => {
         onCreatePaymentClick, onCreateSaleClick, isCreatesSales,
         isReceiptShow = false, onShowReceiptClick,
         isRideDownload = false, rideUrl = null,
-        isEmitirFacturaShow = false, onEmitirFacturaClick
+        isEmitirFacturaShow = false, onEmitirFacturaClick, isEmitiendoFactura = false
     } = props;
 
 
@@ -93,13 +93,17 @@ const ActionDropDownButton = (props) => {
                     <Dropdown.Item
                         onClick={(e) => {
                             e.stopPropagation();
+                            if (isEmitiendoFactura) {
+                                return;
+                            }
                             onEmitirFacturaClick(item);
                         }}
                         eventKey='emitir-factura'
+                        disabled={isEmitiendoFactura}
                         className='py-3 px-4 d-flex align-items-center fs-6'
                     >
                         <img src="https://res.cloudinary.com/dxt0es7sj/image/upload/v1785960274/sri_negro_ct8qgt.svg" alt="SRI" className='me-2' />
-                        Emitir Factura
+                        {isEmitiendoFactura ? 'Emitiendo...' : 'Emitir Factura'}
                     </Dropdown.Item>
                     : null}
 

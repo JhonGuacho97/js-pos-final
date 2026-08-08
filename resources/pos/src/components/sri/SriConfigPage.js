@@ -115,6 +115,21 @@ const SriConfigPage = () => {
         <MasterLayout>
             <HeaderTitle title="Configuración Facturación Electrónica SRI" to="/app/settings" />
 
+            {String(config.sri_ambiente) === "1" && (
+                <div
+                    className="d-flex align-items-start gap-2 p-3 mb-4 rounded"
+                    style={{ backgroundColor: "#fffbe6", border: "1px solid #ffe58f", borderLeft: "5px solid #faad14" }}
+                >
+                    <i className="fas fa-exclamation-triangle mt-1" style={{ color: "#ad6800" }}></i>
+                    <div style={{ color: "#874d00" }}>
+                        <strong>Ambiente configurado en Pruebas (celcer.sri.gob.ec).</strong>{" "}
+                        Los comprobantes que se emitan ahora, aunque el SRI los marque "AUTORIZADA", <strong>no son documentos tributarios válidos</strong> --
+                        son solo para certificación/desarrollo. Si este negocio ya está facturando de verdad a clientes, cambiá "Ambiente" a
+                        "Producción" abajo antes de seguir emitiendo.
+                    </div>
+                </div>
+            )}
+
             <div className="card mb-4">
                 <div className="card-header">
                     <h5 className="mb-0">Certificado de Firma Electrónica (.p12)</h5>
