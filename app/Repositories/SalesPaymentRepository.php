@@ -66,6 +66,20 @@ class SalesPaymentRepository extends BaseRepository
 
             $saleAmount = $sale->grand_total;
             $payAmount = $input['amount'];
+
+            // Antes no había límite server-side: un pago mayor al saldo
+            // pendiente se aceptaba igual (solo el frontend lo evitaba),
+            // pudiendo inflar paid_amount por encima del total sin ningún
+            // registro de a dónde fue el excedente (a diferencia del
+            // flujo de venta nueva, este endpoint no tiene noción de
+            // "vuelto").
+            $saldoPendiente = round($saleAmount - $existAmount, 2);
+            if (round($payAmount, 2) > $saldoPendiente + 0.01) {
+                throw new UnprocessableEntityHttpException(
+                    "El monto del pago (\${$payAmount}) no puede ser mayor al saldo pendiente (\${$saldoPendiente})."
+                );
+            }
+
             $paidAmount = $existAmount + $payAmount;
 
             $paymentStatus = Sale::PARTIAL_PAID;

@@ -8,6 +8,7 @@ use App\Http\Resources\SalesPaymentResource;
 use App\Models\Sale;
 use App\Models\SalesPayment;
 use App\Repositories\SalesPaymentRepository;
+use Exception;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Symfony\Component\HttpKernel\Exception\UnprocessableEntityHttpException;

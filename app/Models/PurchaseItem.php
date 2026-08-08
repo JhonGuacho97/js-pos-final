@@ -87,7 +87,7 @@ class PurchaseItem extends BaseModel implements JsonResourceful
         'discount_value' => 'nullable|numeric',
         'discount_amount' => 'nullable|numeric',
         'purchase_unit' => 'nullable|numeric',
-        'quantity' => 'nullable|numeric',
+        'quantity' => 'required|numeric|min:0.01',
         'sub_total' => 'nullable|numeric',
         'unit_id' => 'integer',
     ];

@@ -11,6 +11,7 @@ use App\Models\Adjustment;
 use App\Models\AdjustmentItem;
 use App\Models\ManageStock;
 use App\Repositories\AdjustmentRepository;
+use Exception;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Symfony\Component\HttpKernel\Exception\UnprocessableEntityHttpException;

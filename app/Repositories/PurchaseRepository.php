@@ -260,7 +260,7 @@ class PurchaseRepository extends BaseRepository
                 foreach ($removeItemIds as $removeItemId) {
                     // remove quantity manage storage
                     $oldProduct = PurchaseItem::whereId($removeItemId)->first();
-                    $productQuantity = ManageStock::whereWarehouseId($input['warehouse_id'])->whereProductId($oldProduct->product_id)->first();
+                    $productQuantity = ManageStock::whereWarehouseId($input['warehouse_id'])->whereProductId($oldProduct->product_id)->lockForUpdate()->first();
                     if ($productQuantity && $oldProduct) {
                         if ($oldProduct->quantity <= $productQuantity->quantity) {
                             $productQuantity->update([
@@ -323,7 +323,7 @@ class PurchaseRepository extends BaseRepository
             $purchaseItem = $this->calculationPurchaseItems($purchaseItem);
             $item = PurchaseItem::whereId($purchaseItem['purchase_item_id']);
             // update stock manage
-            $product = ManageStock::whereWarehouseId($warehouseId)->whereProductId($purchaseItem['product_id'])->first();
+            $product = ManageStock::whereWarehouseId($warehouseId)->whereProductId($purchaseItem['product_id'])->lockForUpdate()->first();
             $oldItem = PurchaseItem::whereId($purchaseItem['purchase_item_id'])->first();
             $totalQuantity = 0;
             if ($product && $oldItem && $oldItem->quantity != $purchaseItem['quantity']) {

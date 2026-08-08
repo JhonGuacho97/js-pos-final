@@ -112,7 +112,11 @@ class SaleRepository extends BaseRepository
                     ? $productModel->convertToBaseUnits($saleItem['quantity'], $saleItem['product_presentation_id'] ?? null)
                     : $saleItem['quantity'];
 
-                $product = ManageStock::whereWarehouseId($input['warehouse_id'])->whereProductId($saleItem['product_id'])->first();
+                // lockForUpdate() dentro de la transacción -- evita que dos
+                // ventas concurrentes del mismo producto lean el mismo
+                // stock antes de que ninguna haga commit (lost update /
+                // sobreventa).
+                $product = ManageStock::whereWarehouseId($input['warehouse_id'])->whereProductId($saleItem['product_id'])->lockForUpdate()->first();
                 if ($product && $product->quantity >= $baseUnitsQuantity) {
                     $totalQuantity = $product->quantity - $baseUnitsQuantity;
                     $product->update([
@@ -123,99 +127,122 @@ class SaleRepository extends BaseRepository
                 }
             }
 
-            $mailTemplate = MailTemplate::where('type', MailTemplate::MAIL_TYPE_SALE)->first();
-            $smsTemplate = SmsTemplate::where('type', SmsTemplate::SMS_TYPE_SALE)->first();
-
-            $subject = 'Venta al cliente';
-
-            $customer = Customer::whereId($sale->customer_id)->first();
-
-            $search = [
-                '{customer_name}',
-                '{sales_id}',
-                '{sales_date}',
-                '{sales_amount}',
-                '{paid_amount}',
-                '{due_amount}',
-                '{app_name}',
-            ];
-
-            $totalPayAmount = SalesPayment::whereSaleId($sale->id)->sum('amount');
-
-            $dueAmount = $sale->grand_total - $totalPayAmount;
-
-            $payAmount = 0;
-
-            if (($dueAmount < 0) || ($sale->payment_status == Sale::PAID)) {
-                $dueAmount = 0;
-                $payAmount = $sale->grand_total;
-            }
-
-            $payAmount = number_format($payAmount, 2);
-            $dueAmount = number_format($dueAmount, 2);
-
-            $replace = [
-                $customer->name,
-                $sale->reference_code,
-                $sale->date,
-                number_format($sale->grand_total, 2),
-                $payAmount,
-                $dueAmount,
-                getSettingValue('company_name'),
-            ];
-
-            if (!empty($mailTemplate) && $mailTemplate->status == MailTemplate::ACTIVE) {
-                $data['data'] = str_replace($search, $replace, $mailTemplate->content);
-
-                Mail::to($customer->email)
-                    ->send(new MailSender('emails.mail-sender', $subject, $data));
-            }
-
-            if (!empty($smsTemplate) && $smsTemplate->status == SmsTemplate::ACTIVE) {
-                $message = str_replace($search, $replace, $smsTemplate->content);
-
-                $client = new \GuzzleHttp\Client();
-
-                $url = SmsSetting::where('key', 'url')->value('value');
-                // $token = SmsSetting::where('key', 'token')->value('value');
-                //            $url = "https://xrjv8e.api.infobip.com/sms/2/text/advanced";
-
-                $data = SmsSetting::where('key', 'payload')->value('value');
-
-                $data = preg_replace('/\s/', '', $data);
-
-                $data = json_decode($data, true);
-
-                $toKey = SmsSetting::where('key', 'mobile_key')->value('value');
-                $number = $customer->phone;
-
-                $messageKey = SmsSetting::where('key', 'message_key')->value('value');
-
-                $data = replaceArrayValue($data, $toKey, $number);
-                $data = replaceArrayValue($data, $messageKey, $message);
-
-                $response = $client->post($url, [
-                    'headers' => [
-                        'Content-Type' => 'application/json',
-                        'Accept' => 'application/json',
-                    ],
-                    'form_params' => [$data],
-                ]);
-            }
-
             DB::commit();
-
-            return $sale;
         } catch (Exception $e) {
             DB::rollBack();
             throw new UnprocessableEntityHttpException($e->getMessage());
+        }
+
+        // Correo/SMS de confirmación -- va DESPUÉS del commit, a
+        // propósito. Antes esto vivía dentro de la misma transacción de
+        // la venta: si el proveedor de correo/SMS fallaba o tardaba, una
+        // venta perfectamente válida (stock y pago ya correctos) se
+        // revertía entera solo porque la notificación falló, y además la
+        // transacción se mantenía abierta reteniendo los locks de stock
+        // mientras esperaba una llamada HTTP externa. Un fallo acá ya no
+        // puede deshacer la venta -- solo se loguea.
+        try {
+            $this->enviarNotificacionesVenta($sale);
+        } catch (\Throwable $e) {
+            \Illuminate\Support\Facades\Log::warning(
+                "storeSale: la venta {$sale->id} se guardó correctamente pero falló el envío de la notificación: " . $e->getMessage()
+            );
+        }
+
+        return $sale;
+    }
+
+    /**
+     * Correo y SMS de confirmación de venta -- extraído de storeSale()
+     * para poder llamarlo DESPUÉS del commit de la transacción.
+     */
+    private function enviarNotificacionesVenta(Sale $sale): void
+    {
+        $mailTemplate = MailTemplate::where('type', MailTemplate::MAIL_TYPE_SALE)->first();
+        $smsTemplate = SmsTemplate::where('type', SmsTemplate::SMS_TYPE_SALE)->first();
+
+        $subject = 'Venta al cliente';
+
+        $customer = Customer::whereId($sale->customer_id)->first();
+
+        $search = [
+            '{customer_name}',
+            '{sales_id}',
+            '{sales_date}',
+            '{sales_amount}',
+            '{paid_amount}',
+            '{due_amount}',
+            '{app_name}',
+        ];
+
+        $totalPayAmount = SalesPayment::whereSaleId($sale->id)->sum('amount');
+
+        $dueAmount = $sale->grand_total - $totalPayAmount;
+
+        $payAmount = 0;
+
+        if (($dueAmount < 0) || ($sale->payment_status == Sale::PAID)) {
+            $dueAmount = 0;
+            $payAmount = $sale->grand_total;
+        }
+
+        $payAmount = number_format($payAmount, 2);
+        $dueAmount = number_format($dueAmount, 2);
+
+        $replace = [
+            $customer->name,
+            $sale->reference_code,
+            $sale->date,
+            number_format($sale->grand_total, 2),
+            $payAmount,
+            $dueAmount,
+            getSettingValue('company_name'),
+        ];
+
+        if (!empty($mailTemplate) && $mailTemplate->status == MailTemplate::ACTIVE) {
+            $data['data'] = str_replace($search, $replace, $mailTemplate->content);
+
+            Mail::to($customer->email)
+                ->send(new MailSender('emails.mail-sender', $subject, $data));
+        }
+
+        if (!empty($smsTemplate) && $smsTemplate->status == SmsTemplate::ACTIVE) {
+            $message = str_replace($search, $replace, $smsTemplate->content);
+
+            $client = new \GuzzleHttp\Client();
+
+            $url = SmsSetting::where('key', 'url')->value('value');
+            // $token = SmsSetting::where('key', 'token')->value('value');
+            //            $url = "https://xrjv8e.api.infobip.com/sms/2/text/advanced";
+
+            $data = SmsSetting::where('key', 'payload')->value('value');
+
+            $data = preg_replace('/\s/', '', $data);
+
+            $data = json_decode($data, true);
+
+            $toKey = SmsSetting::where('key', 'mobile_key')->value('value');
+            $number = $customer->phone;
+
+            $messageKey = SmsSetting::where('key', 'message_key')->value('value');
+
+            $data = replaceArrayValue($data, $toKey, $number);
+            $data = replaceArrayValue($data, $messageKey, $message);
+
+            $client->post($url, [
+                'headers' => [
+                    'Content-Type' => 'application/json',
+                    'Accept' => 'application/json',
+                ],
+                'form_params' => [$data],
+            ]);
         }
     }
 
     /**
      * @return mixed
      */
-    public function calculationSaleItems($saleItem)
+    public function calculationSaleItems($saleItem, $warehouseId = null)
     {
         $validator = Validator::make($saleItem, SaleItem::$rules);
         if ($validator->fails()) {
@@ -231,20 +258,32 @@ class SaleRepository extends BaseRepository
         // siga funcionando exactamente igual que hoy, sin cambios.
         $presentationQuantity = $saleItem['quantity'];
         $equivalence = 1;
+        $presentation = null;
 
-        if (!empty($saleItem['product_presentation_id'])) {
-            $product = Product::whereId($saleItem['product_id'])->first();
-            if ($product && $product->manage_presentations) {
-                $presentation = $product->presentations()->whereId($saleItem['product_presentation_id'])->first();
-                if (!$presentation) {
-                    throw new UnprocessableEntityHttpException('Presentación inválida para el producto ' . $product->name);
-                }
-                $equivalence = $presentation->equivalence;
+        $product = Product::whereId($saleItem['product_id'])->first();
+        if (!$product) {
+            throw new UnprocessableEntityHttpException('Producto no encontrado.');
+        }
+
+        if (!empty($saleItem['product_presentation_id']) && $product->manage_presentations) {
+            $presentation = $product->presentations()->whereId($saleItem['product_presentation_id'])->first();
+            if (!$presentation) {
+                throw new UnprocessableEntityHttpException('Presentación inválida para el producto ' . $product->name);
             }
+            $equivalence = $presentation->equivalence;
         }
 
         $saleItem['presentation_quantity'] = $presentationQuantity;
         $saleItem['presentation_equivalence'] = $equivalence;
+
+        // Precio autoritativo: NUNCA se confía en el product_price que llega
+        // del cliente -- se recalcula siempre desde el precio real del
+        // producto o de la presentación en BD (con override por sucursal si
+        // existe), para que no se pueda vender a un precio manipulado
+        // enviando un product_price distinto en el request.
+        $saleItem['product_price'] = $presentation
+            ? $presentation->priceForWarehouse($warehouseId)
+            : $product->priceForWarehouse($warehouseId);
 
         //discount calculation
         $perItemDiscountAmount = 0;
@@ -307,7 +346,7 @@ class SaleRepository extends BaseRepository
             if (!empty($product) && isset($product->quantity_limit) && $quantityInBaseUnits > $product->quantity_limit) {
                 throw new UnprocessableEntityHttpException('Please enter less than ' . $product->quantity_limit . ' quantity of ' . $product->name . ' product.');
             }
-            $item = $this->calculationSaleItems($saleItem);
+            $item = $this->calculationSaleItems($saleItem, $input['warehouse_id'] ?? null);
             $saleItem = new SaleItem($item);
             $sale->saleItems()->save($saleItem);
         }
@@ -320,7 +359,17 @@ class SaleRepository extends BaseRepository
             throw new UnprocessableEntityHttpException('Discount amount should not be greater than total.');
         }
         if ($input['tax_rate'] <= 100 && $input['tax_rate'] >= 0) {
-            $input['tax_amount'] = $input['grand_total'] * $input['tax_rate'] / 100;
+            // $subTotalAmount (y por lo tanto grand_total en este punto) ya
+            // incluye el impuesto de CADA línea (SaleItem.tax_amount) --
+            // aplicar tax_rate directamente sobre eso cobra impuesto sobre
+            // el impuesto ya cobrado por línea. Se resta lo ya gravado por
+            // línea antes de aplicar el impuesto de orden, para que ambos
+            // mecanismos no se acumulen entre sí (si las líneas no tienen
+            // impuesto propio, esto no cambia nada: sigue funcionando
+            // igual que antes).
+            $impuestoYaAplicadoPorLinea = $sale->saleItems()->sum('tax_amount');
+            $baseParaImpuestoDeOrden = $input['grand_total'] - $impuestoYaAplicadoPorLinea;
+            $input['tax_amount'] = $baseParaImpuestoDeOrden * $input['tax_rate'] / 100;
         } else {
             throw new UnprocessableEntityHttpException('Please enter tax value between 0 to 100.');
         }
@@ -466,7 +515,7 @@ class SaleRepository extends BaseRepository
                 $this->updateItem($saleItemArray, $input['warehouse_id']);
                 //create new product items
                 if (is_null($saleItem['sale_item_id'])) {
-                    $saleItem = $this->calculationSaleItems($saleItem);
+                    $saleItem = $this->calculationSaleItems($saleItem, $input['warehouse_id']);
                     $saleItemArray = Arr::only($saleItem, [
                         'product_id',
                         'product_presentation_id',
@@ -485,7 +534,7 @@ class SaleRepository extends BaseRepository
                         'sub_total',
                     ]);
                     $sale->saleItems()->create($saleItemArray);
-                    $product = ManageStock::whereWarehouseId($input['warehouse_id'])->whereProductId($saleItem['product_id'])->first();
+                    $product = ManageStock::whereWarehouseId($input['warehouse_id'])->whereProductId($saleItem['product_id'])->lockForUpdate()->first();
                     if ($product) {
                         if ($product->quantity >= $saleItem['quantity']) {
                             $product->update([
@@ -503,7 +552,7 @@ class SaleRepository extends BaseRepository
                 foreach ($removeItemIds as $removeItemId) {
                     // remove quantity manage storage
                     $oldProduct = SaleItem::whereId($removeItemId)->first();
-                    $productQuantity = ManageStock::whereWarehouseId($input['warehouse_id'])->whereProductId($oldProduct->product_id)->first();
+                    $productQuantity = ManageStock::whereWarehouseId($input['warehouse_id'])->whereProductId($oldProduct->product_id)->lockForUpdate()->first();
                     if ($productQuantity) {
                         if ($oldProduct) {
                             $productQuantity->update([
@@ -535,9 +584,9 @@ class SaleRepository extends BaseRepository
     public function updateItem($saleItem, $warehouseId): bool
     {
         try {
-            $saleItem = $this->calculationSaleItems($saleItem);
+            $saleItem = $this->calculationSaleItems($saleItem, $warehouseId);
             $item = SaleItem::whereId($saleItem['sale_item_id']);
-            $product = ManageStock::whereWarehouseId($warehouseId)->whereProductId($saleItem['product_id'])->first();
+            $product = ManageStock::whereWarehouseId($warehouseId)->whereProductId($saleItem['product_id'])->lockForUpdate()->first();
             $oldItem = SaleItem::whereId($saleItem['sale_item_id'])->first();
             if ($oldItem && $oldItem->quantity != $saleItem['quantity']) {
                 $totalQuantity = 0;
@@ -555,10 +604,14 @@ class SaleRepository extends BaseRepository
                         ]);
                     }
                 } elseif ($oldItem->quantity < $saleItem['quantity']) {
-                    $totalQuantity = $product->quantity - ($saleItem['quantity'] - $oldItem->quantity);
-                    if ($product->quantity < ($saleItem['quantity'] - $oldItem->quantity)) {
+                    // $product puede ser null si nunca se cargó inventario
+                    // inicial para este producto en esta bodega -- antes esto
+                    // producía un error fatal (Call to a member function on
+                    // null) en vez de un mensaje de negocio claro.
+                    if (!$product || $product->quantity < ($saleItem['quantity'] - $oldItem->quantity)) {
                         throw new UnprocessableEntityHttpException('Quantity must be less than Available quantity.');
                     }
+                    $totalQuantity = $product->quantity - ($saleItem['quantity'] - $oldItem->quantity);
                     $product->update([
                         'quantity' => $totalQuantity,
                     ]);
@@ -588,7 +641,11 @@ class SaleRepository extends BaseRepository
         if ($input['tax_rate'] > 100 || $input['tax_rate'] < 0) {
             throw new UnprocessableEntityHttpException('Please enter tax value between 0 to 100.');
         }
-        $input['tax_amount'] = $input['grand_total'] * $input['tax_rate'] / 100;
+        // Mismo criterio que storeSaleItems() -- no cobrar el impuesto de
+        // orden sobre una base que ya incluye el impuesto de cada línea.
+        $impuestoYaAplicadoPorLinea = $sale->saleItems()->sum('tax_amount');
+        $baseParaImpuestoDeOrden = $input['grand_total'] - $impuestoYaAplicadoPorLinea;
+        $input['tax_amount'] = $baseParaImpuestoDeOrden * $input['tax_rate'] / 100;
 
         $input['grand_total'] += $input['tax_amount'];
 

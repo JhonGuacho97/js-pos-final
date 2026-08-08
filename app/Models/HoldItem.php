@@ -82,7 +82,7 @@ class HoldItem extends BaseModel implements JsonResourceful
         'discount_value' => 'nullable|numeric',
         'discount_amount' => 'nullable|numeric',
         'sale_unit' => 'nullable|numeric',
-        'quantity' => 'nullable|numeric',
+        'quantity' => 'required|numeric|min:0.01',
         'sub_total' => 'nullable|numeric',
     ];
 
