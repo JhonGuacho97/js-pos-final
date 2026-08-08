@@ -148,7 +148,7 @@
     "globally.save-btn": "Guardar",
     "globally.cancel-btn": "Cancelar",
     "globally.edit-btn": "Editar",
-    "globally.submit-btn": "Entregar",
+    "globally.submit-btn": "Entregar", 
     "globally.edit.tooltip.label": "Editar",
     "globally.delete.tooltip.label": "Borrar",
     "globally.view.tooltip.label": "Vista",
@@ -825,5 +825,15 @@
     "variation.type.select.validate.error.message": "Por favor, seleccione tipos de variante",
     "products.warehouse.title": "Almacén de productos",
     "barcode-symbol-uppercase-validation-message": "Ingrese solo letras mayúsculas y números para el código de barras Código 39.",
-    "sale.product-qty.limit.validate.message": "No puedes comprar más que la cantidad límite."
+    "sale.product-qty.limit.validate.message": "No puedes comprar más que la cantidad límite.",
+    "confirm-modal.msg": "¿Está seguro?",
+    "globally.discount-price-length.validate.label": "El descuento no debe ser mayor al precio del producto",
+    "role.input.name.validate.label": "Por favor ingrese un nombre",
+    "settings.backup.title": "Respaldo de Base de Datos",
+    "settings.backup.description": "Descarga una copia de respaldo completa de tu base de datos.",
+    "settings.backup.generating": "Generando respaldo...",
+    "settings.backup.button": "Descargar Respaldo",
+    "backup.success.message": "Respaldo descargado correctamente.",
+    "backup.error.message": "Ocurrió un error al generar el respaldo."
+
 }

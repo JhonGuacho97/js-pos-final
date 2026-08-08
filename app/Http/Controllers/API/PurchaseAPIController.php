@@ -66,6 +66,10 @@ class PurchaseAPIController extends AppBaseController
             $purchases->where('status', $request->get('status'));
         }
 
+        if ($restricted = $this->restrictedWarehouseId()) {
+            $purchases->where('warehouse_id', $restricted);
+        }
+
         $purchases = $purchases->paginate($perPage);
 
         PurchaseResource::usingWithCollection();
@@ -75,6 +79,7 @@ class PurchaseAPIController extends AppBaseController
 
     public function store(CreatePurchaseRequest $request): PurchaseResource
     {
+        $this->authorizeWarehouseAccess($request->input('warehouse_id'));
         $input = $request->all();
         $purchase = $this->purchaseRepository->storePurchase($input);
 
@@ -84,12 +89,14 @@ class PurchaseAPIController extends AppBaseController
     public function show($id): PurchaseResource
     {
         $purchase = $this->purchaseRepository->find($id);
+        $this->authorizeWarehouseAccess($purchase->warehouse_id);
 
         return new PurchaseResource($purchase);
     }
 
     public function edit(Purchase $purchase): PurchaseResource
     {
+        $this->authorizeWarehouseAccess($purchase->warehouse_id);
         $purchase = $purchase->load('purchaseItems.product.stocks', 'warehouse');
 
         return new PurchaseResource($purchase);
@@ -97,6 +104,7 @@ class PurchaseAPIController extends AppBaseController
 
     public function update(UpdatePurchaseRequest $request, $id): PurchaseResource
     {
+        $this->authorizeWarehouseAccess(Purchase::findOrFail($id)->warehouse_id);
         $input = $request->all();
         $purchase = $this->purchaseRepository->updatePurchase($input, $id);
 
@@ -109,6 +117,7 @@ class PurchaseAPIController extends AppBaseController
             DB::beginTransaction();
             //manage stock
             $purchase = $this->purchaseRepository->with('purchaseItems')->where('id', $id)->first();
+            $this->authorizeWarehouseAccess($purchase->warehouse_id);
             foreach ($purchase->purchaseItems as $purchaseItem) {
                 $product = ManageStock::whereWarehouseId($purchase->warehouse_id)
                     ->whereProductId($purchaseItem['product_id'])
@@ -140,6 +149,7 @@ class PurchaseAPIController extends AppBaseController
      */
     public function pdfDownload(Purchase $purchase): JsonResponse
     {
+        $this->authorizeWarehouseAccess($purchase->warehouse_id);
         $purchase = $purchase->load('purchaseItems.product', 'supplier');
 
         $data = [];
@@ -159,6 +169,7 @@ class PurchaseAPIController extends AppBaseController
 
     public function purchaseInfo(Purchase $purchase): JsonResponse
     {
+        $this->authorizeWarehouseAccess($purchase->warehouse_id);
         $purchase = $purchase->load(['purchaseItems.product.variationType', 'warehouse', 'supplier']);
         $keyName = [
             'email', 'company_name', 'phone', 'address',
@@ -175,6 +186,10 @@ class PurchaseAPIController extends AppBaseController
         $purchases = $this->purchaseRepository->whereHas('purchaseItems', function ($q) use ($productId) {
             $q->where('product_id', '=', $productId);
         })->with(['purchaseItems.product.variationType', 'supplier']);
+
+        if ($restricted = $this->restrictedWarehouseId()) {
+            $purchases->where('warehouse_id', $restricted);
+        }
 
         $purchases = $purchases->paginate($perPage);
 

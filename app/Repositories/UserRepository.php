@@ -59,6 +59,9 @@ class UserRepository extends BaseRepository
             }
             $user = $this->create($input);
             if (isset($input['role_id'])) {
+                if (!Auth::user() || !Auth::user()->hasRole(Role::ADMIN)) {
+                    throw new UnprocessableEntityHttpException('No tiene permiso para asignar roles.');
+                }
                 $user->assignRole($input['role_id']);
             }
             if (isset($input['image']) && !empty($input['image'])) {
@@ -89,6 +92,9 @@ class UserRepository extends BaseRepository
             $user = $this->update($input, $id);
 
             if (isset($input['role_id'])) {
+                if (!Auth::user() || !Auth::user()->hasRole(Role::ADMIN)) {
+                    throw new UnprocessableEntityHttpException('No tiene permiso para asignar roles.');
+                }
                 $user->syncRoles($input['role_id']);
             }
             if (isset($input['image']) && $input['image']) {

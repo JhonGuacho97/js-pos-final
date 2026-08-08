@@ -14,11 +14,20 @@ export const useElectronicInvoice = () => {
 
     const pollRef = useRef(null);
     const attemptsRef = useRef(0);
+    const timeoutRef = useRef(null);
 
     const detenerPolling = useCallback(() => {
         if (pollRef.current) {
             clearInterval(pollRef.current);
             pollRef.current = null;
+        }
+        // El setTimeout de 1.5s en emitir()/reintentar() no se limpiaba
+        // acá -- si el usuario cerraba el modal o navegaba antes de que
+        // pasara ese tiempo, consultarEstado() igual se ejecutaba y
+        // llamaba setState sobre un hook ya desmontado.
+        if (timeoutRef.current) {
+            clearTimeout(timeoutRef.current);
+            timeoutRef.current = null;
         }
     }, []);
 
@@ -68,7 +77,7 @@ export const useElectronicInvoice = () => {
 
         try {
             await apiConfig.post(`/sales/${saleId}/electronic-invoice/emitir`);
-            setTimeout(() => consultarEstado(saleId), 1500);
+            timeoutRef.current = setTimeout(() => consultarEstado(saleId), 1500);
             iniciarPolling(saleId);
         } catch (err) {
             setLoading(false);
@@ -83,7 +92,7 @@ export const useElectronicInvoice = () => {
 
         try {
             await apiConfig.post(`/sales/${saleId}/electronic-invoice/reintentar`);
-            setTimeout(() => consultarEstado(saleId), 1500);
+            timeoutRef.current = setTimeout(() => consultarEstado(saleId), 1500);
             iniciarPolling(saleId);
         } catch (err) {
             setLoading(false);

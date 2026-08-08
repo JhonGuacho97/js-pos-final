@@ -806,5 +806,11 @@
     "variation.type.select.validate.error.message": "Bitte wählen Sie Variationstypen aus",
     "products.warehouse.title": "Produktlager",
     "barcode-symbol-uppercase-validation-message": "Bitte geben Sie für den Code 39-Barcode nur Großbuchstaben und Zahlen ein.",
-    "sale.product-qty.limit.validate.message": "Sie können nicht mehr als die begrenzte Menge kaufen"
+    "sale.product-qty.limit.validate.message": "Sie können nicht mehr als die begrenzte Menge kaufen",
+    "settings.backup.title": "Datenbank-Backup",
+    "settings.backup.description": "Laden Sie eine vollständige Sicherung Ihrer Datenbank herunter.",
+    "settings.backup.generating": "Backup wird erstellt...",
+    "settings.backup.button": "Backup herunterladen",
+    "backup.success.message": "Backup erfolgreich heruntergeladen.",
+    "backup.error.message": "Beim Erstellen des Backups ist ein Fehler aufgetreten."
 }

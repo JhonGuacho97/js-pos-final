@@ -2487,6 +2487,7 @@ class ComposerStaticInit7fffbc345bfe6f2e1a041843c5c008dd
         'Database\\Seeders\\DefaultSmsSettingsSeeder' => __DIR__ . '/../..' . '/database/seeders/DefaultSmsSettingsSeeder.php',
         'Database\\Seeders\\DefaultSmsTemplateSeeder' => __DIR__ . '/../..' . '/database/seeders/DefaultSmsTemplateSeeder.php',
         'Database\\Seeders\\DefaultUserSeeder' => __DIR__ . '/../..' . '/database/seeders/DefaultUserSeeder.php',
+        'Database\\Seeders\\EnsureAllPermissionsSyncedSeeder' => __DIR__ . '/../..' . '/database/seeders/EnsureAllPermissionsSyncedSeeder.php',
         'Database\\Seeders\\SettingTableSeeder' => __DIR__ . '/../..' . '/database/seeders/SettingTableSeeder.php',
         'DateError' => __DIR__ . '/..' . '/symfony/polyfill-php83/Resources/stubs/DateError.php',
         'DateException' => __DIR__ . '/..' . '/symfony/polyfill-php83/Resources/stubs/DateException.php',

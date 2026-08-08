@@ -86,30 +86,59 @@ if (! function_exists('manageStock')) {
      */
     function manageStock($warehouseID, $productID, $qty = 0)
     {
-        $product = ManageStock::whereWarehouseId($warehouseID)
-            ->whereProductId($productID)
-            ->first();
+        // Se usa desde varios repositorios en puntos que no siempre están
+        // dentro de una transacción propia (ej. reversiones de stock).
+        // DB::transaction() anida con savepoints si ya hay una transacción
+        // abierta, y lockForUpdate() evita que dos llamadas concurrentes
+        // (ej. dos reversiones al mismo tiempo) lean el mismo valor antes
+        // de que ninguna haga commit.
+        \Illuminate\Support\Facades\DB::transaction(function () use ($warehouseID, $productID, $qty) {
+            $product = ManageStock::whereWarehouseId($warehouseID)
+                ->whereProductId($productID)
+                ->lockForUpdate()
+                ->first();
 
-        if ($product) {
-            $totalQuantity = $product->quantity + $qty;
+            if ($product) {
+                $totalQuantity = $product->quantity + $qty;
 
-            if (($product->quantity + $qty) < 0) {
-                $totalQuantity = 0;
+                if ($totalQuantity < 0) {
+                    // Antes esto se fijaba a 0 en silencio -- ej. se
+                    // elimina una transferencia después de que parte de
+                    // ese stock ya se vendió desde la bodega destino:
+                    // manageStock() intentaba restar más de lo que hay
+                    // y lo clampeaba a 0 sin avisar, dejando el
+                    // inventario mostrando "0" en vez de reflejar el
+                    // déficit real (que ya se vendió más de lo que esta
+                    // reversión puede devolver). Ahora se bloquea la
+                    // operación para que quien la dispara se entere.
+                    throw new \Symfony\Component\HttpKernel\Exception\UnprocessableEntityHttpException(
+                        "No se puede ajustar el stock del producto #{$productID} en la bodega #{$warehouseID}: ".
+                        "quedaría en {$totalQuantity} (disponible {$product->quantity}, se intentó aplicar {$qty})."
+                    );
+                }
+                $product->update([
+                    'quantity' => $totalQuantity,
+                ]);
+            } else {
+                if ($qty < 0) {
+                    // Mismo criterio que arriba: no hay ninguna fila de
+                    // stock todavía para este producto/bodega, y se
+                    // intenta restar -- no hay "0 disponible - algo"
+                    // válido, así que se bloquea en vez de crear la fila
+                    // en 0 en silencio.
+                    throw new \Symfony\Component\HttpKernel\Exception\UnprocessableEntityHttpException(
+                        "No se puede ajustar el stock del producto #{$productID} en la bodega #{$warehouseID}: ".
+                        "no hay stock registrado ahí (se intentó restar {$qty})."
+                    );
+                }
+
+                ManageStock::create([
+                    'warehouse_id' => $warehouseID,
+                    'product_id' => $productID,
+                    'quantity' => $qty,
+                ]);
             }
-            $product->update([
-                'quantity' => $totalQuantity,
-            ]);
-        } else {
-            if ($qty < 0) {
-                $qty = 0;
-            }
-
-            ManageStock::create([
-                'warehouse_id' => $warehouseID,
-                'product_id' => $productID,
-                'quantity' => $qty,
-            ]);
-        }
+        });
     }
 }
 

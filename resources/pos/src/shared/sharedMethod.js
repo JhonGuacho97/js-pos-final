@@ -50,7 +50,13 @@ export const numValidate = (event) => {
 };
 
 export const getFormattedMessage = (id) => {
-    return <FormattedMessage id={id} defaultMessgae={id} />;
+    // Typo real: era "defaultMessgae" -- react-intl no reconoce esa prop,
+    // así que nunca tenía un fallback real. Cada vez que un id no existe
+    // en el locale activo (frecuente en los idiomas que no son inglés,
+    // o en features nuevas como SRI/notas de crédito que no se
+    // tradujeron a todos los locales), react-intl lo logueaba como error
+    // en consola en vez de mostrar el id como texto de respaldo.
+    return <FormattedMessage id={id} defaultMessage={id} />;
 };
 
 export const getFormattedOptions = (options) => {

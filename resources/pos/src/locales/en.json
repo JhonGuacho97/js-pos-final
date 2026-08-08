@@ -831,5 +831,11 @@
     "product.type.input.validation.error": "Please select product type",
     "products.warehouse.title": "Product Warehouse",
     "barcode-symbol-uppercase-validation-message": "Please enter only uppercase letters and numbers for Code 39 Barcode Symbology.",
-    "sale.product-qty.limit.validate.message": "You can't buy more than limit quantity"
+    "sale.product-qty.limit.validate.message": "You can't buy more than limit quantity",
+    "settings.backup.title": "Database Backup",
+    "settings.backup.description": "Download a full backup of your database.",
+    "settings.backup.generating": "Generating backup...",
+    "settings.backup.button": "Download Backup",
+    "backup.success.message": "Backup downloaded successfully.",
+    "backup.error.message": "An error occurred while generating the backup."
 }

@@ -3,6 +3,7 @@
 namespace App\Repositories;
 
 use App\Models\ManageStock;
+use App\Models\Product;
 use App\Models\Transfer;
 use App\Models\TransferItem;
 use Exception;
@@ -93,21 +94,25 @@ class TransferRepository extends BaseRepository
     public function storeTransferItems($transfer, $input)
     {
         foreach ($input['transfer_items'] as $transferItem) {
-            $product = ManageStock::whereWarehouseId($input['from_warehouse_id'])->whereProductId($transferItem['product_id'])->first();
+            // Se calcula primero para que 'quantity' ya esté en unidades
+            // base (conversión de presentación aplicada) antes de tocar
+            // stock -- ver calculationTransferItems().
+            $item = $this->calculationTransferItems($transferItem);
+
+            $product = ManageStock::whereWarehouseId($input['from_warehouse_id'])->whereProductId($item['product_id'])->lockForUpdate()->first();
 
             if ($product) {
-                if ($transferItem['quantity'] > $product->quantity) {
+                if ($item['quantity'] > $product->quantity) {
                     throw new UnprocessableEntityHttpException('Quantity should not be greater than available quantity.');
                 } else {
-                    manageStock($input['to_warehouse_id'], $transferItem['product_id'], $transferItem['quantity']);
-                    $exceptQuantity = $product->quantity - $transferItem['quantity'];
+                    manageStock($input['to_warehouse_id'], $item['product_id'], $item['quantity']);
+                    $exceptQuantity = $product->quantity - $item['quantity'];
                     $product->update(['quantity' => $exceptQuantity]);
                 }
             } else {
                 throw new UnprocessableEntityHttpException('Product stock is not available in selected warehouse.');
             }
 
-            $item = $this->calculationTransferItems($transferItem);
             $transferItem = new TransferItem($item);
             $transfer->transferItems()->save($transferItem);
         }
@@ -184,6 +189,31 @@ class TransferRepository extends BaseRepository
         }
         $transferItem['sub_total'] = ($transferItem['net_unit_price'] + $perItemTaxAmount) * $transferItem['quantity'];
 
+        // Equivalencia de presentación (caja/six-pack/etc.) -- mismo
+        // patrón que SaleRepository/CreditNoteRepository. Antes esto no
+        // se aplicaba en transferencias: si se transfería "2 cajas" de un
+        // producto con equivalencia 24, el stock solo se movía en 2
+        // unidades en vez de 48, descuadrando origen y destino.
+        $presentationQuantity = $transferItem['quantity'];
+        $equivalence = 1;
+
+        if (!empty($transferItem['product_presentation_id'])) {
+            $product = Product::whereId($transferItem['product_id'])->first();
+            if ($product && $product->manage_presentations) {
+                $presentation = $product->presentations()->whereId($transferItem['product_presentation_id'])->first();
+                if (!$presentation) {
+                    throw new UnprocessableEntityHttpException('Presentación inválida para el producto ' . $product->name);
+                }
+                $equivalence = $presentation->equivalence;
+            }
+        }
+
+        $transferItem['presentation_quantity'] = $presentationQuantity;
+        $transferItem['presentation_equivalence'] = $equivalence;
+        // A partir de acá 'quantity' pasa a representar unidades base de
+        // inventario, igual que en SaleItem/CreditNoteItem.
+        $transferItem['quantity'] = $presentationQuantity * $equivalence;
+
         return $transferItem;
     }
 
@@ -214,22 +244,25 @@ class TransferRepository extends BaseRepository
                 }
 
                 if (is_null($transferItem['transfer_item_id'])) {
-                    $product = ManageStock::whereWarehouseId($transfer->from_warehouse_id)->whereProductId($transferItem['product_id'])->first();
+                    // Igual que en storeTransferItems(): calcular primero
+                    // para tener 'quantity' ya en unidades base.
+                    $item = $this->calculationTransferItems($transferItem);
+
+                    $product = ManageStock::whereWarehouseId($transfer->from_warehouse_id)->whereProductId($item['product_id'])->lockForUpdate()->first();
 
                     if ($product) {
-                        if ($transferItem['quantity'] > $product->quantity) {
+                        if ($item['quantity'] > $product->quantity) {
                             throw new UnprocessableEntityHttpException('Quantity should not be greater than available quantity.');
                         } else {
-                            manageStock($transfer->to_warehouse_id, $transferItem['product_id'],
-                                $transferItem['quantity']);
-                            $exceptQuantity = $product->quantity - $transferItem['quantity'];
+                            manageStock($transfer->to_warehouse_id, $item['product_id'],
+                                $item['quantity']);
+                            $exceptQuantity = $product->quantity - $item['quantity'];
                             $product->update(['quantity' => $exceptQuantity]);
                         }
                     } else {
                         throw new UnprocessableEntityHttpException('Product stock is not available in selected warehouse.');
                     }
 
-                    $item = $this->calculationTransferItems($transferItem);
                     $transferItem = new TransferItem($item);
                     $transfer->transferItems()->save($transferItem);
                 }
@@ -241,8 +274,8 @@ class TransferRepository extends BaseRepository
                 foreach ($removeItemIds as $removeItemId) {
                     $oldTransferItem = TransferItem::whereId($removeItemId)->first();
                     $oldTransfer = Transfer::whereId($oldTransferItem->transfer_id)->first();
-                    $fromManageStock = ManageStock::whereWarehouseId($oldTransfer->from_warehouse_id)->whereProductId($oldTransferItem->product_id)->first();
-                    $toManageStock = ManageStock::whereWarehouseId($oldTransfer->to_warehouse_id)->whereProductId($oldTransferItem->product_id)->first();
+                    $fromManageStock = ManageStock::whereWarehouseId($oldTransfer->from_warehouse_id)->whereProductId($oldTransferItem->product_id)->lockForUpdate()->first();
+                    $toManageStock = ManageStock::whereWarehouseId($oldTransfer->to_warehouse_id)->whereProductId($oldTransferItem->product_id)->lockForUpdate()->first();
 
                     $toquantity = 0;
 
@@ -294,7 +327,7 @@ class TransferRepository extends BaseRepository
             }
 
             if ($fromQuantityDiff != 0) {
-                $product = ManageStock::whereWarehouseId($fromWarehouseId)->whereProductId($transferItem['product_id'])->first();
+                $product = ManageStock::whereWarehouseId($fromWarehouseId)->whereProductId($transferItem['product_id'])->lockForUpdate()->first();
 
                 if ($product) {
                     if (($fromQuantity + $product->quantity) < 0) {

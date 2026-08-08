@@ -18,6 +18,9 @@ class CreditNoteItem extends BaseModel implements JsonResourceful
     protected $fillable = [
         'credit_note_id',
         'product_id',
+        'product_presentation_id',
+        'presentation_quantity',
+        'presentation_equivalence',
         'product_price',
         'net_unit_price',
         'tax_type',
@@ -39,6 +42,8 @@ class CreditNoteItem extends BaseModel implements JsonResourceful
         'discount_value' => 'double',
         'discount_amount' => 'double',
         'quantity' => 'double',
+        'presentation_quantity' => 'double',
+        'presentation_equivalence' => 'double',
         'sub_total' => 'double',
     ];
 
@@ -101,12 +106,10 @@ class CreditNoteItem extends BaseModel implements JsonResourceful
 
     public function precioTotalSinImpuestoSri(): float
     {
-        if ($this->tax_type === Sale::INCLUSIVE) {
-            $tarifa = $this->tax_value ?? 15;
-            return round($this->sub_total / (1 + $tarifa / 100), 2);
-        }
-
-        return round($this->sub_total, 2);
+        // Mismo fix que SaleItem::precioTotalSinImpuestoSri() -- sub_total
+        // es siempre bruto (con IVA) y tax_amount es la porción de IVA
+        // dentro de ese bruto, para Inclusivo y Exclusivo por igual.
+        return round($this->sub_total - $this->tax_amount, 2);
     }
 
     public function valorIvaSri(): float

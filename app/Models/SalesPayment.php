@@ -78,7 +78,7 @@ class SalesPayment extends BaseModel implements JsonResourceful
      */
     public static $rules = [
         'payment_date' => 'date',
-        'amount' => 'required|numeric',
+        'amount' => 'required|numeric|min:0.01',
     ];
 
     public function prepareLinks(): array

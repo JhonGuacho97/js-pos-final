@@ -6,7 +6,11 @@ import { useSelector } from "react-redux";
 
 const ModelFooter = ( props ) => {
     const { onEditRecord, onSubmit, editDisabled, clearField, addDisabled, link, ref, modelhide, cancelNotShow } = props;
-    const { isSaving } = useSelector( state => state )
+    // Antes: useSelector(state => state) -- traía el store COMPLETO, así
+    // que este componente (usado en casi todos los formularios) se
+    // volvía a renderizar en cada dispatch de CUALQUIER reducer de la
+    // app, no solo cuando cambiaba isSaving.
+    const { isSaving } = useSelector( state => ( { isSaving: state.isSaving } ) )
 
     return (
         <>

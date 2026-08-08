@@ -11,12 +11,14 @@ use App\Http\Requests\UpdateUserRequest;
 use App\Http\Resources\UserCollection;
 use App\Http\Resources\UserResource;
 use App\Models\POSRegister;
+use App\Models\Role;
 use App\Models\User;
 use App\Repositories\UserRepository;
 use Exception;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Symfony\Component\HttpKernel\Exception\AccessDeniedHttpException;
 
 /**
  * Class UserAPIController
@@ -119,6 +121,13 @@ class UserAPIController extends AppBaseController
 
     public function updateUserPassword(AdminUpdateUserPasswordRequest $request, User $user): JsonResponse
     {
+        // Solo un admin puede resetear la contraseña de otro admin --
+        // evita que un usuario con permiso manage_users (pero sin ser
+        // admin) tome control de una cuenta admin restableciendo su clave.
+        if ($user->hasRole(Role::ADMIN) && !Auth::user()->hasRole(Role::ADMIN)) {
+            throw new AccessDeniedHttpException('No tiene permiso para cambiar la contraseña de este usuario.');
+        }
+
         $this->userRepository->updateUserPassword($user->id, $request->password);
 
         return $this->sendSuccess('Contraseña Actualizada Correctamente');

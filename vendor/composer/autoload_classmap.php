@@ -1662,6 +1662,7 @@ return array(
     'Database\\Seeders\\DefaultSmsSettingsSeeder' => $baseDir . '/database/seeders/DefaultSmsSettingsSeeder.php',
     'Database\\Seeders\\DefaultSmsTemplateSeeder' => $baseDir . '/database/seeders/DefaultSmsTemplateSeeder.php',
     'Database\\Seeders\\DefaultUserSeeder' => $baseDir . '/database/seeders/DefaultUserSeeder.php',
+    'Database\\Seeders\\EnsureAllPermissionsSyncedSeeder' => $baseDir . '/database/seeders/EnsureAllPermissionsSyncedSeeder.php',
     'Database\\Seeders\\SettingTableSeeder' => $baseDir . '/database/seeders/SettingTableSeeder.php',
     'DateError' => $vendorDir . '/symfony/polyfill-php83/Resources/stubs/DateError.php',
     'DateException' => $vendorDir . '/symfony/polyfill-php83/Resources/stubs/DateException.php',

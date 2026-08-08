@@ -67,15 +67,16 @@ const CreditNotes = () => {
                                     <th>Concepto</th>
                                     <th>Motivo</th>
                                     <th>Total</th>
+                                    <th>Estado</th>
                                     <th>Acciones</th>
                                 </tr>
                             </thead>
                             <tbody>
                                 {cargando && (
-                                    <tr><td colSpan={8} className="text-center text-muted">Cargando...</td></tr>
+                                    <tr><td colSpan={9} className="text-center text-muted">Cargando...</td></tr>
                                 )}
                                 {!cargando && creditNotes.length === 0 && (
-                                    <tr><td colSpan={8} className="text-center text-muted">Sin notas de crédito registradas.</td></tr>
+                                    <tr><td colSpan={9} className="text-center text-muted">Sin notas de crédito registradas.</td></tr>
                                 )}
                                 {creditNotes.map((cn) => (
                                     <tr key={cn.id}>
@@ -90,6 +91,13 @@ const CreditNotes = () => {
                                         <td>{CONCEPTO_LABEL[cn.concepto] || cn.concepto}</td>
                                         <td>{cn.motivo}</td>
                                         <td>${Number(cn.grand_total || 0).toFixed(2)}</td>
+                                        <td>
+                                            {cn.esta_cancelada ? (
+                                                <span className="badge bg-secondary">Cancelada</span>
+                                            ) : (
+                                                <span className="badge bg-success">Activa</span>
+                                            )}
+                                        </td>
                                         <td>
                                             <Link to={`/app/credit-notes/${cn.id}`} className="btn btn-sm btn-outline-primary">
                                                 Ver detalle

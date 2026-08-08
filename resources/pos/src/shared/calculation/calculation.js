@@ -43,15 +43,20 @@ export const amountBeforeTax = (cartItem) => {
 //Grand Total Calculation
 export const calculateCartTotalTaxAmount = (carts, inputValue) => {
     let taxValue = inputValue && inputValue.tax_rate;
-    let totalTax = 0;
-    let price = 0;
+    if (!(taxValue > 0)) {
+        return (0).toFixed(2);
+    }
 
-    carts.forEach(cartItem => {
-        if (taxValue > 0) {
-            price = price + +cartItem.sub_total
-            totalTax = (((+price - inputValue.discount) / 100) * +taxValue) * +cartItem.quantity;
-        }
-    })
+    // Mismo criterio que calculateCartTotalAmount (y que el backend en
+    // SaleRepository/CreditNoteRepository): el impuesto de orden se
+    // aplica una sola vez sobre (subtotal - descuento), no por línea.
+    // Antes esto acumulaba mal dentro del forEach (sobreescribía
+    // totalTax en cada vuelta en vez de sumar, y multiplicaba por la
+    // cantidad del ÚLTIMO producto del carrito), dando un tax_amount
+    // que no coincidía ni con lo mostrado en pantalla ni con lo que
+    // calculaba el backend en cuanto el carrito tenía 2+ productos.
+    const totalAmountAfterDiscount = calculateSubTotal(carts) - (+inputValue.discount || 0);
+    const totalTax = (totalAmountAfterDiscount / 100) * +taxValue;
 
     return (parseFloat(totalTax)).toFixed(2);
 }

@@ -64,6 +64,9 @@ class SaleReturnItem extends BaseModel implements JsonResourceful
      */
     protected $fillable = [
         'product_id',
+        'product_presentation_id',
+        'presentation_quantity',
+        'presentation_equivalence',
         'product_price',
         'net_unit_price',
         'tax_type',
@@ -91,7 +94,7 @@ class SaleReturnItem extends BaseModel implements JsonResourceful
         'discount_value' => 'nullable|numeric',
         'discount_amount' => 'nullable|numeric',
         'sale_unit' => 'nullable|numeric',
-        'quantity' => 'nullable|numeric',
+        'quantity' => 'required|numeric|min:0.01',
         'sub_total' => 'nullable|numeric',
     ];
 
@@ -105,6 +108,8 @@ class SaleReturnItem extends BaseModel implements JsonResourceful
         'discount_value' => 'double',
         'discount_amount' => 'double',
         'quantity' => 'double',
+        'presentation_quantity' => 'double',
+        'presentation_equivalence' => 'double',
         'sub_total' => 'double',
     ];
 

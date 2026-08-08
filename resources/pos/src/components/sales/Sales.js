@@ -116,6 +116,12 @@ const Sales = (props) => {
     };
 
     const [ventaAEmitir, setVentaAEmitir] = useState(null);
+    // IDs de venta con una emisión en curso -- evita que un doble clic en
+    // "Emitir Factura" (mientras la primera petición todavía está en
+    // vuelo, antes de que numero_comprobante se actualice) dispare dos
+    // POST /emitir para la misma venta y arriesgue consumir dos
+    // secuenciales reales del SRI.
+    const [emitiendoIds, setEmitiendoIds] = useState(() => new Set());
 
     const onEmitirFacturaClick = (item) => {
         // Solo pide confirmación acá -- la emisión real ocurre en
@@ -128,6 +134,7 @@ const Sales = (props) => {
     const confirmarEmitirFactura = () => {
         const item = ventaAEmitir;
         setVentaAEmitir(null);
+        setEmitiendoIds((prev) => new Set(prev).add(item.id));
         apiConfig
             .post(`/sales/${item.id}/electronic-invoice/emitir`)
             .then((res) => {
@@ -136,6 +143,13 @@ const Sales = (props) => {
             .catch((error) => {
                 const mensaje = error?.response?.data?.message || 'No se pudo emitir la factura electrónica.';
                 dispatch(addToast({ text: mensaje, type: toastType.ERROR }));
+            })
+            .finally(() => {
+                setEmitiendoIds((prev) => {
+                    const next = new Set(prev);
+                    next.delete(item.id);
+                    return next;
+                });
             });
     };
 
@@ -414,6 +428,7 @@ const Sales = (props) => {
                         onShowReceiptClick={onShowReceiptClick}
                         isEmitirFacturaShow={true}
                         onEmitirFacturaClick={onEmitirFacturaClick}
+                        isEmitiendoFactura={emitiendoIds.has(row.id)}
                     />
                 ),
         },

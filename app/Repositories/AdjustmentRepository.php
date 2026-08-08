@@ -5,6 +5,7 @@ namespace App\Repositories;
 use App\Models\Adjustment;
 use App\Models\AdjustmentItem;
 use App\Models\ManageStock;
+use App\Models\Product;
 use Illuminate\Support\Arr;
 use Illuminate\Support\Facades\DB;
 use Symfony\Component\HttpKernel\Exception\UnprocessableEntityHttpException;
@@ -73,13 +74,43 @@ class AdjustmentRepository extends BaseRepository
         }
     }
 
+    /**
+     * Equivalencia de presentación (caja/six-pack/etc.) -- mismo patrón
+     * que Sale/Purchase/Transfer/CreditNote/SaleReturn/PurchaseReturn.
+     * Ajustes no tiene precio/descuento/impuesto, así que no hace falta
+     * una función de cálculo completa, solo esta conversión de cantidad.
+     */
+    private function applyPresentationConversion(array $item): array
+    {
+        $presentationQuantity = (float) ($item['quantity'] ?? 0);
+        $equivalence = 1;
+
+        if (!empty($item['product_presentation_id'])) {
+            $product = Product::whereId($item['product_id'])->first();
+            if ($product && $product->manage_presentations) {
+                $presentation = $product->presentations()->whereId($item['product_presentation_id'])->first();
+                if (!$presentation) {
+                    throw new UnprocessableEntityHttpException('Presentación inválida para el producto ' . $product->name);
+                }
+                $equivalence = $presentation->equivalence;
+            }
+        }
+
+        $item['presentation_quantity'] = $presentationQuantity;
+        $item['presentation_equivalence'] = $equivalence;
+        $item['quantity'] = $presentationQuantity * $equivalence;
+
+        return $item;
+    }
+
     public function storeAdjustmentItems($adjustment, $input)
     {
         foreach ($input['adjustment_items'] as $adjustmentItem) {
+            $adjustmentItem = $this->applyPresentationConversion($adjustmentItem);
             $adjustmentItem['adjustment_id'] = $adjustment->id;
             AdjustmentItem::Create($adjustmentItem);
 
-            $product = ManageStock::whereWarehouseId($adjustment->warehouse_id)->whereProductId($adjustmentItem['product_id'])->first();
+            $product = ManageStock::whereWarehouseId($adjustment->warehouse_id)->whereProductId($adjustmentItem['product_id'])->lockForUpdate()->first();
             if (! empty($product)) {
                 if ($adjustmentItem['method_type'] == AdjustmentItem::METHOD_ADDITION) {
                     $totalQuantity = $product->quantity + $adjustmentItem['quantity'];
@@ -102,6 +133,13 @@ class AdjustmentRepository extends BaseRepository
                         'product_id' => $adjustmentItem['product_id'],
                         'quantity' => $adjustmentItem['quantity'],
                     ]);
+                } else {
+                    // No existe stock previo para este producto en esta
+                    // bodega -- antes esto se guardaba el AdjustmentItem
+                    // igual (quedando en el historial) sin tocar el stock
+                    // real, dejando el historial de ajustes desincronizado
+                    // del inventario real.
+                    throw new UnprocessableEntityHttpException('No hay stock registrado para este producto en la bodega seleccionada.');
                 }
             }
         }
@@ -141,8 +179,9 @@ class AdjustmentRepository extends BaseRepository
 
         foreach ($input['adjustment_items'] as $key => $adjustmentItem) {
             $adjustmentItemIds[$key] = $adjustmentItem['adjustment_item_id'];
+            $adjustmentItem = $this->applyPresentationConversion($adjustmentItem);
 
-            $product = ManageStock::whereWarehouseId($adjustment->warehouse_id)->whereProductId($adjustmentItem['product_id'])->first();
+            $product = ManageStock::whereWarehouseId($adjustment->warehouse_id)->whereProductId($adjustmentItem['product_id'])->lockForUpdate()->first();
 
             if (is_null($adjustmentItem['adjustment_item_id'])) {
                 $adjustmentItem['adjustment_id'] = $adjustment->id;
@@ -209,7 +248,7 @@ class AdjustmentRepository extends BaseRepository
         if (! empty(array_values($removeItemIds))) {
             foreach ($removeItemIds as $removeItemId) {
                 $oldItem = AdjustmentItem::whereId($removeItemId)->firstOrFail();
-                $existProductStock = ManageStock::whereWarehouseId($adjustment->warehouse_id)->whereProductId($oldItem->product_id)->first();
+                $existProductStock = ManageStock::whereWarehouseId($adjustment->warehouse_id)->whereProductId($oldItem->product_id)->lockForUpdate()->first();
 
                 if ($oldItem->method_type == AdjustmentItem::METHOD_ADDITION) {
                     $totalQuantity = $existProductStock->quantity - $oldItem['quantity'];

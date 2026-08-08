@@ -1,5 +1,6 @@
 import React, { useEffect, useState, useCallback } from "react";
 import { useDispatch } from "react-redux";
+import dayjs from "dayjs";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faMagnifyingGlass, faTriangleExclamation, faFileInvoice } from "@fortawesome/free-solid-svg-icons";
 import MasterLayout from "../MasterLayout";
@@ -33,11 +34,12 @@ const TIPO_COMPROBANTE_LABEL = {
     "05": "Nota de débito",
 };
 
-const hoy = () => new Date().toISOString().slice(0, 10);
-const inicioDeMes = () => {
-    const d = new Date();
-    return new Date(d.getFullYear(), d.getMonth(), 1).toISOString().slice(0, 10);
-};
+// Antes usaban toISOString(), que siempre da la fecha en UTC -- en
+// Ecuador (UTC-5), entre las 19:00 y 23:59 hora local el día en UTC ya
+// es el día siguiente, así que el filtro "Hasta" por defecto mostraba
+// mañana en vez de hoy. dayjs() sin .utc() usa la hora local.
+const hoy = () => dayjs().format('YYYY-MM-DD');
+const inicioDeMes = () => dayjs().startOf('month').format('YYYY-MM-DD');
 
 const ElectronicInvoices = () => {
     const dispatch = useDispatch();

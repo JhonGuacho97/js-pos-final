@@ -31,6 +31,20 @@ class SettingAPIController extends AppBaseController
     public function index(Request $request): JsonResponse
     {
         $settings = Setting::all()->pluck('value', 'key')->toArray();
+
+        // Esta ruta es accesible para cualquier usuario autenticado (no
+        // solo admin -- ver routes/api.php, 'settings' index queda fuera
+        // del grupo manage_setting a propósito para no romper los
+        // desplegables públicos del formulario). Antes devolvía en texto
+        // plano credenciales reales de Stripe/Twilio/SMTP a cualquiera
+        // con sesión iniciada -- mismo problema que ya se corrigió para
+        // mail_password, pero estos tres campos quedaron afuera.
+        foreach (['smtp_password', 'stripe_secret', 'twillo_token'] as $secretKey) {
+            if (!empty($settings[$secretKey])) {
+                $settings[$secretKey] = SettingRepository::MAIL_PASSWORD_MASK;
+            }
+        }
+
         $settings['logo'] = getLogoUrl();
         $settings['warehouse_name'] = Warehouse::whereId($settings['default_warehouse'])->first()->name ?? '';
         $settings['customer_name'] = Customer::whereId($settings['default_customer'])->first()->name ?? '';

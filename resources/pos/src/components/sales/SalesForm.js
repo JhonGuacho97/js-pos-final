@@ -147,7 +147,10 @@ const SalesForm = (props) => {
     const handleValidation = () => {
         let error = {};
         let isValid = false;
-        const qtyCart = updateProducts.filter((a) => a.quantity === 0);
+        // Antes solo detectaba quantity === 0 -- un valor negativo
+        // (pegado o escrito a mano en el input, que no bloquea el
+        // onChange) pasaba esta validación sin problema.
+        const qtyCart = updateProducts.filter((a) => !(Number(a.quantity) > 0));
         if (!saleValue.date) {
             error['date'] = getFormattedMessage('globally.date.validate.label');
         } else if (!saleValue.warehouse_id) {

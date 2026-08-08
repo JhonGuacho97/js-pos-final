@@ -50,6 +50,7 @@ const PosCloseRegisterDetailsModel = ({
     });
     const [discrepancyReason, setDiscrepancyReason] = useState("");
     const [discrepancyNote, setDiscrepancyNote] = useState("");
+    const [motivoError, setMotivoError] = useState("");
 
     // Motivos típicos de por qué la caja no cuadró -- si ninguno aplica,
     // "Otro" habilita un campo de texto libre.
@@ -372,7 +373,10 @@ const PosCloseRegisterDetailsModel = ({
                             <select
                                 className="form-control"
                                 value={discrepancyReason}
-                                onChange={(e) => setDiscrepancyReason(e.target.value)}
+                                onChange={(e) => {
+                                    setDiscrepancyReason(e.target.value);
+                                    setMotivoError("");
+                                }}
                             >
                                 <option value="">Selecciona un motivo</option>
                                 {discrepancyReasons.map((reason) => (
@@ -381,6 +385,11 @@ const PosCloseRegisterDetailsModel = ({
                                     </option>
                                 ))}
                             </select>
+                            {motivoError && (
+                                <span className="text-danger d-block fw-400 fs-small mt-2">
+                                    {motivoError}
+                                </span>
+                            )}
                             {discrepancyReason === "Otro" && (
                                 <input
                                     type="text"
@@ -421,7 +430,19 @@ const PosCloseRegisterDetailsModel = ({
                     </button>
                     <button
                         className="btn btn-primary"
-                        onClick={() =>
+                        onClick={() => {
+                            // El campo se marcaba visualmente como
+                            // obligatorio (span "required") cuando hay
+                            // diferencia de efectivo, pero nada bloqueaba
+                            // cerrar la caja sin completarlo -- se podía
+                            // cerrar con un descuadre sin dejar registro
+                            // de por qué.
+                            if (cashDifference !== 0 && !discrepancyReason) {
+                                setMotivoError(
+                                    "Seleccioná un motivo para la diferencia antes de cerrar la caja."
+                                );
+                                return;
+                            }
                             handleCloseRegisterDetails({
                                 ...formValue,
                                 closing_denominations: denominationRows
@@ -439,8 +460,8 @@ const PosCloseRegisterDetailsModel = ({
                                     discrepancyReason === "Otro"
                                         ? discrepancyNote
                                         : null,
-                            })
-                        }
+                            });
+                        }}
                     >
                         {getFormattedMessage("globally.close-register.title")}
                     </button>

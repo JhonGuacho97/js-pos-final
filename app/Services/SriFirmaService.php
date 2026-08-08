@@ -44,6 +44,19 @@ class SriFirmaService
      */
     public function firmar(string $xmlString): string
     {
+        // Antes verificarCertificado() solo se llamaba desde la pantalla
+        // manual de Configuración SRI -- un certificado que vence entre
+        // esa revisión y la siguiente emisión real solo se descubría
+        // cuando el SRI lo rechazaba, gastando un secuencial real por un
+        // problema detectable de antemano.
+        $verificacion = $this->verificarCertificado();
+        if (!$verificacion['valido']) {
+            throw new \RuntimeException(
+                'No se puede firmar: '.($verificacion['mensaje'] ?? 'el certificado de firma electrónica no es válido').
+                '. Actualizá el certificado en Configuración > SRI antes de reintentar.'
+            );
+        }
+
         $binario = env('SRI_GO_SIGNER_PATH', base_path('bin/go-signer-cli-listo/go-xml-signer-cli'));
 
         if ($binario && file_exists($binario) && is_executable($binario)) {

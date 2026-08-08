@@ -816,5 +816,11 @@
     "variation.type.select.validate.error.message": "請選擇變化類型",
     "products.warehouse.title": "產品倉庫",
     "barcode-symbol-uppercase-validation-message": "請僅輸入 Code 39 條碼的大寫字母和數字",
-    "sale.product-qty.limit.validate.message": "您不能購買超過限制數量"
+    "sale.product-qty.limit.validate.message": "您不能購買超過限制數量",
+    "settings.backup.title": "資料庫備份",
+    "settings.backup.description": "下載完整的資料庫備份。",
+    "settings.backup.generating": "正在生成備份...",
+    "settings.backup.button": "下載備份",
+    "backup.success.message": "備份下載成功。",
+    "backup.error.message": "生成備份時發生錯誤。"
 }

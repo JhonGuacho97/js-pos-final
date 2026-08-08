@@ -366,6 +366,16 @@ class SriSoapService
 
     private function crearClienteSoap(string $wsdl): \SoapClient
     {
+        // 'connection_timeout' solo cubre el tiempo de conectar -- si el
+        // SRI acepta la conexión pero no responde, sin un timeout de
+        // socket la petición puede quedar colgada mucho más tiempo,
+        // agotando workers PHP-FPM en hosting compartido. Se deja el
+        // ini_set sin restaurar a propósito: el timeout debe seguir
+        // vigente durante las llamadas reales (send/receive), que
+        // ocurren después de que este método retorna, no durante la
+        // construcción del cliente.
+        ini_set('default_socket_timeout', '30');
+
         return new \SoapClient($wsdl, [
             'connection_timeout' => 30,
             'trace' => true,
@@ -373,9 +383,14 @@ class SriSoapService
             'cache_wsdl' => WSDL_CACHE_NONE,
             'stream_context' => stream_context_create([
                 'ssl' => [
-                    'verify_peer' => false,
-                    'verify_peer_name' => false,
-                    'allow_self_signed' => true,
+                    // Antes deshabilitado por completo -- exponía la
+                    // comunicación con el SRI a interceptación/alteración
+                    // (MITM) sin que el cliente lo detectara. Los WSDL
+                    // del SRI usan certificados públicos válidos, no hay
+                    // razón real para desactivar la verificación.
+                    'verify_peer' => true,
+                    'verify_peer_name' => true,
+                    'allow_self_signed' => false,
                 ],
             ]),
         ]);

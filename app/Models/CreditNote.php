@@ -30,6 +30,14 @@ class CreditNote extends BaseModel implements JsonResourceful
     const GENERAR_SALDO = 'SALDO';
     const GENERAR_ANTICIPO = 'ANTICIPO';
 
+    // ── Estado ──────────────────────────────────────
+    // Antes 'status' se guardaba pero nunca se leía en ningún lado (el
+    // frontend mandaba un 2 fijo al crear, sin significado real). Ahora
+    // se usa para marcar notas canceladas -- ver
+    // CreditNoteRepository::cancelarCreditNote().
+    const STATUS_ACTIVA = 1;
+    const STATUS_CANCELADA = 0;
+
     protected $fillable = [
         'date',
         'sale_id',
@@ -99,7 +107,8 @@ class CreditNote extends BaseModel implements JsonResourceful
 
     public function electronicInvoice(): HasOne
     {
-        return $this->hasOne(ElectronicInvoice::class, 'credit_note_id', 'id');
+        // Mismo criterio que Sale::electronicInvoice() -- ver ese comentario.
+        return $this->hasOne(ElectronicInvoice::class, 'credit_note_id', 'id')->latestOfMany();
     }
 
     /**
@@ -126,6 +135,46 @@ class CreditNote extends BaseModel implements JsonResourceful
     public function tocaStock(): bool
     {
         return in_array($this->concepto, self::CONCEPTOS_QUE_TOCAN_STOCK);
+    }
+
+    public function estaCancelada(): bool
+    {
+        // NULL (filas creadas antes de esta feature) se trata como
+        // ACTIVA, no como cancelada -- mismo criterio que scopeNoCanceladas().
+        return $this->status !== null && (int) $this->status === self::STATUS_CANCELADA;
+    }
+
+    /**
+     * Excluye notas canceladas de una query. OJO: 'status' es nullable
+     * y todas las notas creadas antes de este cambio quedaron con
+     * status=2 (o NULL en filas muy viejas) -- un simple
+     * where('status', '!=', STATUS_CANCELADA) descartaría esas filas
+     * NULL de la suma (en SQL, NULL != 0 no es true), tratándolas como
+     * si estuvieran canceladas sin estarlo. Este scope trata NULL como
+     * "activa", que es lo correcto para datos previos a esta feature.
+     */
+    public function scopeNoCanceladas($query)
+    {
+        return $query->where(function ($q) {
+            $q->whereNull('status')->orWhere('status', '!=', self::STATUS_CANCELADA);
+        });
+    }
+
+    /**
+     * Una nota se puede cancelar solo si nunca llegó a ser un
+     * comprobante fiscal válido ante el SRI -- si está autorizada o
+     * todavía en trámite (pendiente/recibida), cancelarla dejaría un
+     * comprobante fiscal sin respaldo en el sistema.
+     */
+    public function puedeCancelarse(): bool
+    {
+        if ($this->estaCancelada()) {
+            return false;
+        }
+
+        $ei = $this->electronicInvoice;
+
+        return !$ei || $ei->estaRechazada() || $ei->esErrorTemporalSri();
     }
 
     public function prepareLinks(): array
@@ -157,6 +206,8 @@ class CreditNote extends BaseModel implements JsonResourceful
             'shipping' => $this->shipping,
             'grand_total' => $this->grand_total,
             'status' => $this->status,
+            'esta_cancelada' => $this->estaCancelada(),
+            'puede_cancelarse' => $this->puedeCancelarse(),
             'note' => $this->note,
             'reference_code' => $this->reference_code,
             'credit_note_items' => $this->creditNoteItems,

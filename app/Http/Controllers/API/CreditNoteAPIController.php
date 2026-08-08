@@ -34,6 +34,10 @@ class CreditNoteAPIController extends AppBaseController
             });
         }
 
+        if ($restricted = $this->restrictedWarehouseId()) {
+            $query->where('warehouse_id', $restricted);
+        }
+
         $creditNotes = $query->paginate($perPage, ['*'], 'page', (int) $request->input('page', 1));
 
         $creditNotes->getCollection()->transform(fn (CreditNote $cn) => $cn->prepareAttributes() + ['id' => $cn->id]);
@@ -43,6 +47,7 @@ class CreditNoteAPIController extends AppBaseController
 
     public function show(CreditNote $creditNote): JsonResponse
     {
+        $this->authorizeWarehouseAccess($creditNote->warehouse_id);
         $creditNote->load(['customer', 'sale', 'warehouse', 'category', 'creditNoteItems.product', 'electronicInvoice']);
 
         $ei = $creditNote->electronicInvoice;
@@ -73,6 +78,7 @@ class CreditNoteAPIController extends AppBaseController
             'credit_note_items.*.quantity' => 'required|numeric|min:0.01',
         ]);
 
+        $this->authorizeWarehouseAccess($request->input('warehouse_id'));
         $creditNote = $this->creditNoteRepository->storeCreditNote($request->all());
 
         return response()->json([
@@ -89,6 +95,7 @@ class CreditNoteAPIController extends AppBaseController
      */
     public function emitir(CreditNote $creditNote): JsonResponse
     {
+        $this->authorizeWarehouseAccess($creditNote->warehouse_id);
         $existente = ElectronicInvoice::where('credit_note_id', $creditNote->id)
             ->whereNotIn('estado', [
                 ElectronicInvoice::DEVUELTA,
@@ -119,6 +126,23 @@ class CreditNoteAPIController extends AppBaseController
     }
 
     /**
+     * Cancela/anula una nota de crédito huérfana (sin comprobante
+     * electrónico válido ante el SRI) -- ver CreditNoteRepository::
+     * cancelarCreditNote() para las reglas exactas de cuándo se permite.
+     */
+    public function cancelar(CreditNote $creditNote): JsonResponse
+    {
+        $this->authorizeWarehouseAccess($creditNote->warehouse_id);
+        $creditNote = $this->creditNoteRepository->cancelarCreditNote($creditNote->id);
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Nota de crédito cancelada correctamente.',
+            'data' => $creditNote->prepareAttributes() + ['id' => $creditNote->id],
+        ]);
+    }
+
+    /**
      * Facturas de un cliente puntual, para el modal "Listado de
      * Comprobante" que se abre al presionar el botón de buscar.
      */
@@ -128,7 +152,7 @@ class CreditNoteAPIController extends AppBaseController
         $page = (int) $request->input('page', 1);
         $search = (string) $request->get('search', '');
 
-        $resultado = $this->creditNoteRepository->facturasDeCliente($customer, $perPage, $page, $search);
+        $resultado = $this->creditNoteRepository->facturasDeCliente($customer, $perPage, $page, $search, $this->restrictedWarehouseId());
 
         return response()->json(['success' => true, 'data' => $resultado]);
     }
@@ -141,7 +165,7 @@ class CreditNoteAPIController extends AppBaseController
     {
         $request->validate(['busqueda' => 'required|string']);
 
-        $resultado = $this->creditNoteRepository->buscarFactura($request->get('busqueda'));
+        $resultado = $this->creditNoteRepository->buscarFactura($request->get('busqueda'), $this->restrictedWarehouseId());
 
         if (!$resultado) {
             return response()->json([

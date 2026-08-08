@@ -3,7 +3,6 @@
 namespace App\Http\Controllers\API;
 
 use App\Http\Controllers\AppBaseController;
-use App\Http\Requests\RegisterRequest;
 use App\Models\User;
 use Illuminate\Auth\Events\PasswordReset;
 use Illuminate\Contracts\Auth\Factory as AuthFactory;
@@ -126,18 +125,6 @@ class AuthController extends AppBaseController
             ],
             'message' => 'Logged in successfully.',
         ]);
-    }
-
-    public function register(RegisterRequest $request): JsonResponse
-    {
-        $input = $request->all();
-        $input['password'] = bcrypt($input['password']);
-        $user = User::create($input);
-        $user->assignRole('admin');
-        $success['token'] = $user->createToken('token')->plainTextToken;
-        $success['name'] = $user->name;
-
-        return $this->sendResponse($success, 'User registered successfully');
     }
 
     public function logout(): JsonResponse

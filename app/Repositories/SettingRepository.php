@@ -105,14 +105,25 @@ public function updateSettings($input)
             ]);
 
         foreach ($settingInputArray as $key => $value) {
+            // index() enmascara smtp_password/stripe_secret/twillo_token
+            // en la respuesta -- si el formulario los reenvía sin que el
+            // usuario los haya tocado, este es exactamente ese valor
+            // enmascarado, no la contraseña real. Sin este chequeo se
+            // sobreescribiría la credencial real con la máscara literal
+            // en cada guardado de Configuración que no toque ese campo.
+            if (in_array($key, ['smtp_password', 'stripe_secret', 'twillo_token'])
+                && $value === self::MAIL_PASSWORD_MASK) {
+                continue;
+            }
+
             $setting = Setting::firstOrCreate(['key' => $key], ['value' => '']);
-            
+
             // Manejo de campos booleanos
-            if (in_array($key, ['show_version_on_footer', 'is_currency_right', 
+            if (in_array($key, ['show_version_on_footer', 'is_currency_right',
                 'show_logo_in_receipt', 'show_app_name_in_sidebar'])) {
                 $value = !empty($value);
             }
-            
+
             if (isset($value)) {
                 $setting->update(['value' => $value]);
             }
@@ -126,6 +137,13 @@ public function updateSettings($input)
         throw new UnprocessableEntityHttpException($exception->getMessage());
     }
 }
+    /**
+     * Valor enmascarado que getEnvData() devuelve en vez de la contraseña
+     * real -- si vuelve tal cual en el submit, significa que el usuario no
+     * la cambió, así que no se debe sobreescribir con eso.
+     */
+    public const MAIL_PASSWORD_MASK = '••••••••';
+
     public function updateMailEnvSetting($input)
     {
         $env = new DotenvEditor();
@@ -137,10 +155,13 @@ public function updateSettings($input)
             'MAIL_HOST' => (empty($inputArr['mail_host'])) ? '' : $inputArr['mail_host'],
             'MAIL_PORT' => (empty($inputArr['mail_port'])) ? '' : $inputArr['mail_port'],
             'MAIL_USERNAME' => (empty($inputArr['mail_username'])) ? '' : $inputArr['mail_username'],
-            'MAIL_PASSWORD' => (empty($inputArr['mail_password'])) ? '' : $inputArr['mail_password'],
             'MAIL_FROM_ADDRESS' => (empty($inputArr['mail_from_address'])) ? '' : $inputArr['mail_from_address'],
             'MAIL_ENCRYPTION' => (empty($inputArr['mail_encryption'])) ? '' : $inputArr['mail_encryption'],
         ];
+
+        if (($inputArr['mail_password'] ?? null) !== self::MAIL_PASSWORD_MASK) {
+            $envData['MAIL_PASSWORD'] = (empty($inputArr['mail_password'])) ? '' : $inputArr['mail_password'];
+        }
 
         foreach ($envData as $key => $value) {
             $this->createOrUpdateEnv($env, $key, $value);
@@ -185,7 +206,7 @@ public function updateSettings($input)
             'mail_host' => $data['MAIL_HOST'],
             'mail_port' => $data['MAIL_PORT'],
             'mail_username' => $data['MAIL_USERNAME'],
-            'mail_password' => $data['MAIL_PASSWORD'],
+            'mail_password' => empty($data['MAIL_PASSWORD']) ? '' : self::MAIL_PASSWORD_MASK,
             'mail_from_address' => $data['MAIL_FROM_ADDRESS'],
             'mail_encryption' => $data['MAIL_ENCRYPTION'],
         ];

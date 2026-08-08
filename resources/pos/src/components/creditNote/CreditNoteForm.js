@@ -157,7 +157,15 @@ const CreditNoteForm = (props) => {
         setCreditNoteValue((v) => ({ ...v, [e.target.name]: e.target.value }));
     };
 
-    const handleValidation = () => true;
+    // Pasado a <ProductSearch>, que lo llama cuando se intenta buscar un
+    // producto sin haber seleccionado factura todavía (values.warehouse_id
+    // vacío -- ver ProductSearch.js:50-51). Antes esto era un stub que no
+    // hacía nada, así que el usuario tecleaba en el buscador sin ningún
+    // resultado ni explicación de por qué.
+    const handleValidation = () => {
+        dispatch(addToast({ text: 'Buscá y seleccioná una factura antes de agregar productos.', type: toastType.ERROR }));
+        return false;
+    };
 
     const onCategoryCreated = (nuevaCategoria) => {
         cargarCategorias();
@@ -173,6 +181,15 @@ const CreditNoteForm = (props) => {
         }
         if (updateProducts.length < 1) {
             dispatch(addToast({ text: 'Agregá al menos un producto.', type: toastType.ERROR }));
+            return;
+        }
+        // El backend ya rechaza quantity <= 0 (422), pero antes acá no
+        // había ningún control -- el usuario se enteraba recién después
+        // de enviar, con un error genérico en vez de saber qué línea
+        // corregir.
+        const lineaInvalida = updateProducts.find((p) => !(Number(p.quantity) > 0));
+        if (lineaInvalida) {
+            dispatch(addToast({ text: 'Hay un producto con cantidad inválida (debe ser mayor a 0).', type: toastType.ERROR }));
             return;
         }
         if (!creditNoteValue.motivo.trim()) {
@@ -195,7 +212,6 @@ const CreditNoteForm = (props) => {
             discount: creditNoteValue.discount,
             shipping: creditNoteValue.shipping,
             grand_total: calculateCartTotalAmount(updateProducts, creditNoteValue),
-            status: 2,
             credit_note_items: updateProducts,
         };
 
