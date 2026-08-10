@@ -10,12 +10,19 @@ class TopSellingProductReportExport implements FromView
 {
     public function view(): \Illuminate\Contracts\View\View
     {
+        $storeId = currentStoreId();
         if (request()->get('start_date') && request()->get('start_date') && request()->get('start_date') != 'null' && request()->get('start_date') != 'null') {
-            $startDate = Carbon::parse(request()->get('start_date'))->toDateTimeString();
-            $endDate = Carbon::parse(request()->get('end_date'))->toDateTimeString();
+            // El rango lo elige el usuario en su calendario local (Ecuador),
+            // pero sale_items.created_at se guarda en UTC real -- convertir
+            // antes de comparar, si no el filtro queda corrido hasta 5 horas.
+            $startDate = Carbon::parse(request()->get('start_date'), 'America/Guayaquil')->startOfDay()->utc()->toDateTimeString();
+            $endDate = Carbon::parse(request()->get('end_date'), 'America/Guayaquil')->endOfDay()->utc()->toDateTimeString();
             $topSelling = Product::leftJoin('sale_items', 'products.id', '=', 'sale_items.product_id')
-                ->whereDate('sale_items.created_at', '>=', $startDate)
-                ->whereDate('sale_items.created_at', '<=', $endDate)
+                ->where('sale_items.created_at', '>=', $startDate)
+                ->where('sale_items.created_at', '<=', $endDate)
+                ->when($storeId, function ($q) use ($storeId) {
+                    $q->where('products.store_id', $storeId);
+                })
                 ->selectRaw('products.*, COALESCE(sum(sale_items.sub_total),0) grand_total')
                 ->selectRaw('products.*, COALESCE(sum(sale_items.quantity),0) total_quantity')
                 ->groupBy('products.id')
@@ -25,6 +32,9 @@ class TopSellingProductReportExport implements FromView
                 ->get();
         } else {
             $topSelling = Product::leftJoin('sale_items', 'products.id', '=', 'sale_items.product_id')
+                ->when($storeId, function ($q) use ($storeId) {
+                    $q->where('products.store_id', $storeId);
+                })
                 ->selectRaw('products.*, COALESCE(sum(sale_items.sub_total),0) grand_total')
                 ->selectRaw('products.*, COALESCE(sum(sale_items.quantity),0) total_quantity')
                 ->groupBy('products.id')

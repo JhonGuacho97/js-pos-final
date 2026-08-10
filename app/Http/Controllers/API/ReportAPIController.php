@@ -176,12 +176,20 @@ class ReportAPIController extends AppBaseController
      */
     public function getSellingProductReport(Request $request)
     {
+        $storeId = $this->currentStoreId();
         if ($request->get('start_date') && $request->get('start_date') != 'null') {
-            $startDate = Carbon::parse(request()->get('start_date'))->startOfDay()->toDateTimeString();
-            $endDate = Carbon::parse(request()->get('end_date'))->endOfDay()->toDateTimeString();
+            // El rango lo elige el usuario en su calendario local (Ecuador)
+            // pero sale_items.created_at se guarda en UTC -- hay que
+            // convertir el rango local a UTC antes de comparar, si no el
+            // filtro queda corrido hasta 5 horas.
+            $startDate = Carbon::parse(request()->get('start_date'), 'America/Guayaquil')->startOfDay()->utc()->toDateTimeString();
+            $endDate = Carbon::parse(request()->get('end_date'), 'America/Guayaquil')->endOfDay()->utc()->toDateTimeString();
             $topSelling = Product::leftJoin('sale_items', 'products.id', '=', 'sale_items.product_id')
                 ->where('sale_items.created_at', '>=', $startDate)
                 ->where('sale_items.created_at', '<=', $endDate)
+                ->when($storeId, function ($q) use ($storeId) {
+                    $q->where('products.store_id', $storeId);
+                })
                 ->selectRaw('products.*, COALESCE(sum(sale_items.sub_total),0) grand_total')
                 ->selectRaw('products.*, COALESCE(sum(sale_items.quantity),0) total_quantity')
                 ->groupBy('products.id')
@@ -191,6 +199,9 @@ class ReportAPIController extends AppBaseController
                 ->get();
         } else {
             $topSelling = Product::leftJoin('sale_items', 'products.id', '=', 'sale_items.product_id')
+                ->when($storeId, function ($q) use ($storeId) {
+                    $q->where('products.store_id', $storeId);
+                })
                 ->selectRaw('products.*, COALESCE(sum(sale_items.sub_total),0) grand_total')
                 ->selectRaw('products.*, COALESCE(sum(sale_items.quantity),0) total_quantity')
                 ->groupBy('products.id')
@@ -277,7 +288,13 @@ class ReportAPIController extends AppBaseController
     public function getProductQuantity(Request $request): JsonResponse
     {
         $productId = $request->get('product_id');
-        $product = ManageStock::whereProductId($productId)->with('warehouse', 'product')->get();
+        $product = ManageStock::whereProductId($productId)->with('warehouse', 'product')
+            ->when($this->currentStoreId(), function ($q, $storeId) {
+                $q->whereHas('warehouse', function ($qw) use ($storeId) {
+                    $qw->where('store_id', $storeId);
+                });
+            })
+            ->get();
 
         return $this->sendResponse($product, 'Product Quantity retrieved successfully');
     }
@@ -289,6 +306,11 @@ class ReportAPIController extends AppBaseController
     {
         $perPage = getPageSize($request);
         $manageStocks = $this->manageStockRepository->with('warehouse')->where('alert', true)->latest();
+        if ($storeId = $this->currentStoreId()) {
+            $manageStocks->whereHas('warehouse', function ($q) use ($storeId) {
+                $q->where('store_id', $storeId);
+            });
+        }
         if ($warehouseId != null) {
             $manageStocks = $manageStocks->where('warehouse_id', $warehouseId);
         }
@@ -319,33 +341,39 @@ class ReportAPIController extends AppBaseController
     public function getTodaySalesOverallReport()
     {
         $data = [];
-        $today = Carbon::today();
+        $storeId = $this->currentStoreId();
+        $today = Carbon::today('America/Guayaquil');
+        // sale_items.created_at es un timestamp real en UTC -- whereDate()
+        // sobre esa columna compara contra SU fecha en UTC, no en Ecuador,
+        // así que hay que filtrar por el rango UTC equivalente al día local.
+        $todayStartUtc = $today->copy()->utc();
+        $todayEndUtc = $today->copy()->endOfDay()->utc();
 
-        $salesDiscount = Sale::where('date', $today)->sum('discount');
-        $salesTax = Sale::where('date', $today)->sum('tax_amount');
-        $salesShippingAmount = Sale::where('date', $today)->sum('shipping');
-        $totalGrandTotalAmount = Sale::where('date', $today)->sum('grand_total');
+        $salesDiscount = $this->scopeQueryToCurrentStore(Sale::where('date', $today))->sum('discount');
+        $salesTax = $this->scopeQueryToCurrentStore(Sale::where('date', $today))->sum('tax_amount');
+        $salesShippingAmount = $this->scopeQueryToCurrentStore(Sale::where('date', $today))->sum('shipping');
+        $totalGrandTotalAmount = $this->scopeQueryToCurrentStore(Sale::where('date', $today))->sum('grand_total');
 
-        $data['today_sales_cash_payment'] = SalesPayment::where('payment_date', $today)->where(
+        $data['today_sales_cash_payment'] = $this->scopeSalesPaymentsToCurrentStore(SalesPayment::where('payment_date', $today)->where(
             'payment_type',
             SalesPayment::CASH
-        )->sum('amount');
-        $data['today_sales_cheque_payment'] = SalesPayment::where('payment_date', $today)->where(
+        ))->sum('amount');
+        $data['today_sales_cheque_payment'] = $this->scopeSalesPaymentsToCurrentStore(SalesPayment::where('payment_date', $today)->where(
             'payment_type',
             SalesPayment::CHEQUE
-        )->sum('amount');
-        $data['today_sales_bank_transfer_payment'] = SalesPayment::where('payment_date', $today)->where(
+        ))->sum('amount');
+        $data['today_sales_bank_transfer_payment'] = $this->scopeSalesPaymentsToCurrentStore(SalesPayment::where('payment_date', $today)->where(
             'payment_type',
             SalesPayment::BANK_TRANSFER
-        )->sum('amount');
-        $data['today_sales_other_payment'] = SalesPayment::where('payment_date', $today)->where(
+        ))->sum('amount');
+        $data['today_sales_other_payment'] = $this->scopeSalesPaymentsToCurrentStore(SalesPayment::where('payment_date', $today)->where(
             'payment_type',
             SalesPayment::OTHER
-        )->sum('amount');
+        ))->sum('amount');
 
         $data['today_sales_total_amount'] = $totalGrandTotalAmount;
-        $data['today_sales_total_return_amount'] = SaleReturn::where('date', $today)->sum('grand_total');
-        $data['today_sales_payment_amount'] = SalesPayment::where('payment_date', $today)->sum('amount');
+        $data['today_sales_total_return_amount'] = $this->scopeQueryToCurrentStore(SaleReturn::where('date', $today))->sum('grand_total');
+        $data['today_sales_payment_amount'] = $this->scopeSalesPaymentsToCurrentStore(SalesPayment::where('payment_date', $today))->sum('amount');
 
         $productsData = Product::leftJoin(
             'sale_items',
@@ -353,7 +381,10 @@ class ReportAPIController extends AppBaseController
             '=',
             'sale_items.product_id'
         )
-            ->whereDate('sale_items.created_at', $today)
+            ->whereBetween('sale_items.created_at', [$todayStartUtc, $todayEndUtc])
+            ->when($storeId, function ($q) use ($storeId) {
+                $q->where('products.store_id', $storeId);
+            })
             ->selectRaw('products.*, COALESCE(sum(sale_items.sub_total),0) grand_total')
             ->selectRaw('products.*, COALESCE(sum(sale_items.quantity),0) total_quantity')
             ->groupBy('products.id')
@@ -379,7 +410,10 @@ class ReportAPIController extends AppBaseController
             '=',
             'sale_items.product_id'
         )
-            ->whereDate('sale_items.created_at', $today)
+            ->whereBetween('sale_items.created_at', [$todayStartUtc, $todayEndUtc])
+            ->when($storeId, function ($q) use ($storeId) {
+                $q->where('brands.store_id', $storeId);
+            })
             ->selectRaw('brands.*, COALESCE(sum(sale_items.sub_total),0) grand_total')
             ->selectRaw('brands.*, COALESCE(sum(sale_items.quantity),0) total_quantity')
             ->groupBy('brands.id')
@@ -407,7 +441,11 @@ class ReportAPIController extends AppBaseController
     public function getSupplierReport(Request $request): JsonResponse
     {
         $perPage = getPageSize($request);
-        $suppliers = $this->supplierRepository->withCount('purchases')->with('purchases')->paginate($perPage);
+        $suppliersQuery = $this->supplierRepository->withCount('purchases')->with('purchases');
+        if ($storeId = $this->currentStoreId()) {
+            $suppliersQuery = $suppliersQuery->where('store_id', $storeId);
+        }
+        $suppliers = $suppliersQuery->paginate($perPage);
 
         foreach ($suppliers as $key => $supplier) {
             $suppliers[$key]['total_grand_amount'] = $supplier->purchases->sum('grand_total');
@@ -420,6 +458,8 @@ class ReportAPIController extends AppBaseController
     {
         $perPage = getPageSize($request);
 
+        $this->authorizeStoreOwnership(Supplier::findOrFail($supplierId));
+
         $search = $request->filter['search'] ?? '';
         $supplier = (Supplier::where('name', 'LIKE', "%$search%")->get()->count() != 0);
         $warehouse = (Warehouse::where('name', 'LIKE', "%$search%")->get()->count() != 0);
@@ -430,6 +470,8 @@ class ReportAPIController extends AppBaseController
             ->allowedSorts('reference_code', 'created_at')
             ->allowedFilters(['reference_code'])
             ->with('warehouse', 'supplier');
+
+        $this->scopeQueryToCurrentStore($purchases);
 
         if ($supplier || $warehouse) {
             $purchases->whereHas('supplier', function (Builder $q) use ($search, $supplier) {
@@ -452,6 +494,8 @@ class ReportAPIController extends AppBaseController
     {
         $perPage = getPageSize($request);
 
+        $this->authorizeStoreOwnership(Supplier::findOrFail($supplierId));
+
         $search = $request->filter['search'] ?? '';
         $supplier = (Supplier::where('name', 'LIKE', "%$search%")->get()->count() != 0);
         $warehouse = (Warehouse::where('name', 'LIKE', "%$search%")->get()->count() != 0);
@@ -464,6 +508,8 @@ class ReportAPIController extends AppBaseController
         $purchaseReturns = QueryBuilder::for(PurchaseReturn::class)
             ->where('supplier_id', $supplierId)
             ->with('warehouse', 'supplier');
+
+        $this->scopeQueryToCurrentStore($purchaseReturns);
 
         if ($supplier || $warehouse) {
             $purchaseReturns->whereHas('supplier', function (Builder $q) use ($search, $supplier) {
@@ -488,9 +534,11 @@ class ReportAPIController extends AppBaseController
 
     public function getSupplierInfo($supplierId)
     {
+        $this->authorizeStoreOwnership(Supplier::findOrFail($supplierId));
+
         $data = [];
-        $purchases = $this->purchaseRepository->whereSupplierId($supplierId);
-        $purchaseReturns = $this->purchaseReturnRepository->whereSupplierId($supplierId);
+        $purchases = $this->scopeQueryToCurrentStore($this->purchaseRepository->whereSupplierId($supplierId));
+        $purchaseReturns = $this->scopeQueryToCurrentStore($this->purchaseReturnRepository->whereSupplierId($supplierId));
 
         $data['purchases_count'] = $purchases->count();
         $data['purchases_total_amount'] = $purchases->sum('grand_total');
@@ -502,9 +550,12 @@ class ReportAPIController extends AppBaseController
 
     public function getBestCustomersReport(Request $request): JsonResponse
     {
-        $month = Carbon::now()->month;
+        $month = Carbon::now('America/Guayaquil')->month;
         $topCustomers = Customer::leftJoin('sales', 'customers.id', '=', 'sales.customer_id')
             ->whereMonth('date', $month)
+            ->when($this->currentStoreId(), function ($q, $storeId) {
+                $q->where('customers.store_id', $storeId);
+            })
             ->select('customers.*', DB::raw('sum(sales.grand_total) as grand_total'))
             ->groupBy('customers.id')
             ->orderBy('grand_total', 'desc')
@@ -526,44 +577,48 @@ class ReportAPIController extends AppBaseController
     public function getProfitLossReport(Request $request)
     {
         $data = [];
-        $data['sales'] = Sale::whereBetween(
+        $data['sales'] = $this->scopeQueryToCurrentStore(Sale::whereBetween(
             'date',
             [$request->get('start_date'), $request->get('end_date')]
-        )->sum('grand_total');
-        $data['purchase_returns'] = PurchaseReturn::whereBetween(
+        ))->sum('grand_total');
+        $data['purchase_returns'] = $this->scopeQueryToCurrentStore(PurchaseReturn::whereBetween(
             'date',
             [$request->get('start_date'), $request->get('end_date')]
-        )->sum('grand_total');
-        $data['purchases'] = Purchase::whereBetween(
+        ))->sum('grand_total');
+        $data['purchases'] = $this->scopeQueryToCurrentStore(Purchase::whereBetween(
             'date',
             [$request->get('start_date'), $request->get('end_date')]
-        )->sum('grand_total') - $data['purchase_returns'];
-        $data['sale_returns'] = SaleReturn::whereBetween(
+        ))->sum('grand_total') - $data['purchase_returns'];
+        $data['sale_returns'] = $this->scopeQueryToCurrentStore(SaleReturn::whereBetween(
             'date',
             [$request->get('start_date'), $request->get('end_date')]
-        )->sum('grand_total');
-        $data['expenses'] = Expense::whereBetween(
+        ))->sum('grand_total');
+        $data['expenses'] = $this->scopeQueryToCurrentStore(Expense::whereBetween(
             'date',
             [$request->get('start_date'), $request->get('end_date')]
-        )->sum('amount');
-        $data['sales_payment_amount'] = SalesPayment::whereBetween(
+        ))->sum('amount');
+        $data['sales_payment_amount'] = $this->scopeSalesPaymentsToCurrentStore(SalesPayment::whereBetween(
             'payment_date',
             [$request->get('start_date'), $request->get('end_date')]
-        )->sum('amount');
+        ))->sum('amount');
         $data['Revenue'] = $data['sales'] - $data['sale_returns'];
         $data['payments_received'] = $data['sales_payment_amount'] + $data['purchase_returns'];
 
         $productCost = 0;
         $productItemCost = 0;
 
-        $sales = Sale::whereBetween(
+        $sales = $this->scopeQueryToCurrentStore(Sale::whereBetween(
             'date',
             [$request->get('start_date'), $request->get('end_date')]
-        )->with('saleItems.productPresentation.product')->get();
+        ))->with('saleItems.productPresentation.product')->get();
 
-        $allSaleReturnsItems = SaleReturnItem::join('sales_return', 'sales_return.id', '=', 'sale_return_items.sale_return_id')
+        $allSaleReturnsItemsQuery = SaleReturnItem::join('sales_return', 'sales_return.id', '=', 'sale_return_items.sale_return_id')
             ->join('sales', 'sales.id', '=', 'sales_return.sale_id')
-            ->whereBetween('sales.date', [$request->get('start_date'), $request->get('end_date')])
+            ->whereBetween('sales.date', [$request->get('start_date'), $request->get('end_date')]);
+        if ($storeId = $this->currentStoreId()) {
+            $allSaleReturnsItemsQuery->whereIn('sales.warehouse_id', Warehouse::where('store_id', $storeId)->pluck('id'));
+        }
+        $allSaleReturnsItems = $allSaleReturnsItemsQuery
             ->select('sale_return_items.quantity', 'sale_return_items.product_id')
             ->with('product')
             ->get();
@@ -597,7 +652,11 @@ class ReportAPIController extends AppBaseController
     public function getCustomerReport(Request $request)
     {
         $perPage = getPageSize($request);
-        $customers = $this->customerRepository->withCount('sales')->with('sales.payments')->paginate($perPage);
+        $customersQuery = $this->customerRepository->withCount('sales')->with('sales.payments');
+        if ($storeId = $this->currentStoreId()) {
+            $customersQuery = $customersQuery->where('store_id', $storeId);
+        }
+        $customers = $customersQuery->paginate($perPage);
 
         foreach ($customers as $key => $customer) {
             $totalPaidAmount = 0;
@@ -618,6 +677,9 @@ class ReportAPIController extends AppBaseController
     {
         $perPage = getPageSize($request);
 
+        $customer = Customer::findOrFail($id);
+        $this->authorizeStoreOwnership($customer);
+
         $saleIds = [];
 
         $sales = Sale::whereCustomerId($id)->get();
@@ -636,6 +698,8 @@ class ReportAPIController extends AppBaseController
 
     public function getCustomerInfo(Customer $customer)
     {
+        $this->authorizeStoreOwnership($customer);
+
         $salesData = [];
 
         $salesData['totalSale'] = $customer->sales->count();

@@ -3,21 +3,27 @@
 namespace App\Exports;
 
 use App\Models\Purchase;
+use App\Models\Warehouse;
 use Maatwebsite\Excel\Concerns\FromView;
 
 class PurchasesWarehouseReportExport implements FromView
 {
     public function view(): \Illuminate\Contracts\View\View
     {
+        $storeId = currentStoreId();
         $warehouseId = request()->get('warehouse_id');
         $supplierId = request()->get('supplier_id');
         if (isset($warehouseId) && $warehouseId != 'null') {
-            $purchases = Purchase::whereWarehouseId($warehouseId)->with('warehouse', 'supplier')->get();
+            $purchasesQuery = Purchase::whereWarehouseId($warehouseId)->with('warehouse', 'supplier');
         } elseif (isset($supplierId) && $supplierId != 'null') {
-            $purchases = Purchase::whereSupplierId($supplierId)->with('warehouse', 'supplier')->get();
+            $purchasesQuery = Purchase::whereSupplierId($supplierId)->with('warehouse', 'supplier');
         } else {
-            $purchases = Purchase::with('warehouse', 'supplier')->get();
+            $purchasesQuery = Purchase::with('warehouse', 'supplier');
         }
+        if ($storeId) {
+            $purchasesQuery->whereIn('warehouse_id', Warehouse::where('store_id', $storeId)->pluck('id'));
+        }
+        $purchases = $purchasesQuery->get();
 
         return view('excel.purchase-report-excel', ['purchases' => $purchases]);
     }

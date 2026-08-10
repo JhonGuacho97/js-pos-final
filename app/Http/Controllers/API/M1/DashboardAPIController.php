@@ -24,14 +24,14 @@ class DashboardAPIController extends AppBaseController
         $data = [];
         $today = Carbon::now('America/Guayaquil')->toDateString();
 
-        $data['sales'] = (float) Sale::sum('grand_total');
-        $data['purchases'] = (float) Purchase::sum('grand_total');
-        $data['sale_returns'] = (float) SaleReturn::sum('grand_total');
-        $data['purchase_returns'] = (float) PurchaseReturn::sum('grand_total');
-        $data['today_sales'] = (float) Sale::where('date', $today)->sum('grand_total');
-        $data['today_sales_received'] = (float) SalesPayment::where('payment_date', $today)->sum('amount');
-        $data['today_purchases'] = (float) PurchaseReturn::where('date', $today)->sum('grand_total');
-        $data['today_expenses'] = (float) Expense::where('date', $today)->sum('amount');
+        $data['sales'] = (float) $this->scopeQueryToCurrentStore(Sale::query())->sum('grand_total');
+        $data['purchases'] = (float) $this->scopeQueryToCurrentStore(Purchase::query())->sum('grand_total');
+        $data['sale_returns'] = (float) $this->scopeQueryToCurrentStore(SaleReturn::query())->sum('grand_total');
+        $data['purchase_returns'] = (float) $this->scopeQueryToCurrentStore(PurchaseReturn::query())->sum('grand_total');
+        $data['today_sales'] = (float) $this->scopeQueryToCurrentStore(Sale::where('date', $today))->sum('grand_total');
+        $data['today_sales_received'] = (float) $this->scopeSalesPaymentsToCurrentStore(SalesPayment::where('payment_date', $today))->sum('amount');
+        $data['today_purchases'] = (float) $this->scopeQueryToCurrentStore(PurchaseReturn::where('date', $today))->sum('grand_total');
+        $data['today_expenses'] = (float) $this->scopeQueryToCurrentStore(Expense::where('date', $today))->sum('amount');
 
         return $this->sendResponse($data, 'Dashboard data Retrieved Successfully');
     }
@@ -45,7 +45,7 @@ class DashboardAPIController extends AppBaseController
             $days[] = $date->subDay()->format('Y-m-d');
         }
         $day['days'] = array_reverse($days);
-        $sales = Sale::whereBetween('date', [$day['days'][0], $day['days'][6]])
+        $sales = $this->scopeQueryToCurrentStore(Sale::whereBetween('date', [$day['days'][0], $day['days'][6]]))
             ->orderBy('date', 'desc')
             ->groupBy('date')
             ->get([
@@ -63,7 +63,7 @@ class DashboardAPIController extends AppBaseController
             return $sales->has($week) ? $sales->get($week)->grand_total : 0;
         }, iterator_to_array($period));
 
-        $purchases = Purchase::whereBetween('date', [$day['days'][0], $day['days'][6]])
+        $purchases = $this->scopeQueryToCurrentStore(Purchase::whereBetween('date', [$day['days'][0], $day['days'][6]]))
             ->orderBy('date', 'desc')
             ->groupBy('date')
             ->get([
@@ -92,6 +92,9 @@ class DashboardAPIController extends AppBaseController
         $year = now('America/Guayaquil')->year;
         $topSellings = Product::leftJoin('sale_items', 'products.id', '=', 'sale_items.product_id')
             ->whereYear('sale_items.created_at', $year)
+            ->when($this->currentStoreId(), function ($q, $storeId) {
+                $q->where('products.store_id', $storeId);
+            })
             ->selectRaw('products.*, COALESCE(sum(sale_items.sub_total),0) grand_total')
             ->selectRaw('products.*, COALESCE(sum(sale_items.quantity),0) total_quantity')
             ->groupBy('products.id')
@@ -111,11 +114,14 @@ class DashboardAPIController extends AppBaseController
 
     public function getTopSellingProducts(): JsonResponse
     {
-        $month = now()->month;
-        $year = now()->year;
+        $month = now('America/Guayaquil')->month;
+        $year = now('America/Guayaquil')->year;
         $topSellings = Product::leftJoin('sale_items', 'products.id', '=', 'sale_items.product_id')
             ->whereMonth('sale_items.created_at', $month)
             ->whereYear('sale_items.created_at', $year)
+            ->when($this->currentStoreId(), function ($q, $storeId) {
+                $q->where('products.store_id', $storeId);
+            })
             ->selectRaw('products.*, COALESCE(sum(sale_items.sub_total),0) grand_total')
             ->selectRaw('products.*, COALESCE(sum(sale_items.quantity),0) total_quantity')
             ->groupBy('products.id')
@@ -133,9 +139,12 @@ class DashboardAPIController extends AppBaseController
 
     public function getTopCustomer(): JsonResponse
     {
-        $month = now()->month;
+        $month = now('America/Guayaquil')->month;
         $topCustomers = Customer::leftJoin('sales', 'customers.id', '=', 'sales.customer_id')
             ->whereMonth('date', $month)
+            ->when($this->currentStoreId(), function ($q, $storeId) {
+                $q->where('customers.store_id', $storeId);
+            })
             ->select('customers.*', DB::raw('sum(sales.grand_total) as grand_total'))
             ->groupBy('customers.id')
             ->orderBy('grand_total', 'desc')
@@ -155,7 +164,7 @@ class DashboardAPIController extends AppBaseController
 
     public function getRecentSales()
     {
-        $recentSales = Sale::latest()->take(5)->get();
+        $recentSales = $this->scopeQueryToCurrentStore(Sale::query())->latest()->take(5)->get();
         $data = [];
         foreach ($recentSales as $sales) {
             $data[] = $sales->prepareRecentSelling();
@@ -166,7 +175,14 @@ class DashboardAPIController extends AppBaseController
 
     public function stockAlerts(): JsonResponse
     {
-        $manageStocks = ManageStock::with('warehouse')->where('alert', true)->limit(10)->latest()->get();
+        $manageStocks = ManageStock::with('warehouse')
+            ->where('alert', true)
+            ->when($this->currentStoreId(), function ($q, $storeId) {
+                $q->whereHas('warehouse', function ($qw) use ($storeId) {
+                    $qw->where('store_id', $storeId);
+                });
+            })
+            ->limit(10)->latest()->get();
 
         $productResponse = [];
         foreach ($manageStocks as $stocks) {
