@@ -95,6 +95,7 @@ class ProductKitAPIController extends AppBaseController
                 'code' => $code,
                 'product_unit' => $input['product_unit'],
                 'product_type' => MainProduct::SINGLE_PRODUCT,
+                'store_id' => $this->requireCurrentStoreId(),
             ]);
 
             if ($request->hasFile('image')) {
@@ -124,6 +125,7 @@ class ProductKitAPIController extends AppBaseController
                 'tax_type' => $input['tax_type'],
                 'barcode_symbol' => Product::CODE128,
                 'is_kit' => true,
+                'store_id' => $this->requireCurrentStoreId(),
             ]);
 
             foreach ($components as $component) {
@@ -186,6 +188,7 @@ class ProductKitAPIController extends AppBaseController
                         'code' => $kit->code,
                         'product_unit' => $kit->product_unit,
                         'product_type' => MainProduct::SINGLE_PRODUCT,
+                        'store_id' => $kit->store_id,
                     ]);
                     $kit->update(['main_product_id' => $mainProduct->id]);
                 }

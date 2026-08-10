@@ -49,6 +49,7 @@ class VariationRepository extends BaseRepository
                     VariationType::create([
                         'name' => $type['name'],
                         'variation_id' => $variation->id,
+                        'store_id' => $variation->store_id,
                     ]);
                 }
             }
@@ -95,6 +96,7 @@ class VariationRepository extends BaseRepository
                     VariationType::create([
                         'name' => $type['name'],
                         'variation_id' => $variation->id,
+                        'store_id' => $variation->store_id,
                     ]);
                 }
             }
