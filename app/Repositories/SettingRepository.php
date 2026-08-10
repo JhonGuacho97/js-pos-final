@@ -53,10 +53,18 @@ public function updateSettings($input)
 {
     try {
         DB::beginTransaction();
-        
+
+        // firstOrCreate() sin store_id encontraría/actualizaría la fila
+        // NULL de fallback en vez del override de la tienda activa (ver
+        // MigrateToInitialStoreSeeder::backfillSettings() -- existen
+        // ambas para cada key), dejando el override desactualizado y
+        // sin efecto real ya que index()/getFrontSettingsValue() lo
+        // prefieren sobre el fallback.
+        $storeId = requireCurrentStoreId();
+
         // Manejo del logo
         if (isset($input['logo']) && !empty($input['logo'])) {
-            $setting = Setting::firstOrCreate(['key' => 'logo'], ['value' => '']);
+            $setting = Setting::firstOrCreate(['key' => 'logo', 'store_id' => $storeId], ['value' => '']);
             
             $media = $setting->addMedia($input['logo'])
                 ->toMediaCollection(Setting::PATH, config('app.media_disc'));
@@ -116,7 +124,7 @@ public function updateSettings($input)
                 continue;
             }
 
-            $setting = Setting::firstOrCreate(['key' => $key], ['value' => '']);
+            $setting = Setting::firstOrCreate(['key' => $key, 'store_id' => $storeId], ['value' => '']);
 
             // Manejo de campos booleanos
             if (in_array($key, ['show_version_on_footer', 'is_currency_right',

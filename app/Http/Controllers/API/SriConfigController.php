@@ -17,6 +17,67 @@ class SriConfigController extends AppBaseController
     {
     }
 
+    /**
+     * Mismo criterio que SettingAPIController::scopedSettingsQuery() --
+     * fila store_id NULL = fallback de sistema/legado, fila
+     * store_id=<tienda> = override específico de esa tienda. Cada
+     * tienda necesita poder tener su propio RUC/certificado/estab
+     * (son entidades fiscales potencialmente distintas ante el SRI),
+     * así que la config SRI sigue exactamente el mismo patrón que el
+     * resto de Settings en vez de vivir en una única fila global
+     * compartida por todas las tiendas.
+     */
+    /**
+     * Sin tienda resuelta (2+ tiendas del admin sin X-Store-Id todavía --
+     * ver el mismo hueco encontrado en SettingAPIController), no se
+     * puede dejar la query sin filtrar: con 2+ tiendas eso devolvía
+     * filas de TODAS, y el consumidor (get()->pluck() o ->value() según
+     * el caso) terminaba quedándose con la de la tienda con el ID más
+     * alto -- cualquiera, sin relación con la tienda que el admin
+     * realmente tiene activa. whereNull restringe al fallback de
+     * sistema, que para SRI en la práctica no debería usarse nunca
+     * (cada tienda necesita su propio RUC/certificado) pero es preferible
+     * a filtrar el de una tienda ajena.
+     */
+    private function scopedSettingsQuery()
+    {
+        $storeId = $this->currentStoreId();
+        $query = Setting::query()->orderBy('store_id');
+        if ($storeId) {
+            $query->where(function ($q) use ($storeId) {
+                $q->whereNull('store_id')->orWhere('store_id', $storeId);
+            });
+        } else {
+            $query->whereNull('store_id');
+        }
+
+        return $query;
+    }
+
+    /**
+     * Lee UNA key -- a diferencia de scopedSettingsQuery(), que hay que
+     * consumir con get()->pluck() para que el override le gane al
+     * fallback (orderBy ascendente pone NULL primero), acá directamente
+     * se ordena descendente y se toma la primera fila: si existe una
+     * fila de la tienda activa, MySQL la devuelve antes que la NULL
+     * (NULL siempre ordena como la más chica, con ASC o DESC), así que
+     * ->value() ya trae lo correcto sin tener que traer ambas filas.
+     */
+    private function scopedSettingValue(string $key): ?string
+    {
+        $storeId = $this->currentStoreId();
+        $query = Setting::query()->where('key', $key)->orderByDesc('store_id');
+        if ($storeId) {
+            $query->where(function ($q) use ($storeId) {
+                $q->whereNull('store_id')->orWhere('store_id', $storeId);
+            });
+        } else {
+            $query->whereNull('store_id');
+        }
+
+        return $query->value('value');
+    }
+
     // ── Obtener configuración actual ──────────────────────────────────────
 
     public function index(): JsonResponse
@@ -34,7 +95,9 @@ class SriConfigController extends AppBaseController
             'sri_certificado_path',
         ];
 
-        $settings = Setting::whereIn('key', $keys)
+        $settings = $this->scopedSettingsQuery()
+            ->whereIn('key', $keys)
+            ->get()
             ->pluck('value', 'key')
             ->toArray();
 
@@ -127,6 +190,12 @@ class SriConfigController extends AppBaseController
 
     public function subirCertificado(Request $request): JsonResponse
     {
+        // Falla rápido y claro -- sin tienda activa resuelta no hay a
+        // quién guardarle este certificado (ver guardarSetting()); mejor
+        // no gastar tiempo leyendo/validando el archivo subido si de
+        // todas formas el guardado final va a rechazar la operación.
+        requireCurrentStoreId();
+
         $validator = Validator::make($request->all(), [
             'certificado' => 'required|file|max:2048',
             'clave' => 'required|string',
@@ -191,8 +260,10 @@ class SriConfigController extends AppBaseController
             ], 422);
         }
 
-        // Eliminar certificado anterior
-        $rutaAnterior = Setting::where('key', 'sri_certificado_path')->value('value');
+        // Eliminar certificado anterior (de ESTA tienda -- ver
+        // scopedSettingValue(); sin esto se podía borrar o dejar
+        // huérfano el certificado de otra tienda).
+        $rutaAnterior = $this->scopedSettingValue('sri_certificado_path');
 
         if ($rutaAnterior && Storage::disk('local')->exists($rutaAnterior)) {
             Storage::disk('local')->delete($rutaAnterior);
@@ -254,6 +325,10 @@ class SriConfigController extends AppBaseController
 
     public function guardarConfig(Request $request): JsonResponse
     {
+        // Mismo criterio que subirCertificado() -- sin tienda activa
+        // resuelta no hay a quién guardarle esta config.
+        requireCurrentStoreId();
+
         $validator = Validator::make($request->all(), [
             'sri_ruc' => 'required|digits:13',
             'sri_razon_social' => 'required|string|max:300',
@@ -299,13 +374,9 @@ class SriConfigController extends AppBaseController
 
     public function verificarCertificado(): JsonResponse
     {
-        $certPath = Setting::where('key', 'sri_certificado_path')->value('value');
-        // $certClave = Setting::where('key', 'sri_certificado_clave')->value('value');
-
-        $certClave = Crypt::decryptString(
-            Setting::where('key', 'sri_certificado_clave')
-                ->value('value')
-        );
+        $certPath = $this->scopedSettingValue('sri_certificado_path');
+        $certClaveRaw = $this->scopedSettingValue('sri_certificado_clave');
+        $certClave = $certClaveRaw ? Crypt::decryptString($certClaveRaw) : null;
 
         if (!$certPath || !Storage::disk('local')->exists($certPath)) {
             return response()->json([
@@ -321,9 +392,20 @@ class SriConfigController extends AppBaseController
 
     // ── Helpers privados ──────────────────────────────────────────────────
 
+    /**
+     * requireCurrentStoreId() -- igual que SettingRepository::updateSettings()
+     * -- porque un updateOrCreate() sin store_id encontraría/actualizaría
+     * la fila NULL de fallback en vez del override de la tienda activa,
+     * dejando la config recién guardada sin efecto real (index()/
+     * SriConfigService::get() prefieren el override sobre el fallback).
+     * Si no hay tienda activa resuelta (0/2+ tiendas sin header
+     * X-Store-Id), no hay forma segura de saber a cuál guardarle esto --
+     * mejor un 422 explícito que corromper la fila global compartida.
+     */
     private function guardarSetting(string $key, string $value): void
     {
-        Setting::updateOrCreate(['key' => $key], ['value' => $value]);
+        $storeId = requireCurrentStoreId();
+        Setting::updateOrCreate(['key' => $key, 'store_id' => $storeId], ['value' => $value]);
     }
 
     private function obtenerInfoCertificado(
@@ -341,10 +423,8 @@ class SriConfigController extends AppBaseController
         // }
 
         if (!$certClave) {
-            $certClave = Crypt::decryptString(
-                Setting::where('key', 'sri_certificado_clave')
-                    ->value('value')
-            );
+            $certClaveRaw = $this->scopedSettingValue('sri_certificado_clave');
+            $certClave = $certClaveRaw ? Crypt::decryptString($certClaveRaw) : null;
         }
 
         $certData = file_get_contents($fullPath);

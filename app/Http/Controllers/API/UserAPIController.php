@@ -137,7 +137,15 @@ class UserAPIController extends AppBaseController
     {
         $user = Auth::user();
 
-        $userPermissions = $user->getAllPermissions()->pluck('name')->toArray();
+        // Mismo hueco que había en AuthController::login(): con 2+
+        // tiendas y sin X-Store-Id resuelto todavía (típico en el
+        // primer render tras loguearse, antes de elegir tienda),
+        // getAllPermissions() sin este helper devuelve SIEMPRE vacío --
+        // y como este es justo el endpoint que arma el menú lateral
+        // (ver App.js -> fetchConfig()), eso deja al usuario con la
+        // pantalla en blanco sin ninguna forma de llegar al selector de
+        // tienda para elegir una. Ver AppBaseController::allPermissionNamesForUser().
+        $userPermissions = $this->allPermissionNamesForUser($user);
 
         $composerFile = file_get_contents('../composer.json');
         $composerData = json_decode($composerFile, true);

@@ -108,7 +108,14 @@ class AuthController extends AppBaseController
             'logged_at' => now(),
         ]);
 
-        $userPermissions = $user->getAllPermissions()->pluck('name')->toArray();
+        // login() corre ANTES de que exista un token/sesión autenticada,
+        // así que ResolveActiveStore (que resuelve el team activo para
+        // el resto de la app) todavía no corrió para este request -- sin
+        // esto, con teams activado, getAllPermissions() filtraría por
+        // team_id null y devolvería SIEMPRE vacío, sin importar el rol
+        // real del usuario. Ver AppBaseController::allPermissionNamesForUser()
+        // para el criterio completo (única tienda / unión de 2+ / ninguna).
+        $userPermissions = $this->allPermissionNamesForUser($user);
 
         unset($user->roles);
         unset($user->permissions);
