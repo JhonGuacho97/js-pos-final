@@ -27,17 +27,19 @@ if (! function_exists('getPageSize')) {
  * cae a currentStoreId(); sin ninguna tienda resuelta (pantalla de
  * login antes de autenticarse) se restringe al fallback de sistema
  * (store_id NULL) en vez de dejar la query sin filtrar.
+ *
+ * A propósito SIN static cache (a diferencia de getSettingValue()):
+ * addMedia() puede correr más de una vez sobre este mismo helper dentro
+ * del mismo proceso PHP de larga duración (`php artisan serve` es un
+ * único proceso, no uno por request -- ver nota de OPcache en
+ * ProductKitAPIController/WarehousePriceAPIController de esta misma
+ * sesión), y una versión con static cache demostró servir el logo
+ * VIEJO después de subir uno nuevo hasta que el proceso se reciclara.
+ * El precio es un query extra por request; no vale la pena el riesgo.
  */
 function getLogoUrl(?int $storeId = null): string
 {
     $storeId = $storeId ?? currentStoreId();
-    $key = 'logo-'.($storeId ?? 'global');
-
-    static $appLogos;
-
-    if (isset($appLogos[$key])) {
-        return $appLogos[$key];
-    }
 
     $query = Setting::where('key', '=', 'logo')->orderByDesc('store_id');
     if ($storeId) {
@@ -49,9 +51,7 @@ function getLogoUrl(?int $storeId = null): string
     }
     $appLogo = $query->first();
 
-    $appLogos[$key] = (empty($appLogo) || empty($appLogo->logo)) ? '' : asset($appLogo->logo);
-
-    return $appLogos[$key];
+    return (empty($appLogo) || empty($appLogo->logo)) ? '' : asset($appLogo->logo);
 }
 
 if (! function_exists('getSettingValue')) {
