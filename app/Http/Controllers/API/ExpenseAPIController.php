@@ -7,6 +7,7 @@ use App\Http\Requests\CreateExpenseRequest;
 use App\Http\Requests\UpdateExpenseRequest;
 use App\Http\Resources\ExpenseCollection;
 use App\Http\Resources\ExpenseResource;
+use App\Models\Expense;
 use App\Models\Warehouse;
 use App\Repositories\ExpenseRepository;
 use Illuminate\Database\Eloquent\Builder;
@@ -43,6 +44,14 @@ class ExpenseAPIController extends AppBaseController
                 }
             });
         }
+        // Sin esto, el listado mezclaba gastos de TODAS las tiendas --
+        // expenses no tiene store_id propio, se scopea vía warehouse_id
+        // igual que Sale/Purchase (ver AppBaseController).
+        if ($restricted = $this->restrictedWarehouseId()) {
+            $expenses->where('warehouse_id', $restricted);
+        }
+        $this->scopeQueryToCurrentStore($expenses);
+
         $expenses = $expenses->paginate($perPage);
         ExpenseResource::usingWithCollection();
 
@@ -51,6 +60,7 @@ class ExpenseAPIController extends AppBaseController
 
     public function store(CreateExpenseRequest $request): ExpenseResource
     {
+        $this->authorizeWarehouseAccess($request->input('warehouse_id'));
         $input = $request->all();
         $expense = $this->expenseRepository->storeExpense($input);
 
@@ -60,6 +70,7 @@ class ExpenseAPIController extends AppBaseController
     public function show($id): ExpenseResource
     {
         $expense = $this->expenseRepository->find($id);
+        $this->authorizeWarehouseAccess($expense->warehouse_id);
 
         return new ExpenseResource($expense);
     }
@@ -69,6 +80,7 @@ class ExpenseAPIController extends AppBaseController
      */
     public function update(UpdateExpenseRequest $request, $id): ExpenseResource
     {
+        $this->authorizeWarehouseAccess(Expense::findOrFail($id)->warehouse_id);
         $input = $request->all();
         $expense = $this->expenseRepository->update($input, $id);
 
@@ -77,6 +89,7 @@ class ExpenseAPIController extends AppBaseController
 
     public function destroy($id): JsonResponse
     {
+        $this->authorizeWarehouseAccess(Expense::findOrFail($id)->warehouse_id);
         $this->expenseRepository->delete($id);
 
         return $this->sendSuccess('Expense deleted successfully');
