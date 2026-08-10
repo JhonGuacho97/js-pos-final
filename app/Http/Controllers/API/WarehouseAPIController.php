@@ -108,17 +108,24 @@ class WarehouseAPIController extends AppBaseController
 
     public function warehouseReport(Request $request)
     {
+        // Endpoint separado del resto de ReportAPIController -- se le
+        // había pasado por alto el scoping por tienda: mostraba
+        // conteos globales de TODAS las tiendas en las 4 tarjetas de
+        // resumen ("todo el almacén"), aunque el warehouse_id puntual
+        // sí ayuda a acotar dentro de una tienda, no valida que ese
+        // almacén pertenezca a la tienda activa por sí solo.
         $report = [];
         if ($request->get('warehouse_id') && ! empty($request->get('warehouse_id')) && $request->get('warehouse_id') != 'null') {
-            $report['sale_count'] = Sale::whereWarehouseId($request->get('warehouse_id'))->count();
-            $report['purchase_count'] = Purchase::whereWarehouseId($request->get('warehouse_id'))->count();
-            $report['sale_return_count'] = SaleReturn::whereWarehouseId($request->get('warehouse_id'))->count();
-            $report['purchase_return_count'] = PurchaseReturn::whereWarehouseId($request->get('warehouse_id'))->count();
+            $warehouseId = $request->get('warehouse_id');
+            $report['sale_count'] = $this->scopeQueryToCurrentStore(Sale::whereWarehouseId($warehouseId))->count();
+            $report['purchase_count'] = $this->scopeQueryToCurrentStore(Purchase::whereWarehouseId($warehouseId))->count();
+            $report['sale_return_count'] = $this->scopeQueryToCurrentStore(SaleReturn::whereWarehouseId($warehouseId))->count();
+            $report['purchase_return_count'] = $this->scopeQueryToCurrentStore(PurchaseReturn::whereWarehouseId($warehouseId))->count();
         } else {
-            $report['sale_count'] = Sale::count();
-            $report['purchase_count'] = Purchase::count();
-            $report['sale_return_count'] = SaleReturn::count();
-            $report['purchase_return_count'] = PurchaseReturn::count();
+            $report['sale_count'] = $this->scopeQueryToCurrentStore(Sale::query())->count();
+            $report['purchase_count'] = $this->scopeQueryToCurrentStore(Purchase::query())->count();
+            $report['sale_return_count'] = $this->scopeQueryToCurrentStore(SaleReturn::query())->count();
+            $report['purchase_return_count'] = $this->scopeQueryToCurrentStore(PurchaseReturn::query())->count();
         }
 
         return $this->sendResponse($report, '');
