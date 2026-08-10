@@ -38,7 +38,16 @@ class ResolveActiveStore
 {
     public function handle(Request $request, Closure $next)
     {
-        $user = $request->user();
+        // Guard explícito 'sanctum': $request->user() sin argumento
+        // resuelve por el guard DEFAULT de config/auth.php (acá 'web',
+        // de sesión) salvo que auth:sanctum ya haya corrido antes en la
+        // misma request y haya hecho Auth::shouldUse('sanctum'). En
+        // rutas que llevan store.context SIN auth:sanctum (ver
+        // routes/api.php, front-setting -- pública para el login pero
+        // también usada ya logueado) eso dejaba a $request->user()
+        // devolviendo null SIEMPRE, aunque el request trajera un token
+        // Bearer válido -- la tienda activa nunca se resolvía ahí.
+        $user = $request->user('sanctum');
         if (! $user) {
             return $next($request);
         }
