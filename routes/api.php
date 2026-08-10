@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\API\AdjustmentAPIController;
 use App\Http\Controllers\API\AuthController;
+use App\Http\Controllers\API\BackupController;
 use App\Http\Controllers\API\BaseUnitAPIController;
 use App\Http\Controllers\API\BrandAPIController;
 use App\Http\Controllers\API\CouponCodeAPIController;
@@ -311,6 +312,15 @@ Route::middleware(['auth:sanctum', 'store.context'])->group(function () {
 
     //clear cache route
     Route::get('cache-clear', [SettingAPIController::class, 'clearCache'])->name('cache-clear');
+
+    // Backup de base de datos -- BackupController::download() existía
+    // pero nunca se registró la ruta, así que el botón de la pantalla
+    // de Ajustes (Settings.js) siempre devolvía 404. Solo admin -- un
+    // dump completo de la BD trae datos de TODAS las tiendas, no
+    // alcanza con manage_setting.
+    Route::middleware('role:'.\App\Models\Role::ADMIN)->group(function () {
+        Route::get('backup/download', [BackupController::class, 'download']);
+    });
 
     //purchase routes
     Route::resource('purchases', PurchaseAPIController::class);
