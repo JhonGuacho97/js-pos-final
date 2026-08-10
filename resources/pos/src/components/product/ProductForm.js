@@ -1226,7 +1226,6 @@ const ProductForm = (props) => {
                                             defaultValue={
                                                 productValue.warehouse_id
                                             }
-                                            isWarehouseDisable={true}
                                             title={getFormattedMessage(
                                                 "warehouse.title"
                                             )}

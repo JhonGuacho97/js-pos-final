@@ -4141,7 +4141,6 @@ var ProductForm = function ProductForm(props) {
                   data: warehouses,
                   onChange: onWarehouseChange,
                   defaultValue: productValue.warehouse_id,
-                  isWarehouseDisable: true,
                   title: (0,_shared_sharedMethod__WEBPACK_IMPORTED_MODULE_12__.getFormattedMessage)("warehouse.title"),
                   errors: errors["warehouse_id"],
                   placeholder: (0,_shared_sharedMethod__WEBPACK_IMPORTED_MODULE_12__.placeholderText)("purchase.select.warehouse.placeholder.label")
