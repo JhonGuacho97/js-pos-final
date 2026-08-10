@@ -73,6 +73,8 @@ export const apiBaseURL = {
     STOCK_ALERT: "stock-alerts",
     VALIDATE_AUTH_TOKEN: "validate-auth-token",
     CONFIG: "config",
+    MY_STORES: "my-stores",
+    STORES: "stores",
     KARDEX: "kardex",
     EMAIL_TEMPLATES: "mail-templates",
     SMS_TEMPLATES: "sms-templates",
@@ -123,6 +125,11 @@ export const authActionType = {
     CHANGE_PASSWORD: "CHANGE_PASSWORD",
     ADMIN_FORGOT_PASSWORD: "ADMIN_FORGOT_PASSWORD",
     ADMIN_RESET_PASSWORD: "ADMIN_RESET_PASSWORD",
+};
+
+export const storeActionType = {
+    FETCH_MY_STORES: "FETCH_MY_STORES",
+    SET_CURRENT_STORE_ID: "SET_CURRENT_STORE_ID",
 };
 
 export const configActionType = {
@@ -314,6 +321,14 @@ export const productCategoriesActionType = {
     EDIT_PRODUCT_CATEGORIES: "EDIT_PRODUCT_CATEGORIES",
     DELETE_PRODUCT_CATEGORIES: "DELETE_PRODUCT_CATEGORIES",
     FETCH_ALL_PRODUCTS_CATEGORIES: "FETCH_ALL_PRODUCTS_CATEGORIES",
+};
+
+export const storesActionType = {
+    FETCH_STORES: "FETCH_STORES",
+    FETCH_STORE: "FETCH_STORE",
+    ADD_STORE: "ADD_STORE",
+    EDIT_STORE: "EDIT_STORE",
+    DELETE_STORE: "DELETE_STORE",
 };
 
 export const variationActionType = {
@@ -560,6 +575,7 @@ export const Tokens = {
     UPDATED_LAST_NAME: "updated_last_name",
     LANGUAGE: "language",
     UPDATED_LANGUAGE: "updated_language",
+    CURRENT_STORE_ID: "current_store_id",
 };
 
 export const errorMessage = {
@@ -573,6 +589,7 @@ export const errorMessage = {
 export const Permissions = {
     MANAGE_DASHBOARD: "manage_dashboard",
     MANAGE_ROLES: "manage_roles",
+    MANAGE_STORES: "manage_stores",
     MANAGE_BRANDS: "manage_brands",
     MANAGE_CURRENCY: "manage_currency",
     MANAGE_WAREHOUSES: "manage_warehouses",

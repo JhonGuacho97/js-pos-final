@@ -40,6 +40,7 @@ const Product = lazyWithRetry(() => import(/* webpackChunkName: "product" */ "./
 const CreateProduct = lazyWithRetry(() => import(/* webpackChunkName: "product" */ "./components/product/CreateProduct"), "CreateProduct");
 const EditProduct = lazyWithRetry(() => import(/* webpackChunkName: "product" */ "./components/product/EditProduct"), "EditProduct");
 const ProductDetail = lazyWithRetry(() => import(/* webpackChunkName: "product" */ "./components/product/ProductDetail"), "ProductDetail");
+const ProductKits = lazyWithRetry(() => import(/* webpackChunkName: "product" */ "./components/productKits/ProductKits"), "ProductKits");
 
 // Configuración.
 const Settings = lazyWithRetry(() => import(/* webpackChunkName: "settings" */ "./components/settings/Settings"), "Settings");
@@ -117,6 +118,9 @@ const PrintBarcode = lazyWithRetry(() => import(/* webpackChunkName: "print-barc
 const Role = lazyWithRetry(() => import(/* webpackChunkName: "roles" */ "./components/roles/Role"), "Role");
 const CreateRole = lazyWithRetry(() => import(/* webpackChunkName: "roles" */ "./components/roles/CreateRole"), "CreateRole");
 const EditRole = lazyWithRetry(() => import(/* webpackChunkName: "roles" */ "./components/roles/EditRole"), "EditRole");
+
+// Administración de tiendas (multitienda).
+const Stores = lazyWithRetry(() => import(/* webpackChunkName: "stores" */ "./components/stores/Stores"), "Stores");
 
 // Ajustes de inventario.
 const Adjustments = lazyWithRetry(() => import(/* webpackChunkName: "adjustments" */ "./components/adjustments/Adjustments"), "Adjustments");
@@ -304,6 +308,11 @@ export const route = [
     {
         path: "products/detail/:id",
         ele: <ProductDetail />,
+        permission: Permissions.MANAGE_PRODUCTS,
+    },
+    {
+        path: "product-kits",
+        ele: <ProductKits />,
         permission: Permissions.MANAGE_PRODUCTS,
     },
     {
@@ -565,6 +574,11 @@ export const route = [
         path: "roles/edit/:id",
         ele: <EditRole />,
         permission: Permissions.MANAGE_ROLES,
+    },
+    {
+        path: "stores",
+        ele: <Stores />,
+        permission: Permissions.MANAGE_STORES,
     },
     {
         path: "transfers",

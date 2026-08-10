@@ -7,6 +7,7 @@ import { settingsKey, Tokens } from "./constants";
 import Toasts from "./shared/toast/Toasts";
 import { fetchFrontSetting } from "./store/action/frontSettingAction";
 import { fetchConfig } from "./store/action/configAction";
+import { fetchMyStores } from "./store/action/storeAction";
 import { addRTLSupport, getDefaultRouteForPermissions } from "./shared/sharedMethod";
 import Login from "./components/auth/Login";
 import ResetPassword from "./components/auth/ResetPassword";
@@ -46,6 +47,7 @@ function App() {
         if (token) {
             dispatch(fetchConfig());
             dispatch(fetchFrontSetting());
+            dispatch(fetchMyStores());
         }
     }, []);
 

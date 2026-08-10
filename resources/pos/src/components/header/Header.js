@@ -1,9 +1,10 @@
 import React, { useEffect, useState } from 'react';
 import { Image, Nav, Navbar } from 'react-bootstrap-v5';
-import { connect, useSelector } from 'react-redux';
+import { connect, useDispatch, useSelector } from 'react-redux';
 import { Link, useNavigate } from 'react-router-dom';
 import { Tokens } from '../../constants/index';
 import { logoutAction } from '../../store/action/authAction';
+import { setCurrentStore } from '../../store/action/storeAction';
 import ChangePassword from '../auth/change-password/ChangePassword';
 import { getAvatarName, getFormattedMessage } from '../../shared/sharedMethod';
 import { updateLanguage } from '../../store/action/updateLanguageAction';
@@ -12,7 +13,7 @@ import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import {
     faMaximize, faMinimize, faUser,
     faLock, faRightFromBracket, faAngleDown,
-    faLanguage
+    faLanguage, faStore, faCheck
 } from '@fortawesome/free-solid-svg-icons';
 import { Dropdown } from 'react-bootstrap';
 import { productQuantityReportAction } from '../../store/action/paymentQuantityReport';
@@ -47,6 +48,17 @@ const Header = (props) => {
     const [showPosRegisterModel, setShowPosRegisterModel] = useState(false);
 
     const { allConfigData } = useSelector(state => state);
+    const { stores, currentStoreId } = useSelector(state => state.myStores);
+    const dispatch = useDispatch();
+
+    // Sin 2+ tiendas no hay nada que elegir -- no se agrega fricción
+    // visual nueva a la instalación single-store de hoy.
+    const onSelectStore = (store) => {
+        if (!store.is_active || String(store.id) === String(currentStoreId)) return;
+        dispatch(setCurrentStore(store.id));
+        window.location.reload();
+    };
+    const currentStoreName = stores.find((s) => String(s.id) === String(currentStoreId))?.name;
 
     useEffect(() => {
         let isLoading;
@@ -93,6 +105,37 @@ const Header = (props) => {
                             </Link>
                         )}
                     </div>
+                )}
+
+                {/* Selector de tienda -- solo visible con 2+ tiendas */}
+                {stores.length > 1 && (
+                    <Dropdown align='end'>
+                        <Dropdown.Toggle as='div' className='hdr-store-btn hide-arrow' id='hdr-store-dropdown'>
+                            <FontAwesomeIcon icon={faStore} className='hdr-store-icon' />
+                            <span className='hdr-store-name d-none d-sm-block'>{currentStoreName || getFormattedMessage('header.store-menu.select.label')}</span>
+                            <FontAwesomeIcon icon={faAngleDown} className='hdr-store-chevron d-none d-sm-block' />
+                        </Dropdown.Toggle>
+                        <Dropdown.Menu className='hdr-dropdown-menu'>
+                            {stores.map((store) => (
+                                <Dropdown.Item
+                                    key={store.id}
+                                    onClick={() => onSelectStore(store)}
+                                    className={`hdr-dropdown-item${!store.is_active ? ' hdr-dropdown-item--disabled' : ''}`}
+                                    disabled={!store.is_active}
+                                >
+                                    <div className='hdr-item-icon'>
+                                        {String(store.id) === String(currentStoreId) && <FontAwesomeIcon icon={faCheck} />}
+                                    </div>
+                                    <span>{store.name}</span>
+                                    {!store.is_active && (
+                                        <span className='hdr-store-inactive-badge'>
+                                            {getFormattedMessage('header.store-menu.inactive.label')}
+                                        </span>
+                                    )}
+                                </Dropdown.Item>
+                            ))}
+                        </Dropdown.Menu>
+                    </Dropdown>
                 )}
 
                 {/* Fullscreen */}

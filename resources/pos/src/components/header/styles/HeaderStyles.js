@@ -42,6 +42,45 @@ export const headerStyles = `
     box-shadow: 0 6px 18px rgba(47, 111, 237,0.3);
   }
 
+  /* ── Selector de tienda ── */
+  .hdr-store-btn {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    height: 38px;
+    padding: 0 12px;
+    border-radius: 10px;
+    background: #f8f7ff;
+    border: 1.5px solid #E2E8F0;
+    cursor: pointer;
+    transition: background 0.18s, border-color 0.18s;
+    color: #4b5563;
+    margin: 0 6px;
+    max-width: 180px;
+  }
+  .hdr-store-btn:hover {
+    background: #E2E8F0;
+    border-color: #94A3B8;
+  }
+  .hdr-store-icon {
+    color: #2F6FED;
+    font-size: 14px;
+    flex-shrink: 0;
+  }
+  .hdr-store-name {
+    font-family: 'Poppins', sans-serif;
+    font-size: 13px;
+    font-weight: 500;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .hdr-store-chevron {
+    color: #94A3B8 !important;
+    font-size: 10px;
+    flex-shrink: 0;
+  }
+
   /* ── Botón ícono (fullscreen) ── */
   .hdr-icon-btn {
     width: 38px;
@@ -220,6 +259,35 @@ export const headerStyles = `
     color: #9ca3af;
     flex-shrink: 0;
     transition: background 0.15s, color 0.15s;
+  }
+
+  /* Tienda desactivada -- visible en el selector pero bloqueada */
+  .hdr-dropdown-item--disabled {
+    cursor: not-allowed !important;
+    color: #c4c8d4 !important;
+    opacity: 0.7;
+  }
+  .hdr-dropdown-item--disabled:hover {
+    background: transparent !important;
+    color: #c4c8d4 !important;
+  }
+  .hdr-dropdown-item--disabled:hover .hdr-item-icon {
+    background: #f3f4f6 !important;
+    color: #9ca3af !important;
+  }
+  .hdr-store-inactive-badge {
+    margin-left: auto;
+    font-family: 'Poppins', sans-serif;
+    font-size: 10.5px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.4px;
+    color: #b45309;
+    background: #fff7ed;
+    border: 1px solid #fed7aa;
+    border-radius: 20px;
+    padding: 2px 8px;
+    white-space: nowrap;
   }
 
   /* Logout */

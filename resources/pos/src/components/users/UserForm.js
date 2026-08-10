@@ -14,7 +14,7 @@ import {fetchAllWarehouses} from "../../store/action/warehouseAction";
 
 
 const UserForm = (props) => {
-    const {addUserData, id, singleUser, isEdit, isCreate, fetchAllRoles, roles, warehouses, fetchAllWarehouses} = props;
+    const {addUserData, id, singleUser, isEdit, isCreate, fetchAllRoles, roles, warehouses, fetchAllWarehouses, myStores} = props;
     const Dispatch = useDispatch()
     const navigate = useNavigate();
 
@@ -28,6 +28,11 @@ const UserForm = (props) => {
         role_id: singleUser ? singleUser[0].role_id : '',
         image: singleUser ? singleUser[0].image : '',
         default_warehouse_id: singleUser ? singleUser[0].default_warehouse_id : '',
+        // Solo se pueden marcar tiendas a las que EL ADMIN que crea/edita
+        // ya tiene acceso (ver UserRepository::resolveGrantableStoreIds())
+        // -- por eso la lista de opciones sale de myStores, no de un
+        // fetch aparte de "todas las tiendas".
+        store_ids: singleUser && singleUser[0].store_ids ? singleUser[0].store_ids.map(id => +id) : [],
     });
     const [errors, setErrors] = useState({
         first_name: '',
@@ -71,6 +76,27 @@ const UserForm = (props) => {
 
     const onWarehouseChange = (obj) => {
         setUserValue(productValue => ({...productValue, default_warehouse_id: obj ? obj.value : ''}))
+    };
+
+    const availableStores = myStores?.stores || [];
+
+    const onStoreToggle = (storeId) => {
+        setUserValue(prev => {
+            const alreadyChecked = prev.store_ids.includes(storeId);
+            return {
+                ...prev,
+                store_ids: alreadyChecked
+                    ? prev.store_ids.filter(id => id !== storeId)
+                    : [...prev.store_ids, storeId],
+            };
+        });
+    };
+
+    const onSelectAllStores = (e) => {
+        setUserValue(prev => ({
+            ...prev,
+            store_ids: e.target.checked ? availableStores.map(store => store.id) : [],
+        }));
     };
 
     const handleValidation = () => {
@@ -138,6 +164,9 @@ const UserForm = (props) => {
             formData.append('image', data.image);
         }
         formData.append('default_warehouse_id', data.default_warehouse_id || '');
+        (data.store_ids || []).forEach(storeId => {
+            formData.append('store_ids[]', storeId);
+        });
         return formData;
     };
 
@@ -259,6 +288,31 @@ const UserForm = (props) => {
                                 Si no se asigna, este usuario entra al POS con el almacén configurado en Ajustes.
                             </span>
                         </div>
+                        <div className='col-md-12 mb-3'>
+                            <label className='form-label d-block'>
+                                {getFormattedMessage("user.input.stores.label")}:<span className="required"/>
+                            </label>
+                            <div className='form-check mb-2'>
+                                <input type='checkbox' className='form-check-input' id='select-all-stores'
+                                       checked={availableStores.length > 0 && userValue.store_ids.length === availableStores.length}
+                                       onChange={onSelectAllStores}/>
+                                <label className='form-check-label' htmlFor='select-all-stores'>
+                                    {getFormattedMessage("user.input.stores.select-all.label")}
+                                </label>
+                            </div>
+                            <div className='d-flex flex-wrap gap-4'>
+                                {availableStores.map(store => (
+                                    <div className='form-check' key={store.id}>
+                                        <input type='checkbox' className='form-check-input' id={`store-${store.id}`}
+                                               checked={userValue.store_ids.includes(store.id)}
+                                               onChange={() => onStoreToggle(store.id)}/>
+                                        <label className='form-check-label' htmlFor={`store-${store.id}`}>
+                                            {store.attributes ? store.attributes.name : store.name}
+                                        </label>
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
                         <ModelFooter onEditRecord={singleUser} onSubmit={onSubmit} editDisabled={disabled}
                                      link='/app/users' addDisabled={!userValue.first_name}/>
                     </div>
@@ -269,8 +323,8 @@ const UserForm = (props) => {
 };
 
 const mapStateToProps = (state) => {
-    const {roles, warehouses} = state;
-    return {roles, warehouses}
+    const {roles, warehouses, myStores} = state;
+    return {roles, warehouses, myStores}
 };
 
 export default connect(mapStateToProps, {fetchAllRoles, fetchAllWarehouses})(UserForm);

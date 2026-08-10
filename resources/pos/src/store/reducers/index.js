@@ -101,8 +101,12 @@ import posRegisterReportDetailsReducer from './pos/posRegisterReportDetailsReduc
 import variationReducer from './variationReducer';
 import loginLogsReducer from './loginLogsReducer';
 import kardexReducer from './kardexReducer';
+import storeReducer from './storeReducer';
+import storesReducer from './storesReducer';
 
 export default combineReducers({
+    myStores: storeReducer,
+    storesList: storesReducer,
     loginLogs: loginLogsReducer,
     kardex: kardexReducer,
     loginUser: loginReducers,
