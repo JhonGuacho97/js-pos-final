@@ -585,8 +585,20 @@ class SriXmlService
         $tolerancia = 0.02;
 
         foreach ($creditNote->creditNoteItems as $item) {
+            // Con presentación (Six Pack/Caja/...), product_price queda
+            // guardado al precio DE LA PRESENTACIÓN (ej. $30 la caja),
+            // pero 'quantity' se convierte a unidades base de inventario
+            // ANTES de guardarse (ej. 24 si la caja trae 24 unidades) --
+            // ver CreditNoteRepository/SaleRepository::calculationSaleItems().
+            // Cruzar quantity(24) × product_price($30) da $720 en vez de
+            // los $30 reales: hay que usar presentation_quantity, que es
+            // la que de verdad está en la misma escala que product_price.
+            $cantidadParaValidar = $item->product_presentation_id
+                ? $item->presentation_quantity
+                : $item->quantity;
+
             $bruto = round(
-                ($item->quantity * $item->product_price) - ($item->discount_amount ?? 0),
+                ($cantidadParaValidar * $item->product_price) - ($item->discount_amount ?? 0),
                 2
             );
             $base = $item->precioTotalSinImpuestoSri();
@@ -636,8 +648,20 @@ class SriXmlService
         $tolerancia = 0.02; // margen de redondeo aceptable
 
         foreach ($sale->saleItems as $item) {
+            // Con presentación (Six Pack/Caja/...), product_price queda
+            // guardado al precio DE LA PRESENTACIÓN (ej. $30 la caja),
+            // pero 'quantity' se convierte a unidades base de inventario
+            // ANTES de guardarse (ej. 24 si la caja trae 24 unidades) --
+            // ver SaleRepository::calculationSaleItems(). Cruzar
+            // quantity(24) × product_price($30) da $720 en vez de los
+            // $30 reales: hay que usar presentation_quantity, que es la
+            // que de verdad está en la misma escala que product_price.
+            $cantidadParaValidar = $item->product_presentation_id
+                ? $item->presentation_quantity
+                : $item->quantity;
+
             $bruto = round(
-                ($item->quantity * $item->product_price) - ($item->discount_amount ?? 0),
+                ($cantidadParaValidar * $item->product_price) - ($item->discount_amount ?? 0),
                 2
             );
             $base = $item->precioTotalSinImpuestoSri();

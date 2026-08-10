@@ -66,7 +66,7 @@ class SriConfigService
             // no estén bajo RIMPE, en cuyo caso esto simplemente no aplica y
             // no se agrega ninguna etiqueta al XML.
             'regimen_rimpe' => $settings['sri_regimen_rimpe'] ?? '',
-            'certificado_path' => $settings['sri_certificado_path'],
+            'certificado_path' => $settings['sri_certificado_path'] ?? null,
             'certificado_clave' => !empty($settings['sri_certificado_clave'])
                 ? Crypt::decryptString($settings['sri_certificado_clave'])
                 : null,
