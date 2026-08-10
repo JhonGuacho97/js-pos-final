@@ -315,10 +315,17 @@ Route::middleware(['auth:sanctum', 'store.context'])->group(function () {
 
     // Backup de base de datos -- BackupController::download() existía
     // pero nunca se registró la ruta, así que el botón de la pantalla
-    // de Ajustes (Settings.js) siempre devolvía 404. Solo admin -- un
-    // dump completo de la BD trae datos de TODAS las tiendas, no
-    // alcanza con manage_setting.
-    Route::middleware('role:'.\App\Models\Role::ADMIN)->group(function () {
+    // de Ajustes (Settings.js) siempre devolvía 404.
+    //
+    // Antes esto exigía el rol 'admin' -- pero esta instalación tiene
+    // roles distintos con acceso administrativo (ej. 'SUPER_ADMIN'
+    // además de 'admin'), y "admin" ni siquiera es un nombre de rol
+    // fijo/reservado en Spatie: es solo una fila más en `roles`, cada
+    // negocio la nombra como quiera. Se gatea por el mismo permiso que
+    // ya protege el resto de la pantalla de Ajustes (manage_setting)
+    // en vez de un nombre de rol específico -- consistente con cómo ya
+    // se protegen mail-settings/settings arriba.
+    Route::middleware('permission:manage_setting')->group(function () {
         Route::get('backup/download', [BackupController::class, 'download']);
     });
 
