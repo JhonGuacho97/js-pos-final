@@ -16,20 +16,42 @@ if (! function_exists('getPageSize')) {
     }
 }
 
-function getLogoUrl(): string
+/**
+ * Sin filtrar por store_id, con 2+ tiendas esto devolvía el primer
+ * registro key='logo' que encontrara MySQL (cualquiera, sin relación
+ * con la tienda activa) -- el logo se guardaba bien (SettingRepository
+ * ::updateSettings() ya lo escribe con store_id correcto) pero nunca se
+ * mostraba el que acababas de subir. Mismo patrón de
+ * getSettingValue(): $storeId explícito para los llamadores sin
+ * contexto HTTP (SriRideService, corre en jobs de cola), si no se pasa
+ * cae a currentStoreId(); sin ninguna tienda resuelta (pantalla de
+ * login antes de autenticarse) se restringe al fallback de sistema
+ * (store_id NULL) en vez de dejar la query sin filtrar.
+ */
+function getLogoUrl(?int $storeId = null): string
 {
-    static $appLogo;
+    $storeId = $storeId ?? currentStoreId();
+    $key = 'logo-'.($storeId ?? 'global');
 
-    if (empty($appLogo)) {
-        $appLogo = Setting::where('key', '=', 'logo')->first();
+    static $appLogos;
+
+    if (isset($appLogos[$key])) {
+        return $appLogos[$key];
     }
 
-    if (empty($appLogo) || empty($appLogo->logo)) {
-        return '';
+    $query = Setting::where('key', '=', 'logo')->orderByDesc('store_id');
+    if ($storeId) {
+        $query->where(function ($q) use ($storeId) {
+            $q->whereNull('store_id')->orWhere('store_id', $storeId);
+        });
+    } else {
+        $query->whereNull('store_id');
     }
+    $appLogo = $query->first();
 
-    return asset($appLogo->logo);
-    //return '/public/uploads/settings/1/Imagen-de-WhatsApp-2023-10-06-a-las-09.21.45_4c27850c.png';
+    $appLogos[$key] = (empty($appLogo) || empty($appLogo->logo)) ? '' : asset($appLogo->logo);
+
+    return $appLogos[$key];
 }
 
 if (! function_exists('getSettingValue')) {
@@ -232,11 +254,10 @@ if (! function_exists('replaceArrayValue')) {
 if (! function_exists('getLogo')) {
     function getLogo()
     {
-        /** @var Setting $setting */
-        $logoImage = Setting::where('key', '=', 'logo')->first()->value;
+        $logoImage = getLogoUrl();
 
         $logo = '';
-        if (File::exists(asset($logoImage))) {
+        if ($logoImage && File::exists(asset($logoImage))) {
             $logo = base64_encode(file_get_contents(asset($logoImage)));
         }
 
