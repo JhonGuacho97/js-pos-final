@@ -506,7 +506,20 @@ Route::post(
 )->middleware('throttle:5,1')->name('password.email');
 Route::post('/reset-password', [AuthController::class, 'resetPassword'])->name('password.reset');
 
-Route::get('front-setting', [SettingAPIController::class, 'getFrontSettingsValue'])->name('front-settings');
+// SIN auth:sanctum a propósito -- se usa en la pantalla de Login antes
+// de tener sesión (ver Login.js) -- pero el sidebar YA autenticado
+// también la llama (fetchFrontSetting() se dispara en decenas de
+// pantallas). store.context (ResolveActiveStore) no exige un usuario
+// -- si no lo hay, no hace nada (ver su propio guard `if (!$user)`) --
+// así que agregarlo acá sin auth:sanctum resuelve la tienda activa
+// SOLO cuando sí hay sesión, sin romper la pantalla de Login. Sin esto,
+// currentStoreId() era SIEMPRE null en esta ruta, incluso ya logueado
+// con una tienda elegida -- getLogoUrl() (y cualquier otro dato
+// store-scoped que pase por acá) caía siempre al fallback de sistema,
+// nunca al de la tienda activa real.
+Route::get('front-setting', [SettingAPIController::class, 'getFrontSettingsValue'])
+    ->middleware('store.context')
+    ->name('front-settings');
 
 Route::post('validate-auth-token', [AuthController::class, 'isValidToken']);
 
