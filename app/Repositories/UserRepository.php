@@ -128,7 +128,15 @@ class UserRepository extends BaseRepository
                     $targetRole->syncPermissions($sourceRole->permissions);
                 }
 
-                $user->assignRole($targetRole);
+                // syncRoles() y no assignRole(): el usuario puede llegar acá
+                // con OTRO rol ya asignado en esta misma tienda (ej. cambiar
+                // de SUPER_ADMIN a admin) -- assignRole() solo AGREGA, deja
+                // el rol viejo pegado (quedaba "adminSUPER_ADMIN" concatenado
+                // en pantalla y dos filas en model_has_roles). syncRoles()
+                // reemplaza, y es seguro en modo teams porque roles() ya
+                // viene wherePivot(store_id, tienda activa) -- el detach()
+                // interno de syncRoles() solo toca esta tienda, no las demás.
+                $user->syncRoles($targetRole);
             }
         } finally {
             setPermissionsTeamId($originalTeamId);
