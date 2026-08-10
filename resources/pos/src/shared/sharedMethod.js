@@ -156,7 +156,20 @@ export const currencySymbolHandling = (
 export const getFormattedDate = (date, config) => {
     const format = config?.date_format;
 
-    const parsedDate = dayjs.utc(date);
+    // Dos formas de fecha llegan acá y necesitan trato distinto:
+    // - Timestamps reales (created_at, etc.): vienen con la hora real en
+    //   UTC ("...T01:40:17Z") -- si no se convierten a hora local, un
+    //   registro hecho después de las 19:00 hora Ecuador aparece fechado
+    //   "mañana" (esa hora ya es el día siguiente en UTC).
+    // - Campos "date"-only (Sale.date, Purchase.date, etc.): Laravel los
+    //   serializa como MEDIANOCHE UTC ("...T00:00:00.000000Z"), no como
+    //   "YYYY-MM-DD" simple. Son un día de calendario elegido por el
+    //   usuario, no un instante real -- convertirlos a hora local los corre
+    //   un día para atrás con el offset negativo de Ecuador (medianoche UTC
+    //   = 7pm del día anterior en Ecuador). Para estos, se toma solo la
+    //   parte de fecha tal cual, sin conversión de huso horario.
+    const esFechaSinHora = typeof date === "string" && /T00:00:00(\.0+)?Z$/.test(date);
+    const parsedDate = esFechaSinHora ? dayjs(date.slice(0, 10)) : dayjs(date);
 
     switch (format) {
         case "d-m-y":

@@ -4,6 +4,7 @@ namespace App\Jobs;
 
 use App\Models\ElectronicInvoice;
 use App\Models\Sale;
+use App\Services\SriConfigService;
 use App\Services\SriFirmaService;
 use App\Services\SriSoapService;
 use App\Services\SriXmlService;
@@ -65,6 +66,7 @@ class EmitirFacturaJob implements ShouldQueue
             // nunca se envían al SRI. El secuencial placeholder no puede
             // ser fijo ('000000000') -- dos fallos del mismo tipo de
             // comprobante violarían el índice único al crear el segundo.
+            $sriCfg = SriConfigService::get();
             ElectronicInvoice::create([
                 'sale_id'          => $sale->id,
                 'credit_note_id'   => $this->creditNoteId,
@@ -72,6 +74,10 @@ class EmitirFacturaJob implements ShouldQueue
                 'clave_acceso'     => 'ERR' . str_pad((string) $sale->id, 10, '0', STR_PAD_LEFT) . strtoupper(\Illuminate\Support\Str::random(20)),
                 'secuencial'       => 'E' . strtoupper(\Illuminate\Support\Str::random(8)),
                 'estado'           => ElectronicInvoice::NO_AUTORIZADA,
+                'store_id'         => $sale->warehouse?->store_id,
+                'warehouse_id'     => $sale->warehouse_id,
+                'estab'            => $sriCfg['estab'] ?? null,
+                'pto_emi'          => $sriCfg['pto_emi'] ?? null,
                 'mensajes_sri'     => [[
                     'identificador'        => 'GENERACION_XML_ERROR',
                     'mensaje'              => 'Error al generar el comprobante electrónico',
@@ -83,7 +89,13 @@ class EmitirFacturaJob implements ShouldQueue
             return;
         }
 
-        // Crear registro PENDIENTE
+        // Crear registro PENDIENTE -- store_id viene del resultado del
+        // generador (cada uno lo deriva de su propia fuente: la venta,
+        // la factura origen, o la nota de crédito), no de $sale
+        // directamente, porque para nota de crédito/débito la tienda
+        // correcta puede no coincidir 1:1 con la del $sale cargado acá.
+        $storeId = $result['store_id'] ?? $sale->warehouse?->store_id;
+        $sriCfg = SriConfigService::get($storeId);
         $factura = ElectronicInvoice::create([
             'sale_id'          => $sale->id,
             'credit_note_id'   => $this->creditNoteId,
@@ -91,11 +103,15 @@ class EmitirFacturaJob implements ShouldQueue
             'clave_acceso'     => $result['clave_acceso'],
             'secuencial'       => $result['secuencial'],
             'estado'           => ElectronicInvoice::PENDIENTE,
+            'store_id'         => $storeId,
+            'warehouse_id'     => $sale->warehouse_id,
+            'estab'            => $sriCfg['estab'] ?? null,
+            'pto_emi'          => $sriCfg['pto_emi'] ?? null,
         ]);
 
         // Firmar
         try {
-            $xmlFirmado = $firmaService->firmar($result['xml']);
+            $xmlFirmado = $firmaService->firmar($result['xml'], $storeId);
         } catch (\Throwable $e) {
             Log::error("Error firmando comprobante {$factura->id}: " . $e->getMessage());
             $factura->update([
@@ -113,7 +129,7 @@ class EmitirFacturaJob implements ShouldQueue
         $factura->update(['xml_firmado' => $xmlFirmado, 'xml_firmado_at' => now()]);
 
         // Enviar al SRI
-        $respuesta = $soapService->enviarComprobante($xmlFirmado);
+        $respuesta = $soapService->enviarComprobante($xmlFirmado, $factura->store_id);
 
         if ($respuesta['estado'] === 'ERROR_TEMPORAL_SRI') {
             $factura->update([

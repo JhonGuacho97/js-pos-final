@@ -15,6 +15,7 @@ use App\Models\SaleReturn;
 use App\Models\SaleReturnItem;
 use App\Models\SmsSetting;
 use App\Models\SmsTemplate;
+use Carbon\Carbon;
 use Exception;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Arr;
@@ -87,7 +88,9 @@ class SaleReturnRepository extends BaseRepository
                 throw new UnprocessableEntityHttpException('Sale Does Not exist');
             }
 
-            $input['date'] = $input['date'] ?? date('Y/m/d');
+            // date() nativo usa el timezone del servidor (UTC) -- después de
+            // las 19:00 hora Ecuador ya devuelve el día siguiente.
+            $input['date'] = $input['date'] ?? Carbon::now('America/Guayaquil')->format('Y/m/d');
 
             // ── Validación de cantidad disponible para devolver ──
             // "Ya devuelto" tiene que sumar tanto devoluciones de venta
@@ -152,29 +155,44 @@ class SaleReturnRepository extends BaseRepository
 
             foreach ($input['sale_return_items'] as $purchaseItem) {
                 $cantidadBase = $this->baseUnitsQuantity($purchaseItem);
-                $product = ManageStock::whereWarehouseId($input['warehouse_id'])
-                    ->whereProductId($purchaseItem['product_id'])
-                    ->lockForUpdate()
-                    ->first();
                 $saleExist = SaleItem::where('product_id', $purchaseItem['product_id'])->whereHas('sale',
                     function (Builder $q) use ($input) {
                         $q->where('customer_id', $input['customer_id'])->where('warehouse_id',
                             $input['warehouse_id'])->where('id', $input['sale_id']);
                     })->exists();
-                if ($saleExist) {
+                if (!$saleExist) {
+                    throw new UnprocessableEntityHttpException('Sale Does Not exist');
+                }
+
+                // Si el producto devuelto es un kit, la devolución física
+                // es de cada componente real -- ver
+                // Product::resolverMovimientoStock().
+                $productoDevuelto = Product::with('kitItems')->find($purchaseItem['product_id']);
+                $movimientos = $productoDevuelto
+                    ? $productoDevuelto->resolverMovimientoStock($cantidadBase)
+                    : [['product_id' => $purchaseItem['product_id'], 'quantity' => $cantidadBase]];
+
+                foreach ($movimientos as $movimiento) {
+                    $product = ManageStock::whereWarehouseId($input['warehouse_id'])
+                        ->whereProductId($movimiento['product_id'])
+                        ->lockForUpdate()
+                        ->first();
+
                     if ($product) {
                         $product->update([
-                            'quantity' => $product->quantity + $cantidadBase,
+                            'quantity' => $product->quantity + $movimiento['quantity'],
                         ]);
                     } else {
                         ManageStock::create([
                             'warehouse_id' => $input['warehouse_id'],
-                            'product_id' => $purchaseItem['product_id'],
-                            'quantity' => $cantidadBase,
+                            'product_id' => $movimiento['product_id'],
+                            'quantity' => $movimiento['quantity'],
                         ]);
                     }
-                } else {
-                    throw new UnprocessableEntityHttpException('Sale Does Not exist');
+                }
+
+                if ($productoDevuelto && $productoDevuelto->is_kit) {
+                    $productoDevuelto->syncKitStock($input['warehouse_id']);
                 }
             }
 

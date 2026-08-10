@@ -80,6 +80,7 @@ class ProductRepository extends BaseRepository
     {
         try {
             DB::beginTransaction();
+            $input['store_id'] = $input['store_id'] ?? requireCurrentStoreId();
             $product = $this->create($input);
             $reference_code = 'PR_' . $product->id;
             $this->generateBarcode($input, $reference_code);

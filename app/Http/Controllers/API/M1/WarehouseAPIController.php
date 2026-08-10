@@ -22,7 +22,11 @@ class WarehouseAPIController extends AppBaseController
     public function index(Request $request): JsonResponse
     {
         $perPage = getPageSize($request);
-        $warehouses = $this->warehouseRepository->paginate($perPage);
+        $warehousesQuery = $this->warehouseRepository;
+        if ($storeId = $this->currentStoreId()) {
+            $warehousesQuery->where('store_id', $storeId);
+        }
+        $warehouses = $warehousesQuery->paginate($perPage);
         $data = [];
         foreach ($warehouses as $warehouse) {
             $data[] = $warehouse->prepareWarehouses();

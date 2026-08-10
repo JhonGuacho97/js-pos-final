@@ -29,7 +29,11 @@ class ExpenseCategoryAPIController extends AppBaseController
     public function index(Request $request): ExpenseCategoryCollection
     {
         $perPage = getPageSize($request);
-        $expenseCategories = $this->expenseCategoryRepository->paginate($perPage);
+        $expenseCategoriesQuery = $this->expenseCategoryRepository;
+        if ($storeId = $this->currentStoreId()) {
+            $expenseCategoriesQuery->where('store_id', $storeId);
+        }
+        $expenseCategories = $expenseCategoriesQuery->paginate($perPage);
         ExpenseCategoryResource::usingWithCollection();
 
         return new ExpenseCategoryCollection($expenseCategories);
@@ -41,6 +45,7 @@ class ExpenseCategoryAPIController extends AppBaseController
     public function store(CreateExpenseCategoryRequest $request): ExpenseCategoryResource
     {
         $input = $request->all();
+        $input['store_id'] = $input['store_id'] ?? $this->requireCurrentStoreId();
         $expenseCategory = $this->expenseCategoryRepository->create($input);
 
         return new ExpenseCategoryResource($expenseCategory);
@@ -49,6 +54,7 @@ class ExpenseCategoryAPIController extends AppBaseController
     public function show($id): ExpenseCategoryResource
     {
         $expenseCategory = $this->expenseCategoryRepository->find($id);
+        $this->authorizeStoreOwnership($expenseCategory);
 
         return new ExpenseCategoryResource($expenseCategory);
     }
@@ -58,6 +64,7 @@ class ExpenseCategoryAPIController extends AppBaseController
      */
     public function update(UpdateExpenseCategoryRequest $request, $id): ExpenseCategoryResource
     {
+        $this->authorizeStoreOwnership($this->expenseCategoryRepository->find($id));
         $input = $request->all();
         $expenseCategory = $this->expenseCategoryRepository->update($input, $id);
 
@@ -66,6 +73,7 @@ class ExpenseCategoryAPIController extends AppBaseController
 
     public function destroy($id): JsonResponse
     {
+        $this->authorizeStoreOwnership($this->expenseCategoryRepository->find($id));
         $expenseModels = [
             Expense::class,
         ];

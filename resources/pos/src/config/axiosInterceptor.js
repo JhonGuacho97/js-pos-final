@@ -24,6 +24,13 @@ export default {
                         window.location.href = environment.URL + '#/' + 'login';
                     }
                 }
+                // Validado siempre server-side contra user_store antes de
+                // usarse (ver ResolveActiveStore::handle()) -- acá solo se
+                // adjunta, nunca se confía en él para nada del lado cliente.
+                const storeId = localStorage.getItem(Tokens.CURRENT_STORE_ID);
+                if (storeId) {
+                    config.headers['X-Store-Id'] = storeId;
+                }
                 if (isFormData) {
                     config.headers['Content-Type'] = 'multipart/form-data';
                 }

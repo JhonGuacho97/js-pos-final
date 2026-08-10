@@ -28,9 +28,42 @@ class SettingAPIController extends AppBaseController
         $this->settingRepository = $productRepository;
     }
 
+    /**
+     * Fila con store_id NULL = fallback de sistema/legado, fila con
+     * store_id = override específico de esa tienda. Se ordena por
+     * store_id ASC (MySQL pone NULL primero) para que, si existen ambas
+     * para la misma key, el pluck() final se quede con la del override
+     * -- entra después y pisa al fallback en el array.
+     *
+     * getFrontSettingsValue() está deliberadamente fuera del grupo
+     * auth:sanctum (se usa en la pantalla de Login antes de tener
+     * sesión, ver Login.js/ForgotPassword.js) -- currentStoreId()
+     * SIEMPRE es null ahí. Sin este `else`, con 2+ tiendas la query
+     * quedaba sin ningún where por store_id: devolvía TODAS las filas
+     * de TODAS las tiendas, y el pluck() final se quedaba con lo último
+     * en orden ascendente -- la tienda con el id más alto, sin relación
+     * alguna con quién visita la pantalla de login. whereNull acá
+     * restringe al fallback de sistema, lo único que tiene sentido
+     * mostrar sin tienda resuelta.
+     */
+    private function scopedSettingsQuery()
+    {
+        $storeId = $this->currentStoreId();
+        $query = Setting::query()->orderBy('store_id');
+        if ($storeId) {
+            $query->where(function ($q) use ($storeId) {
+                $q->whereNull('store_id')->orWhere('store_id', $storeId);
+            });
+        } else {
+            $query->whereNull('store_id');
+        }
+
+        return $query;
+    }
+
     public function index(Request $request): JsonResponse
     {
-        $settings = Setting::all()->pluck('value', 'key')->toArray();
+        $settings = $this->scopedSettingsQuery()->get()->pluck('value', 'key')->toArray();
 
         // Esta ruta es accesible para cualquier usuario autenticado (no
         // solo admin -- ver routes/api.php, 'settings' index queda fuera
@@ -77,7 +110,7 @@ class SettingAPIController extends AppBaseController
             'currency', 'email', 'company_name', 'phone', 'developed', 'footer', 'default_language', 'default_customer',
             'default_warehouse', 'address', 'show_app_name_in_sidebar'
         ];
-        $settings = Setting::whereIn('key', $keyName)->pluck('value', 'key')->toArray();
+        $settings = $this->scopedSettingsQuery()->whereIn('key', $keyName)->get()->pluck('value', 'key')->toArray();
         $settings['logo'] = getLogoUrl();
         $settings['warehouse_name'] = Warehouse::whereId($settings['default_warehouse'])->first()->name ?? '';
         $settings['customer_name'] = Customer::whereId($settings['default_customer'])->first()->name ?? '';

@@ -25,6 +25,8 @@ class CreateUserRequest extends FormRequest
     {
         $rules = User::$rules;
         $rules['role_id'] = 'exists:roles,id';
+        $rules['store_ids'] = 'nullable|array';
+        $rules['store_ids.*'] = 'integer|exists:stores,id';
 
         return $rules;
     }

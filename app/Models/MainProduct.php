@@ -6,6 +6,7 @@ use App\Models\Contracts\JsonResourceful;
 use App\Traits\HasJsonResourcefulData;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Spatie\MediaLibrary\HasMedia;
 use Spatie\MediaLibrary\InteractsWithMedia;
 
@@ -44,6 +45,7 @@ class MainProduct extends Model implements HasMedia, JsonResourceful
     use HasFactory, HasJsonResourcefulData, InteractsWithMedia;
 
     protected $fillable = [
+        'store_id',
         'name',
         'code',
         'product_unit',
@@ -139,6 +141,11 @@ class MainProduct extends Model implements HasMedia, JsonResourceful
     public function products()
     {
         return $this->hasMany(Product::class);
+    }
+
+    public function store(): BelongsTo
+    {
+        return $this->belongsTo(Store::class, 'store_id', 'id');
     }
 
     public function variations()

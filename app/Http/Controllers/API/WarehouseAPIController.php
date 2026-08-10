@@ -35,7 +35,11 @@ class WarehouseAPIController extends AppBaseController
     public function index(Request $request): WarehouseCollection
     {
         $perPage = getPageSize($request);
-        $warehouses = $this->warehouseRepository->paginate($perPage);
+        $warehousesQuery = $this->warehouseRepository;
+        if ($storeId = $this->currentStoreId()) {
+            $warehousesQuery->where('store_id', $storeId);
+        }
+        $warehouses = $warehousesQuery->paginate($perPage);
         WarehouseResource::usingWithCollection();
 
         return new WarehouseCollection($warehouses);
@@ -47,6 +51,7 @@ class WarehouseAPIController extends AppBaseController
     public function store(CreateWarehouseRequest $request): WarehouseResource
     {
         $input = $request->all();
+        $input['store_id'] = $input['store_id'] ?? $this->requireCurrentStoreId();
         $warehouse = $this->warehouseRepository->create($input);
 
         return new WarehouseResource($warehouse);
@@ -68,6 +73,7 @@ class WarehouseAPIController extends AppBaseController
     public function show($id): WarehouseResource
     {
         $warehouse = $this->warehouseRepository->find($id);
+        $this->authorizeStoreOwnership($warehouse);
 
         return new WarehouseResource($warehouse);
     }
@@ -77,6 +83,7 @@ class WarehouseAPIController extends AppBaseController
      */
     public function update(UpdateWarehouseRequest $request, $id): WarehouseResource
     {
+        $this->authorizeStoreOwnership($this->warehouseRepository->find($id));
         $input = $request->all();
         $warehouse = $this->warehouseRepository->update($input, $id);
 
@@ -85,6 +92,7 @@ class WarehouseAPIController extends AppBaseController
 
     public function destroy($id): JsonResponse
     {
+        $this->authorizeStoreOwnership($this->warehouseRepository->find($id));
         if (getSettingValue('default_warehouse') == $id) {
             return $this->SendError(__('messages.error.default_warehouse_cant_delete'));
         }

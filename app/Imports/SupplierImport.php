@@ -22,7 +22,8 @@ class SupplierImport implements ToCollection, WithChunkReading, WithStartRow, Wi
             try {
                 DB::beginTransaction();
 
-                $supplierEmail = Supplier::whereEmail($row[1])->exists();
+                $storeId = requireCurrentStoreId();
+                $supplierEmail = Supplier::whereEmail($row[1])->whereStoreId($storeId)->exists();
                 if ($supplierEmail) {
                     throw new UnprocessableEntityHttpException('Email '.$row[1].' is already exist.');
                 }
@@ -38,6 +39,7 @@ class SupplierImport implements ToCollection, WithChunkReading, WithStartRow, Wi
                     'country' => $row[3],
                     'city' => $row[4],
                     'address' => $row[5],
+                    'store_id' => $storeId,
                 ];
 
                 Supplier::create($supplierData);

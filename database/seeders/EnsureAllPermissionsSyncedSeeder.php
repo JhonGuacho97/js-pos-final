@@ -41,6 +41,7 @@ class EnsureAllPermissionsSyncedSeeder extends Seeder
             'manage_sale_return' => 'Manage Sale Return',
             'manage_login_logs' => 'Manage Login Logs',
             'manage_language' => 'Manage Language',
+            'manage_stores' => 'Manage Stores',
         ];
 
         foreach ($permissions as $name => $displayName) {

@@ -59,7 +59,7 @@ class ReenviarComprobanteJob implements ShouldQueue
 
         $factura->increment('intentos');
 
-        $respuesta = $soapService->enviarComprobante($factura->xml_firmado);
+        $respuesta = $soapService->enviarComprobante($factura->xml_firmado, $factura->store_id);
 
         Log::info("ReenviarComprobanteJob intento {$factura->intentos} para clave {$factura->clave_acceso}: " . $respuesta['estado']);
 

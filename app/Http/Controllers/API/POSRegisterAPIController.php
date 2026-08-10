@@ -11,11 +11,13 @@ use App\Models\Sale;
 use App\Models\SaleReturn;
 use App\Models\SalesPayment;
 use App\Models\Role;
+use App\Models\User;
 use App\Repositories\POSRegisterRepository;
 use Carbon\Carbon;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Symfony\Component\HttpKernel\Exception\AccessDeniedHttpException;
 
 class POSRegisterAPIController extends AppBaseController
 {
@@ -75,8 +77,10 @@ class POSRegisterAPIController extends AppBaseController
             ->whereNull('closed_at')
             ->first();
 
-        $startDate = now()->startOfDay()->toDateTimeString();
-        $endDate = now()->endOfDay()->toDateTimeString();
+        // Límite del día calendario de Ecuador, convertido a UTC para
+        // compararlo contra created_at (que se guarda en UTC real).
+        $startDate = now('America/Guayaquil')->startOfDay()->utc()->toDateTimeString();
+        $endDate = now('America/Guayaquil')->endOfDay()->utc()->toDateTimeString();
         if (! empty($register)) {
             $startDate = $register->created_at->toDateTimeString();
         }
@@ -103,18 +107,35 @@ class POSRegisterAPIController extends AppBaseController
         // pasando user_id, exponiendo montos y descuadres ajenos.
         if (Auth::user()->hasRole(Role::ADMIN)) {
             if (! empty($input['user_id'])) {
+                // Aislamiento entre tiendas aplica siempre, incluso para
+                // admin: no puede pedir el arqueo de un cajero de OTRA
+                // tienda pasando su user_id -- antes de este chequeo eso
+                // exponía montos/descuadres de una tienda ajena.
+                if ($storeId = $this->currentStoreId()) {
+                    $targetBelongsToStore = User::whereKey($input['user_id'])
+                        ->whereHas('stores', function ($q) use ($storeId) {
+                            $q->where('stores.id', $storeId);
+                        })->exists();
+                    if (! $targetBelongsToStore) {
+                        throw new AccessDeniedHttpException('Ese usuario no pertenece a la tienda activa.');
+                    }
+                }
                 $register->where('user_id', $input['user_id']);
             }
         } else {
             $register->where('user_id', Auth::id());
         }
 
+        // El usuario elige el rango en su calendario local (Ecuador), pero
+        // created_at/closed_at se guardan en UTC real -- whereDate() sobre
+        // esas columnas compararía contra SU fecha en UTC, corrida hasta 5
+        // horas respecto al día local. Se convierte el rango a UTC antes.
         if (! empty($input['start_date'])) {
-            $register->whereDate('created_at', '>=', $input['start_date']);
+            $register->where('created_at', '>=', Carbon::parse($input['start_date'], 'America/Guayaquil')->startOfDay()->utc());
         }
 
         if (! empty($input['end_date'])) {
-            $register->whereDate('closed_at', '<=', $input['end_date']);
+            $register->where('closed_at', '<=', Carbon::parse($input['end_date'], 'America/Guayaquil')->endOfDay()->utc());
         }
 
         $register->orderByDesc('created_at')->whereNotNull('closed_at');

@@ -3,21 +3,27 @@
 namespace App\Exports;
 
 use App\Models\PurchaseReturn;
+use App\Models\Warehouse;
 use Maatwebsite\Excel\Concerns\FromView;
 
 class PurchaseReturnWarehouseReportExport implements FromView
 {
     public function view(): \Illuminate\Contracts\View\View
     {
+        $storeId = currentStoreId();
         $warehouseId = request()->get('warehouse_id');
         $supplierId = request()->get('supplier_id');
         if (isset($warehouseId) && $warehouseId != 'null') {
-            $purchaseReturns = PurchaseReturn::whereWarehouseId($warehouseId)->with('warehouse', 'supplier')->get();
+            $purchaseReturnsQuery = PurchaseReturn::whereWarehouseId($warehouseId)->with('warehouse', 'supplier');
         } elseif (isset($supplierId) && $supplierId != 'null') {
-            $purchaseReturns = PurchaseReturn::whereSupplierId($supplierId)->with('warehouse', 'supplier')->get();
+            $purchaseReturnsQuery = PurchaseReturn::whereSupplierId($supplierId)->with('warehouse', 'supplier');
         } else {
-            $purchaseReturns = PurchaseReturn::with('warehouse', 'supplier')->get();
+            $purchaseReturnsQuery = PurchaseReturn::with('warehouse', 'supplier');
         }
+        if ($storeId) {
+            $purchaseReturnsQuery->whereIn('warehouse_id', Warehouse::where('store_id', $storeId)->pluck('id'));
+        }
+        $purchaseReturns = $purchaseReturnsQuery->get();
 
         return view('excel.purchase-return-report-excel', ['purchaseReturns' => $purchaseReturns]);
     }

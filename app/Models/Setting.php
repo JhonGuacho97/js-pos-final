@@ -4,6 +4,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Spatie\MediaLibrary\HasMedia;
 use Spatie\MediaLibrary\InteractsWithMedia;
 use Spatie\MediaLibrary\MediaCollections\Models\Media;
@@ -41,6 +42,7 @@ class Setting extends Model implements HasMedia
      * @var string[]
      */
     protected $fillable = [
+        'store_id',
         'key',
         'value',
     ];
@@ -54,5 +56,16 @@ class Setting extends Model implements HasMedia
         }
 
         return asset('images/infyom.png');
+    }
+
+    /**
+     * A diferencia de las demás relaciones store() de este proyecto,
+     * store_id acá se queda nullable PERMANENTEMENTE -- null = valor de
+     * sistema/legacy (fallback), no-null = override de esa tienda. Ver
+     * la migración add_store_id_to_settings_table.
+     */
+    public function store(): BelongsTo
+    {
+        return $this->belongsTo(Store::class, 'store_id', 'id');
     }
 }

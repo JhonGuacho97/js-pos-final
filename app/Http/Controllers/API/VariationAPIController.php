@@ -26,6 +26,9 @@ class VariationAPIController extends AppBaseController
     {
         $perPage = getPageSize($request);
         $variations = $this->variationRepository;
+        if ($storeId = $this->currentStoreId()) {
+            $variations->where('store_id', $storeId);
+        }
         $variations = $variations->paginate($perPage);
 
         VariationResource::usingWithCollection();
@@ -35,6 +38,8 @@ class VariationAPIController extends AppBaseController
 
     public function show(Variation $variation)
     {
+        $this->authorizeStoreOwnership($variation);
+
         return new VariationResource($variation);
     }
 
@@ -50,6 +55,7 @@ class VariationAPIController extends AppBaseController
 
     public function update(UpdateVariationRequest $request, $id)
     {
+        $this->authorizeStoreOwnership($this->variationRepository->find($id));
         $input = $request->all();
 
         $variation = $this->variationRepository->update($input, $id);
@@ -60,6 +66,7 @@ class VariationAPIController extends AppBaseController
     public function destroy($id)
     {
         $variation = $this->variationRepository->withCount('variationProducts')->find($id);
+        $this->authorizeStoreOwnership($variation);
         if ($variation->variation_products_count) {
             return $this->sendError('This Variation is already in use');
         }

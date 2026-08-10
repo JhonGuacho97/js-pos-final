@@ -49,7 +49,7 @@ class SendRideEmailJob implements ShouldQueue
             return;
         }
 
-        $cfg = SriConfigService::get();
+        $cfg = SriConfigService::get($factura->store_id);
 
         $tipoDocumentoLabel = [
             ElectronicInvoice::FACTURA => 'Factura',

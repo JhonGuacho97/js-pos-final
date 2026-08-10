@@ -32,6 +32,12 @@ class TransferAPIController extends AppBaseController
 
         $transfers = $this->transferRepository;
 
+        if ($storeId = $this->currentStoreId()) {
+            $transfers->whereHas('fromWarehouse', function ($q) use ($storeId) {
+                $q->where('store_id', $storeId);
+            });
+        }
+
         if ($request->get('status') && $request->get('status') != 'null') {
             $transfers->Where('status', $request->get('status'));
         }
@@ -55,6 +61,8 @@ class TransferAPIController extends AppBaseController
 
     public function store(CreateTransferRequest $request): TransferResource
     {
+        $this->authorizeWarehouseAccess($request->input('from_warehouse_id'));
+        $this->authorizeWarehouseAccess($request->input('to_warehouse_id'));
         $input = $request->all();
         $transfer = $this->transferRepository->storeTransfer($input);
 
@@ -63,6 +71,8 @@ class TransferAPIController extends AppBaseController
 
     public function show(Transfer $transfer)
     {
+        $this->authorizeWarehouseAccess($transfer->from_warehouse_id);
+        $this->authorizeWarehouseAccess($transfer->to_warehouse_id);
         $transfer = $transfer->load('transferItems.product');
 
         return new TransferResource($transfer);
@@ -70,6 +80,8 @@ class TransferAPIController extends AppBaseController
 
     public function edit(Transfer $transfer): TransferResource
     {
+        $this->authorizeWarehouseAccess($transfer->from_warehouse_id);
+        $this->authorizeWarehouseAccess($transfer->to_warehouse_id);
         $transfer = $transfer->load('transferItems.product.stocks', 'fromWarehouse', 'toWarehouse');
 
         return new TransferResource($transfer);
@@ -77,6 +89,11 @@ class TransferAPIController extends AppBaseController
 
     public function update(UpdateTransferRequest $request, $id): TransferResource
     {
+        $existing = Transfer::findOrFail($id);
+        $this->authorizeWarehouseAccess($existing->from_warehouse_id);
+        $this->authorizeWarehouseAccess($existing->to_warehouse_id);
+        $this->authorizeWarehouseAccess($request->input('from_warehouse_id'));
+        $this->authorizeWarehouseAccess($request->input('to_warehouse_id'));
         $input = $request->all();
         $transfer = $this->transferRepository->updateTransfer($input, $id);
 
@@ -95,6 +112,8 @@ class TransferAPIController extends AppBaseController
             DB::beginTransaction();
 
             $transfer = $this->transferRepository->with('transferItems')->where('id', $id)->firstOrFail();
+            $this->authorizeWarehouseAccess($transfer->from_warehouse_id);
+            $this->authorizeWarehouseAccess($transfer->to_warehouse_id);
 
             foreach ($transfer->transferItems as $transferItem) {
                 $oldTransferItem = TransferItem::whereId($transferItem->id)->first();

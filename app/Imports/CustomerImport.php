@@ -21,7 +21,8 @@ class CustomerImport implements ToCollection, WithChunkReading, WithStartRow, Wi
         foreach ($collection as $key => $row) {
             try {
                 DB::beginTransaction();
-                $customerEmail = Customer::whereEmail($row[1])->exists();
+                $storeId = requireCurrentStoreId();
+                $customerEmail = Customer::whereEmail($row[1])->whereStoreId($storeId)->exists();
                 if ($customerEmail) {
                     throw new UnprocessableEntityHttpException('Email '.$row[1].' is already exist.');
                 }
@@ -37,6 +38,7 @@ class CustomerImport implements ToCollection, WithChunkReading, WithStartRow, Wi
                     'country' => $row[3],
                     'city' => $row[4],
                     'address' => $row[5],
+                    'store_id' => $storeId,
                 ];
 
                 Customer::create($customerData);

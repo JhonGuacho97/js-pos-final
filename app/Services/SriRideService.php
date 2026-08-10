@@ -34,7 +34,7 @@ class SriRideService
         $pdf = Pdf::loadView('sri.ride', [
             'factura' => $factura,
             'venta' => $venta,
-            'sri' => SriConfigService::get(),
+            'sri' => SriConfigService::get($factura->store_id),
             'qrBase64' => $qrBase64,
             'logoBase64' => $logoBase64,
             'formaPagoTexto' => $formaPagoTexto,
@@ -88,7 +88,7 @@ class SriRideService
         $pdf = Pdf::loadView('sri.ride-nota-credito', [
             'comprobante' => $comprobante,
             'creditNote' => $creditNote,
-            'sri' => SriConfigService::get(),
+            'sri' => SriConfigService::get($comprobante->store_id),
             'qrBase64' => $qrBase64,
             'logoBase64' => $logoBase64,
             'conceptoTexto' => $conceptoTexto,

@@ -30,6 +30,8 @@ class ProductCategoryAPIController extends AppBaseController
         $productCategory = $this->productCategoryRepository->withCount('products')->when($sort,
             function ($q) use ($sort) {
                 $q->orderBy('products_count', $sort);
+            })->when($this->currentStoreId(), function ($q, $storeId) {
+                $q->where('store_id', $storeId);
             })->paginate($perPage);
 
         $data = [];

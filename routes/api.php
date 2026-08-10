@@ -33,6 +33,7 @@ use App\Http\Controllers\API\SmsSettingAPIController;
 use App\Http\Controllers\API\SmsTemplateAPIController;
 use App\Http\Controllers\API\SriController;
 use App\Http\Controllers\API\SriConfigController;
+use App\Http\Controllers\API\StoreAPIController;
 use App\Http\Controllers\API\ElectronicInvoiceController;
 use App\Http\Controllers\API\SupplierAPIController;
 use App\Http\Controllers\API\TransferAPIController;
@@ -63,7 +64,7 @@ use Illuminate\Support\Facades\Route;
 Route::get('/sri/lookup', [SriController::class, 'lookup']);
 Route::get('electronic-invoices/{electronicInvoice}/ride', [ElectronicInvoiceController::class, 'ride']);
 Route::get('electronic-invoices/{electronicInvoice}/xml', [ElectronicInvoiceController::class, 'descargarXml']);
-Route::middleware('auth:sanctum')->group(function () {
+Route::middleware(['auth:sanctum', 'store.context'])->group(function () {
     // ── Facturación electrónica (SRI) ──────────────────────────────
     Route::prefix('electronic-invoices')->group(function () {
         Route::get('/', [ElectronicInvoiceController::class, 'index']);
@@ -136,6 +137,12 @@ Route::middleware('auth:sanctum')->group(function () {
     });
     Route::get('warehouses', [WarehouseAPIController::class, 'index']);
 
+    // stores route (CRUD del catálogo de tiendas -- distinto de my-stores,
+    // que cualquier usuario autenticado puede leer para el selector)
+    Route::middleware('permission:manage_stores')->group(function () {
+        Route::resource('stores', StoreAPIController::class);
+    });
+
     // units route
     Route::middleware('permission:manage_units')->group(function () {
         Route::resource('units', UnitAPIController::class)->except(['index']);
@@ -165,6 +172,14 @@ Route::middleware('auth:sanctum')->group(function () {
 
     Route::resource('product-presentations', \App\Http\Controllers\API\ProductPresentationAPIController::class)
         ->only(['index', 'store', 'update', 'destroy']);
+
+    Route::resource('product-kits', \App\Http\Controllers\API\ProductKitAPIController::class)
+        ->only(['index', 'store', 'update', 'destroy']);
+    // PUT con multipart/form-data no llega bien a $_FILES en PHP (mismo
+    // motivo por el que 'products/{product}' de abajo tiene su propio
+    // POST) -- necesario para poder editar el kit y su imagen en el
+    // mismo submit.
+    Route::post('product-kits/{product_kit}', [\App\Http\Controllers\API\ProductKitAPIController::class, 'update']);
 
     Route::get('products/{product}/warehouse-prices', [\App\Http\Controllers\API\WarehousePriceAPIController::class, 'forProduct']);
     Route::put('products/{product}/warehouse-prices', [\App\Http\Controllers\API\WarehousePriceAPIController::class, 'updateForProduct']);
@@ -454,6 +469,7 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('get-product-count', [ReportAPIController::class, 'getProductQuantity']);
 
     Route::get('config', [UserAPIController::class, 'config']);
+    Route::get('my-stores', [StoreAPIController::class, 'misTiendas']);
 
     // POS Register routes
     Route::get('get-register-details', [POSRegisterAPIController::class, 'getRegisterDetails']);

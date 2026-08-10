@@ -21,6 +21,10 @@ class ProductAPIController extends AppBaseController
     {
         $products = $this->productRepository;
 
+        if ($storeId = $this->currentStoreId()) {
+            $products->where('store_id', $storeId);
+        }
+
         if ($request->get('product_unit')) {
             $products->where('product_unit', $request->get('product_unit'));
         }

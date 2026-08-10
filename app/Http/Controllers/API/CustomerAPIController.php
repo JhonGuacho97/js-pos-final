@@ -38,7 +38,11 @@ class CustomerAPIController extends AppBaseController
     public function index(Request $request): CustomerCollection
     {
         $perPage = getPageSize($request);
-        $customers = $this->customerRepository->paginate($perPage);
+        $customersQuery = $this->customerRepository;
+        if ($storeId = $this->currentStoreId()) {
+            $customersQuery->where('store_id', $storeId);
+        }
+        $customers = $customersQuery->paginate($perPage);
         CustomerResource::usingWithCollection();
 
         return new CustomerCollection($customers);
@@ -53,6 +57,7 @@ class CustomerAPIController extends AppBaseController
         if (! empty($input['dob'])) {
             $input['dob'] = $input['dob'] ?? date('Y/m/d');
         }
+        $input['store_id'] = $input['store_id'] ?? $this->requireCurrentStoreId();
         $customer = $this->customerRepository->create($input);
 
         return new CustomerResource($customer);
@@ -61,15 +66,17 @@ class CustomerAPIController extends AppBaseController
     public function show($id): CustomerResource
     {
         $customer = $this->customerRepository->find($id);
+        $this->authorizeStoreOwnership($customer);
 
         return new CustomerResource($customer);
     }
- 
+
     /**
      * @throws ValidatorException
      */
     public function update(UpdateCustomerRequest $request, $id): CustomerResource
     {
+        $this->authorizeStoreOwnership($this->customerRepository->find($id));
         $input = $request->all();
         if (! empty($input['dob'])) {
             $input['dob'] = $input['dob'] ?? date('Y/m/d');
@@ -81,6 +88,7 @@ class CustomerAPIController extends AppBaseController
 
     public function destroy($id): JsonResponse
     {
+        $this->authorizeStoreOwnership($this->customerRepository->find($id));
         if (getSettingValue('default_customer') == $id) {
             return $this->SendError('Default customer can\'t be deleted');
         }
@@ -91,7 +99,7 @@ class CustomerAPIController extends AppBaseController
 
     public function bestCustomersPdfDownload(): JsonResponse
     {
-        $month = Carbon::now()->month;
+        $month = Carbon::now('America/Guayaquil')->month;
         $topCustomers = Customer::leftJoin('sales', 'customers.id', '=', 'sales.customer_id')
             ->whereMonth('date', $month)
             ->select('customers.*', DB::raw('sum(sales.grand_total) as grand_total'))

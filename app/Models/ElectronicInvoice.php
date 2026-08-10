@@ -71,6 +71,10 @@ class ElectronicInvoice extends BaseModel
     protected $fillable = [
         'sale_id',
         'credit_note_id',
+        'store_id',
+        'warehouse_id',
+        'estab',
+        'pto_emi',
         'tipo_comprobante',
         'clave_acceso',
         'numero_autorizacion',
@@ -105,6 +109,26 @@ class ElectronicInvoice extends BaseModel
     public function creditNote(): BelongsTo
     {
         return $this->belongsTo(CreditNote::class, 'credit_note_id', 'id');
+    }
+
+    /**
+     * store_id/warehouse_id/estab/pto_emi son un SNAPSHOT del contexto
+     * en el momento de la emisión (ver migración
+     * add_store_context_to_electronic_invoices_table) -- un comprobante
+     * ya emitido no debe cambiar retroactivamente de establecimiento si
+     * alguien edita el config de la tienda/sucursal después. Todavía
+     * nullable: se completan al emitir un comprobante nuevo recién en la
+     * Fase 9 (facturación electrónica), y retroactivamente para
+     * comprobantes históricos en la Fase 2.
+     */
+    public function store(): BelongsTo
+    {
+        return $this->belongsTo(Store::class, 'store_id', 'id');
+    }
+
+    public function warehouse(): BelongsTo
+    {
+        return $this->belongsTo(Warehouse::class, 'warehouse_id', 'id');
     }
 
     // ── Helpers de estado ─────────────────────────
@@ -238,10 +262,22 @@ class ElectronicInvoice extends BaseModel
     /**
      * Número de comprobante en formato 001-001-000000001
      * para mostrar en el RIDE y en la UI.
+     *
+     * Usa estab/pto_emi propios del comprobante (snapshot tomado al
+     * emitirlo -- ver EmitirFacturaJob) en vez de volver a consultar la
+     * config SRI actual: si alguien cambia el establecimiento/punto de
+     * emisión después, un comprobante ya emitido no debe mostrar un
+     * número distinto al que realmente se envió al SRI. Fallback a la
+     * config actual solo para comprobantes históricos previos a que
+     * existieran estas columnas (estab/pto_emi nulos).
      */
     public function numeroComprobante(): string
     {
-        $cfg = SriConfigService::get();
+        if ($this->estab !== null && $this->pto_emi !== null) {
+            return $this->estab . '-' . $this->pto_emi . '-' . $this->secuencial;
+        }
+
+        $cfg = SriConfigService::get($this->store_id);
 
         return $cfg['estab'] . '-' . $cfg['pto_emi'] . '-' . $this->secuencial;
     }

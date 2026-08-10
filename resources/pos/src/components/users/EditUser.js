@@ -30,6 +30,7 @@ const EditUser = (props) => {
         },
         default_warehouse_id: user.attributes.default_warehouse_id,
         default_warehouse_name: user.attributes.default_warehouse_name,
+        store_ids: user.attributes.store_ids,
         id: user.id
     }));
 

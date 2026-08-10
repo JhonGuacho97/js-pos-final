@@ -6,6 +6,7 @@ import { fetchFrontSetting } from './frontSettingAction';
 import { setLanguage } from './changeLanguageAction';
 import { getFormattedMessage } from '../../shared/sharedMethod';
 import { fetchConfig } from "./configAction";
+import { fetchMyStores } from "./storeAction";
 
 const mapPermissionToRoute = (permission) => {
     const entity = permission.split('_')[1];
@@ -46,6 +47,7 @@ export const loginAction = (user, navigate, setLoading) => async (dispatch) => {
                 dispatch(fetchPermissions()),
                 dispatch(fetchFrontSetting()),
                 dispatch(fetchConfig()),
+                dispatch(fetchMyStores()),
             ]);
 
             dispatch(addToast({ text: getFormattedMessage('login.success.message') }));
@@ -73,6 +75,7 @@ export const logoutAction = (token, navigate) => async (dispatch) => {
             localStorage.removeItem(Tokens.UPDATED_FIRST_NAME);
             localStorage.removeItem(Tokens.UPDATED_LAST_NAME);
             localStorage.removeItem(Tokens.USER_IMAGE_URL);
+            localStorage.removeItem(Tokens.CURRENT_STORE_ID);
             navigate('/login');
             dispatch(addToast({ text: getFormattedMessage('logout.success.message') }));
         })

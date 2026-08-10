@@ -31,7 +31,11 @@ class SupplierAPIController extends AppBaseController
     public function index(Request $request): SupplierCollection
     {
         $perPage = getPageSize($request);
-        $suppliers = $this->supplierRepository->paginate($perPage);
+        $suppliersQuery = $this->supplierRepository;
+        if ($storeId = $this->currentStoreId()) {
+            $suppliersQuery->where('store_id', $storeId);
+        }
+        $suppliers = $suppliersQuery->paginate($perPage);
         SupplierResource::usingWithCollection();
 
         return new SupplierCollection($suppliers);
@@ -43,6 +47,7 @@ class SupplierAPIController extends AppBaseController
     public function store(CreateSupplierRequest $request): SupplierResource
     {
         $input = $request->all();
+        $input['store_id'] = $input['store_id'] ?? $this->requireCurrentStoreId();
         $supplier = $this->supplierRepository->create($input);
 
         return new SupplierResource($supplier);
@@ -51,6 +56,7 @@ class SupplierAPIController extends AppBaseController
     public function show($id): SupplierResource
     {
         $supplier = $this->supplierRepository->find($id);
+        $this->authorizeStoreOwnership($supplier);
 
         return new SupplierResource($supplier);
     }
@@ -60,6 +66,7 @@ class SupplierAPIController extends AppBaseController
      */
     public function update(UpdateSupplierRequest $request, $id): SupplierResource
     {
+        $this->authorizeStoreOwnership($this->supplierRepository->find($id));
         $input = $request->all();
         $supplier = $this->supplierRepository->update($input, $id);
 
@@ -68,6 +75,7 @@ class SupplierAPIController extends AppBaseController
 
     public function destroy($id): JsonResponse
     {
+        $this->authorizeStoreOwnership($this->supplierRepository->find($id));
         $purchaseModel = [
             Purchase::class,
         ];

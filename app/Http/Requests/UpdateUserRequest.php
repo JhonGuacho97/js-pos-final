@@ -28,6 +28,8 @@ class UpdateUserRequest extends FormRequest
         $rules['role_id'] = 'integer|exists:roles,id';
         $rules['password'] = 'nullable';
         $rules['confirm_password'] = 'nullable';
+        $rules['store_ids'] = 'nullable|array';
+        $rules['store_ids.*'] = 'integer|exists:stores,id';
 
         return $rules;
     }

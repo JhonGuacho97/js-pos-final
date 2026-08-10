@@ -5,6 +5,7 @@ namespace App\Models;
 use App\Models\Contracts\JsonResourceful;
 use App\Traits\HasJsonResourcefulData;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Spatie\MediaLibrary\HasMedia;
 use Spatie\MediaLibrary\InteractsWithMedia;
@@ -42,6 +43,7 @@ class Brand extends BaseModel implements HasMedia, JsonResourceful
     const JSON_API_TYPE = 'brands';
 
     protected $fillable = [
+        'store_id',
         'name',
         'description',
     ];
@@ -98,5 +100,10 @@ class Brand extends BaseModel implements HasMedia, JsonResourceful
     public function products(): HasMany
     {
         return $this->hasMany(Product::class, 'brand_id', 'id');
+    }
+
+    public function store(): BelongsTo
+    {
+        return $this->belongsTo(Store::class, 'store_id', 'id');
     }
 }

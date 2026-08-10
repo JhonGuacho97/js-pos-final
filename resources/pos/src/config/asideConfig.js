@@ -36,6 +36,8 @@ import {
     faClipboardList,
     faFileInvoiceDollar,
     faWarehouse,
+    faGift,
+    faStore,
 } from "@fortawesome/free-solid-svg-icons";
 import { getFormattedMessage } from "../shared/sharedMethod";
 
@@ -133,6 +135,7 @@ export default [
             unitsSubPath: "/app/units",
             baseUnitsSubPath: "/app/base-units",
             barcodeSubPath: "/app/print/barcode",
+            productKitsSubPath: "/app/product-kits",
         },
         subMenu: [
             {
@@ -190,6 +193,14 @@ export default [
                 name: "print barcode",
                 fontIcon: <FontAwesomeIcon icon={faPrint} />,
                 to: "/app/print/barcode",
+                class: "d-flex",
+                permission: Permissions.MANAGE_PRODUCTS,
+            },
+            {
+                title: "product-kits.title",
+                name: "product kits",
+                fontIcon: <FontAwesomeIcon icon={faGift} />,
+                to: "/app/product-kits",
                 class: "d-flex",
                 permission: Permissions.MANAGE_PRODUCTS,
             },
@@ -480,6 +491,7 @@ export default [
             prefixesSubPath: "/app/prefixes",
             mailSettingsSubPath: "/app/mail-settings",
             rolesSubPath: "/app/roles",
+            storesSubPath: "/app/stores",
             currenciesSubPath: "/app/currencies",
             languagesSubPath: "/app/languages",
             emailTemplateSubPath: "/app/email-templates",
@@ -519,6 +531,14 @@ export default [
                 to: "/app/roles",
                 class: "d-flex",
                 permission: Permissions.MANAGE_ROLES,
+            },
+            {
+                title: "store.title",
+                name: "stores",
+                fontIcon: <FontAwesomeIcon icon={faStore} />,
+                to: "/app/stores",
+                class: "d-flex",
+                permission: Permissions.MANAGE_STORES,
             },
             {
                 title: "currencies.title",
