@@ -22,7 +22,12 @@ class CustomPathGenerator implements PathGenerator
 {
     public function getPath(Media $media): string
     {
-        $path = '{PARENT_DIR}' . DIRECTORY_SEPARATOR . $media->id . DIRECTORY_SEPARATOR;
+        // Forward slash siempre -- este path alimenta tanto el guardado en
+        // disco como getFullUrl() (URL pública). DIRECTORY_SEPARATOR aquí
+        // rompe toda imagen de la app en Windows: "\" es válido como
+        // separador de carpeta para el filesystem de Windows, pero no es
+        // un separador de ruta válido en una URL.
+        $path = '{PARENT_DIR}' . '/' . $media->id . '/';
         switch ($media->collection_name) {
             case Brand::PATH:
                 return str_replace('{PARENT_DIR}', Brand::PATH, $path);

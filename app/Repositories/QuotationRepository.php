@@ -5,6 +5,7 @@ namespace App\Repositories;
 use App\Models\Quotation;
 use App\Models\QuotationItem;
 use App\Models\Sale;
+use Carbon\Carbon;
 use Illuminate\Support\Arr;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Validator;
@@ -67,7 +68,9 @@ class QuotationRepository extends BaseRepository
         try {
             DB::beginTransaction();
 
-            $input['date'] = $input['date'] ?? date('Y/m/d');
+            // date() nativo usa el timezone del servidor (UTC) -- después de
+            // las 19:00 hora Ecuador ya devuelve el día siguiente.
+            $input['date'] = $input['date'] ?? Carbon::now('America/Guayaquil')->format('Y/m/d');
             $quotationInputArray = Arr::only($input, [
                 'customer_id', 'warehouse_id', 'tax_rate', 'tax_amount', 'discount', 'shipping', 'grand_total',
                 'received_amount', 'paid_amount', 'note', 'date', 'status',

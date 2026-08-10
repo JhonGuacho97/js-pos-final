@@ -107,23 +107,41 @@ class SaleRepository extends BaseRepository
             $sale['barcode_image_url'] = Storage::url('sales/barcode-' . $reference_code . '.png');
 
             foreach ($input['sale_items'] as $saleItem) {
-                $productModel = Product::whereId($saleItem['product_id'])->first();
+                $productModel = Product::with('kitItems')->whereId($saleItem['product_id'])->first();
                 $baseUnitsQuantity = $productModel
                     ? $productModel->convertToBaseUnits($saleItem['quantity'], $saleItem['product_presentation_id'] ?? null)
                     : $saleItem['quantity'];
 
-                // lockForUpdate() dentro de la transacción -- evita que dos
-                // ventas concurrentes del mismo producto lean el mismo
-                // stock antes de que ninguna haga commit (lost update /
-                // sobreventa).
-                $product = ManageStock::whereWarehouseId($input['warehouse_id'])->whereProductId($saleItem['product_id'])->lockForUpdate()->first();
-                if ($product && $product->quantity >= $baseUnitsQuantity) {
-                    $totalQuantity = $product->quantity - $baseUnitsQuantity;
-                    $product->update([
-                        'quantity' => $totalQuantity,
-                    ]);
-                } else {
-                    throw new UnprocessableEntityHttpException('Quantity must be less than Available quantity.');
+                // Si el producto es un kit (ej. "Pack Cerveza + Michelada"),
+                // no tiene stock propio -- se descuenta cada componente
+                // real según su receta. Para un producto normal esto
+                // devuelve una sola entrada igual a sí mismo, mismo
+                // comportamiento de siempre.
+                $movimientos = $productModel
+                    ? $productModel->resolverMovimientoStock($baseUnitsQuantity)
+                    : [['product_id' => $saleItem['product_id'], 'quantity' => $baseUnitsQuantity]];
+
+                foreach ($movimientos as $movimiento) {
+                    // lockForUpdate() dentro de la transacción -- evita que dos
+                    // ventas concurrentes del mismo producto lean el mismo
+                    // stock antes de que ninguna haga commit (lost update /
+                    // sobreventa).
+                    $product = ManageStock::whereWarehouseId($input['warehouse_id'])->whereProductId($movimiento['product_id'])->lockForUpdate()->first();
+                    if ($product && $product->quantity >= $movimiento['quantity']) {
+                        $totalQuantity = $product->quantity - $movimiento['quantity'];
+                        $product->update([
+                            'quantity' => $totalQuantity,
+                        ]);
+                    } else {
+                        $detalleKit = $productModel && $productModel->is_kit
+                            ? " (falta stock de un componente del kit \"{$productModel->name}\")"
+                            : '';
+                        throw new UnprocessableEntityHttpException("Quantity must be less than Available quantity{$detalleKit}.");
+                    }
+                }
+
+                if ($productModel && $productModel->is_kit) {
+                    $productModel->syncKitStock($input['warehouse_id']);
                 }
             }
 
@@ -534,15 +552,27 @@ class SaleRepository extends BaseRepository
                         'sub_total',
                     ]);
                     $sale->saleItems()->create($saleItemArray);
-                    $product = ManageStock::whereWarehouseId($input['warehouse_id'])->whereProductId($saleItem['product_id'])->lockForUpdate()->first();
-                    if ($product) {
-                        if ($product->quantity >= $saleItem['quantity']) {
-                            $product->update([
-                                'quantity' => $product->quantity - $saleItem['quantity'],
-                            ]);
-                        } else {
-                            throw new UnprocessableEntityHttpException('Quantity must be less than Available quantity.');
+
+                    $productModelNuevo = Product::with('kitItems')->find($saleItem['product_id']);
+                    $movimientosNuevo = $productModelNuevo
+                        ? $productModelNuevo->resolverMovimientoStock($saleItem['quantity'])
+                        : [['product_id' => $saleItem['product_id'], 'quantity' => $saleItem['quantity']]];
+
+                    foreach ($movimientosNuevo as $movimiento) {
+                        $product = ManageStock::whereWarehouseId($input['warehouse_id'])->whereProductId($movimiento['product_id'])->lockForUpdate()->first();
+                        if ($product) {
+                            if ($product->quantity >= $movimiento['quantity']) {
+                                $product->update([
+                                    'quantity' => $product->quantity - $movimiento['quantity'],
+                                ]);
+                            } else {
+                                throw new UnprocessableEntityHttpException('Quantity must be less than Available quantity.');
+                            }
                         }
+                    }
+
+                    if ($productModelNuevo && $productModelNuevo->is_kit) {
+                        $productModelNuevo->syncKitStock($input['warehouse_id']);
                     }
                 }
             }
@@ -552,19 +582,29 @@ class SaleRepository extends BaseRepository
                 foreach ($removeItemIds as $removeItemId) {
                     // remove quantity manage storage
                     $oldProduct = SaleItem::whereId($removeItemId)->first();
-                    $productQuantity = ManageStock::whereWarehouseId($input['warehouse_id'])->whereProductId($oldProduct->product_id)->lockForUpdate()->first();
-                    if ($productQuantity) {
-                        if ($oldProduct) {
+
+                    $productModelViejo = Product::with('kitItems')->find($oldProduct->product_id);
+                    $movimientosViejo = $productModelViejo
+                        ? $productModelViejo->resolverMovimientoStock($oldProduct->quantity)
+                        : [['product_id' => $oldProduct->product_id, 'quantity' => $oldProduct->quantity]];
+
+                    foreach ($movimientosViejo as $movimiento) {
+                        $productQuantity = ManageStock::whereWarehouseId($input['warehouse_id'])->whereProductId($movimiento['product_id'])->lockForUpdate()->first();
+                        if ($productQuantity) {
                             $productQuantity->update([
-                                'quantity' => $productQuantity->quantity + $oldProduct->quantity,
+                                'quantity' => $productQuantity->quantity + $movimiento['quantity'],
+                            ]);
+                        } else {
+                            ManageStock::create([
+                                'warehouse_id' => $input['warehouse_id'],
+                                'product_id' => $movimiento['product_id'],
+                                'quantity' => $movimiento['quantity'],
                             ]);
                         }
-                    } else {
-                        ManageStock::create([
-                            'warehouse_id' => $input['warehouse_id'],
-                            'product_id' => $oldProduct->product_id,
-                            'quantity' => $oldProduct->quantity,
-                        ]);
+                    }
+
+                    if ($productModelViejo && $productModelViejo->is_kit) {
+                        $productModelViejo->syncKitStock($input['warehouse_id']);
                     }
                 }
                 SaleItem::whereIn('id', array_values($removeItemIds))->delete();
@@ -586,35 +626,49 @@ class SaleRepository extends BaseRepository
         try {
             $saleItem = $this->calculationSaleItems($saleItem, $warehouseId);
             $item = SaleItem::whereId($saleItem['sale_item_id']);
-            $product = ManageStock::whereWarehouseId($warehouseId)->whereProductId($saleItem['product_id'])->lockForUpdate()->first();
             $oldItem = SaleItem::whereId($saleItem['sale_item_id'])->first();
+
             if ($oldItem && $oldItem->quantity != $saleItem['quantity']) {
-                $totalQuantity = 0;
-                if ($oldItem->quantity > $saleItem['quantity']) {
-                    if ($product) {
-                        $totalQuantity = $product->quantity + ($oldItem->quantity - $saleItem['quantity']);
-                        $product->update([
-                            'quantity' => $totalQuantity,
-                        ]);
-                    } else {
-                        ManageStock::create([
-                            'warehouse_id' => $warehouseId,
-                            'product_id' => $saleItem['product_id'],
-                            'quantity' => $totalQuantity,
-                        ]);
+                // Delta con signo: positivo = se vendió más que antes (hay
+                // que restar más stock), negativo = se vendió menos (hay
+                // que devolver la diferencia). Se expande a componentes
+                // reales si el producto es un kit -- ver
+                // Product::resolverMovimientoStock().
+                $deltaVendido = $saleItem['quantity'] - $oldItem->quantity;
+
+                $productModel = Product::with('kitItems')->find($saleItem['product_id']);
+                $movimientos = $productModel
+                    ? $productModel->resolverMovimientoStock($deltaVendido)
+                    : [['product_id' => $saleItem['product_id'], 'quantity' => $deltaVendido]];
+
+                foreach ($movimientos as $movimiento) {
+                    $product = ManageStock::whereWarehouseId($warehouseId)->whereProductId($movimiento['product_id'])->lockForUpdate()->first();
+
+                    if ($movimiento['quantity'] > 0) {
+                        // $product puede ser null si nunca se cargó inventario
+                        // inicial para este producto en esta bodega -- antes esto
+                        // producía un error fatal (Call to a member function on
+                        // null) en vez de un mensaje de negocio claro.
+                        if (!$product || $product->quantity < $movimiento['quantity']) {
+                            throw new UnprocessableEntityHttpException('Quantity must be less than Available quantity.');
+                        }
+                        $product->update(['quantity' => $product->quantity - $movimiento['quantity']]);
+                    } elseif ($movimiento['quantity'] < 0) {
+                        if ($product) {
+                            // restar un negativo = sumar la diferencia devuelta
+                            $product->update(['quantity' => $product->quantity - $movimiento['quantity']]);
+                        } else {
+                            ManageStock::create([
+                                'warehouse_id' => $warehouseId,
+                                'product_id' => $movimiento['product_id'],
+                                'quantity' => -$movimiento['quantity'],
+                            ]);
+                        }
                     }
-                } elseif ($oldItem->quantity < $saleItem['quantity']) {
-                    // $product puede ser null si nunca se cargó inventario
-                    // inicial para este producto en esta bodega -- antes esto
-                    // producía un error fatal (Call to a member function on
-                    // null) en vez de un mensaje de negocio claro.
-                    if (!$product || $product->quantity < ($saleItem['quantity'] - $oldItem->quantity)) {
-                        throw new UnprocessableEntityHttpException('Quantity must be less than Available quantity.');
-                    }
-                    $totalQuantity = $product->quantity - ($saleItem['quantity'] - $oldItem->quantity);
-                    $product->update([
-                        'quantity' => $totalQuantity,
-                    ]);
+                }
+
+                if ($productModel && $productModel->is_kit) {
+                    $productModel->syncKitStock($warehouseId);
                 }
             }
             unset($saleItem['sale_item_id']);

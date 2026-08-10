@@ -45,6 +45,11 @@ class SaleReturnAPIController extends AppBaseController
         $customer = (Customer::where('name', 'LIKE', "%$search%")->get()->count() != 0);
         $warehouse = (Warehouse::where('name', 'LIKE', "%$search%")->get()->count() != 0);
         $salesReturn = $this->saleReturnRepository;
+        if ($storeId = $this->currentStoreId()) {
+            $salesReturn->whereHas('warehouse', function ($q) use ($storeId) {
+                $q->where('store_id', $storeId);
+            });
+        }
         if ($customer || $warehouse) {
             $salesReturn->whereHas('customer', function (Builder $q) use ($search, $customer) {
                 if ($customer) {
@@ -86,6 +91,7 @@ class SaleReturnAPIController extends AppBaseController
 
     public function store(CreateSaleReturnRequest $request): SaleReturnResource
     {
+        $this->authorizeWarehouseAccess($request->input('warehouse_id'));
         $input = $request->all();
         $saleReturn = $this->saleReturnRepository->storeSaleReturn($input);
 
@@ -95,12 +101,14 @@ class SaleReturnAPIController extends AppBaseController
     public function show($id): SaleReturnResource
     {
         $saleReturn = $this->saleReturnRepository->find($id);
+        $this->authorizeWarehouseAccess($saleReturn->warehouse_id);
 
         return new SaleReturnResource($saleReturn);
     }
 
     public function edit(SaleReturn $salesReturn): SaleReturnResource
     {
+        $this->authorizeWarehouseAccess($salesReturn->warehouse_id);
         $salesReturn = $salesReturn->load('saleReturnItems.product', 'warehouse');
 
         return new SaleReturnResource($salesReturn);
@@ -119,6 +127,8 @@ class SaleReturnAPIController extends AppBaseController
 
     public function update(UpdateSaleReturnRequest $request, $id): SaleReturnResource
     {
+        $this->authorizeWarehouseAccess(SaleReturn::findOrFail($id)->warehouse_id);
+        $this->authorizeWarehouseAccess($request->input('warehouse_id'));
         $input = $request->all();
         $saleReturn = $this->saleReturnRepository->updateSaleReturn($input, $id);
 
@@ -133,6 +143,7 @@ class SaleReturnAPIController extends AppBaseController
         try {
             DB::beginTransaction();
             $saleReturn = $this->saleReturnRepository->with('saleReturnItems')->where('id', $id)->first();
+            $this->authorizeWarehouseAccess($saleReturn->warehouse_id);
             $sale = Sale::whereId($saleReturn->sale_id)->first();
             if ($sale) {
                 $sale->update(['is_return' => 0]);

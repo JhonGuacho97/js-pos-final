@@ -36,6 +36,8 @@ class BrandAPIController extends AppBaseController
         $brands = $this->brandRepository->withCount('products')->when($sort,
             function ($q) use ($sort) {
                 $q->orderBy('products_count', $sort);
+            })->when($this->currentStoreId(), function ($q, $storeId) {
+                $q->where('store_id', $storeId);
             })->paginate($perPage);
 
         BrandResource::usingWithCollection();
@@ -56,12 +58,14 @@ class BrandAPIController extends AppBaseController
     public function show($id): BrandResource
     {
         $brand = Brand::withCount('products')->findOrFail($id);
+        $this->authorizeStoreOwnership($brand);
 
         return new BrandResource($brand);
     }
 
     public function update(UpdateBrandRequest $request, $id)
     {
+        $this->authorizeStoreOwnership(Brand::findOrFail($id));
         $input = $request->all();
 
         $brand = $this->brandRepository->updateBrand($input, $id);
@@ -71,6 +75,7 @@ class BrandAPIController extends AppBaseController
 
     public function destroy($id)
     {
+        $this->authorizeStoreOwnership(Brand::findOrFail($id));
         $productModels = [
             Product::class,
         ];

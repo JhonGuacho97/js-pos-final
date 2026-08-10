@@ -4,6 +4,7 @@ namespace App\Models;
 
 use App\Traits\HasJsonResourcefulData;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
 /**
@@ -35,6 +36,7 @@ class ExpenseCategory extends BaseModel
     const JSON_API_TYPE = 'expense_categories';
 
     protected $fillable = [
+        'store_id',
         'name',
         'description',
     ];
@@ -64,5 +66,10 @@ class ExpenseCategory extends BaseModel
     public function expenses(): HasMany
     {
         return $this->hasMany(Expense::class, 'expense_category_id', 'id');
+    }
+
+    public function store(): BelongsTo
+    {
+        return $this->belongsTo(Store::class, 'store_id', 'id');
     }
 }

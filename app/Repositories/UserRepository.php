@@ -57,12 +57,14 @@ class UserRepository extends BaseRepository
             if (isset($input['default_warehouse_id']) && $input['default_warehouse_id'] === '') {
                 $input['default_warehouse_id'] = null;
             }
+            $storeIds = $this->resolveGrantableStoreIds($input['store_ids'] ?? []);
             $user = $this->create($input);
+            $user->stores()->sync($storeIds);
             if (isset($input['role_id'])) {
                 if (!Auth::user() || !Auth::user()->hasRole(Role::ADMIN)) {
                     throw new UnprocessableEntityHttpException('No tiene permiso para asignar roles.');
                 }
-                $user->assignRole($input['role_id']);
+                $this->assignRoleAcrossStores($user, (int) $input['role_id'], $storeIds);
             }
             if (isset($input['image']) && !empty($input['image'])) {
                 $user->addMedia($input['image'])->toMediaCollection(
@@ -80,6 +82,60 @@ class UserRepository extends BaseRepository
     }
 
     /**
+     * Un admin solo puede dar acceso a tiendas a las que ÉL MISMO tiene
+     * acceso -- no puede otorgar una tienda ajena que ni siquiera ve.
+     * Si el formulario no marcó ninguna (o vino vacío), cae de nuevo a
+     * "la tienda activa" para no dejar al usuario sin ninguna (mismo
+     * comportamiento de antes de este cambio).
+     */
+    private function resolveGrantableStoreIds(array $requestedStoreIds): array
+    {
+        $grantable = Auth::user()->stores()->pluck('stores.id')->all();
+        $storeIds = array_values(array_intersect(array_map('intval', $requestedStoreIds), $grantable));
+
+        return $storeIds ?: [requireCurrentStoreId()];
+    }
+
+    /**
+     * Asigna el ROL (por nombre, no por ID) al usuario en cada tienda de
+     * $storeIds -- los roles son por tienda (modo teams de Spatie), así
+     * que "el mismo rol" en otra tienda es, en la BD, una fila de Role
+     * distinta con el mismo name. Si todavía no existe ahí, se crea
+     * clonando los permisos del rol de origen. $sourceRoleId es el id
+     * del rol elegido en el dropdown, que siempre pertenece a la tienda
+     * activa del admin que está creando/editando (ver RoleAPIController
+     * ::index(), ya filtrado por currentStoreId()).
+     */
+    private function assignRoleAcrossStores(User $user, int $sourceRoleId, array $storeIds): void
+    {
+        $sourceRole = Role::with('permissions')->findOrFail($sourceRoleId);
+        $originalTeamId = getPermissionsTeamId();
+
+        try {
+            foreach ($storeIds as $storeId) {
+                setPermissionsTeamId($storeId);
+
+                $targetRole = Role::where('name', $sourceRole->name)
+                    ->where('store_id', $storeId)
+                    ->first();
+
+                if (!$targetRole) {
+                    $targetRole = Role::create([
+                        'name' => $sourceRole->name,
+                        'display_name' => $sourceRole->display_name,
+                        'guard_name' => $sourceRole->guard_name,
+                    ]);
+                    $targetRole->syncPermissions($sourceRole->permissions);
+                }
+
+                $user->assignRole($targetRole);
+            }
+        } finally {
+            setPermissionsTeamId($originalTeamId);
+        }
+    }
+
+    /**
      * @return \Illuminate\Contracts\Pagination\LengthAwarePaginator|\Illuminate\Support\Collection|mixed
      */
     public function updateUser($input, $id)
@@ -91,7 +147,36 @@ class UserRepository extends BaseRepository
             }
             $user = $this->update($input, $id);
 
-            if (isset($input['role_id'])) {
+            if (isset($input['store_ids'])) {
+                $storeIds = $this->resolveGrantableStoreIds($input['store_ids']);
+                // Tiendas que el usuario tenía y ya no -- se le sueltan
+                // también sus roles ahí (ver assignRoleAcrossStores());
+                // dejarlos vivos sería un permiso fantasma sin forma de
+                // usarse (ResolveActiveStore ya no dejaría elegir esa
+                // tienda), pero mejor no dejar basura en model_has_roles.
+                $removedStoreIds = $user->stores()->pluck('stores.id')->diff($storeIds);
+                $user->stores()->sync($storeIds);
+
+                if ($removedStoreIds->isNotEmpty()) {
+                    // Delete directo a la tabla pivot en vez de
+                    // ->roles()->wherePivot(...)->detach() -- detach()
+                    // sin IDs explícitos ignora los where() encadenados y
+                    // borraría TODAS las filas de rol del usuario, no
+                    // solo las de la tienda que se le quitó.
+                    DB::table('model_has_roles')
+                        ->where('model_id', $user->id)
+                        ->where('model_type', $user->getMorphClass())
+                        ->whereIn('store_id', $removedStoreIds)
+                        ->delete();
+                }
+
+                if (isset($input['role_id'])) {
+                    if (!Auth::user() || !Auth::user()->hasRole(Role::ADMIN)) {
+                        throw new UnprocessableEntityHttpException('No tiene permiso para asignar roles.');
+                    }
+                    $this->assignRoleAcrossStores($user, (int) $input['role_id'], $storeIds);
+                }
+            } elseif (isset($input['role_id'])) {
                 if (!Auth::user() || !Auth::user()->hasRole(Role::ADMIN)) {
                     throw new UnprocessableEntityHttpException('No tiene permiso para asignar roles.');
                 }
@@ -146,22 +231,26 @@ class UserRepository extends BaseRepository
     public function getUsers($perPage)
     {
         $loginUserId = Auth::id();
+        $storeId = currentStoreId();
+
         if (Auth::user()->hasRole(Role::ADMIN)) {
-            if (request()->get('returnAll') == 'true') {
-                $users = $this->paginate($perPage);
-            } else {
-                $users = $this->where('id', '!=', $loginUserId)->paginate($perPage);
-            }
+            $users = $this;
         } else {
             $users = $this->whereHas('roles', function ($q) {
                 $q->where('name', '!=', Role::ADMIN);
             });
+        }
 
-            if (request()->get('returnAll') == 'true') {
-                $users = $users->paginate($perPage);
-            } else {
-                $users = $users->where('id', '!=', $loginUserId)->paginate($perPage);
-            }
+        if ($storeId) {
+            $users = $users->whereHas('stores', function ($q) use ($storeId) {
+                $q->where('stores.id', $storeId);
+            });
+        }
+
+        if (request()->get('returnAll') == 'true') {
+            $users = $users->paginate($perPage);
+        } else {
+            $users = $users->where('id', '!=', $loginUserId)->paginate($perPage);
         }
 
         return $users;

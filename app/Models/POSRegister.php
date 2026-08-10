@@ -67,6 +67,7 @@ class POSRegister extends BaseModel implements JsonResourceful
         'total_amount',
         'notes',
         'user_id',
+        'warehouse_id',
     ];
 
     public $casts = [
@@ -119,6 +120,7 @@ class POSRegister extends BaseModel implements JsonResourceful
             'closed_at' => $this->closed_at,
             'created_at' => $this->created_at,
             'user' => $this->user,
+            'warehouse_id' => $this->warehouse_id,
         ];
 
         return $fields;
@@ -130,5 +132,17 @@ class POSRegister extends BaseModel implements JsonResourceful
     public function user(): BelongsTo
     {
         return $this->belongsTo(User::class);
+    }
+
+    /**
+     * Sucursal donde se abrió esta caja. Nullable por ahora -- hasta la
+     * Fase 1, pos_register nunca guardó esta información; se completa
+     * retroactivamente en la Fase 2 (back-fill inferido de las ventas de
+     * la sesión) y se vuelve obligatorio para cajas nuevas recién en la
+     * Fase 8.
+     */
+    public function warehouse(): BelongsTo
+    {
+        return $this->belongsTo(Warehouse::class, 'warehouse_id', 'id');
     }
 }

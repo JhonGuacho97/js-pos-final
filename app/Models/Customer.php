@@ -5,6 +5,7 @@ namespace App\Models;
 
 use App\Traits\HasJsonResourcefulData;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
 /**
@@ -63,6 +64,7 @@ class Customer extends BaseModel
     const TIPO_EXTERIOR = '08';
 
     protected $fillable = [
+        'store_id',
         'identification',
         'tipo_identificacion',    // NUEVO — '04','05','06','07','08'
         'es_consumidor_final',    // NUEVO — boolean
@@ -155,6 +157,11 @@ class Customer extends BaseModel
     public function salesReturns(): HasMany
     {
         return $this->hasMany(SaleReturn::class, 'customer_id', 'id');
+    }
+
+    public function store(): BelongsTo
+    {
+        return $this->belongsTo(Store::class, 'store_id', 'id');
     }
 
     // ── Métodos existentes (sin cambios) ─────────

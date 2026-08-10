@@ -69,6 +69,7 @@ class PurchaseAPIController extends AppBaseController
         if ($restricted = $this->restrictedWarehouseId()) {
             $purchases->where('warehouse_id', $restricted);
         }
+        $this->scopeQueryToCurrentStore($purchases);
 
         $purchases = $purchases->paginate($perPage);
 
@@ -190,6 +191,7 @@ class PurchaseAPIController extends AppBaseController
         if ($restricted = $this->restrictedWarehouseId()) {
             $purchases->where('warehouse_id', $restricted);
         }
+        $this->scopeQueryToCurrentStore($purchases);
 
         $purchases = $purchases->paginate($perPage);
 

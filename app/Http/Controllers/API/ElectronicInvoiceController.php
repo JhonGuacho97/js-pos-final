@@ -8,6 +8,7 @@ use App\Jobs\ReenviarComprobanteJob;
 use App\Models\ElectronicInvoice;
 use App\Models\Sale;
 use App\Services\SriRideService;
+use Carbon\Carbon;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;
@@ -132,6 +133,10 @@ class ElectronicInvoiceController extends AppBaseController
         $query = ElectronicInvoice::with(['sale.customer'])
             ->orderBy('created_at', 'desc');
 
+        if ($storeId = $this->currentStoreId()) {
+            $query->where('store_id', $storeId);
+        }
+
         if ($request->filled('estado') && $request->input('estado') !== 'TODOS') {
             $query->where('estado', $request->input('estado'));
         }
@@ -140,12 +145,15 @@ class ElectronicInvoiceController extends AppBaseController
             $query->where('tipo_comprobante', $request->input('tipo_comprobante'));
         }
 
+        // El rango lo elige el usuario en su calendario local (Ecuador),
+        // pero created_at se guarda en UTC real -- convertir antes de
+        // comparar, si no el filtro queda corrido hasta 5 horas.
         if ($request->filled('fecha_desde')) {
-            $query->whereDate('created_at', '>=', $request->input('fecha_desde'));
+            $query->where('created_at', '>=', Carbon::parse($request->input('fecha_desde'), 'America/Guayaquil')->startOfDay()->utc());
         }
 
         if ($request->filled('fecha_hasta')) {
-            $query->whereDate('created_at', '<=', $request->input('fecha_hasta'));
+            $query->where('created_at', '<=', Carbon::parse($request->input('fecha_hasta'), 'America/Guayaquil')->endOfDay()->utc());
         }
 
         if ($request->filled('customer_id')) {
@@ -220,9 +228,15 @@ class ElectronicInvoiceController extends AppBaseController
             ElectronicInvoice::NO_AUTORIZADA,
             ElectronicInvoice::DEVUELTA,
             ElectronicInvoice::ERROR_TEMPORAL_SRI,
-        ])->count();
+        ])->when($storeId, function ($q, $storeId) {
+            $q->where('store_id', $storeId);
+        })->count();
 
-        $saldoTotal = (float) Sale::whereHas('electronicInvoice')
+        $saldoTotal = (float) Sale::whereHas('electronicInvoice', function ($q) use ($storeId) {
+            if ($storeId) {
+                $q->where('store_id', $storeId);
+            }
+        })
             ->selectRaw('COALESCE(SUM(grand_total - paid_amount), 0) as saldo')
             ->value('saldo');
 

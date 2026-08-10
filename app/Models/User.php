@@ -8,6 +8,7 @@ use App\Traits\HasJsonResourcefulData;
 use Illuminate\Contracts\Auth\CanResetPassword;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 use Laravel\Sanctum\HasApiTokens;
@@ -149,14 +150,44 @@ class User extends Authenticatable implements HasMedia, JsonResourceful, CanRese
             'language' => $this->language,
             'default_warehouse_id' => $this->default_warehouse_id,
             'default_warehouse_name' => $this->defaultWarehouse?->name,
+            'store_ids' => $this->stores->pluck('id'),
         ];
 
         return $fields;
     }
 
+    /**
+     * @deprecated Se reemplaza por warehouses() (N-a-N vía user_warehouse)
+     * en la Fase 2/3 -- se deja intacto hasta entonces para no romper
+     * AppBaseController::restrictedWarehouseId(), que todavía lo usa.
+     */
     public function defaultWarehouse(): BelongsTo
     {
         return $this->belongsTo(Warehouse::class, 'default_warehouse_id', 'id');
+    }
+
+    /**
+     * A qué tiendas tiene acceso este usuario. Sin ninguna fila = sin
+     * acceso a ninguna tienda (a diferencia de warehouses(), acá no hay
+     * "ve todo por defecto" -- el acceso a una tienda siempre es
+     * explícito). Ver Store::users() para la relación inversa.
+     */
+    public function stores(): BelongsToMany
+    {
+        return $this->belongsToMany(Store::class, 'user_store', 'user_id', 'store_id')
+            ->withTimestamps();
+    }
+
+    /**
+     * Sub-alcance opcional dentro de las tiendas a las que el usuario ya
+     * tiene acceso. Sin ninguna fila = ve todas las sucursales de sus
+     * tiendas (misma semántica que default_warehouse_id nulo hoy); una o
+     * más filas = restringido a esas sucursales exactas.
+     */
+    public function warehouses(): BelongsToMany
+    {
+        return $this->belongsToMany(Warehouse::class, 'user_warehouse', 'user_id', 'warehouse_id')
+            ->withTimestamps();
     }
 
     public function sendPasswordResetNotification($token)

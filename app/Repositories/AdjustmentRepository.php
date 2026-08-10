@@ -6,6 +6,7 @@ use App\Models\Adjustment;
 use App\Models\AdjustmentItem;
 use App\Models\ManageStock;
 use App\Models\Product;
+use Carbon\Carbon;
 use Illuminate\Support\Arr;
 use Illuminate\Support\Facades\DB;
 use Symfony\Component\HttpKernel\Exception\UnprocessableEntityHttpException;
@@ -55,7 +56,9 @@ class AdjustmentRepository extends BaseRepository
             DB::beginTransaction();
 
             $input['total_products'] = count($input['adjustment_items']);
-            $input['date'] = $input['date'] ?? date('Y/m/d');
+            // date() nativo usa el timezone del servidor (UTC) -- después de
+            // las 19:00 hora Ecuador ya devuelve el día siguiente.
+            $input['date'] = $input['date'] ?? Carbon::now('America/Guayaquil')->format('Y/m/d');
             $adjustmentInputArray = Arr::only($input, [
                 'date', 'warehouse_id', 'total_products',
             ]);
@@ -155,7 +158,9 @@ class AdjustmentRepository extends BaseRepository
             $adjustment = Adjustment::findOrFail($id);
 
             $input['total_products'] = count($input['adjustment_items']);
-            $input['date'] = $input['date'] ?? date('Y/m/d');
+            // date() nativo usa el timezone del servidor (UTC) -- después de
+            // las 19:00 hora Ecuador ya devuelve el día siguiente.
+            $input['date'] = $input['date'] ?? Carbon::now('America/Guayaquil')->format('Y/m/d');
             $adjustmentInputArray = Arr::only($input, [
                 'date', 'warehouse_id', 'total_products',
             ]);

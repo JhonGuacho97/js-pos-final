@@ -49,6 +49,7 @@ class BrandRepository extends BaseRepository
     {
         try {
             DB::beginTransaction();
+            $input['store_id'] = $input['store_id'] ?? requireCurrentStoreId();
             $brand = $this->create($input);
             if (isset($input['image']) && $input['image']) {
                 $media = $brand->addMedia($input['image'])->toMediaCollection(Brand::PATH,

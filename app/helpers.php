@@ -38,7 +38,8 @@ if (! function_exists('getSettingValue')) {
      */
     function getSettingValue($keyName)
     {
-        $key = 'setting'.'-'.$keyName;
+        $storeId = currentStoreId();
+        $key = 'setting'.'-'.($storeId ?? 'global').'-'.$keyName;
 
         static $settingValues;
 
@@ -46,8 +47,33 @@ if (! function_exists('getSettingValue')) {
             return $settingValues[$key];
         }
 
+        // Cada key de settings tiene una fila store_id NULL (fallback de
+        // sistema/legacy) y, desde que existe la tienda inicial, una
+        // fila store_id=<tienda> (override) -- ver
+        // MigrateToInitialStoreSeeder::backfillSettings(). orderByDesc
+        // prioriza el override (store_id numérico > NULL) cuando hay
+        // contexto de tienda resuelto.
+        //
+        // Sin contexto (jobs, comandos, rutas públicas como front-setting
+        // en la pantalla de login antes de autenticarse), NO se puede
+        // dejar la query sin filtrar -- con 2+ tiendas eso deja que
+        // orderByDesc('store_id') agarre la fila de la tienda con el ID
+        // más alto (cualquiera, sin relación con quién está pidiendo
+        // esto), filtrando datos de una tienda ajena hacia un contexto
+        // que no tiene ninguna tienda resuelta. Se restringe al fallback
+        // de sistema (store_id NULL), el único dato que tiene sentido
+        // mostrar sin saber a qué tienda pertenece el pedido.
+        $query = Setting::where('key', '=', $keyName);
+        if ($storeId) {
+            $query->where(function ($q) use ($storeId) {
+                $q->whereNull('store_id')->orWhere('store_id', $storeId);
+            });
+        } else {
+            $query->whereNull('store_id');
+        }
+
         /** @var Setting $setting */
-        $setting = Setting::where('key', '=', $keyName)->first();
+        $setting = $query->orderByDesc('store_id')->first();
         $settingValues[$key] = $setting->value;
 
         return $setting->value;
@@ -93,50 +119,70 @@ if (! function_exists('manageStock')) {
         // (ej. dos reversiones al mismo tiempo) lean el mismo valor antes
         // de que ninguna haga commit.
         \Illuminate\Support\Facades\DB::transaction(function () use ($warehouseID, $productID, $qty) {
-            $product = ManageStock::whereWarehouseId($warehouseID)
-                ->whereProductId($productID)
-                ->lockForUpdate()
-                ->first();
+            // Si $productID es un kit (ej. "Pack Cerveza + Michelada"), no
+            // tiene stock propio -- se expande a sus componentes reales
+            // antes de tocar manage_stocks, con el signo de $qty
+            // preservado (restaurar un kit = restaurar cada componente).
+            // Para un producto normal esto devuelve exactamente
+            // [[$productID, $qty]], cero cambio de comportamiento.
+            $productModel = \App\Models\Product::with('kitItems')->find($productID);
+            $movimientos = $productModel
+                ? $productModel->resolverMovimientoStock($qty)
+                : [['product_id' => $productID, 'quantity' => $qty]];
 
-            if ($product) {
-                $totalQuantity = $product->quantity + $qty;
+            foreach ($movimientos as $movimiento) {
+                $movProductID = $movimiento['product_id'];
+                $movQty = $movimiento['quantity'];
 
-                if ($totalQuantity < 0) {
-                    // Antes esto se fijaba a 0 en silencio -- ej. se
-                    // elimina una transferencia después de que parte de
-                    // ese stock ya se vendió desde la bodega destino:
-                    // manageStock() intentaba restar más de lo que hay
-                    // y lo clampeaba a 0 sin avisar, dejando el
-                    // inventario mostrando "0" en vez de reflejar el
-                    // déficit real (que ya se vendió más de lo que esta
-                    // reversión puede devolver). Ahora se bloquea la
-                    // operación para que quien la dispara se entere.
-                    throw new \Symfony\Component\HttpKernel\Exception\UnprocessableEntityHttpException(
-                        "No se puede ajustar el stock del producto #{$productID} en la bodega #{$warehouseID}: ".
-                        "quedaría en {$totalQuantity} (disponible {$product->quantity}, se intentó aplicar {$qty})."
-                    );
+                $product = ManageStock::whereWarehouseId($warehouseID)
+                    ->whereProductId($movProductID)
+                    ->lockForUpdate()
+                    ->first();
+
+                if ($product) {
+                    $totalQuantity = $product->quantity + $movQty;
+
+                    if ($totalQuantity < 0) {
+                        // Antes esto se fijaba a 0 en silencio -- ej. se
+                        // elimina una transferencia después de que parte de
+                        // ese stock ya se vendió desde la bodega destino:
+                        // manageStock() intentaba restar más de lo que hay
+                        // y lo clampeaba a 0 sin avisar, dejando el
+                        // inventario mostrando "0" en vez de reflejar el
+                        // déficit real (que ya se vendió más de lo que esta
+                        // reversión puede devolver). Ahora se bloquea la
+                        // operación para que quien la dispara se entere.
+                        throw new \Symfony\Component\HttpKernel\Exception\UnprocessableEntityHttpException(
+                            "No se puede ajustar el stock del producto #{$movProductID} en la bodega #{$warehouseID}: ".
+                            "quedaría en {$totalQuantity} (disponible {$product->quantity}, se intentó aplicar {$movQty})."
+                        );
+                    }
+                    $product->update([
+                        'quantity' => $totalQuantity,
+                    ]);
+                } else {
+                    if ($movQty < 0) {
+                        // Mismo criterio que arriba: no hay ninguna fila de
+                        // stock todavía para este producto/bodega, y se
+                        // intenta restar -- no hay "0 disponible - algo"
+                        // válido, así que se bloquea en vez de crear la fila
+                        // en 0 en silencio.
+                        throw new \Symfony\Component\HttpKernel\Exception\UnprocessableEntityHttpException(
+                            "No se puede ajustar el stock del producto #{$movProductID} en la bodega #{$warehouseID}: ".
+                            "no hay stock registrado ahí (se intentó restar {$movQty})."
+                        );
+                    }
+
+                    ManageStock::create([
+                        'warehouse_id' => $warehouseID,
+                        'product_id' => $movProductID,
+                        'quantity' => $movQty,
+                    ]);
                 }
-                $product->update([
-                    'quantity' => $totalQuantity,
-                ]);
-            } else {
-                if ($qty < 0) {
-                    // Mismo criterio que arriba: no hay ninguna fila de
-                    // stock todavía para este producto/bodega, y se
-                    // intenta restar -- no hay "0 disponible - algo"
-                    // válido, así que se bloquea en vez de crear la fila
-                    // en 0 en silencio.
-                    throw new \Symfony\Component\HttpKernel\Exception\UnprocessableEntityHttpException(
-                        "No se puede ajustar el stock del producto #{$productID} en la bodega #{$warehouseID}: ".
-                        "no hay stock registrado ahí (se intentó restar {$qty})."
-                    );
-                }
+            }
 
-                ManageStock::create([
-                    'warehouse_id' => $warehouseID,
-                    'product_id' => $productID,
-                    'quantity' => $qty,
-                ]);
+            if ($productModel && $productModel->is_kit) {
+                $productModel->syncKitStock($warehouseID);
             }
         });
     }
@@ -206,5 +252,39 @@ if (! function_exists('currencyAlignment')) {
         }
 
         return $amount.' '.getCurrencyCode();
+    }
+}
+
+if (! function_exists('currentStoreId')) {
+    /**
+     * Tienda activa ya resuelta por el middleware ResolveActiveStore (ver
+     * app/Http/Middleware/ResolveActiveStore.php). Helper global -- no solo
+     * método de AppBaseController -- porque los Repositories (que no
+     * extienden AppBaseController) también necesitan asignar store_id al
+     * crear filas de catálogo.
+     */
+    function currentStoreId(): ?int
+    {
+        return request()?->attributes->get('current_store_id');
+    }
+}
+
+if (! function_exists('requireCurrentStoreId')) {
+    /**
+     * Igual que currentStoreId() pero exige que haya una tienda resuelta --
+     * usar antes de crear cualquier fila store-scoped (producto, cliente,
+     * categoría, etc.), donde un store_id null violaría la constraint
+     * NOT NULL en BD con un error confuso.
+     */
+    function requireCurrentStoreId(): int
+    {
+        $storeId = currentStoreId();
+        if ($storeId === null) {
+            throw new \Symfony\Component\HttpKernel\Exception\UnprocessableEntityHttpException(
+                'No se pudo determinar la tienda activa. Seleccioná una tienda antes de continuar.'
+            );
+        }
+
+        return $storeId;
     }
 }

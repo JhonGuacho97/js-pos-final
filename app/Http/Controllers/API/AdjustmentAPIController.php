@@ -32,6 +32,12 @@ class AdjustmentAPIController extends AppBaseController
 
         $adjustments = $this->adjustmentRepository;
 
+        if ($storeId = $this->currentStoreId()) {
+            $adjustments->whereHas('warehouse', function ($q) use ($storeId) {
+                $q->where('store_id', $storeId);
+            });
+        }
+
         if ($request->get('warehouse_id')) {
             $adjustments->where('warehouse_id', $request->get('warehouse_id'));
         }
@@ -45,6 +51,7 @@ class AdjustmentAPIController extends AppBaseController
 
     public function store(CraeteAdjustmentRequest $request): AdjustmentResource
     {
+        $this->authorizeWarehouseAccess($request->input('warehouse_id'));
         $input = $request->all();
         $adjustment = $this->adjustmentRepository->storeAdjustment($input);
 
@@ -53,6 +60,7 @@ class AdjustmentAPIController extends AppBaseController
 
     public function show(Adjustment $adjustment): AdjustmentResource
     {
+        $this->authorizeWarehouseAccess($adjustment->warehouse_id);
         $adjustment = $adjustment->load('adjustmentItems.product');
 
         return new AdjustmentResource($adjustment);
@@ -60,6 +68,7 @@ class AdjustmentAPIController extends AppBaseController
 
     public function edit(Adjustment $adjustment): AdjustmentResource
     {
+        $this->authorizeWarehouseAccess($adjustment->warehouse_id);
         $adjustment = $adjustment->load('adjustmentItems.product.stocks', 'warehouse');
 
         return new AdjustmentResource($adjustment);
@@ -67,6 +76,8 @@ class AdjustmentAPIController extends AppBaseController
 
     public function update(UpdateAdjustmentRequest $request, $id): AdjustmentResource
     {
+        $this->authorizeWarehouseAccess(Adjustment::findOrFail($id)->warehouse_id);
+        $this->authorizeWarehouseAccess($request->input('warehouse_id'));
         $input = $request->all();
         $adjustment = $this->adjustmentRepository->updateAdjustment($input, $id);
 
@@ -84,6 +95,7 @@ class AdjustmentAPIController extends AppBaseController
             DB::beginTransaction();
 
             $adjustment = $this->adjustmentRepository->with('adjustmentItems')->where('id', $id)->firstOrFail();
+            $this->authorizeWarehouseAccess($adjustment->warehouse_id);
 
             foreach ($adjustment->adjustmentItems as $adjustmentItem) {
                 $oldItem = AdjustmentItem::whereId($adjustmentItem->id)->firstOrFail();

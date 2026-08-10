@@ -42,6 +42,7 @@ class VariationRepository extends BaseRepository
     {
         try {
             DB::beginTransaction();
+            $input['store_id'] = $input['store_id'] ?? requireCurrentStoreId();
             $variation = $this->create($input);
             if (isset($input['variation_types'])) {
                 foreach ($input['variation_types'] as $type) {

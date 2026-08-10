@@ -96,6 +96,15 @@ class SaleAPIController extends AppBaseController
             $sales->where('warehouse_id', $restricted);
         }
 
+        // A diferencia de lo anterior (que no restringe admins),
+        // aislamiento entre tiendas aplica siempre -- un admin de la
+        // Tienda A no debe listar ventas de la Tienda B.
+        if ($storeId = $this->currentStoreId()) {
+            $sales->whereHas('warehouse', function ($q) use ($storeId) {
+                $q->where('store_id', $storeId);
+            });
+        }
+
         $sales = $sales->paginate($perPage);
 
         // Totales de TODOS los registros que calzan con el filtro (no solo
@@ -172,6 +181,7 @@ class SaleAPIController extends AppBaseController
         if ($restricted = $this->restrictedWarehouseId()) {
             $query->where('warehouse_id', $restricted);
         }
+        $this->scopeQueryToCurrentStore($query);
 
         return $query;
     }
@@ -393,6 +403,7 @@ class SaleAPIController extends AppBaseController
         if ($restricted = $this->restrictedWarehouseId()) {
             $sales->where('warehouse_id', $restricted);
         }
+        $this->scopeQueryToCurrentStore($sales);
 
         $sales = $sales->paginate($perPage);
 

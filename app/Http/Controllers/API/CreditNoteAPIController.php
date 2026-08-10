@@ -37,6 +37,7 @@ class CreditNoteAPIController extends AppBaseController
         if ($restricted = $this->restrictedWarehouseId()) {
             $query->where('warehouse_id', $restricted);
         }
+        $this->scopeQueryToCurrentStore($query);
 
         $creditNotes = $query->paginate($perPage, ['*'], 'page', (int) $request->input('page', 1));
 

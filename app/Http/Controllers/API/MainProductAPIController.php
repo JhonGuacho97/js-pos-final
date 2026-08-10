@@ -39,6 +39,10 @@ class MainProductAPIController extends AppBaseController
         $perPage = getPageSize($request);
         $products = $this->mainProductRepository;
 
+        if ($storeId = $this->currentStoreId()) {
+            $products->where('store_id', $storeId);
+        }
+
         if ($request->get('product_unit')) {
             $products->where('product_unit', $request->get('product_unit'));
         }
@@ -64,6 +68,7 @@ class MainProductAPIController extends AppBaseController
     {
         /** @var MainProduct $mainProduct */
         $mainProduct = $this->mainProductRepository->find($id);
+        $this->authorizeStoreOwnership($mainProduct);
 
         return new MainProductResource($mainProduct);
     }
@@ -89,6 +94,7 @@ class MainProductAPIController extends AppBaseController
                 'code' => $input['product_code'],
                 'product_unit' => $input['product_unit'],
                 'product_type' => $input['product_type'],
+                'store_id' => $this->requireCurrentStoreId(),
             ]);
 
             if (isset($input['images']) && !empty($input['images'])) {
@@ -148,6 +154,7 @@ class MainProductAPIController extends AppBaseController
     {
         $input = $request->all();
         $mainProduct = MainProduct::find($id);
+        $this->authorizeStoreOwnership($mainProduct);
 
         $mainProduct->update([
             'name' => $input['name'],
@@ -182,6 +189,7 @@ class MainProductAPIController extends AppBaseController
 
     public function destroy($id): JsonResponse
     {
+        $this->authorizeStoreOwnership(MainProduct::find($id));
         try {
             DB::beginTransaction();
             $products = Product::where('main_product_id', $id)->get();

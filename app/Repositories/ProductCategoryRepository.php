@@ -52,6 +52,7 @@ class ProductCategoryRepository extends BaseRepository
     {
         try {
             DB::beginTransaction();
+            $input['store_id'] = $input['store_id'] ?? requireCurrentStoreId();
             $productCategory = $this->create($input);
             if (isset($input['image']) && $input['image']) {
                 $media = $productCategory->addMedia($input['image'])->toMediaCollection(productCategory::PATH,

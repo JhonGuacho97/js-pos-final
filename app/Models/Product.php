@@ -105,6 +105,7 @@ class Product extends BaseModel implements HasMedia, JsonResourceful
     protected $appends = ['image_url', 'barcode_image_url'];
 
     protected $fillable = [
+        'store_id',
         'name',
         'code',
         'product_code',
@@ -123,6 +124,7 @@ class Product extends BaseModel implements HasMedia, JsonResourceful
         'notes',
         'barcode_symbol',
         'manage_presentations',
+        'is_kit',
     ];
 
     public static $rules = [
@@ -156,6 +158,7 @@ class Product extends BaseModel implements HasMedia, JsonResourceful
         'grand_total' => 'float',
         'order_tax' => 'float',
         'manage_presentations' => 'boolean',
+        'is_kit' => 'boolean',
     ];
 
     /**
@@ -200,6 +203,22 @@ class Product extends BaseModel implements HasMedia, JsonResourceful
     {
         $this->load('variationProduct','mainProduct');
 
+        // Un kit no guarda su propio stock real -- lo que muestra el
+        // catálogo/POS siempre se recalcula en vivo desde sus componentes
+        // (buildableQuantity()), nunca se confía en el valor ya guardado
+        // en manage_stocks (que solo existe para que la query del listado
+        // pueda encontrar/filtrar el kit por bodega, ver syncKitStock()).
+        $requestWarehouseId = request()->get('warehouse_id');
+        if ($this->is_kit) {
+            if ($this->relationLoaded('stock') && $this->stock) {
+                $this->stock->quantity = $this->buildableQuantity($this->stock->warehouse_id);
+            }
+            $inStockKit = $requestWarehouseId
+                ? $this->buildableQuantity((int) $requestWarehouseId)
+                : ManageStock::where('product_id', $this->id)->get()
+                    ->sum(fn ($row) => $this->buildableQuantity($row->warehouse_id));
+        }
+
         $fields = [
             'name' => $this->name,
             'code' => $this->code,
@@ -218,9 +237,13 @@ class Product extends BaseModel implements HasMedia, JsonResourceful
             'order_tax' => $this->order_tax,
             'tax_type' => $this->tax_type,
             'notes' => $this->notes,
-            'images' => $this->mainProduct->image_url,
-            'product_category_name' => $this->productCategory->name,
-            'brand_name' => $this->brand->name,
+            // Un kit no tiene main_product_id (no participa del sistema
+            // de variaciones) -- antes esto asumía que todo producto
+            // tenía un MainProduct y tiraba un error fatal al intentar
+            // leer image_url de null.
+            'images' => $this->mainProduct?->image_url ?? '',
+            'product_category_name' => $this->productCategory?->name,
+            'brand_name' => $this->brand?->name,
             'barcode_image_url' => $this->barcode_image_url,
             'barcode_symbol' => $this->barcode_symbol,
             'created_at' => $this->created_at,
@@ -233,8 +256,15 @@ class Product extends BaseModel implements HasMedia, JsonResourceful
             // Si la lista ya trae el total pre-calculado (withSum, una sola
             // consulta para toda la página) se usa ese -- si no (ej. al ver
             // el detalle de un producto suelto), cae al cálculo de siempre.
-            'in_stock' => $this->stocks_sum_quantity ?? $this->inStock($this->id),
+            // Para un kit, ninguno de los dos aplica -- se reemplaza por la
+            // cantidad armable en vivo calculada arriba.
+            'in_stock' => $this->is_kit ? $inStockKit : ($this->stocks_sum_quantity ?? $this->inStock($this->id)),
         ];
+
+        $fields['is_kit'] = $this->is_kit;
+        if ($this->is_kit) {
+            $fields['kit_items'] = $this->kitItems->map(fn (ProductKitItem $item) => $item->prepareAttributes())->values();
+        }
 
         if ($this->variationProduct) {
             $fields['variation_product'] = $this->variationProduct->prepareAttributes();
@@ -420,6 +450,11 @@ class Product extends BaseModel implements HasMedia, JsonResourceful
         return $this->belongsTo(MainProduct::class, 'main_product_id', 'id');
     }
 
+    public function store(): BelongsTo
+    {
+        return $this->belongsTo(Store::class, 'store_id', 'id');
+    }
+
     public function prepareProductReport()
     {
         return [
@@ -444,6 +479,16 @@ class Product extends BaseModel implements HasMedia, JsonResourceful
     public function presentations(): HasMany
     {
         return $this->hasMany(ProductPresentation::class, 'product_id', 'id')->orderBy('sort');
+    }
+
+    /**
+     * Componentes reales que forman este producto cuando es_kit=true (ej.
+     * "Pack Cerveza + Michelada" = 1 caja de cerveza + 1 michelada). Un kit
+     * no tiene stock propio -- ver resolverMovimientoStock()/buildableQuantity().
+     */
+    public function kitItems(): HasMany
+    {
+        return $this->hasMany(ProductKitItem::class, 'kit_product_id', 'id');
     }
 
     public function warehousePrices(): HasMany
@@ -494,5 +539,125 @@ class Product extends BaseModel implements HasMedia, JsonResourceful
         }
 
         return $quantity * $presentation->equivalence;
+    }
+
+    /**
+     * Traduce una cantidad de ESTE producto (ya en unidades base, con
+     * signo: positivo = sumar stock, negativo = restar) a la lista real de
+     * productos que hay que tocar en manage_stocks. Para un producto
+     * normal es él mismo tal cual; para un kit, sus componentes según la
+     * receta de product_kit_items, multiplicados por la cantidad de kits.
+     *
+     * Este es el único lugar donde vive la lógica de "qué significa
+     * vender/devolver un kit" -- todo lo que hoy toca manage_stocks para
+     * una línea de venta/devolución/nota de crédito pasa por acá antes de
+     * escribir, así que un kit se comporta como cualquier producto desde
+     * la perspectiva de esos flujos (no hace falta un camino aparte).
+     *
+     * @return array<int, array{product_id:int, quantity:float}>
+     */
+    public function resolverMovimientoStock(float $baseQuantity): array
+    {
+        if (!$this->is_kit) {
+            return [['product_id' => $this->id, 'quantity' => $baseQuantity]];
+        }
+
+        $items = $this->relationLoaded('kitItems') ? $this->kitItems : $this->kitItems()->get();
+
+        return $items->map(function (ProductKitItem $item) use ($baseQuantity) {
+            // item->quantity está en "unidades de la presentación elegida"
+            // cuando la receta especificó una (ej. 4 "Cajas" de Heineken);
+            // se multiplica por la equivalencia para descontar stock real
+            // en unidades base, igual que hace una venta con presentación.
+            $equivalencia = $item->component_product_presentation_id
+                ? (float) ($item->presentation?->equivalence ?? 1)
+                : 1;
+
+            return [
+                'product_id' => $item->component_product_id,
+                'quantity' => $item->quantity * $equivalencia * $baseQuantity,
+            ];
+        })->all();
+    }
+
+    /**
+     * Cuántos kits se pueden armar HOY con el stock real de sus
+     * componentes en una bodega puntual (el mínimo entre "cuántos de este
+     * componente alcanzan" para cada componente de la receta). Para un
+     * producto normal, es simplemente su stock real.
+     *
+     * Se calcula en vivo (no se confía en manage_stocks.quantity del
+     * propio kit, que es solo una copia de esta cuenta para que el
+     * catálogo lo pueda listar/filtrar por bodega -- ver syncKitStock())
+     * para que nunca quede desactualizado aunque algo modifique el stock
+     * de un componente por otro camino (compra, ajuste, transferencia).
+     */
+    public function buildableQuantity(int $warehouseId): float
+    {
+        if (!$this->is_kit) {
+            return (float) (ManageStock::where('warehouse_id', $warehouseId)
+                ->where('product_id', $this->id)
+                ->value('quantity') ?? 0);
+        }
+
+        $items = $this->relationLoaded('kitItems') ? $this->kitItems : $this->kitItems()->get();
+
+        if ($items->isEmpty()) {
+            return 0;
+        }
+
+        $minimo = null;
+        foreach ($items as $item) {
+            if ($item->quantity <= 0) {
+                continue;
+            }
+            // Misma equivalencia que resolverMovimientoStock() -- cuánto
+            // stock (en unidades base) consume 1 unidad del kit para esta
+            // línea de receta.
+            $equivalencia = $item->component_product_presentation_id
+                ? (float) ($item->presentation?->equivalence ?? 1)
+                : 1;
+            $consumoPorKit = $item->quantity * $equivalencia;
+            if ($consumoPorKit <= 0) {
+                continue;
+            }
+            $stockComponente = (float) (ManageStock::where('warehouse_id', $warehouseId)
+                ->where('product_id', $item->component_product_id)
+                ->value('quantity') ?? 0);
+            $armables = floor($stockComponente / $consumoPorKit);
+            $minimo = $minimo === null ? $armables : min($minimo, $armables);
+        }
+
+        return max(0.0, (float) ($minimo ?? 0));
+    }
+
+    /**
+     * Deja una fila real en manage_stocks para el kit con la cantidad
+     * armable actual -- necesaria únicamente para que el catálogo (que
+     * filtra productos con whereHas('stock', ...) por bodega) pueda
+     * listar/encontrar el kit en el POS. El número mostrado en el
+     * catálogo puede quedar un paso desactualizado hasta la próxima venta
+     * de un componente que dispare este sync, pero la validación real al
+     * momento de vender siempre recalcula en vivo vía buildableQuantity(),
+     * así que nunca se puede vender de más por esta desactualización.
+     */
+    public function syncKitStock(?int $warehouseId = null): void
+    {
+        if (!$this->is_kit) {
+            return;
+        }
+
+        $componentIds = $this->kitItems()->pluck('component_product_id');
+
+        $warehouseIds = $warehouseId
+            ? collect([$warehouseId])
+            : ManageStock::whereIn('product_id', $componentIds)->distinct()->pluck('warehouse_id');
+
+        foreach ($warehouseIds as $wid) {
+            ManageStock::updateOrCreate(
+                ['product_id' => $this->id, 'warehouse_id' => $wid],
+                ['quantity' => $this->buildableQuantity($wid)]
+            );
+        }
     }
 }

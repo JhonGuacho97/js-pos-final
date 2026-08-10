@@ -47,8 +47,10 @@ class ProductImport implements ToCollection, WithChunkReading, WithStartRow, Wit
                     throw new UnprocessableEntityHttpException('Product Code ' . $row[1] . ' is already exist.');
                 }
 
-                $productCategory = ProductCategory::whereName($row[2])->first();
-                $brand = Brand::whereName($row[3])->first();
+                $storeId = requireCurrentStoreId();
+
+                $productCategory = ProductCategory::whereName($row[2])->whereStoreId($storeId)->first();
+                $brand = Brand::whereName($row[3])->whereStoreId($storeId)->first();
 
                 $baseUnit = BaseUnit::whereName(strtolower($row[7]))->first();
 
@@ -80,14 +82,14 @@ class ProductImport implements ToCollection, WithChunkReading, WithStartRow, Wit
                 if ($productCategory) {
                     $productCategoryId = $productCategory->id;
                 } else {
-                    $productCategory = ProductCategory::create(['name' => $row[2]]);
+                    $productCategory = ProductCategory::create(['name' => $row[2], 'store_id' => $storeId]);
                     $productCategoryId = $productCategory->id;
                 }
 
                 if ($brand) {
                     $brandId = $brand->id;
                 } else {
-                    $brand = Brand::create(['name' => $row[3]]);
+                    $brand = Brand::create(['name' => $row[3], 'store_id' => $storeId]);
                     $brandId = $brand->id;
                 }
 
@@ -112,6 +114,7 @@ class ProductImport implements ToCollection, WithChunkReading, WithStartRow, Wit
                     'code' => (string) $row[1],
                     'product_unit' => $productUnitId,
                     'product_type' => MainProduct::SINGLE_PRODUCT,
+                    'store_id' => $storeId,
                 ]);
 
                 $productData = [
@@ -131,6 +134,7 @@ class ProductImport implements ToCollection, WithChunkReading, WithStartRow, Wit
                     'tax_type' => $taxType,
                     'notes' => isset($row[13]) ? $row[13] : null,
                     'main_product_id' => $mainProduct->id,
+                    'store_id' => $storeId,
                 ];
 
                 $product = Product::create($productData);
@@ -160,7 +164,7 @@ class ProductImport implements ToCollection, WithChunkReading, WithStartRow, Wit
                         $purchaseInputArray = [
                             'supplier_id' => $warehouse->id,
                             'warehouse_id' => $supplier->id,
-                            'date' => Carbon::now()->format('Y-m-d'),
+                            'date' => Carbon::now('America/Guayaquil')->format('Y-m-d'),
                             'status' => $status,
                         ];
 

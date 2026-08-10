@@ -50,6 +50,10 @@ class ProductAPIController extends AppBaseController
         $products->with(['productCategory', 'brand', 'mainProduct.media', 'variationProduct.variation', 'variationProduct.variationType'])
             ->withSum('stocks', 'quantity');
 
+        if ($storeId = $this->currentStoreId()) {
+            $products->where('store_id', $storeId);
+        }
+
         if ($request->get('product_unit')) {
             $products->where('product_unit', $request->get('product_unit'));
         }
@@ -115,12 +119,14 @@ class ProductAPIController extends AppBaseController
     public function show($id): ProductResource
     {
         $product = $this->productRepository->find($id);
+        $this->authorizeStoreOwnership($product);
 
         return new ProductResource($product);
     }
 
     public function update(UpdateProductRequest $request, $id): ProductResource
     {
+        $this->authorizeStoreOwnership($this->productRepository->find($id));
         $input = $request->all();
 
         $product = $this->productRepository->updateProduct($input, $id);
@@ -130,6 +136,7 @@ class ProductAPIController extends AppBaseController
 
     public function destroy($id): JsonResponse
     {
+        $this->authorizeStoreOwnership($this->productRepository->find($id));
 
         $purchaseItemModels = [
             PurchaseItem::class,

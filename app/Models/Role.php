@@ -45,6 +45,13 @@ class Role extends roleModal
         'name',
         'display_name',
         'guard_name',
+        // Spatie\Permission\Models\Role::create() (la clase padre) inyecta
+        // store_id automáticamente en modo teams a partir del team activo
+        // (ver PermissionRegistrar::$teams) -- pero como este modelo
+        // redefine $fillable, sin agregarlo acá Eloquent lo descarta en
+        // silencio durante la asignación masiva y el rol queda creado con
+        // store_id NULL (visible/editable desde cualquier tienda).
+        'store_id',
     ];
 
     const ADMIN = 'admin';

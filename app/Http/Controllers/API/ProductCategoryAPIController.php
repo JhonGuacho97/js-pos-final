@@ -36,6 +36,8 @@ class ProductCategoryAPIController extends AppBaseController
         $productCategory = $this->productCategoryRepository->withCount('products')->when($sort,
             function ($q) use ($sort) {
                 $q->orderBy('products_count', $sort);
+            })->when($this->currentStoreId(), function ($q, $storeId) {
+                $q->where('store_id', $storeId);
             })->paginate($perPage);
 
         ProductCategoryResource::usingWithCollection();
@@ -54,12 +56,14 @@ class ProductCategoryAPIController extends AppBaseController
     public function show($id): ProductCategoryResource
     {
         $productCategory = $this->productCategoryRepository->withCount('products')->find($id);
+        $this->authorizeStoreOwnership($productCategory);
 
         return new ProductCategoryResource($productCategory);
     }
 
     public function update(UpdateProductCategoryRequest $request, $id): ProductCategoryResource
     {
+        $this->authorizeStoreOwnership($this->productCategoryRepository->find($id));
         $input = $request->all();
         $productCategory = $this->productCategoryRepository->updateProductCategory($input, $id);
 
@@ -68,6 +72,7 @@ class ProductCategoryAPIController extends AppBaseController
 
     public function destroy($id): JsonResponse
     {
+        $this->authorizeStoreOwnership($this->productCategoryRepository->find($id));
         $productModels = [
             Product::class,
         ];

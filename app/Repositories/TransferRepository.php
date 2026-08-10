@@ -6,6 +6,7 @@ use App\Models\ManageStock;
 use App\Models\Product;
 use App\Models\Transfer;
 use App\Models\TransferItem;
+use Carbon\Carbon;
 use Exception;
 use Illuminate\Support\Arr;
 use Illuminate\Support\Facades\DB;
@@ -69,7 +70,9 @@ class TransferRepository extends BaseRepository
         try {
             DB::beginTransaction();
 
-            $input['date'] = $input['date'] ?? date('Y/m/d');
+            // date() nativo usa el timezone del servidor (UTC) -- después de
+            // las 19:00 hora Ecuador ya devuelve el día siguiente.
+            $input['date'] = $input['date'] ?? Carbon::now('America/Guayaquil')->format('Y/m/d');
             $TransferInputArray = Arr::only($input, [
                 'from_warehouse_id', 'to_warehouse_id', 'tax_rate', 'tax_amount', 'discount', 'shipping', 'grand_total',
                 'note', 'date', 'status',

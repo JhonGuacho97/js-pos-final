@@ -243,19 +243,34 @@ class CreditNoteRepository extends BaseRepository
                 // crudo (unidades de presentación), descuadrando el
                 // inventario cuando la presentación tenía equivalencia > 1.
                 if ($creditNote->tocaStock() && !empty($input['warehouse_id'])) {
-                    $stock = ManageStock::where('warehouse_id', $input['warehouse_id'])
-                        ->where('product_id', $calculado['product_id'])
-                        ->lockForUpdate()
-                        ->first();
+                    // Si el producto devuelto es un kit (ej. "Pack Cerveza +
+                    // Michelada"), la devolución física es de cada
+                    // componente real, no del kit en sí -- ver
+                    // Product::resolverMovimientoStock().
+                    $productoDevuelto = Product::with('kitItems')->find($calculado['product_id']);
+                    $movimientos = $productoDevuelto
+                        ? $productoDevuelto->resolverMovimientoStock($calculado['quantity'])
+                        : [['product_id' => $calculado['product_id'], 'quantity' => $calculado['quantity']]];
 
-                    if ($stock) {
-                        $stock->update(['quantity' => $stock->quantity + $calculado['quantity']]);
-                    } else {
-                        ManageStock::create([
-                            'warehouse_id' => $input['warehouse_id'],
-                            'product_id' => $calculado['product_id'],
-                            'quantity' => $calculado['quantity'],
-                        ]);
+                    foreach ($movimientos as $movimiento) {
+                        $stock = ManageStock::where('warehouse_id', $input['warehouse_id'])
+                            ->where('product_id', $movimiento['product_id'])
+                            ->lockForUpdate()
+                            ->first();
+
+                        if ($stock) {
+                            $stock->update(['quantity' => $stock->quantity + $movimiento['quantity']]);
+                        } else {
+                            ManageStock::create([
+                                'warehouse_id' => $input['warehouse_id'],
+                                'product_id' => $movimiento['product_id'],
+                                'quantity' => $movimiento['quantity'],
+                            ]);
+                        }
+                    }
+
+                    if ($productoDevuelto && $productoDevuelto->is_kit) {
+                        $productoDevuelto->syncKitStock($input['warehouse_id']);
                     }
                 }
             }
@@ -306,20 +321,33 @@ class CreditNoteRepository extends BaseRepository
             // en vez de dejar el stock en negativo.
             if ($creditNote->tocaStock() && $creditNote->warehouse_id) {
                 foreach ($creditNote->creditNoteItems as $item) {
-                    $stock = ManageStock::where('warehouse_id', $creditNote->warehouse_id)
-                        ->where('product_id', $item->product_id)
-                        ->lockForUpdate()
-                        ->first();
+                    // Mismo criterio que al crear la nota: si el producto es
+                    // un kit, revertir es revertir cada componente real.
+                    $productoItem = Product::with('kitItems')->find($item->product_id);
+                    $movimientos = $productoItem
+                        ? $productoItem->resolverMovimientoStock($item->quantity)
+                        : [['product_id' => $item->product_id, 'quantity' => $item->quantity]];
 
-                    $disponible = $stock->quantity ?? 0;
-                    if ($disponible < $item->quantity) {
-                        throw new UnprocessableEntityHttpException(
-                            "No se puede cancelar: el stock del producto #{$item->product_id} ".
-                            "ya se movió (disponible {$disponible}, se necesita revertir {$item->quantity})."
-                        );
+                    foreach ($movimientos as $movimiento) {
+                        $stock = ManageStock::where('warehouse_id', $creditNote->warehouse_id)
+                            ->where('product_id', $movimiento['product_id'])
+                            ->lockForUpdate()
+                            ->first();
+
+                        $disponible = $stock->quantity ?? 0;
+                        if ($disponible < $movimiento['quantity']) {
+                            throw new UnprocessableEntityHttpException(
+                                "No se puede cancelar: el stock del producto #{$movimiento['product_id']} ".
+                                "ya se movió (disponible {$disponible}, se necesita revertir {$movimiento['quantity']})."
+                            );
+                        }
+
+                        $stock->update(['quantity' => $disponible - $movimiento['quantity']]);
                     }
 
-                    $stock->update(['quantity' => $disponible - $item->quantity]);
+                    if ($productoItem && $productoItem->is_kit) {
+                        $productoItem->syncKitStock($creditNote->warehouse_id);
+                    }
                 }
             }
 

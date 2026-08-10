@@ -4,6 +4,7 @@ namespace App\Models;
 
 use App\Traits\HasJsonResourcefulData;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
 /**
@@ -43,6 +44,7 @@ class Supplier extends BaseModel
     const JSON_API_TYPE = 'suppliers';
 
     protected $fillable = [
+        'store_id',
         'name',
         'email',
         'phone',
@@ -85,5 +87,10 @@ class Supplier extends BaseModel
     public function purchases(): HasMany
     {
         return $this->hasMany(Purchase::class, 'supplier_id', 'id');
+    }
+
+    public function store(): BelongsTo
+    {
+        return $this->belongsTo(Store::class, 'store_id', 'id');
     }
 }

@@ -89,11 +89,14 @@ return [
         'model_morph_key' => 'model_id',
 
         /*
-         * Change this if you want to use the teams feature and your related model's
-         * foreign key is other than `team_id`.
+         * Multitienda: usamos store_id como team_foreign_key (en vez del
+         * team_id genérico por defecto) para que la columna sea
+         * auto-explicativa -- un "team" de Spatie es, en este proyecto,
+         * una Store. Ver database/migrations/
+         * 2026_08_09_130200_add_teams_support_to_permission_tables.php.
          */
 
-        'team_foreign_key' => 'team_id',
+        'team_foreign_key' => 'store_id',
     ],
 
     /*
@@ -104,14 +107,16 @@ return [
     'register_permission_check_method' => true,
 
     /*
-     * When set to true the package implements teams using the 'team_foreign_key'. If you want
-     * the migrations to register the 'team_foreign_key', you must set this to true
-     * before doing the migration. If you already did the migration then you must make a new
-     * migration to also add 'team_foreign_key' to 'roles', 'model_has_roles', and
-     * 'model_has_permissions'(view the latest version of package's migration file)
+     * Multitienda -- activado en la Fase 13. ResolveActiveStore::handle()
+     * llama a setPermissionsTeamId() en TODO request autenticado (incluso
+     * con null cuando no hay tienda resuelta), así que cualquier chequeo
+     * de rol/permiso queda automáticamente filtrado por store_id. Ver
+     * también el fix en UserRepository::storeUser() (Fase 13a) -- sin
+     * asignar cada usuario nuevo a user_store, quedaría con team_id nulo
+     * y ningún hasRole()/can() le funcionaría nunca.
      */
 
-    'teams' => false,
+    'teams' => true,
 
     /*
      * When set to true, the required permission names are added to the exception

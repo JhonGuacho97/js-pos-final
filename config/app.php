@@ -73,6 +73,15 @@ return [
     |
     */
 
+    // NO cambiar esto a la zona horaria de Ecuador -- created_at/updated_at
+    // (y cualquier timestamp ya guardado) se INTERPRETAN con este valor al
+    // leerlos, no solo al escribirlos. Cambiarlo retroactivamente corre 5
+    // horas la lectura de TODO dato histórico ya guardado como UTC (se
+    // probó: una venta real pasó a mostrarse "ayer a la 1:40am"). Los
+    // lugares que necesitan la hora de Ecuador (fechas "hoy" del dashboard/
+    // reportes, fechaEmision SRI, fallback de fecha en Ajustes/
+    // Transferencias/Cotizaciones/Devoluciones) usan Carbon::now(
+    // 'America/Guayaquil') explícito en el sitio, no este config global.
     'timezone' => 'UTC',
 
     /*

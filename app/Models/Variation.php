@@ -4,6 +4,7 @@ namespace App\Models;
 
 use App\Traits\HasJsonResourcefulData;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
 /**
@@ -33,6 +34,7 @@ class Variation extends BaseModel
     const JSON_API_TYPE = 'variations';
 
     protected $fillable = [
+        'store_id',
         'name',
         'is_presentation',
     ];
@@ -77,5 +79,10 @@ class Variation extends BaseModel
     public function variationProducts(): HasMany
     {
         return $this->hasMany(VariationProduct::class);
+    }
+
+    public function store(): BelongsTo
+    {
+        return $this->belongsTo(Store::class, 'store_id', 'id');
     }
 }
