@@ -79,4 +79,26 @@ class Role extends roleModal
 
         return $fields;
     }
+
+    /**
+     * IDs de todos los roles (de cualquier tienda) que tienen TODOS los
+     * permisos que existen hoy -- no solo el rol llamado 'admin'. Ver
+     * User::isUnrestrictedAdmin() para el mismo criterio a nivel de
+     * usuario (que además suma permisos de varios roles si el usuario
+     * tuviera más de uno); esto es la versión "por fila de rol", para
+     * los lugares que necesitan filtrar/ocultar por rol dentro de una
+     * query (ej. UserRepository::getUsers()).
+     */
+    public static function unrestrictedRoleIds(): array
+    {
+        $totalPermissions = \Spatie\Permission\Models\Permission::count();
+        if ($totalPermissions === 0) {
+            return [];
+        }
+
+        return static::withCount('permissions')
+            ->having('permissions_count', '>=', $totalPermissions)
+            ->pluck('id')
+            ->all();
+    }
 }

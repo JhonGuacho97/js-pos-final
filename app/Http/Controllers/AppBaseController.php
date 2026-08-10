@@ -2,7 +2,6 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\Role;
 use App\Models\User;
 use App\Models\Warehouse;
 use App\Utils\ResponseUtil;
@@ -51,7 +50,7 @@ class AppBaseController extends Controller
     protected function restrictedWarehouseId(): ?int
     {
         $user = Auth::user();
-        if (!$user || $user->hasRole(Role::ADMIN)) {
+        if (!$user || $user->isUnrestrictedAdmin()) {
             return null;
         }
 

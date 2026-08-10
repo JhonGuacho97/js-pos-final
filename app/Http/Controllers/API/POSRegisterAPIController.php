@@ -10,7 +10,6 @@ use App\Models\POSRegister;
 use App\Models\Sale;
 use App\Models\SaleReturn;
 use App\Models\SalesPayment;
-use App\Models\Role;
 use App\Models\User;
 use App\Repositories\POSRegisterRepository;
 use Carbon\Carbon;
@@ -105,7 +104,7 @@ class POSRegisterAPIController extends AppBaseController
         // Un usuario no-admin solo puede ver el historial de arqueo de su
         // propia caja -- antes cualquiera podía pedir el de otro usuario
         // pasando user_id, exponiendo montos y descuadres ajenos.
-        if (Auth::user()->hasRole(Role::ADMIN)) {
+        if (Auth::user()->isUnrestrictedAdmin()) {
             if (! empty($input['user_id'])) {
                 // Aislamiento entre tiendas aplica siempre, incluso para
                 // admin: no puede pedir el arqueo de un cajero de OTRA

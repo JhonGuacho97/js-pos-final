@@ -61,7 +61,7 @@ class UserRepository extends BaseRepository
             $user = $this->create($input);
             $user->stores()->sync($storeIds);
             if (isset($input['role_id'])) {
-                if (!Auth::user() || !Auth::user()->hasRole(Role::ADMIN)) {
+                if (!Auth::user() || !Auth::user()->isUnrestrictedAdmin()) {
                     throw new UnprocessableEntityHttpException('No tiene permiso para asignar roles.');
                 }
                 $this->assignRoleAcrossStores($user, (int) $input['role_id'], $storeIds);
@@ -171,13 +171,13 @@ class UserRepository extends BaseRepository
                 }
 
                 if (isset($input['role_id'])) {
-                    if (!Auth::user() || !Auth::user()->hasRole(Role::ADMIN)) {
+                    if (!Auth::user() || !Auth::user()->isUnrestrictedAdmin()) {
                         throw new UnprocessableEntityHttpException('No tiene permiso para asignar roles.');
                     }
                     $this->assignRoleAcrossStores($user, (int) $input['role_id'], $storeIds);
                 }
             } elseif (isset($input['role_id'])) {
-                if (!Auth::user() || !Auth::user()->hasRole(Role::ADMIN)) {
+                if (!Auth::user() || !Auth::user()->isUnrestrictedAdmin()) {
                     throw new UnprocessableEntityHttpException('No tiene permiso para asignar roles.');
                 }
                 $user->syncRoles($input['role_id']);
@@ -233,11 +233,15 @@ class UserRepository extends BaseRepository
         $loginUserId = Auth::id();
         $storeId = currentStoreId();
 
-        if (Auth::user()->hasRole(Role::ADMIN)) {
+        if (Auth::user()->isUnrestrictedAdmin()) {
             $users = $this;
         } else {
-            $users = $this->whereHas('roles', function ($q) {
-                $q->where('name', '!=', Role::ADMIN);
+            // No solo el rol llamado 'admin': cualquier rol que hoy tenga
+            // TODOS los permisos del sistema (ver Role::unrestrictedRoleIds())
+            // queda oculto de la lista igual que 'admin' siempre lo estuvo.
+            $unrestrictedRoleIds = Role::unrestrictedRoleIds();
+            $users = $this->whereHas('roles', function ($q) use ($unrestrictedRoleIds) {
+                $q->whereNotIn('id', $unrestrictedRoleIds);
             });
         }
 
