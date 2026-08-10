@@ -24,7 +24,17 @@ return [
          * `Spatie\Permission\Contracts\Role` contract.
          */
 
-        'role' => Spatie\Permission\Models\Role::class,
+        // App\Models\Role extiende la clase de Spatie (agrega store_id,
+        // unrestrictedRoleIds(), etc.) -- apuntar acá a la clase base
+        // hacía que $user->roles/$role->... (cualquier acceso vía
+        // relación, no vía Role::find()/Route::model()) devolviera
+        // instancias de Spatie\Permission\Models\Role en vez de
+        // App\Models\Role. Pasaba desapercibido porque casi todo el
+        // código llama a App\Models\Role directamente (bypassea el
+        // config) -- hasta que algo type-hintea App\Models\Role sobre
+        // el resultado de una relación (ver StoreAPIController
+        // ::grantCreatorAccess()), donde revienta con TypeError.
+        'role' => App\Models\Role::class,
 
     ],
 
