@@ -197,6 +197,34 @@ class User extends Authenticatable implements HasMedia, JsonResourceful, CanRese
         $this->notify(new ResetPasswordNotification($url));
     }
 
+    /**
+     * "¿Es admin sin restricciones?" -- históricamente varios lugares del
+     * código respondían esto con hasRole(Role::ADMIN), es decir "¿el
+     * nombre de tu rol es LITERALMENTE la palabra 'admin'?". Eso se rompe
+     * apenas alguien crea un segundo rol de nivel administrador con otro
+     * nombre (ej. "SUPER_ADMIN") -- ese usuario queda tratado como
+     * restringido (limitado a su default_warehouse_id, sin ver otros
+     * admins, etc.) aunque conceptualmente tenga el mismo nivel de acceso.
+     *
+     * Acá se responde por PERMISOS, no por nombre: un usuario es admin sin
+     * restricciones si sus roles, en conjunto, cubren TODOS los permisos
+     * que existen hoy en el sistema. Coincide exactamente con lo que ya
+     * hace EnsureAllPermissionsSyncedSeeder para el rol 'admin' (le
+     * sincroniza todos los permisos existentes) -- pero ahora cualquier
+     * OTRO rol al que se le den todos los permisos manualmente desde
+     * Roles/Permisos queda reconocido igual, sin tener que llamarse
+     * "admin" ni tocar código.
+     */
+    public function isUnrestrictedAdmin(): bool
+    {
+        $totalPermissions = \Spatie\Permission\Models\Permission::count();
+        if ($totalPermissions === 0) {
+            return false;
+        }
+
+        return $this->getAllPermissions()->count() >= $totalPermissions;
+    }
+
     public function sales()
     {
         return $this->hasMany(Sale::class);

@@ -71,20 +71,26 @@ class StoreAPIController extends AppBaseController
      * Sin esto, la tienda queda huérfana: quien la creó no la vería en
      * su selector (user_store) ni podría operarla ni asignarle otros
      * usuarios (resolveGrantableStoreIds() en UserRepository exige que
-     * el admin que asigna YA tenga acceso a la tienda). Se le clona el
-     * rol "admin" de su tienda actual -- mismo patrón que
-     * UserRepository::assignRoleAcrossStores().
+     * el admin que asigna YA tenga acceso a la tienda). Se le clona un
+     * rol de su tienda actual -- antes esto buscaba específicamente un
+     * rol llamado 'admin', así que un creador con un rol admin-
+     * equivalente de otro nombre (ej. SUPER_ADMIN) no encontraba nada y
+     * la tienda nueva quedaba sin rol clonado. Ahora se clona el propio
+     * rol del creador (roles() ya viene filtrado a la tienda activa por
+     * el modo teams de Spatie), priorizando uno sin restricciones si
+     * tiene más de uno -- ver Role::unrestrictedRoleIds().
      */
     private function grantCreatorAccess(Store $store): void
     {
         $creator = Auth::user();
         $creator->stores()->syncWithoutDetaching([$store->id]);
 
-        $sourceAdminRole = Role::where('name', Role::ADMIN)
-            ->where('store_id', $this->currentStoreId())
-            ->first();
+        $creatorRoles = $creator->roles;
+        $unrestrictedRoleIds = Role::unrestrictedRoleIds();
+        $sourceRole = $creatorRoles->first(fn (Role $role) => in_array($role->id, $unrestrictedRoleIds, true))
+            ?? $creatorRoles->first();
 
-        if (!$sourceAdminRole) {
+        if (!$sourceRole) {
             return;
         }
 
@@ -92,11 +98,11 @@ class StoreAPIController extends AppBaseController
         try {
             setPermissionsTeamId($store->id);
             $newRole = Role::create([
-                'name' => $sourceAdminRole->name,
-                'display_name' => $sourceAdminRole->display_name,
-                'guard_name' => $sourceAdminRole->guard_name,
+                'name' => $sourceRole->name,
+                'display_name' => $sourceRole->display_name,
+                'guard_name' => $sourceRole->guard_name,
             ]);
-            $newRole->syncPermissions($sourceAdminRole->permissions);
+            $newRole->syncPermissions($sourceRole->permissions);
             $creator->assignRole($newRole);
         } finally {
             setPermissionsTeamId($originalTeamId);

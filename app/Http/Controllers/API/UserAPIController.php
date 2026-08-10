@@ -11,7 +11,6 @@ use App\Http\Requests\UpdateUserRequest;
 use App\Http\Resources\UserCollection;
 use App\Http\Resources\UserResource;
 use App\Models\POSRegister;
-use App\Models\Role;
 use App\Models\User;
 use App\Repositories\UserRepository;
 use Exception;
@@ -124,7 +123,7 @@ class UserAPIController extends AppBaseController
         // Solo un admin puede resetear la contraseña de otro admin --
         // evita que un usuario con permiso manage_users (pero sin ser
         // admin) tome control de una cuenta admin restableciendo su clave.
-        if ($user->hasRole(Role::ADMIN) && !Auth::user()->hasRole(Role::ADMIN)) {
+        if ($user->isUnrestrictedAdmin() && !Auth::user()->isUnrestrictedAdmin()) {
             throw new AccessDeniedHttpException('No tiene permiso para cambiar la contraseña de este usuario.');
         }
 
@@ -166,10 +165,10 @@ class UserAPIController extends AppBaseController
             // Admin siempre entra por el almacén global de Ajustes, con
             // acceso a todos -- el almacén por defecto de usuario es solo
             // para el resto de roles (vendedores, etc.).
-            'default_warehouse_id' => $user->hasRole(\App\Models\Role::ADMIN)
+            'default_warehouse_id' => $user->isUnrestrictedAdmin()
                 ? null
                 : $user->default_warehouse_id,
-            'default_warehouse_name' => $user->hasRole(\App\Models\Role::ADMIN)
+            'default_warehouse_name' => $user->isUnrestrictedAdmin()
                 ? null
                 : $user->defaultWarehouse?->name,
         ], 'Config retrieved successfully.');
