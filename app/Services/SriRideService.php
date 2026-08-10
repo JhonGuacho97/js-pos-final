@@ -29,7 +29,7 @@ class SriRideService
 
         $formaPagoTexto = self::FORMAS_PAGO_TEXTO[$venta->formaPagoSri()] ?? 'OTROS';
 
-        $logoBase64 = $this->obtenerLogoBase64();
+        $logoBase64 = $this->obtenerLogoBase64($factura->store_id);
 
         $pdf = Pdf::loadView('sri.ride', [
             'factura' => $factura,
@@ -75,7 +75,7 @@ class SriRideService
             ->generate($comprobante->clave_acceso);
         $qrBase64 = 'data:image/svg+xml;base64,' . base64_encode($qrSvg);
 
-        $logoBase64 = $this->obtenerLogoBase64();
+        $logoBase64 = $this->obtenerLogoBase64($comprobante->store_id);
 
         $conceptoTexto = match ($creditNote->concepto) {
             'POR_DEVOLUCION' => 'Por Devolución',
@@ -113,9 +113,9 @@ class SriRideService
      * Obtiene el logo de la empresa como data URI base64, usando el mismo
      * helper getLogoUrl() que ya usa el flujo de venta (pdf.sale-pdf).
      */
-    private function obtenerLogoBase64(): string
+    private function obtenerLogoBase64(?int $storeId = null): string
     {
-        $logoUrl = getLogoUrl();
+        $logoUrl = getLogoUrl($storeId);
         $urlPath = parse_url($logoUrl, PHP_URL_PATH);
         $urlPath = ltrim(str_replace(['/', '\\'], DIRECTORY_SEPARATOR, $urlPath), DIRECTORY_SEPARATOR);
         $logoPath = public_path($urlPath);
