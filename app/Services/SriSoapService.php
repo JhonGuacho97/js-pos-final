@@ -12,10 +12,17 @@ class SriSoapService
     private string $wsdlAutorizacion;
     private string $ambiente;
 
-    public function __construct()
+    /**
+     * Igual que SriFirmaService: sin constructor -- este servicio se
+     * inyecta por DI en el handle() de cada Job antes de que el Job
+     * tenga oportunidad de indicar a qué tienda pertenece la operación,
+     * así que la config (WSDL/ambiente) se carga recién al llamar
+     * enviarComprobante()/consultarAutorizacion(), con el $storeId que
+     * el llamador ya conoce.
+     */
+    private function cargarConfig(?int $storeId): void
     {
-
-        $config = SriConfigService::get();
+        $config = SriConfigService::get($storeId);
 
         $this->wsdlRecepcion = $config['wsdl_recepcion'];
         $this->wsdlAutorizacion = $config['wsdl_autorizacion'];
@@ -124,8 +131,10 @@ class SriSoapService
      * Envía el XML firmado al SRI para validación inicial.
      * Retorna ['estado' => 'RECIBIDA'|'DEVUELTA', 'mensajes' => [...]]
      */
-    public function enviarComprobante(string $xmlFirmado): array
+    public function enviarComprobante(string $xmlFirmado, ?int $storeId = null): array
     {
+        $this->cargarConfig($storeId);
+
         preg_match('/<claveAcceso>(.*?)<\/claveAcceso>/', $xmlFirmado, $claveMatch);
         $claveAcceso = $claveMatch[1] ?? null;
         $context = $this->sriLogContext('enviarComprobante', $claveAcceso);
@@ -200,8 +209,10 @@ class SriSoapService
      * Consulta el estado de autorización de un comprobante ya recibido.
      * Retorna ['estado' => 'AUTORIZADO'|'NO AUTORIZADO'|'EN PROCESO', ...]
      */
-    public function consultarAutorizacion(string $claveAcceso): array
+    public function consultarAutorizacion(string $claveAcceso, ?int $storeId = null): array
     {
+        $this->cargarConfig($storeId);
+
         $context = $this->sriLogContext('consultarAutorizacion', $claveAcceso);
 
         $client = null;

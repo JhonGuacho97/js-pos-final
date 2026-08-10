@@ -15,10 +15,11 @@ class SriXmlService
     public function generarClaveAcceso(
         string $fechaEmision,  // formato dd/mm/yyyy
         string $tipoDoc,       // '01' factura, '05' nota débito
-        string $secuencial     // 9 dígitos: '000000001'
+        string $secuencial,    // 9 dígitos: '000000001'
+        ?int $storeId = null
     ): string {
 
-        $cfg = SriConfigService::get();
+        $cfg = SriConfigService::get($storeId);
         // ddmmyyyy
         $fecha = str_replace('/', '', $fechaEmision);
         $ruc = $cfg['ruc'];
@@ -60,7 +61,7 @@ class SriXmlService
     // SECUENCIAL
     // ─────────────────────────────────────────────
 
-    public function proximoSecuencial(string $tipoDoc): string
+    public function proximoSecuencial(string $tipoDoc, ?int $storeId = null): string
     {
         // Importante: NO excluir "DEVUELTA" acá. El SRI ya registró ese
         // secuencial en su sistema aunque lo haya rechazado -- si lo
@@ -75,6 +76,13 @@ class SriXmlService
         // no numérico solo para poder existir en la tabla, y no deben
         // interferir en el cálculo de MAX().
         //
+        // Con $storeId: cada tienda tiene su propio RUC/estab/pto_emi
+        // (ver SriConfigService::get()), así que su secuencial también
+        // es independiente -- sin este filtro, la Tienda B heredaría
+        // (y volvería a repetir) los números que la Tienda A ya usó.
+        // Sin $storeId (contexto ambiguo), se mantiene el criterio
+        // anterior: MAX() sobre todos los registros.
+        //
         // lockForUpdate() acá ayuda cuando este método se llama dentro de
         // una transacción que también hace el INSERT final en la misma
         // conexión -- no elimina por completo la carrera si se llama
@@ -83,10 +91,14 @@ class SriXmlService
         // secuencial duplicado nunca quede persistido en silencio: si
         // ocurre, el INSERT falla con un error de BD explícito en vez de
         // corromper la numeración.
-        $ultimo = ElectronicInvoice::where('tipo_comprobante', $tipoDoc)
-            ->where('clave_acceso', 'not like', 'ERR%')
-            ->lockForUpdate()
-            ->max('secuencial');
+        $query = ElectronicInvoice::where('tipo_comprobante', $tipoDoc)
+            ->where('clave_acceso', 'not like', 'ERR%');
+
+        if ($storeId !== null) {
+            $query->where('store_id', $storeId);
+        }
+
+        $ultimo = $query->lockForUpdate()->max('secuencial');
 
         $siguiente = $ultimo ? ((int) $ultimo + 1) : 1;
 
@@ -101,15 +113,22 @@ class SriXmlService
     {
         $this->validarCalculos($sale);
 
-        $secuencial = $this->proximoSecuencial(ElectronicInvoice::FACTURA);
+        // La venta ya sabe a qué tienda pertenece por su almacén -- se
+        // deriva acá, una sola vez, y se propaga a todo lo que necesite
+        // la config SRI de esta emisión (secuencial, clave de acceso,
+        // firma, envío), en vez de que cada paso adivine por su cuenta.
+        $storeId = $sale->warehouse?->store_id;
+
+        $secuencial = $this->proximoSecuencial(ElectronicInvoice::FACTURA, $storeId);
         $fechaEmision = $sale->fechaEmisionSri();
         $claveAcceso = $this->generarClaveAcceso(
             $fechaEmision,
             ElectronicInvoice::FACTURA,
-            $secuencial
+            $secuencial,
+            $storeId
         );
 
-        $cfg = SriConfigService::get();
+        $cfg = SriConfigService::get($storeId);
         $customer = $sale->customer;
 
         $dom = new \DOMDocument('1.0', 'UTF-8');
@@ -252,6 +271,7 @@ class SriXmlService
             'xml' => $dom->saveXML(),
             'clave_acceso' => $claveAcceso,
             'secuencial' => $secuencial,
+            'store_id' => $storeId,
         ];
     }
 
@@ -263,15 +283,24 @@ class SriXmlService
         ElectronicInvoice $facturaOrigen,
         array $motivos  // [['razon' => 'Interés mora', 'valor' => 10.00]]
     ): array {
-        $secuencial = $this->proximoSecuencial(ElectronicInvoice::NOTA_DEBITO);
-        $fechaEmision = now()->format('d/m/Y');
+        // store_id ya es un snapshot guardado en la factura origen (ver
+        // migración add_store_context_to_electronic_invoices_table) --
+        // no hace falta derivarlo de nuevo desde la venta/almacén.
+        $storeId = $facturaOrigen->store_id;
+
+        $secuencial = $this->proximoSecuencial(ElectronicInvoice::NOTA_DEBITO, $storeId);
+        // now() sin timezone usa UTC (config('app.timezone')) -- después de
+        // las 19:00 hora Ecuador ya es el día siguiente en UTC, y esta
+        // fecha va en el comprobante legal enviado al SRI.
+        $fechaEmision = now('America/Guayaquil')->format('d/m/Y');
         $claveAcceso = $this->generarClaveAcceso(
             $fechaEmision,
             ElectronicInvoice::NOTA_DEBITO,
-            $secuencial
+            $secuencial,
+            $storeId
         );
 
-        $cfg = SriConfigService::get();     
+        $cfg = SriConfigService::get($storeId);
         $sale = $facturaOrigen->sale;
         $customer = $sale->customer;
 
@@ -365,6 +394,7 @@ class SriXmlService
             'xml' => $dom->saveXML(),
             'clave_acceso' => $claveAcceso,
             'secuencial' => $secuencial,
+            'store_id' => $storeId,
         ];
     }
 
@@ -376,15 +406,18 @@ class SriXmlService
     {
         $this->validarCalculosNotaCredito($creditNote);
 
-        $secuencial = $this->proximoSecuencial(ElectronicInvoice::NOTA_CREDITO);
-        $fechaEmision = optional($creditNote->date)->format('d/m/Y') ?: now()->format('d/m/Y');
+        $storeId = $creditNote->warehouse?->store_id;
+
+        $secuencial = $this->proximoSecuencial(ElectronicInvoice::NOTA_CREDITO, $storeId);
+        $fechaEmision = optional($creditNote->date)->format('d/m/Y') ?: now('America/Guayaquil')->format('d/m/Y');
         $claveAcceso = $this->generarClaveAcceso(
             $fechaEmision,
             ElectronicInvoice::NOTA_CREDITO,
-            $secuencial
+            $secuencial,
+            $storeId
         );
 
-        $cfg = SriConfigService::get();
+        $cfg = SriConfigService::get($storeId);
         $sale = $creditNote->sale;
         $customer = $creditNote->customer;
 
@@ -521,6 +554,7 @@ class SriXmlService
             'xml' => $dom->saveXML(),
             'clave_acceso' => $claveAcceso,
             'secuencial' => $secuencial,
+            'store_id' => $storeId,
         ];
     }
 

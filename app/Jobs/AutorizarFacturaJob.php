@@ -55,7 +55,7 @@ class AutorizarFacturaJob implements ShouldQueue
 
         $factura->increment('intentos');
 
-        $resultado = $soapService->consultarAutorizacion($factura->clave_acceso);
+        $resultado = $soapService->consultarAutorizacion($factura->clave_acceso, $factura->store_id);
 
         Log::info("AutorizarFacturaJob intento {$factura->intentos} para clave {$factura->clave_acceso}: " . $resultado['estado']);
 

@@ -11,9 +11,18 @@ class SriFirmaService
     private string $certificadoPath;
     private string $certificadoClave;
 
-    public function __construct()
+    /**
+     * $storeId ya NO se resuelve en el constructor -- este servicio se
+     * inyecta por DI en el método handle() de cada Job (Laravel crea la
+     * instancia ANTES de que el Job tenga oportunidad de decirle a qué
+     * tienda pertenece la emisión en curso), así que la config del
+     * certificado se carga recién al llamar firmar()/verificarCertificado(),
+     * con el $storeId que el llamador ya sabe (Sale/ElectronicInvoice/
+     * CreditNote -- nunca hace falta adivinarlo acá).
+     */
+    private function cargarCertificado(?int $storeId): void
     {
-        $config = SriConfigService::get();
+        $config = SriConfigService::get($storeId);
         // El certificado se guarda vía Storage::disk('local') en
         // SriConfigController (storage/app/certificados/...), así que aquí
         // debemos resolver la misma ruta en vez de public_path('uploads/...'),
@@ -42,14 +51,14 @@ class SriFirmaService
      * compilado para Linux no puede correr), cae de vuelta al armado en
      * PHP -- así el sistema sigue funcionando en cualquier entorno.
      */
-    public function firmar(string $xmlString): string
+    public function firmar(string $xmlString, ?int $storeId = null): string
     {
         // Antes verificarCertificado() solo se llamaba desde la pantalla
         // manual de Configuración SRI -- un certificado que vence entre
         // esa revisión y la siguiente emisión real solo se descubría
         // cuando el SRI lo rechazaba, gastando un secuencial real por un
         // problema detectable de antemano.
-        $verificacion = $this->verificarCertificado();
+        $verificacion = $this->verificarCertificado($storeId);
         if (!$verificacion['valido']) {
             throw new \RuntimeException(
                 'No se puede firmar: '.($verificacion['mensaje'] ?? 'el certificado de firma electrónica no es válido').
@@ -285,7 +294,11 @@ class SriFirmaService
     ): \DOMElement {
         // Namespace XAdES
         $xadesNs = 'http://uri.etsi.org/01903/v1.3.2#';
-        $signingTime = now()->format('Y-m-d\TH:i:s\Z');
+        // UTC explícito -- el sufijo 'Z' declara que la hora ES UTC, así
+        // que no puede depender de APP_TIMEZONE (Ecuador/UTC-5). Antes
+        // coincidía por accidente porque APP_TIMEZONE era UTC; con la app
+        // en hora local esto quedaría mal etiquetado (hora local + 'Z').
+        $signingTime = now('UTC')->format('Y-m-d\TH:i:s\Z');
 
         $qualProps = $dom->createElementNS($xadesNs, 'xades:QualifyingProperties');
         $qualProps->setAttribute('Target', '#Signature');
@@ -495,8 +508,10 @@ class SriFirmaService
     // VERIFICAR QUE EL CERTIFICADO ES VÁLIDO
     // ─────────────────────────────────────────────
 
-    public function verificarCertificado(): array
+    public function verificarCertificado(?int $storeId = null): array
     {
+        $this->cargarCertificado($storeId);
+
         if (!file_exists($this->certificadoPath)) {
             return [
                 'valido' => false,
