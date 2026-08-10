@@ -30,9 +30,11 @@ class WarehousePriceAPIController extends AppBaseController
     public function forProduct($productId): JsonResponse
     {
         $product = Product::findOrFail($productId);
+        $this->authorizeStoreOwnership($product);
+
         $overrides = $product->warehousePrices()->pluck('price', 'warehouse_id');
 
-        $data = Warehouse::orderBy('name')->get()->map(fn (Warehouse $warehouse) => [
+        $data = $this->warehousesForCurrentStore()->map(fn (Warehouse $warehouse) => [
             'warehouse_id' => $warehouse->id,
             'warehouse_name' => $warehouse->name,
             'general_price' => (float) $product->product_price,
@@ -50,12 +52,14 @@ class WarehousePriceAPIController extends AppBaseController
     public function updateForProduct(Request $request, $productId): JsonResponse
     {
         $product = Product::findOrFail($productId);
+        $this->authorizeStoreOwnership($product);
 
         $request->validate([
             'prices' => 'required|array',
             'prices.*.warehouse_id' => 'required|exists:warehouses,id',
             'prices.*.price' => 'nullable|numeric|min:0',
         ]);
+        $this->authorizeWarehouseIdsBelongToCurrentStore($request->get('prices'));
 
         try {
             DB::beginTransaction();
@@ -82,10 +86,12 @@ class WarehousePriceAPIController extends AppBaseController
      */
     public function forPresentation($presentationId): JsonResponse
     {
-        $presentation = ProductPresentation::findOrFail($presentationId);
+        $presentation = ProductPresentation::with('product')->findOrFail($presentationId);
+        $this->authorizeStoreOwnership($presentation->product);
+
         $overrides = $presentation->warehousePrices()->pluck('price', 'warehouse_id');
 
-        $data = Warehouse::orderBy('name')->get()->map(fn (Warehouse $warehouse) => [
+        $data = $this->warehousesForCurrentStore()->map(fn (Warehouse $warehouse) => [
             'warehouse_id' => $warehouse->id,
             'warehouse_name' => $warehouse->name,
             'general_price' => (float) $presentation->price,
@@ -100,13 +106,15 @@ class WarehousePriceAPIController extends AppBaseController
      */
     public function updateForPresentation(Request $request, $presentationId): JsonResponse
     {
-        $presentation = ProductPresentation::findOrFail($presentationId);
+        $presentation = ProductPresentation::with('product')->findOrFail($presentationId);
+        $this->authorizeStoreOwnership($presentation->product);
 
         $request->validate([
             'prices' => 'required|array',
             'prices.*.warehouse_id' => 'required|exists:warehouses,id',
             'prices.*.price' => 'nullable|numeric|min:0',
         ]);
+        $this->authorizeWarehouseIdsBelongToCurrentStore($request->get('prices'));
 
         try {
             DB::beginTransaction();
@@ -126,6 +134,45 @@ class WarehousePriceAPIController extends AppBaseController
         }
 
         return $this->sendSuccess('Presentation warehouse prices updated successfully');
+    }
+
+    /**
+     * Warehouse::orderBy('name')->get() sin filtrar devolvía sucursales de
+     * TODAS las tiendas -- el modal de "Precio por sucursal" mezclaba
+     * almacenes de otras tiendas con los de la activa. Sin tienda activa
+     * resuelta (caso raro, ver AppBaseController::currentStoreId()) se
+     * mantiene el comportamiento de antes en vez de devolver una lista
+     * vacía sin explicación.
+     */
+    private function warehousesForCurrentStore()
+    {
+        $query = Warehouse::orderBy('name');
+        if ($storeId = $this->currentStoreId()) {
+            $query->where('store_id', $storeId);
+        }
+
+        return $query->get();
+    }
+
+    /**
+     * La validación 'exists:warehouses,id' solo confirma que el almacén
+     * existe en ALGUNA tienda -- sin esto, se podía guardar un override de
+     * precio para una sucursal de otra tienda (IDOR), aunque el listado ya
+     * no la muestre.
+     */
+    private function authorizeWarehouseIdsBelongToCurrentStore(array $prices): void
+    {
+        $storeId = $this->currentStoreId();
+        if (!$storeId) {
+            return;
+        }
+
+        $warehouseIds = array_column($prices, 'warehouse_id');
+        $validCount = Warehouse::where('store_id', $storeId)->whereIn('id', $warehouseIds)->count();
+
+        if ($validCount !== count(array_unique($warehouseIds))) {
+            throw new UnprocessableEntityHttpException('Una o más sucursales no pertenecen a la tienda activa.');
+        }
     }
 
     /**
