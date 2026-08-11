@@ -178,7 +178,11 @@ const ProductCartList = (props) => {
             <td className="text-end pe-3">
                 <button
                     className="delete-btn"
-                    onClick={() => onDeleteCartItem(singleProduct.id)}
+                    onClick={() => {
+                        if (window.confirm(`¿Quitar "${singleProduct.name}" del carrito?`)) {
+                            onDeleteCartItem(singleProduct.id);
+                        }
+                    }}
                 >
                     <i className="bi bi-trash3" />
                 </button>

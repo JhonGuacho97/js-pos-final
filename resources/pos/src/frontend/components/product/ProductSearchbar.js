@@ -66,6 +66,7 @@ const ProductSearchbar = (props) => {
     const addPresentationLine = (product, presentation, qty) => {
         play();
         posSearchCodeProduct(product.attributes.code);
+        inputFocus();
 
         const cartLineId = `${product.id}_p${presentation.id}`;
         const availableUnits = product.attributes.stock?.quantity || 0;
@@ -209,6 +210,9 @@ const ProductSearchbar = (props) => {
             removeSearchClass();
             setSearchString("");
             play();
+            // Para que el cajero pueda seguir escaneando código tras código
+            // sin tener que hacer clic en el campo cada vez.
+            inputFocus();
 
             let pushArray = [...customCart];
             const newProduct = productId

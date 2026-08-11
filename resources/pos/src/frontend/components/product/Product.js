@@ -457,11 +457,20 @@ const Product = (props) => {
                         </span>
 
                         {/* 📊 STOCK */}
-                        <div className="stock-badge mt-1">
-                            {product.attributes.stock &&
-                                product.attributes.stock.quantity}{" "}
-                            {product?.attributes?.product_unit_name?.name}
-                        </div>
+                        {(() => {
+                            const stockQty = product.attributes.stock?.quantity ?? 0;
+                            const stockAlert = Number(product.attributes.stock_alert) || 0;
+                            const isLowStock = stockAlert > 0 && stockQty <= stockAlert;
+                            return (
+                                <div className={`stock-badge mt-1${isLowStock ? " stock-badge-low" : ""}`}>
+                                    {isLowStock && (
+                                        <i className="bi bi-exclamation-triangle-fill me-1" />
+                                    )}
+                                    {stockQty}{" "}
+                                    {product?.attributes?.product_unit_name?.name}
+                                </div>
+                            );
+                        })()}
                     </Card.Body>
                 </Card>
 
@@ -543,6 +552,11 @@ const Product = (props) => {
 /* 📊 STOCK */
 .stock-badge {
     font-size: 10px;
+}
+
+.stock-badge-low {
+    color: #dc2626;
+    font-weight: 700;
 }
                 `}
                 </style>
