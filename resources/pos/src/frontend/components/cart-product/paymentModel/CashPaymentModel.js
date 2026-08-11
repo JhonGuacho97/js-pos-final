@@ -97,6 +97,7 @@ const CashPaymentModel = (props) => {
             onHide={handleCashPayment}
             size="xl"
             centered
+            scrollable
             className="pos-modal"
         >
             <Modal.Header closeButton className="border-bottom">
@@ -144,7 +145,14 @@ const CashPaymentModel = (props) => {
                                                         onChange={(e) => onPaymentRowAmountChange(row.id, e.target.value)}
                                                     />
                                                     {row.payment_type?.value === 1 && (
-                                                        <div className="d-flex gap-2 mt-2">
+                                                        <div className="d-flex flex-wrap gap-2 mt-2">
+                                                            <button
+                                                                type="button"
+                                                                className="btn btn-outline-success fw-semibold"
+                                                                onClick={() => onPaymentRowAmountChange(row.id, Number(grandTotal).toFixed(2))}
+                                                            >
+                                                                Monto exacto
+                                                            </button>
                                                             {[
                                                                 Math.ceil(grandTotal / 5) * 5,
                                                                 Math.ceil(grandTotal / 10) * 10,
@@ -156,7 +164,7 @@ const CashPaymentModel = (props) => {
                                                                     <button
                                                                         key={monto}
                                                                         type="button"
-                                                                        className="btn btn-sm btn-outline-primary"
+                                                                        className="btn btn-outline-primary"
                                                                         onClick={() => onPaymentRowAmountChange(row.id, monto.toFixed(2))}
                                                                     >
                                                                         {currencySymbolHandling(allConfigData, currencySymbol, monto)}

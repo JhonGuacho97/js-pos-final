@@ -2798,6 +2798,7 @@ var CashPaymentModel = function CashPaymentModel(props) {
     onHide: handleCashPayment,
     size: "xl",
     centered: true,
+    scrollable: true,
     className: "pos-modal",
     children: [/*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_9__.jsx)(react_bootstrap__WEBPACK_IMPORTED_MODULE_3__["default"].Header, {
       closeButton: true,
@@ -2863,20 +2864,27 @@ var CashPaymentModel = function CashPaymentModel(props) {
                           onChange: function onChange(e) {
                             return onPaymentRowAmountChange(row.id, e.target.value);
                           }
-                        }), ((_row$payment_type = row.payment_type) === null || _row$payment_type === void 0 ? void 0 : _row$payment_type.value) === 1 && /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_9__.jsx)("div", {
-                          className: "d-flex gap-2 mt-2",
-                          children: [Math.ceil(grandTotal / 5) * 5, Math.ceil(grandTotal / 10) * 10, Math.ceil(grandTotal / 20) * 20].filter(function (v, i, arr) {
+                        }), ((_row$payment_type = row.payment_type) === null || _row$payment_type === void 0 ? void 0 : _row$payment_type.value) === 1 && /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_9__.jsxs)("div", {
+                          className: "d-flex flex-wrap gap-2 mt-2",
+                          children: [/*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_9__.jsx)("button", {
+                            type: "button",
+                            className: "btn btn-outline-success fw-semibold",
+                            onClick: function onClick() {
+                              return onPaymentRowAmountChange(row.id, Number(grandTotal).toFixed(2));
+                            },
+                            children: "Monto exacto"
+                          }), [Math.ceil(grandTotal / 5) * 5, Math.ceil(grandTotal / 10) * 10, Math.ceil(grandTotal / 20) * 20].filter(function (v, i, arr) {
                             return arr.indexOf(v) === i && v >= grandTotal;
                           }).slice(0, 3).map(function (monto) {
                             return /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_9__.jsx)("button", {
                               type: "button",
-                              className: "btn btn-sm btn-outline-primary",
+                              className: "btn btn-outline-primary",
                               onClick: function onClick() {
                                 return onPaymentRowAmountChange(row.id, monto.toFixed(2));
                               },
                               children: (0,_shared_sharedMethod__WEBPACK_IMPORTED_MODULE_6__.currencySymbolHandling)(allConfigData, currencySymbol, monto)
                             }, monto);
-                          })
+                          })]
                         })]
                       }), /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_9__.jsxs)("div", {
                         className: "col-md-5",
