@@ -47429,7 +47429,14 @@ __webpack_require__.r(__webpack_exports__);
 /* harmony import */ var react_router__WEBPACK_IMPORTED_MODULE_6__ = __webpack_require__(/*! react-router */ "./node_modules/react-router/dist/index.js");
 /* harmony import */ var _DenominationCounter__WEBPACK_IMPORTED_MODULE_7__ = __webpack_require__(/*! ./DenominationCounter */ "./resources/pos/src/components/posRegister/DenominationCounter.js");
 /* harmony import */ var _shared_cashDenominations__WEBPACK_IMPORTED_MODULE_8__ = __webpack_require__(/*! ../../shared/cashDenominations */ "./resources/pos/src/shared/cashDenominations.js");
-/* harmony import */ var react_jsx_runtime__WEBPACK_IMPORTED_MODULE_9__ = __webpack_require__(/*! react/jsx-runtime */ "./node_modules/react/jsx-runtime.js");
+/* harmony import */ var _config_apiConfig__WEBPACK_IMPORTED_MODULE_9__ = __webpack_require__(/*! ../../config/apiConfig */ "./resources/pos/src/config/apiConfig.js");
+/* harmony import */ var react_jsx_runtime__WEBPACK_IMPORTED_MODULE_10__ = __webpack_require__(/*! react/jsx-runtime */ "./node_modules/react/jsx-runtime.js");
+function _typeof(o) { "@babel/helpers - typeof"; return _typeof = "function" == typeof Symbol && "symbol" == typeof Symbol.iterator ? function (o) { return typeof o; } : function (o) { return o && "function" == typeof Symbol && o.constructor === Symbol && o !== Symbol.prototype ? "symbol" : typeof o; }, _typeof(o); }
+function ownKeys(e, r) { var t = Object.keys(e); if (Object.getOwnPropertySymbols) { var o = Object.getOwnPropertySymbols(e); r && (o = o.filter(function (r) { return Object.getOwnPropertyDescriptor(e, r).enumerable; })), t.push.apply(t, o); } return t; }
+function _objectSpread(e) { for (var r = 1; r < arguments.length; r++) { var t = null != arguments[r] ? arguments[r] : {}; r % 2 ? ownKeys(Object(t), !0).forEach(function (r) { _defineProperty(e, r, t[r]); }) : Object.getOwnPropertyDescriptors ? Object.defineProperties(e, Object.getOwnPropertyDescriptors(t)) : ownKeys(Object(t)).forEach(function (r) { Object.defineProperty(e, r, Object.getOwnPropertyDescriptor(t, r)); }); } return e; }
+function _defineProperty(e, r, t) { return (r = _toPropertyKey(r)) in e ? Object.defineProperty(e, r, { value: t, enumerable: !0, configurable: !0, writable: !0 }) : e[r] = t, e; }
+function _toPropertyKey(t) { var i = _toPrimitive(t, "string"); return "symbol" == _typeof(i) ? i : i + ""; }
+function _toPrimitive(t, r) { if ("object" != _typeof(t) || !t) return t; var e = t[Symbol.toPrimitive]; if (void 0 !== e) { var i = e.call(t, r || "default"); if ("object" != _typeof(i)) return i; throw new TypeError("@@toPrimitive must return a primitive value."); } return ("string" === r ? String : Number)(t); }
 function _slicedToArray(r, e) { return _arrayWithHoles(r) || _iterableToArrayLimit(r, e) || _unsupportedIterableToArray(r, e) || _nonIterableRest(); }
 function _nonIterableRest() { throw new TypeError("Invalid attempt to destructure non-iterable instance.\nIn order to be iterable, non-array objects must have a [Symbol.iterator]() method."); }
 function _unsupportedIterableToArray(r, a) { if (r) { if ("string" == typeof r) return _arrayLikeToArray(r, a); var t = {}.toString.call(r).slice(8, -1); return "Object" === t && r.constructor && (t = r.constructor.name), "Map" === t || "Set" === t ? Array.from(r) : "Arguments" === t || /^(?:Ui|I)nt(?:8|16|32)(?:Clamped)?Array$/.test(t) ? _arrayLikeToArray(r, a) : void 0; } }
@@ -47446,7 +47453,10 @@ function _arrayWithHoles(r) { if (Array.isArray(r)) return r; }
 
 
 
+
+
 var PosRegisterModel = function PosRegisterModel(_ref) {
+  var _settings$attributes, _frontSetting$value;
   var showPosRegisterModel = _ref.showPosRegisterModel,
     onClickshowPosRegisterModel = _ref.onClickshowPosRegisterModel;
   var _useState = (0,react__WEBPACK_IMPORTED_MODULE_0__.useState)((0,_shared_cashDenominations__WEBPACK_IMPORTED_MODULE_8__.buildEmptyDenominationRows)()),
@@ -47462,8 +47472,52 @@ var PosRegisterModel = function PosRegisterModel(_ref) {
   var _useSelector = (0,react_redux__WEBPACK_IMPORTED_MODULE_4__.useSelector)(function (state) {
       return state;
     }),
-    frontSetting = _useSelector.frontSetting;
+    frontSetting = _useSelector.frontSetting,
+    allConfigData = _useSelector.allConfigData,
+    settings = _useSelector.settings;
   var currencySymbol = frontSetting && frontSetting.value && frontSetting.value.currency_symbol || '$';
+
+  // Mismo criterio de fallback que ya usa PosMainPage.js para el
+  // selector de almacén: el propio del usuario si tiene uno asignado,
+  // si no el de la tienda activa -- así el cajero ve en qué sucursal
+  // está abriendo caja antes de confirmar.
+  var warehouseName = allConfigData !== null && allConfigData !== void 0 && allConfigData.default_warehouse_id ? allConfigData.default_warehouse_name : settings === null || settings === void 0 || (_settings$attributes = settings.attributes) === null || _settings$attributes === void 0 ? void 0 : _settings$attributes.warehouse_name;
+  var storeName = frontSetting === null || frontSetting === void 0 || (_frontSetting$value = frontSetting.value) === null || _frontSetting$value === void 0 ? void 0 : _frontSetting$value.company_name;
+
+  // Último cierre de este mismo usuario, para poder reutilizarlo como
+  // punto de partida en vez de contar todo el efectivo desde cero.
+  // Fetch local (no Redux) para no pisar el estado que usa la pantalla
+  // de "Cuadre de caja" -- register-report ya viene ordenado por fecha
+  // descendente y solo trae cajas cerradas.
+  var _useState5 = (0,react__WEBPACK_IMPORTED_MODULE_0__.useState)(null),
+    _useState6 = _slicedToArray(_useState5, 2),
+    lastClose = _useState6[0],
+    setLastClose = _useState6[1];
+  (0,react__WEBPACK_IMPORTED_MODULE_0__.useEffect)(function () {
+    if (!showPosRegisterModel) {
+      return;
+    }
+    _config_apiConfig__WEBPACK_IMPORTED_MODULE_9__["default"].get('register-report?page[size]=1').then(function (response) {
+      var _response$data, _last$closing_denomin;
+      var last = (_response$data = response.data) === null || _response$data === void 0 || (_response$data = _response$data.data) === null || _response$data === void 0 || (_response$data = _response$data[0]) === null || _response$data === void 0 ? void 0 : _response$data.attributes;
+      if ((last === null || last === void 0 || (_last$closing_denomin = last.closing_denominations) === null || _last$closing_denomin === void 0 ? void 0 : _last$closing_denomin.length) > 0) {
+        setLastClose(last);
+      }
+    })["catch"](function () {});
+  }, [showPosRegisterModel]);
+  var useLastClose = function useLastClose() {
+    if (!lastClose) {
+      return;
+    }
+    var quantityByValue = Object.fromEntries(lastClose.closing_denominations.map(function (denomination) {
+      return [denomination.value, denomination.quantity];
+    }));
+    setRows((0,_shared_cashDenominations__WEBPACK_IMPORTED_MODULE_8__.buildEmptyDenominationRows)().map(function (row) {
+      return _objectSpread(_objectSpread({}, row), {}, {
+        quantity: quantityByValue[row.value] ? String(quantityByValue[row.value]) : ''
+      });
+    }));
+  };
   var onSubmit = function onSubmit() {
     dispatch((0,_store_action_pos_posRegisterDetailsAction__WEBPACK_IMPORTED_MODULE_5__.registerCashInHandAction)({
       cash_in_hand: cashInHand,
@@ -47481,38 +47535,56 @@ var PosRegisterModel = function PosRegisterModel(_ref) {
     }, navigate));
     onClickshowPosRegisterModel();
   };
-  return /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_9__.jsx)(react_jsx_runtime__WEBPACK_IMPORTED_MODULE_9__.Fragment, {
-    children: /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_9__.jsxs)(react_bootstrap_Modal__WEBPACK_IMPORTED_MODULE_2__["default"], {
+  return /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_10__.jsx)(react_jsx_runtime__WEBPACK_IMPORTED_MODULE_10__.Fragment, {
+    children: /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_10__.jsxs)(react_bootstrap_Modal__WEBPACK_IMPORTED_MODULE_2__["default"], {
       size: "md",
       "aria-labelledby": "contained-modal-title-vcenter",
       centered: true,
+      scrollable: true,
       show: showPosRegisterModel,
       onHide: function onHide() {
         return onClickshowPosRegisterModel();
       },
-      children: [/*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_9__.jsx)(react_bootstrap_Modal__WEBPACK_IMPORTED_MODULE_2__["default"].Header, {
+      children: [/*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_10__.jsx)(react_bootstrap_Modal__WEBPACK_IMPORTED_MODULE_2__["default"].Header, {
         closeButton: true,
         className: "py-4 pt-5",
-        children: /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_9__.jsx)(react_bootstrap_Modal__WEBPACK_IMPORTED_MODULE_2__["default"].Title, {
-          id: "contained-modal-title-vcenter",
-          children: /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_9__.jsx)("h4", {
-            children: "POS Register"
-          })
+        children: /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_10__.jsxs)("div", {
+          children: [/*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_10__.jsx)(react_bootstrap_Modal__WEBPACK_IMPORTED_MODULE_2__["default"].Title, {
+            id: "contained-modal-title-vcenter",
+            children: /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_10__.jsx)("h4", {
+              className: "mb-1",
+              children: "POS Register"
+            })
+          }), warehouseName && /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_10__.jsxs)("div", {
+            className: "text-muted small",
+            children: ["Abriendo caja en ", /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_10__.jsx)("strong", {
+              className: "text-body",
+              children: warehouseName
+            }), storeName ? " \xB7 ".concat(storeName) : '']
+          })]
         })
-      }), /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_9__.jsxs)(react_bootstrap_Modal__WEBPACK_IMPORTED_MODULE_2__["default"].Body, {
+      }), /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_10__.jsxs)(react_bootstrap_Modal__WEBPACK_IMPORTED_MODULE_2__["default"].Body, {
         className: "py-4",
-        children: [/*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_9__.jsxs)("label", {
-          className: "form-label mb-2",
-          children: [(0,_shared_sharedMethod__WEBPACK_IMPORTED_MODULE_1__.getFormattedMessage)('globally.input.cash-in-hand.label'), ":"]
-        }), /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_9__.jsx)(_DenominationCounter__WEBPACK_IMPORTED_MODULE_7__["default"], {
+        children: [/*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_10__.jsxs)("div", {
+          className: "d-flex align-items-center justify-content-between flex-wrap gap-2 mb-2",
+          children: [/*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_10__.jsxs)("label", {
+            className: "form-label mb-0",
+            children: [(0,_shared_sharedMethod__WEBPACK_IMPORTED_MODULE_1__.getFormattedMessage)('globally.input.cash-in-hand.label'), ":"]
+          }), lastClose && /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_10__.jsxs)("button", {
+            type: "button",
+            className: "btn btn-sm btn-outline-secondary",
+            onClick: useLastClose,
+            children: ["Usar el mismo cierre anterior (", (0,_shared_sharedMethod__WEBPACK_IMPORTED_MODULE_1__.currencySymbolHandling)(allConfigData, currencySymbol, lastClose.cash_in_hand_while_closing || 0), ")"]
+          })]
+        }), /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_10__.jsx)(_DenominationCounter__WEBPACK_IMPORTED_MODULE_7__["default"], {
           rows: rows,
           setRows: setRows,
           currencySymbol: currencySymbol,
           onTotalChange: setCashInHand
         })]
-      }), /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_9__.jsx)(react_bootstrap_Modal__WEBPACK_IMPORTED_MODULE_2__["default"].Footer, {
+      }), /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_10__.jsx)(react_bootstrap_Modal__WEBPACK_IMPORTED_MODULE_2__["default"].Footer, {
         className: "py-4 pb-5",
-        children: /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_9__.jsx)(react_bootstrap_Button__WEBPACK_IMPORTED_MODULE_3__["default"], {
+        children: /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_10__.jsx)(react_bootstrap_Button__WEBPACK_IMPORTED_MODULE_3__["default"], {
           onClick: onSubmit,
           children: "Submit"
         })
@@ -319189,7 +319261,7 @@ module.exports = /*#__PURE__*/JSON.parse('{"dashboard.title":"bảng điều khi
 /******/ 		// This function allow to reference async chunks
 /******/ 		__webpack_require__.u = (chunkId) => {
 /******/ 			// return url for filenames based on template
-/******/ 			return "js/chunks/" + chunkId + "." + {"catalog-masters":"816467f6","warehouse":"0e618c6f","supplier":"4bf9d5f3","customer":"352413fc","user":"c0dc281a","product":"4beb6d5f","settings":"f21b2373","expense":"431158b6","purchase":"fe609f26","pos-screen":"e2125116","pos-print":"45d6f262","sale":"6308b731","sale-return":"54ff5320","credit-note":"5af1a3b8","purchase-return":"674074c3","quotation":"01ad9b51","reports":"da64e0cc","print-barcode":"71323c8f","roles":"9e859083","stores":"c8b11245","adjustments":"2ed232b8","templates":"16b32fc2","sms-api":"86574df7","languages":"4c9f14fe","login-logs":"2bfa5173","seller-dashboard":"1d31d451","kardex":"c92cba4f","sri-config":"f0edfb18","electronic-invoices":"6e8654d2","node_modules_howler_dist_howler_js":"82141a56"}[chunkId] + ".js";
+/******/ 			return "js/chunks/" + chunkId + "." + {"catalog-masters":"816467f6","warehouse":"0e618c6f","supplier":"4bf9d5f3","customer":"352413fc","user":"c0dc281a","product":"4beb6d5f","settings":"f21b2373","expense":"431158b6","purchase":"fe609f26","pos-screen":"746a4648","pos-print":"45d6f262","sale":"6308b731","sale-return":"54ff5320","credit-note":"5af1a3b8","purchase-return":"674074c3","quotation":"01ad9b51","reports":"da64e0cc","print-barcode":"71323c8f","roles":"9e859083","stores":"c8b11245","adjustments":"2ed232b8","templates":"16b32fc2","sms-api":"86574df7","languages":"4c9f14fe","login-logs":"2bfa5173","seller-dashboard":"1d31d451","kardex":"c92cba4f","sri-config":"f0edfb18","electronic-invoices":"6e8654d2","node_modules_howler_dist_howler_js":"82141a56"}[chunkId] + ".js";
 /******/ 		};
 /******/ 	})();
 /******/ 	
