@@ -4,6 +4,7 @@ namespace App\Http\Requests;
 
 use App\Models\Brand;
 use Illuminate\Foundation\Http\FormRequest;
+use Illuminate\Validation\Rule;
 
 class CreateBrandRequest extends FormRequest
 {
@@ -20,6 +21,17 @@ class CreateBrandRequest extends FormRequest
      */
     public function rules(): array
     {
-        return Brand::$rules;
+        // Brand::$rules trae 'unique:brands' global -- el unique real en
+        // BD es compuesto (store_id, name) desde harden_store_scoped_
+        // constraints, así que crear "Bebidas" en la tienda B fallaba
+        // con "already taken" apenas ese nombre ya existía en la tienda
+        // A. Mismo fix que CreateRoleRequest.
+        $rules = Brand::$rules;
+        $rules['name'] = [
+            'required',
+            Rule::unique('brands', 'name')->where(fn ($query) => $query->where('store_id', currentStoreId())),
+        ];
+
+        return $rules;
     }
 }
