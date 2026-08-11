@@ -17,6 +17,17 @@ export const loginAction = (user, navigate, setLoading) => async (dispatch) => {
     const previousLanguage = localStorage.getItem(Tokens.UPDATED_LANGUAGE);
     await apiConfig.post('login', user)
         .then(async (response) => {
+            // La tienda activa de la sesión ANTERIOR (otro usuario, en el
+            // mismo navegador) quedaba pegada en localStorage -- el
+            // interceptor la sigue mandando como X-Store-Id en las
+            // primeras peticiones de este login nuevo, antes de que
+            // fetchMyStores() (más abajo) tenga chance de corregirla. Si
+            // el usuario que acaba de entrar no tiene acceso a esa
+            // tienda vieja, ResolveActiveStore la rechaza -- "no tienes
+            // permisos para esa tienda" en el primer login tras crear un
+            // usuario para otra tienda distinta a la que estaba activa.
+            localStorage.removeItem(Tokens.CURRENT_STORE_ID);
+
             localStorage.setItem(Tokens.ADMIN, response.data.data.token);
             localStorage.setItem(Tokens.GET_PERMISSIONS, response.data.data.permissions);
             localStorage.setItem(Tokens.USER, response.data.data.user.email);

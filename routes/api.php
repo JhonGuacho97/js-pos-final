@@ -234,7 +234,7 @@ Route::middleware(['auth:sanctum', 'store.context'])->group(function () {
 
     //sale
     Route::middleware('permission:manage_sale')->group(function () {
-        Route::resource('sales', SaleAPIController::class);
+        Route::resource('sales', SaleAPIController::class)->except(['index']);
         Route::get('sale-pdf-download/{sale}', [SaleAPIController::class, 'pdfDownload'])->name('sale-pdf-download');
         Route::get('sale-info/{sale}', [SaleAPIController::class, 'saleInfo'])->name('sale-info');
 
@@ -242,6 +242,16 @@ Route::middleware(['auth:sanctum', 'store.context'])->group(function () {
         Route::get('sales/{sale}/payments', [SalesPaymentAPIController::class, 'getAllPayments']);
         Route::post('sales/{salesPayment}/payment', [SalesPaymentAPIController::class, 'updateSalePayment']);
         Route::delete('sales/{id}/payment', [SalesPaymentAPIController::class, 'deletePayment']);
+    });
+    // "Mis Ventas" (SellerDashboard.js) llama este mismo index() filtrado
+    // por su propio user_id -- con manage_sale como único permiso
+    // aceptado, un vendedor con solo manage_my-sales (sin manage_sale a
+    // propósito, ver Roles/Permisos) recibía 403 apenas entraba a esa
+    // pantalla. SaleAPIController::index() fuerza server-side el
+    // user_id a Auth::id() cuando falta manage_sale, así que ampliar
+    // acá no deja ver las ventas de otros vendedores.
+    Route::middleware('permission:manage_sale|manage_my-sales')->group(function () {
+        Route::get('sales', [SaleAPIController::class, 'index'])->name('sales.index');
     });
 
     Route::resource('holds', HoldAPIController::class);

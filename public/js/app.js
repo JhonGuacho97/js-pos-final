@@ -50377,7 +50377,19 @@ function _toPrimitive(t, r) { if ("object" != _typeof(t) || !t) return t; var e 
         localStorage.removeItem(_constants__WEBPACK_IMPORTED_MODULE_0__.Tokens.GET_PERMISSIONS);
         window.location.href = _environment__WEBPACK_IMPORTED_MODULE_1__.environment.URL + '#' + '/login';
       } else if (error.response.status === 403 || error.response.status === 404) {
+        // Sin el reject, esta rama devolvía `undefined` (la
+        // ausencia de return se interpreta como RESOLUCIÓN, no
+        // rechazo, del interceptor) -- cualquier .then(response
+        // => response.data) en el componente que llamó recibía
+        // response=undefined y reventaba con "Cannot read
+        // properties of undefined (reading 'data')" en vez de
+        // simplemente no ejecutarse. Eso, sumado al redirect de
+        // abajo, producía un loop de recargas cuando la propia
+        // pantalla a la que redirige también disparaba el mismo
+        // 403 (ver SellerDashboard.js llamando /api/sales sin
+        // el permiso manage_sale).
         window.location.href = _environment__WEBPACK_IMPORTED_MODULE_1__.environment.URL + '#' + '/app/dashboard';
+        return Promise.reject(_objectSpread({}, error));
       } else {
         return Promise.reject(_objectSpread({}, error));
       }
@@ -57155,6 +57167,16 @@ var loginAction = function loginAction(user, navigate, setLoading) {
                 return _regenerator().w(function (_context) {
                   while (1) switch (_context.n) {
                     case 0:
+                      // La tienda activa de la sesión ANTERIOR (otro usuario, en el
+                      // mismo navegador) quedaba pegada en localStorage -- el
+                      // interceptor la sigue mandando como X-Store-Id en las
+                      // primeras peticiones de este login nuevo, antes de que
+                      // fetchMyStores() (más abajo) tenga chance de corregirla. Si
+                      // el usuario que acaba de entrar no tiene acceso a esa
+                      // tienda vieja, ResolveActiveStore la rechaza -- "no tienes
+                      // permisos para esa tienda" en el primer login tras crear un
+                      // usuario para otra tienda distinta a la que estaba activa.
+                      localStorage.removeItem(_constants__WEBPACK_IMPORTED_MODULE_1__.Tokens.CURRENT_STORE_ID);
                       localStorage.setItem(_constants__WEBPACK_IMPORTED_MODULE_1__.Tokens.ADMIN, response.data.data.token);
                       localStorage.setItem(_constants__WEBPACK_IMPORTED_MODULE_1__.Tokens.GET_PERMISSIONS, response.data.data.permissions);
                       localStorage.setItem(_constants__WEBPACK_IMPORTED_MODULE_1__.Tokens.USER, response.data.data.user.email);

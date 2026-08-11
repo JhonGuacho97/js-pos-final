@@ -22,6 +22,7 @@ use Exception;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\File;
 use Illuminate\Support\Facades\Storage;
@@ -42,6 +43,17 @@ class SaleAPIController extends AppBaseController
 
     public function index(Request $request): SaleCollection
     {
+        // Esta ruta ahora también acepta manage_my-sales (ver routes/api.php,
+        // pensado para que "Mis Ventas" -- SellerDashboard.js -- pueda
+        // llamar este mismo index() filtrado a su propio usuario). Sin
+        // esto, alguien con manage_my-sales pero SIN manage_sale podría
+        // ver las ventas de TODOS simplemente omitiendo el filtro
+        // user_id del request -- se fuerza acá, ignorando lo que haya
+        // mandado el cliente.
+        if (!Auth::user()->can('manage_sale')) {
+            $request->merge(['user_id' => Auth::id()]);
+        }
+
         $perPage = getPageSize($request);
         $search = $request->filter['search'] ?? '';
         $customer = (Customer::where('name', 'LIKE', "%$search%")->get()->count() != 0);
