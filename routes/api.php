@@ -203,7 +203,17 @@ Route::middleware(['auth:sanctum', 'store.context'])->group(function () {
 
     // customers route
     Route::middleware('permission:manage_customers')->group(function () {
-        Route::resource('customers', CustomerAPIController::class)->except(['index']);
+        Route::resource('customers', CustomerAPIController::class)->except(['index', 'store']);
+    });
+    // El modal "Agregar cliente" del propio POS (CustomerForm.js dentro de
+    // frontend/, distinto del formulario admin de Personas > Clientes)
+    // llama esta misma ruta -- mismo caso que sales.store: un vendedor sin
+    // manage_customers (a propósito, ver Roles/Permisos) recibía "User dose
+    // not have the right permission" al intentar registrar un cliente
+    // nuevo a mitad de una venta. store_id se fuerza server-side en
+    // CustomerAPIController::store(), sin riesgo de escalar a otra tienda.
+    Route::middleware('permission:manage_customers|manage_pos_screen')->group(function () {
+        Route::post('customers', [CustomerAPIController::class, 'store'])->name('customers.store');
     });
 
     Route::get('customers', [CustomerAPIController::class, 'index']);
