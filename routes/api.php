@@ -234,7 +234,7 @@ Route::middleware(['auth:sanctum', 'store.context'])->group(function () {
 
     //sale
     Route::middleware('permission:manage_sale')->group(function () {
-        Route::resource('sales', SaleAPIController::class)->except(['index']);
+        Route::resource('sales', SaleAPIController::class)->except(['index', 'store']);
         Route::get('sale-pdf-download/{sale}', [SaleAPIController::class, 'pdfDownload'])->name('sale-pdf-download');
         Route::get('sale-info/{sale}', [SaleAPIController::class, 'saleInfo'])->name('sale-info');
 
@@ -242,6 +242,18 @@ Route::middleware(['auth:sanctum', 'store.context'])->group(function () {
         Route::get('sales/{sale}/payments', [SalesPaymentAPIController::class, 'getAllPayments']);
         Route::post('sales/{salesPayment}/payment', [SalesPaymentAPIController::class, 'updateSalePayment']);
         Route::delete('sales/{id}/payment', [SalesPaymentAPIController::class, 'deletePayment']);
+    });
+    // El checkout del POS (posCashPaymentAction.js) pega contra esta misma
+    // ruta (apiBaseURL.CASH_PAYMENT = "sales") -- con manage_sale como
+    // único permiso aceptado, el rol Vendedor (manage_pos_screen +
+    // manage_my-sales, sin manage_sale a propósito) recibía "User dose
+    // not have the right permission" al intentar vender, en CUALQUIER
+    // tienda. Seguro ampliar: store() ya fuerza user_id=Auth::id() y ya
+    // llama authorizeWarehouseAccess() (bloquea vender en un almacén de
+    // otra sucursal/tienda), sin importar qué permiso haya dejado pasar
+    // el middleware.
+    Route::middleware('permission:manage_sale|manage_pos_screen')->group(function () {
+        Route::post('sales', [SaleAPIController::class, 'store'])->name('sales.store');
     });
     // "Mis Ventas" (SellerDashboard.js) llama este mismo index() filtrado
     // por su propio user_id -- con manage_sale como único permiso
