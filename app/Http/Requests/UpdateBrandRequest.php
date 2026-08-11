@@ -4,6 +4,7 @@ namespace App\Http\Requests;
 
 use App\Models\Brand;
 use Illuminate\Foundation\Http\FormRequest;
+use Illuminate\Validation\Rule;
 
 class UpdateBrandRequest extends FormRequest
 {
@@ -21,7 +22,12 @@ class UpdateBrandRequest extends FormRequest
     public function rules(): array
     {
         $rules = Brand::$rules;
-        $rules['name'] = 'required|unique:brands,name,'.$this->route('id');
+        $rules['name'] = [
+            'required',
+            Rule::unique('brands', 'name')
+                ->where(fn ($query) => $query->where('store_id', currentStoreId()))
+                ->ignore($this->route('id')),
+        ];
 
         return $rules;
     }

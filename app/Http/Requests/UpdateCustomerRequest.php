@@ -4,6 +4,7 @@ namespace App\Http\Requests;
 
 use App\Models\Customer;
 use Illuminate\Foundation\Http\FormRequest;
+use Illuminate\Validation\Rule;
 
 class UpdateCustomerRequest extends FormRequest
 {
@@ -17,8 +18,19 @@ class UpdateCustomerRequest extends FormRequest
         $id = $this->route('customer');
         $rules = Customer::$rules;
 
-        $rules['email'] = 'required|email|unique:customers,email,' . $id;
-        $rules['identification'] = 'nullable|unique:customers,identification,' . $id;
+        $rules['email'] = [
+            'required',
+            'email',
+            Rule::unique('customers', 'email')
+                ->where(fn ($query) => $query->where('store_id', currentStoreId()))
+                ->ignore($id),
+        ];
+        $rules['identification'] = [
+            'nullable',
+            Rule::unique('customers', 'identification')
+                ->where(fn ($query) => $query->where('store_id', currentStoreId()))
+                ->ignore($id),
+        ];
 
         return $rules;
     }

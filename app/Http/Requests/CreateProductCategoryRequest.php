@@ -4,6 +4,7 @@ namespace App\Http\Requests;
 
 use App\Models\ProductCategory;
 use Illuminate\Foundation\Http\FormRequest;
+use Illuminate\Validation\Rule;
 
 class CreateProductCategoryRequest extends FormRequest
 {
@@ -20,6 +21,12 @@ class CreateProductCategoryRequest extends FormRequest
      */
     public function rules(): array
     {
-        return ProductCategory::$rules;
+        $rules = ProductCategory::$rules;
+        $rules['name'] = [
+            'required',
+            Rule::unique('product_categories', 'name')->where(fn ($query) => $query->where('store_id', currentStoreId())),
+        ];
+
+        return $rules;
     }
 }

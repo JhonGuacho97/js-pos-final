@@ -4,6 +4,7 @@ namespace App\Http\Requests;
 
 use App\Models\ProductCategory;
 use Illuminate\Foundation\Http\FormRequest;
+use Illuminate\Validation\Rule;
 
 class UpdateProductCategoryRequest extends FormRequest
 {
@@ -21,7 +22,12 @@ class UpdateProductCategoryRequest extends FormRequest
     public function rules(): array
     {
         $rules = ProductCategory::$rules;
-        $rules['name'] = 'required|unique:product_categories,name,'.$this->route('product_category');
+        $rules['name'] = [
+            'required',
+            Rule::unique('product_categories', 'name')
+                ->where(fn ($query) => $query->where('store_id', currentStoreId()))
+                ->ignore($this->route('product_category')),
+        ];
 
         return $rules;
     }

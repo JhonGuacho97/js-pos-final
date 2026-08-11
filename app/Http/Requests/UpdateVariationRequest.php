@@ -3,6 +3,7 @@
 namespace App\Http\Requests;
 
 use Illuminate\Foundation\Http\FormRequest;
+use Illuminate\Validation\Rule;
 
 class UpdateVariationRequest extends FormRequest
 {
@@ -21,9 +22,13 @@ class UpdateVariationRequest extends FormRequest
      */
     public function rules(): array
     {
-
         return [
-            'name' => 'required|unique:variations,name,' . $this->id,
+            'name' => [
+                'required',
+                Rule::unique('variations', 'name')
+                    ->where(fn ($query) => $query->where('store_id', currentStoreId()))
+                    ->ignore($this->id),
+            ],
         ];
     }
 }
