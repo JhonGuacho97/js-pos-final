@@ -153,22 +153,43 @@ Route::middleware(['auth:sanctum', 'store.context'])->group(function () {
 
     // products route
 
-    Route::resource('products', ProductAPIController::class);
-    Route::resource('main-products', MainProductAPIController::class);
-    Route::post(
-        'products/{product}',
-        [ProductAPIController::class, 'update']
-    );
-    Route::post(
-        'main-products/{product}',
-        [MainProductAPIController::class, 'update']
-    );
-    Route::delete(
-        'products-image-delete/{mediaId}',
-        [ProductAPIController::class, 'productImageDelete']
-    )->name('products-image-delete');
+    // Sin este grupo, products/main-products/variations/purchases/
+    // purchases-return no tenían NINGÚN chequeo de permiso -- ni acá ni
+    // en el authorize() de sus FormRequest (todos devuelven `true` a
+    // secas). Cualquier usuario autenticado, sin importar su rol/
+    // permisos reales, podía crear/editar/borrar productos, compras,
+    // etc. por API directa -- el candado del menú lateral era solo
+    // decorativo para estos módulos. index/show se dejan abiertos (se
+    // usan para lectura desde el POS -- ver posFetchProduct() -- y
+    // desde reportes/otras pantallas que no deberían necesitar el
+    // permiso de administración del catálogo solo para consultar).
+    Route::middleware('permission:manage_products')->group(function () {
+        Route::resource('products', ProductAPIController::class)->only(['store', 'update', 'destroy']);
+        Route::resource('main-products', MainProductAPIController::class)->only(['store', 'update', 'destroy']);
+        Route::post(
+            'products/{product}',
+            [ProductAPIController::class, 'update']
+        );
+        Route::post(
+            'main-products/{product}',
+            [MainProductAPIController::class, 'update']
+        );
+        Route::delete(
+            'products-image-delete/{mediaId}',
+            [ProductAPIController::class, 'productImageDelete']
+        )->name('products-image-delete');
+    });
 
-    Route::get('products', [ProductAPIController::class, 'index']);
+    Route::get('products', [ProductAPIController::class, 'index'])->name('products.index');
+    // Product::prepareLinks()/MainProduct::prepareLinks() generan su
+    // 'self' link llamando a route('products.show', ...) -- sin el
+    // ->name() acá, ese route() revienta con "Route [products.show] not
+    // defined." apenas se pide CUALQUIER producto (index incluido, ya
+    // que arma el link por cada fila). Encontrado recién al probar el
+    // fix en vivo.
+    Route::get('products/{product}', [ProductAPIController::class, 'show'])->name('products.show');
+    Route::get('main-products', [MainProductAPIController::class, 'index'])->name('main-products.index');
+    Route::get('main-products/{product}', [MainProductAPIController::class, 'show']);
     Route::get('get-all-products', [ProductAPIController::class, 'getAllProducts']);
 
     Route::resource('product-presentations', \App\Http\Controllers\API\ProductPresentationAPIController::class)
@@ -187,7 +208,11 @@ Route::middleware(['auth:sanctum', 'store.context'])->group(function () {
     Route::get('product-presentations/{presentation}/warehouse-prices', [\App\Http\Controllers\API\WarehousePriceAPIController::class, 'forPresentation']);
     Route::put('product-presentations/{presentation}/warehouse-prices', [\App\Http\Controllers\API\WarehousePriceAPIController::class, 'updateForPresentation']);
 
-    Route::resource('variations', VariationAPIController::class);
+    Route::middleware('permission:manage_variations')->group(function () {
+        Route::resource('variations', VariationAPIController::class)->only(['store', 'update', 'destroy']);
+    });
+    Route::get('variations', [VariationAPIController::class, 'index']);
+    Route::get('variations/{variation}', [VariationAPIController::class, 'show'])->name('variations.show');
 
     Route::middleware('permission:manage_transfers')->group(function () {
         Route::resource('transfers', TransferAPIController::class);
@@ -203,7 +228,17 @@ Route::middleware(['auth:sanctum', 'store.context'])->group(function () {
 
     // customers route
     Route::middleware('permission:manage_customers')->group(function () {
-        Route::resource('customers', CustomerAPIController::class)->except(['index']);
+        Route::resource('customers', CustomerAPIController::class)->except(['index', 'store']);
+    });
+    // El modal "Agregar cliente" del propio POS (CustomerForm.js dentro de
+    // frontend/, distinto del formulario admin de Personas > Clientes)
+    // llama esta misma ruta -- mismo caso que sales.store: un vendedor sin
+    // manage_customers (a propósito, ver Roles/Permisos) recibía "User dose
+    // not have the right permission" al intentar registrar un cliente
+    // nuevo a mitad de una venta. store_id se fuerza server-side en
+    // CustomerAPIController::store(), sin riesgo de escalar a otra tienda.
+    Route::middleware('permission:manage_customers|manage_pos_screen')->group(function () {
+        Route::post('customers', [CustomerAPIController::class, 'store'])->name('customers.store');
     });
 
     Route::get('customers', [CustomerAPIController::class, 'index']);
@@ -234,7 +269,7 @@ Route::middleware(['auth:sanctum', 'store.context'])->group(function () {
 
     //sale
     Route::middleware('permission:manage_sale')->group(function () {
-        Route::resource('sales', SaleAPIController::class)->except(['index']);
+        Route::resource('sales', SaleAPIController::class)->except(['index', 'store']);
         Route::get('sale-pdf-download/{sale}', [SaleAPIController::class, 'pdfDownload'])->name('sale-pdf-download');
         Route::get('sale-info/{sale}', [SaleAPIController::class, 'saleInfo'])->name('sale-info');
 
@@ -242,6 +277,18 @@ Route::middleware(['auth:sanctum', 'store.context'])->group(function () {
         Route::get('sales/{sale}/payments', [SalesPaymentAPIController::class, 'getAllPayments']);
         Route::post('sales/{salesPayment}/payment', [SalesPaymentAPIController::class, 'updateSalePayment']);
         Route::delete('sales/{id}/payment', [SalesPaymentAPIController::class, 'deletePayment']);
+    });
+    // El checkout del POS (posCashPaymentAction.js) pega contra esta misma
+    // ruta (apiBaseURL.CASH_PAYMENT = "sales") -- con manage_sale como
+    // único permiso aceptado, el rol Vendedor (manage_pos_screen +
+    // manage_my-sales, sin manage_sale a propósito) recibía "User dose
+    // not have the right permission" al intentar vender, en CUALQUIER
+    // tienda. Seguro ampliar: store() ya fuerza user_id=Auth::id() y ya
+    // llama authorizeWarehouseAccess() (bloquea vender en un almacén de
+    // otra sucursal/tienda), sin importar qué permiso haya dejado pasar
+    // el middleware.
+    Route::middleware('permission:manage_sale|manage_pos_screen')->group(function () {
+        Route::post('sales', [SaleAPIController::class, 'store'])->name('sales.store');
     });
     // "Mis Ventas" (SellerDashboard.js) llama este mismo index() filtrado
     // por su propio user_id -- con manage_sale como único permiso
@@ -340,7 +387,12 @@ Route::middleware(['auth:sanctum', 'store.context'])->group(function () {
     });
 
     //purchase routes
-    Route::resource('purchases', PurchaseAPIController::class);
+    Route::middleware('permission:manage_purchase')->group(function () {
+        Route::resource('purchases', PurchaseAPIController::class)->only(['store', 'update', 'destroy']);
+    });
+    Route::get('purchases', [PurchaseAPIController::class, 'index']);
+    Route::get('purchases/{purchase}/edit', [PurchaseAPIController::class, 'edit']);
+    Route::get('purchases/{purchase}', [PurchaseAPIController::class, 'show'])->name('purchases.show');
     Route::get(
         'purchase-pdf-download/{purchase}',
         [PurchaseAPIController::class, 'pdfDownload']
@@ -353,7 +405,12 @@ Route::middleware(['auth:sanctum', 'store.context'])->group(function () {
     });
 
     //purchase return routes
-    Route::resource('purchases-return', PurchaseReturnAPIController::class);
+    Route::middleware('permission:manage_purchase_return')->group(function () {
+        Route::resource('purchases-return', PurchaseReturnAPIController::class)->only(['store', 'update', 'destroy']);
+    });
+    Route::get('purchases-return', [PurchaseReturnAPIController::class, 'index']);
+    Route::get('purchases-return/{purchasesReturn}/edit', [PurchaseReturnAPIController::class, 'edit']);
+    Route::get('purchases-return/{id}', [PurchaseReturnAPIController::class, 'show'])->name('purchases-return.show');
     Route::get(
         'purchase-return-info/{purchase_return}',
         [PurchaseReturnAPIController::class, 'purchaseReturnInfo']
