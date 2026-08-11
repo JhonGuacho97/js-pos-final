@@ -2345,6 +2345,9 @@ var PaymentButton = function PaymentButton(props) {
       return resetPaymentModel();
     } else if (event.altKey && event.code === "KeyS") {
       return openPaymentModel();
+    } else if (event.altKey && event.code === "KeyH") {
+      event.preventDefault();
+      return holdPaymentModel();
     }
   };
   (0,react__WEBPACK_IMPORTED_MODULE_0__.useEffect)(function () {
@@ -2425,6 +2428,7 @@ var PaymentButton = function PaymentButton(props) {
         variant: "anger",
         className: "text-white bg-btn-pink btn-rounded btn-block me-2 w-100 py-3 rounded-10 px-3",
         onClick: holdPaymentModel,
+        title: "Atajo: Alt + H",
         children: [(0,_shared_sharedMethod__WEBPACK_IMPORTED_MODULE_5__.getFormattedMessage)("pos.hold-list-btn.title"), " ", /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_16__.jsx)(_fortawesome_react_fontawesome__WEBPACK_IMPORTED_MODULE_8__.FontAwesomeIcon, {
           icon: _fortawesome_free_solid_svg_icons__WEBPACK_IMPORTED_MODULE_9__.faHand,
           className: "ms-2 fa"
@@ -2434,6 +2438,7 @@ var PaymentButton = function PaymentButton(props) {
         variant: "anger",
         className: "text-white btn-danger btn-rounded btn-block me-2 w-100 py-3 rounded-10 px-3",
         onClick: resetPaymentModel,
+        title: "Atajo: Alt + R",
         children: [(0,_shared_sharedMethod__WEBPACK_IMPORTED_MODULE_5__.getFormattedMessage)("date-picker.filter.reset.label"), " ", /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_16__.jsx)(_fortawesome_react_fontawesome__WEBPACK_IMPORTED_MODULE_8__.FontAwesomeIcon, {
           icon: _fortawesome_free_solid_svg_icons__WEBPACK_IMPORTED_MODULE_9__.faArrowRotateForward,
           className: "ms-2 fa"
@@ -2443,6 +2448,7 @@ var PaymentButton = function PaymentButton(props) {
         variant: "success",
         className: "text-white w-100 py-3 rounded-10 px-3 pos-pay-btn",
         onClick: openPaymentModel,
+        title: "Atajo: Alt + S",
         children: [(0,_shared_sharedMethod__WEBPACK_IMPORTED_MODULE_5__.getFormattedMessage)("pos-pay-now.btn"), /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_16__.jsx)("i", {
           className: "ms-2 fa fa-money-bill"
         })]
@@ -2646,7 +2652,9 @@ var ProductCartList = function ProductCartList(props) {
       children: /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_6__.jsx)("button", {
         className: "delete-btn",
         onClick: function onClick() {
-          return onDeleteCartItem(singleProduct.id);
+          if (window.confirm("\xBFQuitar \"".concat(singleProduct.name, "\" del carrito?"))) {
+            onDeleteCartItem(singleProduct.id);
+          }
         },
         children: /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_6__.jsx)("i", {
           className: "bi bi-trash3"
@@ -5874,7 +5882,7 @@ var Product = function Product(props) {
     return product.attributes.stock.quantity > 0.0;
   }));
   var loadAllProduct = function loadAllProduct(product, index) {
-    var _product$attributes$e, _product$attributes2, _product$attributes3, _product$attributes4, _product$attributes5, _product$attributes6, _product$attributes7;
+    var _product$attributes$e, _product$attributes2, _product$attributes3, _product$attributes4, _product$attributes5, _product$attributes6;
     var findDifferentWords = function findDifferentWords(str1, str2) {
       var words1 = str1.split("_");
       var words2 = str2.split("_");
@@ -5919,13 +5927,20 @@ var Product = function Product(props) {
           }), /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_15__.jsx)("span", {
             className: product.isVariationGroup || product.attributes.manage_presentations ? "product-code product-code-variant" : "product-code",
             children: product.isVariationGroup ? "".concat(product.attributes.variations.length, " variantes") : product.attributes.manage_presentations ? "".concat((product.attributes.presentations || []).length, " presentaciones") : product.attributes.code
-          }), /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_15__.jsxs)("div", {
-            className: "stock-badge mt-1",
-            children: [product.attributes.stock && product.attributes.stock.quantity, " ", product === null || product === void 0 || (_product$attributes7 = product.attributes) === null || _product$attributes7 === void 0 || (_product$attributes7 = _product$attributes7.product_unit_name) === null || _product$attributes7 === void 0 ? void 0 : _product$attributes7.name]
-          })]
+          }), function (_product$attributes$s2, _product$attributes$s3, _product$attributes7) {
+            var stockQty = (_product$attributes$s2 = (_product$attributes$s3 = product.attributes.stock) === null || _product$attributes$s3 === void 0 ? void 0 : _product$attributes$s3.quantity) !== null && _product$attributes$s2 !== void 0 ? _product$attributes$s2 : 0;
+            var stockAlert = Number(product.attributes.stock_alert) || 0;
+            var isLowStock = stockAlert > 0 && stockQty <= stockAlert;
+            return /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_15__.jsxs)("div", {
+              className: "stock-badge mt-1".concat(isLowStock ? " stock-badge-low" : ""),
+              children: [isLowStock && /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_15__.jsx)("i", {
+                className: "bi bi-exclamation-triangle-fill me-1"
+              }), stockQty, " ", product === null || product === void 0 || (_product$attributes7 = product.attributes) === null || _product$attributes7 === void 0 || (_product$attributes7 = _product$attributes7.product_unit_name) === null || _product$attributes7 === void 0 ? void 0 : _product$attributes7.name]
+            });
+          }()]
         })]
       }), /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_15__.jsx)("style", {
-        children: "\n/* \uD83D\uDD25 CONTENEDOR */\n.product-img-wrapper {\n    position: relative;\n    width: 100%;\n    height: 180px; /* puedes subir a 200 si quieres m\xE1s grande */\n    overflow: hidden;\n    border-radius: 12px 12px 0 0; /* solo arriba */\n}\n\n/* \uD83D\uDDBC\uFE0F IMAGEN FULL */\n.product-img {\n    width: 100%;\n    height: 100%;\n    object-fit: cover; /* \uD83D\uDD25 clave */\n    display: block;\n}\n\n/* \uD83D\uDCB0 PRECIO */\n.price-badge {\n    position: absolute;\n    bottom: 8px;\n    right: 8px;\n    background: rgba(17, 24, 39, 0.9);\n    color: white;\n    font-size: 12px;\n    padding: 4px 8px;\n    border-radius: 6px;\n    font-weight: 600;\n}\n\n/* \u274C QUITA ESPACIOS DE CARD */\n.product-card .card-img-top {\n    margin: 0 !important;\n    border-radius: 0 !important;\n}\n\n/* \uD83D\uDCE6 BODY M\xC1S COMPACTO */\n.product-card .card-body {\n    padding: 6px 8px !important;\n}\n\n/* \uD83E\uDDFE TEXTO M\xC1S LIMPIO */\n.product-title {\n    font-size: 12px;\n    font-weight: 600;\n    margin-bottom: 2px;\n}\n\n.product-code {\n    font-size: 10px;\n}\n\n.product-code-variant {\n    color: #2F6FED;\n    font-weight: 600;\n}\n\n/* \uD83D\uDD16 INSIGNIA DE VARIANTES/PRESENTACIONES */\n.variant-badge {\n    position: absolute;\n    top: 6px;\n    left: 6px;\n    width: 22px;\n    height: 22px;\n    border-radius: 6px;\n    background: #2F6FED;\n    color: #fff;\n    display: flex;\n    align-items: center;\n    justify-content: center;\n    font-size: 11px;\n}\n\n/* \uD83D\uDCCA STOCK */\n.stock-badge {\n    font-size: 10px;\n}\n                "
+        children: "\n/* \uD83D\uDD25 CONTENEDOR */\n.product-img-wrapper {\n    position: relative;\n    width: 100%;\n    height: 180px; /* puedes subir a 200 si quieres m\xE1s grande */\n    overflow: hidden;\n    border-radius: 12px 12px 0 0; /* solo arriba */\n}\n\n/* \uD83D\uDDBC\uFE0F IMAGEN FULL */\n.product-img {\n    width: 100%;\n    height: 100%;\n    object-fit: cover; /* \uD83D\uDD25 clave */\n    display: block;\n}\n\n/* \uD83D\uDCB0 PRECIO */\n.price-badge {\n    position: absolute;\n    bottom: 8px;\n    right: 8px;\n    background: rgba(17, 24, 39, 0.9);\n    color: white;\n    font-size: 12px;\n    padding: 4px 8px;\n    border-radius: 6px;\n    font-weight: 600;\n}\n\n/* \u274C QUITA ESPACIOS DE CARD */\n.product-card .card-img-top {\n    margin: 0 !important;\n    border-radius: 0 !important;\n}\n\n/* \uD83D\uDCE6 BODY M\xC1S COMPACTO */\n.product-card .card-body {\n    padding: 6px 8px !important;\n}\n\n/* \uD83E\uDDFE TEXTO M\xC1S LIMPIO */\n.product-title {\n    font-size: 12px;\n    font-weight: 600;\n    margin-bottom: 2px;\n}\n\n.product-code {\n    font-size: 10px;\n}\n\n.product-code-variant {\n    color: #2F6FED;\n    font-weight: 600;\n}\n\n/* \uD83D\uDD16 INSIGNIA DE VARIANTES/PRESENTACIONES */\n.variant-badge {\n    position: absolute;\n    top: 6px;\n    left: 6px;\n    width: 22px;\n    height: 22px;\n    border-radius: 6px;\n    background: #2F6FED;\n    color: #fff;\n    display: flex;\n    align-items: center;\n    justify-content: center;\n    font-size: 11px;\n}\n\n/* \uD83D\uDCCA STOCK */\n.stock-badge {\n    font-size: 10px;\n}\n\n.stock-badge-low {\n    color: #dc2626;\n    font-weight: 700;\n}\n                "
       })]
     }, index) : "";
   };
@@ -6097,6 +6112,7 @@ var ProductSearchbar = function ProductSearchbar(props) {
     var _product$attributes$s, _presentation$effecti, _product$attributes$t;
     play();
     posSearchCodeProduct(product.attributes.code);
+    inputFocus();
     var cartLineId = "".concat(product.id, "_p").concat(presentation.id);
     var availableUnits = ((_product$attributes$s = product.attributes.stock) === null || _product$attributes$s === void 0 ? void 0 : _product$attributes$s.quantity) || 0;
     var maxQtyForPresentation = Math.floor(availableUnits / presentation.equivalence);
@@ -6214,6 +6230,9 @@ var ProductSearchbar = function ProductSearchbar(props) {
       removeSearchClass();
       setSearchString("");
       play();
+      // Para que el cajero pueda seguir escaneando código tras código
+      // sin tener que hacer clic en el campo cada vez.
+      inputFocus();
       var pushArray = _toConsumableArray(customCart);
       var newProduct = productId ? pushArray.find(function (element) {
         return element.product_id === productId;

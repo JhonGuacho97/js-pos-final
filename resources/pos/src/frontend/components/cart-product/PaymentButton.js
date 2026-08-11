@@ -146,6 +146,9 @@ const PaymentButton = (props) => {
             return resetPaymentModel();
         } else if (event.altKey && event.code === "KeyS") {
             return openPaymentModel();
+        } else if (event.altKey && event.code === "KeyH") {
+            event.preventDefault();
+            return holdPaymentModel();
         }
     };
 
@@ -238,6 +241,7 @@ const PaymentButton = (props) => {
                 variant="anger"
                 className="text-white bg-btn-pink btn-rounded btn-block me-2 w-100 py-3 rounded-10 px-3"
                 onClick={holdPaymentModel}
+                title="Atajo: Alt + H"
             >
                 {getFormattedMessage("pos.hold-list-btn.title")}{" "}
                 <FontAwesomeIcon icon={faHand} className="ms-2 fa" />{" "}
@@ -247,6 +251,7 @@ const PaymentButton = (props) => {
                 variant="anger"
                 className="text-white btn-danger btn-rounded btn-block me-2 w-100 py-3 rounded-10 px-3"
                 onClick={resetPaymentModel}
+                title="Atajo: Alt + R"
             >
                 {getFormattedMessage("date-picker.filter.reset.label")}{" "}
                 <FontAwesomeIcon
@@ -259,6 +264,7 @@ const PaymentButton = (props) => {
                 variant="success"
                 className="text-white w-100 py-3 rounded-10 px-3 pos-pay-btn"
                 onClick={openPaymentModel}
+                title="Atajo: Alt + S"
             >
                 {getFormattedMessage("pos-pay-now.btn")}
                 <i className="ms-2 fa fa-money-bill" />
