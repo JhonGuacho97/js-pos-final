@@ -4071,53 +4071,36 @@ __webpack_require__.r(__webpack_exports__);
 /* harmony export */   "default": () => (__WEBPACK_DEFAULT_EXPORT__)
 /* harmony export */ });
 /* harmony import */ var react__WEBPACK_IMPORTED_MODULE_0__ = __webpack_require__(/*! react */ "./node_modules/react/index.js");
-/* harmony import */ var react_redux__WEBPACK_IMPORTED_MODULE_1__ = __webpack_require__(/*! react-redux */ "./node_modules/react-redux/es/index.js");
-/* harmony import */ var _pos_dropdown_CustomerDropdown__WEBPACK_IMPORTED_MODULE_2__ = __webpack_require__(/*! ../pos-dropdown/CustomerDropdown */ "./resources/pos/src/frontend/components/pos-dropdown/CustomerDropdown.js");
-/* harmony import */ var _pos_dropdown_WarehouseDropDown__WEBPACK_IMPORTED_MODULE_3__ = __webpack_require__(/*! ../pos-dropdown/WarehouseDropDown */ "./resources/pos/src/frontend/components/pos-dropdown/WarehouseDropDown.js");
-/* harmony import */ var react_bootstrap_v5__WEBPACK_IMPORTED_MODULE_4__ = __webpack_require__(/*! react-bootstrap-v5 */ "./node_modules/react-bootstrap-v5/lib/esm/Row.js");
-/* harmony import */ var react_jsx_runtime__WEBPACK_IMPORTED_MODULE_5__ = __webpack_require__(/*! react/jsx-runtime */ "./node_modules/react/jsx-runtime.js");
-
+/* harmony import */ var _pos_dropdown_CustomerDropdown__WEBPACK_IMPORTED_MODULE_1__ = __webpack_require__(/*! ../pos-dropdown/CustomerDropdown */ "./resources/pos/src/frontend/components/pos-dropdown/CustomerDropdown.js");
+/* harmony import */ var _pos_dropdown_WarehouseDropDown__WEBPACK_IMPORTED_MODULE_2__ = __webpack_require__(/*! ../pos-dropdown/WarehouseDropDown */ "./resources/pos/src/frontend/components/pos-dropdown/WarehouseDropDown.js");
+/* harmony import */ var react_bootstrap_v5__WEBPACK_IMPORTED_MODULE_3__ = __webpack_require__(/*! react-bootstrap-v5 */ "./node_modules/react-bootstrap-v5/lib/esm/Row.js");
+/* harmony import */ var react_jsx_runtime__WEBPACK_IMPORTED_MODULE_4__ = __webpack_require__(/*! react/jsx-runtime */ "./node_modules/react/jsx-runtime.js");
 
 
 
 
 
 var PosHeader = function PosHeader(props) {
-  var _frontSetting$value;
   var setSelectedCustomerOption = props.setSelectedCustomerOption,
     selectedCustomerOption = props.selectedCustomerOption,
     setSelectedOption = props.setSelectedOption,
     selectedOption = props.selectedOption,
     customerModel = props.customerModel,
     updateCustomer = props.updateCustomer;
-  var _useSelector = (0,react_redux__WEBPACK_IMPORTED_MODULE_1__.useSelector)(function (state) {
-      return state;
-    }),
-    frontSetting = _useSelector.frontSetting;
-  var storeName = frontSetting === null || frontSetting === void 0 || (_frontSetting$value = frontSetting.value) === null || _frontSetting$value === void 0 ? void 0 : _frontSetting$value.company_name;
-  return /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_5__.jsxs)(react_jsx_runtime__WEBPACK_IMPORTED_MODULE_5__.Fragment, {
-    children: [(storeName || (selectedOption === null || selectedOption === void 0 ? void 0 : selectedOption.label)) && /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_5__.jsxs)("div", {
-      className: "active-store-badge mt-3 mb-1",
-      children: [/*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_5__.jsx)("i", {
-        className: "bi bi-shop me-2"
-      }), storeName, storeName && selectedOption !== null && selectedOption !== void 0 && selectedOption.label ? " · " : "", selectedOption === null || selectedOption === void 0 ? void 0 : selectedOption.label]
-    }), /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_5__.jsx)("div", {
-      className: "top-nav my-3",
-      children: /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_5__.jsxs)(react_bootstrap_v5__WEBPACK_IMPORTED_MODULE_4__["default"], {
-        className: "align-items-center justify-content-between grp-select h-100",
-        children: [/*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_5__.jsx)(_pos_dropdown_CustomerDropdown__WEBPACK_IMPORTED_MODULE_2__["default"], {
-          setSelectedCustomerOption: setSelectedCustomerOption,
-          selectedCustomerOption: selectedCustomerOption,
-          customerModel: customerModel,
-          updateCustomer: updateCustomer
-        }), /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_5__.jsx)(_pos_dropdown_WarehouseDropDown__WEBPACK_IMPORTED_MODULE_3__["default"], {
-          setSelectedOption: setSelectedOption,
-          selectedOption: selectedOption
-        })]
-      })
-    }), /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_5__.jsx)("style", {
-      children: "\n.active-store-badge {\n    display: inline-flex;\n    align-items: center;\n    font-size: 12px;\n    font-weight: 600;\n    color: #2F6FED;\n    background: #eef2ff;\n    padding: 4px 10px;\n    border-radius: 6px;\n}\n                "
-    })]
+  return /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_4__.jsx)("div", {
+    className: "top-nav my-3",
+    children: /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_4__.jsxs)(react_bootstrap_v5__WEBPACK_IMPORTED_MODULE_3__["default"], {
+      className: "align-items-center justify-content-between grp-select h-100",
+      children: [/*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_4__.jsx)(_pos_dropdown_CustomerDropdown__WEBPACK_IMPORTED_MODULE_1__["default"], {
+        setSelectedCustomerOption: setSelectedCustomerOption,
+        selectedCustomerOption: selectedCustomerOption,
+        customerModel: customerModel,
+        updateCustomer: updateCustomer
+      }), /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_4__.jsx)(_pos_dropdown_WarehouseDropDown__WEBPACK_IMPORTED_MODULE_2__["default"], {
+        setSelectedOption: setSelectedOption,
+        selectedOption: selectedOption
+      })]
+    })
   });
 };
 /* harmony default export */ const __WEBPACK_DEFAULT_EXPORT__ = (PosHeader);
