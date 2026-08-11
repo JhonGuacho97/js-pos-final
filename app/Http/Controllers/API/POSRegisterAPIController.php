@@ -32,6 +32,21 @@ class POSRegisterAPIController extends AppBaseController
         $input = $request->all();
         $input['user_id'] = Auth::id();
 
+        // El modal de apertura de caja (PosRegisterModel.js, montado desde
+        // Header.js) nunca mandó warehouse_id -- a diferencia del payload
+        // de venta, que sí lo saca del selector de almacén de la pantalla
+        // POS. Sin esto, pos_register.warehouse_id quedaba NULL en TODA
+        // caja nueva, y como registerReport() ahora se scopea por tienda
+        // vía warehouse_id, esas cajas NULL desaparecían de cualquier
+        // informe -- las viejas ya no se mezclaban entre tiendas, pero las
+        // nuevas dejaban de aparecer del todo. Mismo fallback que ya usa
+        // el frontend para el selector cuando no hay uno explícito:
+        // almacén propio del usuario, si no el de la tienda activa.
+        if (empty($input['warehouse_id'])) {
+            $input['warehouse_id'] = Auth::user()->default_warehouse_id
+                ?? getSettingValue('default_warehouse');
+        }
+
         POSRegister::create($input);
 
         return $this->sendSuccess('Register entry added successfully.');
@@ -100,6 +115,14 @@ class POSRegisterAPIController extends AppBaseController
         $input = $request->all();
 
         $register = $this->posReg;
+
+        // Sin esto, un admin viendo "Cuadre de caja" SIN elegir un
+        // cajero puntual (el caso por defecto) se topaba con TODOS los
+        // arqueos cerrados de TODAS las tiendas mezclados -- pos_register
+        // tiene warehouse_id igual que Sale/Purchase, así que se scopea
+        // con el mismo helper. Va antes del if/else de abajo porque
+        // aplica siempre, tanto si se filtró por user_id como si no.
+        $this->scopeQueryToCurrentStore($register);
 
         // Un usuario no-admin solo puede ver el historial de arqueo de su
         // propia caja -- antes cualquiera podía pedir el de otro usuario
