@@ -55,7 +55,19 @@ export default {
                 localStorage.removeItem(Tokens.GET_PERMISSIONS);
                 window.location.href = environment.URL + '#' + '/login';
             }else if(error.response.status === 403 || error.response.status === 404) {
+                // Sin el reject, esta rama devolvía `undefined` (la
+                // ausencia de return se interpreta como RESOLUCIÓN, no
+                // rechazo, del interceptor) -- cualquier .then(response
+                // => response.data) en el componente que llamó recibía
+                // response=undefined y reventaba con "Cannot read
+                // properties of undefined (reading 'data')" en vez de
+                // simplemente no ejecutarse. Eso, sumado al redirect de
+                // abajo, producía un loop de recargas cuando la propia
+                // pantalla a la que redirige también disparaba el mismo
+                // 403 (ver SellerDashboard.js llamando /api/sales sin
+                // el permiso manage_sale).
                 window.location.href = environment.URL + '#' + '/app/dashboard';
+                return Promise.reject({...error});
             }else {
                 return Promise.reject({...error})
             }
