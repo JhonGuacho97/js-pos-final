@@ -181,11 +181,25 @@ class ProductImport implements ToCollection, WithChunkReading, WithStartRow, Wit
                             $status = 2;
                         }
 
+                        // tax_rate/tax_amount/discount/shipping son nullable
+                        // en BD y sin default -- el formulario de editar
+                        // compra (PurchaseForm.js) siempre asume que vienen
+                        // con un número y llama .toFixed() directo sobre
+                        // ellos, así que una compra creada sin estos campos
+                        // (como esta, generada automáticamente al importar)
+                        // rompía la pantalla con "Cannot read properties of
+                        // null" apenas se intentaba editar. La compra
+                        // "real" (PurchaseRepository::storePurchase) always
+                        // los manda, aunque sea en 0.
                         $purchaseInputArray = [
                             'supplier_id' => $supplier->id,
                             'warehouse_id' => $warehouse->id,
                             'date' => Carbon::now('America/Guayaquil')->format('Y-m-d'),
                             'status' => $status,
+                            'tax_rate' => 0,
+                            'tax_amount' => 0,
+                            'discount' => 0,
+                            'shipping' => 0,
                         ];
 
                         $purchase = Purchase::create($purchaseInputArray);
