@@ -2,6 +2,7 @@
 
 namespace Database\Seeders;
 
+use App\Models\Store;
 use App\Models\User;
 use Carbon\Carbon;
 use Illuminate\Database\Seeder;
@@ -42,6 +43,19 @@ class DefaultUserSeeder extends Seeder
         $adminRole = Role::whereName('admin')->first();
         if ($user) {
             $user->assignRole($adminRole);
+
+            // Sin esto, ResolveActiveStore nunca resuelve una tienda activa
+            // para este usuario (0 filas en user_store) y llama a
+            // setPermissionsTeamId(null) en cada request -- hasRole()/can()
+            // dejan de encontrar la asignación de rol que se acaba de crear
+            // (quedó con store_id = la tienda inicial), y el admin recién
+            // sembrado no puede hacer nada pese a tener el rol en la BD.
+            // Mismo criterio que ya usa UserRepository::storeUser() para
+            // usuarios nuevos creados desde la app.
+            $store = Store::first();
+            if ($store) {
+                $user->stores()->syncWithoutDetaching([$store->id]);
+            }
         }
 
         if ($this->command) {
