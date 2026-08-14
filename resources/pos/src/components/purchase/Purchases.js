@@ -103,8 +103,17 @@ const Product = (props) => {
                 paid: 0,
                 due: 0,
                 payment: purchase.attributes.payment_type,
+                // Antes usaba created_at (cuándo se guardó el registro en
+                // el sistema) en vez de date (la fecha real de la compra,
+                // la que se elige/edita en el formulario) -- a diferencia
+                // de Sales.js, que sí separa correctamente ambos campos.
+                // Con compras cargadas en lote (ej. importación de
+                // productos), created_at cae casi en el mismo segundo para
+                // todas, así que la lista mostraba "la misma fecha y hora"
+                // en todas las filas aunque sus fechas reales fueran
+                // distintas.
                 date: getFormattedDate(
-                    purchase.attributes.created_at,
+                    purchase.attributes.date,
                     allConfigData
                 ),
                 time: dayjs(purchase.attributes.created_at).format("HH:mm:ss"),
