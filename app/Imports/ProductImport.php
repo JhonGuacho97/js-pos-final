@@ -38,16 +38,21 @@ class ProductImport implements ToCollection, WithChunkReading, WithStartRow, Wit
 
                 $taxType = null;
 
-                $productName = Product::whereName($row[0])->exists();
+                $storeId = requireCurrentStoreId();
+
+                // Sin whereStoreId acá, un producto demo creado una vez en
+                // CUALQUIER tienda bloqueaba para siempre volver a importar
+                // esa misma fila demo en otra tienda distinta -- a
+                // diferencia de ProductCategory/Brand más abajo, que sí
+                // están scopeados por tienda.
+                $productName = Product::whereName($row[0])->whereStoreId($storeId)->exists();
                 if ($productName) {
                     throw new UnprocessableEntityHttpException('Product Name ' . $row[0] . ' is already exist.');
                 }
-                $productCode = Product::Where('code', $row[1])->exists();
+                $productCode = Product::where('code', $row[1])->whereStoreId($storeId)->exists();
                 if ($productCode) {
                     throw new UnprocessableEntityHttpException('Product Code ' . $row[1] . ' is already exist.');
                 }
-
-                $storeId = requireCurrentStoreId();
 
                 $productCategory = ProductCategory::whereName($row[2])->whereStoreId($storeId)->first();
                 $brand = Brand::whereName($row[3])->whereStoreId($storeId)->first();
@@ -70,13 +75,28 @@ class ProductImport implements ToCollection, WithChunkReading, WithStartRow, Wit
                 //                    throw new UnprocessableEntityHttpException('Product unit '.$row[7].' is not found.');
                 //                }
 
+                // La tabla `units` no trae ningún dato por defecto en una
+                // instalación nueva (a diferencia de `base_units`, que sí
+                // se siembra) -- sin esto, CUALQUIER importación de
+                // productos fallaba siempre en la primera fila con "Sale
+                // unit ... is not found.", igual que ya se hace más abajo
+                // con categoría/marca: si la unidad de venta/compra no
+                // existe todavía para esta unidad base, se crea.
                 $saleUnit = Unit::whereName(strtolower($row[8]))->whereBaseUnit($productUnitId)->first();
-                $purchaseUnit = Unit::whereName(strtolower($row[9]))->whereBaseUnit($productUnitId)->first();
                 if (!$saleUnit) {
-                    throw new UnprocessableEntityHttpException('Sale unit ' . $row[8] . ' is not found.');
+                    $saleUnit = Unit::create([
+                        'name' => strtolower($row[8]),
+                        'short_name' => $row[8],
+                        'base_unit' => $productUnitId,
+                    ]);
                 }
+                $purchaseUnit = Unit::whereName(strtolower($row[9]))->whereBaseUnit($productUnitId)->first();
                 if (!$purchaseUnit) {
-                    throw new UnprocessableEntityHttpException('Purchase unit ' . $row[9] . ' is not found.');
+                    $purchaseUnit = Unit::create([
+                        'name' => strtolower($row[9]),
+                        'short_name' => $row[9],
+                        'base_unit' => $productUnitId,
+                    ]);
                 }
 
                 if ($productCategory) {
@@ -162,8 +182,8 @@ class ProductImport implements ToCollection, WithChunkReading, WithStartRow, Wit
                         }
 
                         $purchaseInputArray = [
-                            'supplier_id' => $warehouse->id,
-                            'warehouse_id' => $supplier->id,
+                            'supplier_id' => $supplier->id,
+                            'warehouse_id' => $warehouse->id,
                             'date' => Carbon::now('America/Guayaquil')->format('Y-m-d'),
                             'status' => $status,
                         ];
@@ -224,8 +244,16 @@ class ProductImport implements ToCollection, WithChunkReading, WithStartRow, Wit
             } catch (Exception $e) {
                 DB::rollBack();
 
+                // Antes el throw estaba comentado: cualquier fila que
+                // fallara (unidad no encontrada, nombre/código duplicado,
+                // lo que sea) quedaba solo en laravel.log, y el controller
+                // igual respondía "imported successfully" sin haber creado
+                // nada -- probado end-to-end: 0 productos creados con la
+                // respuesta reportando éxito. Se propaga igual que ya hacen
+                // CustomerImport/SupplierImport, para que el usuario vea
+                // por qué falló en vez de un éxito falso.
                 Log::error($e->getMessage());
-                // throw new UnprocessableEntityHttpException($e->getMessage());
+                throw new UnprocessableEntityHttpException($e->getMessage());
             }
 
             return response()->json([
