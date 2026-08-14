@@ -53,10 +53,14 @@ const PurchaseForm = ( props ) => {
         date: singlePurchase ? dayjs( singlePurchase.date ).toDate() : new Date(),
         warehouse_id: singlePurchase ? singlePurchase.warehouse_id : '',
         supplier_id: singlePurchase ? singlePurchase.supplier_id : '',
-        tax_rate: singlePurchase ? singlePurchase.tax_rate.toFixed( 2 ) : '0.00',
-        tax_amount: singlePurchase ? singlePurchase.tax_amount.toFixed( 2 ) : '0.00',
-        discount: singlePurchase ? singlePurchase.discount.toFixed( 2 ) : '0.00',
-        shipping: singlePurchase ? singlePurchase.shipping.toFixed( 2 ) : '0.00',
+        // (singlePurchase.tax_rate ?? 0) porque una compra puede llegar acá
+        // con estos campos en null -- son nullable en BD sin default, y
+        // llamar .toFixed() directo sobre null rompía la pantalla entera
+        // ("Cannot read properties of null") al intentar editarla.
+        tax_rate: singlePurchase ? ( singlePurchase.tax_rate ?? 0 ).toFixed( 2 ) : '0.00',
+        tax_amount: singlePurchase ? ( singlePurchase.tax_amount ?? 0 ).toFixed( 2 ) : '0.00',
+        discount: singlePurchase ? ( singlePurchase.discount ?? 0 ).toFixed( 2 ) : '0.00',
+        shipping: singlePurchase ? ( singlePurchase.shipping ?? 0 ).toFixed( 2 ) : '0.00',
         grand_total: singlePurchase ? singlePurchase.grand_total : '0.00',
         notes: singlePurchase ? singlePurchase.notes : '',
         status_id: singlePurchase ? singlePurchase.status_id : { label: getFormattedMessage( "status.filter.received.label" ), value: 1 },

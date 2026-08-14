@@ -665,6 +665,7 @@ dayjs__WEBPACK_IMPORTED_MODULE_3___default().extend((dayjs_plugin_relativeTime__
 
 
 var PurchaseForm = function PurchaseForm(props) {
+  var _singlePurchase$tax_r, _singlePurchase$tax_a, _singlePurchase$disco, _singlePurchase$shipp;
   var addPurchaseData = props.addPurchaseData,
     id = props.id,
     editPurchase = props.editPurchase,
@@ -711,10 +712,14 @@ var PurchaseForm = function PurchaseForm(props) {
       date: singlePurchase ? dayjs__WEBPACK_IMPORTED_MODULE_3___default()(singlePurchase.date).toDate() : new Date(),
       warehouse_id: singlePurchase ? singlePurchase.warehouse_id : '',
       supplier_id: singlePurchase ? singlePurchase.supplier_id : '',
-      tax_rate: singlePurchase ? singlePurchase.tax_rate.toFixed(2) : '0.00',
-      tax_amount: singlePurchase ? singlePurchase.tax_amount.toFixed(2) : '0.00',
-      discount: singlePurchase ? singlePurchase.discount.toFixed(2) : '0.00',
-      shipping: singlePurchase ? singlePurchase.shipping.toFixed(2) : '0.00',
+      // (singlePurchase.tax_rate ?? 0) porque una compra puede llegar acá
+      // con estos campos en null -- son nullable en BD sin default, y
+      // llamar .toFixed() directo sobre null rompía la pantalla entera
+      // ("Cannot read properties of null") al intentar editarla.
+      tax_rate: singlePurchase ? ((_singlePurchase$tax_r = singlePurchase.tax_rate) !== null && _singlePurchase$tax_r !== void 0 ? _singlePurchase$tax_r : 0).toFixed(2) : '0.00',
+      tax_amount: singlePurchase ? ((_singlePurchase$tax_a = singlePurchase.tax_amount) !== null && _singlePurchase$tax_a !== void 0 ? _singlePurchase$tax_a : 0).toFixed(2) : '0.00',
+      discount: singlePurchase ? ((_singlePurchase$disco = singlePurchase.discount) !== null && _singlePurchase$disco !== void 0 ? _singlePurchase$disco : 0).toFixed(2) : '0.00',
+      shipping: singlePurchase ? ((_singlePurchase$shipp = singlePurchase.shipping) !== null && _singlePurchase$shipp !== void 0 ? _singlePurchase$shipp : 0).toFixed(2) : '0.00',
       grand_total: singlePurchase ? singlePurchase.grand_total : '0.00',
       notes: singlePurchase ? singlePurchase.notes : '',
       status_id: singlePurchase ? singlePurchase.status_id : {
