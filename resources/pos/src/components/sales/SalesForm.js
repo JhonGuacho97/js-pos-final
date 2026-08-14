@@ -18,7 +18,7 @@ import { fetchProductsByWarehouse } from '../../store/action/productAction';
 import { editSale } from '../../store/action/salesAction';
 import ProductSearch from '../../shared/components/product-cart/search/ProductSearch';
 import ProductRowTable from '../../shared/components/sales/ProductRowTable';
-import { placeholderText, getFormattedMessage, decimalValidate, onFocusInput, getFormattedOptions } from '../../shared/sharedMethod';
+import { placeholderText, getFormattedMessage, decimalValidate, onFocusInput, getFormattedOptions, toLocalDateObject } from '../../shared/sharedMethod';
 import ReactDatePicker from '../../shared/datepicker/ReactDatePicker';
 import ProductMainCalculation from './ProductMainCalculation';
 import { calculateCartTotalAmount, calculateCartTotalTaxAmount } from '../../shared/calculation/calculation';
@@ -102,7 +102,7 @@ const SalesForm = (props) => {
     useEffect(() => {
         if (singleSale && !isQuotation) {
             setSaleValue({
-                date: singleSale ? dayjs(singleSale.date, 'YYYY-MM-DD').toDate() : '',
+                date: singleSale ? toLocalDateObject(singleSale.date) : '',
                 customer_id: singleSale ? singleSale.customer_id : '',
                 quotation_id: singleSale ? singleSale.quotation_id : '',
                 warehouse_id: singleSale ? singleSale.warehouse_id : '',
@@ -118,7 +118,7 @@ const SalesForm = (props) => {
         }
         if (singleSale && isQuotation) {
             setSaleValue({
-                date: singleSale ? dayjs(singleSale.date, 'YYYY-MM-DD').toDate() : '',
+                date: singleSale ? toLocalDateObject(singleSale.date) : '',
                 quotation_id: singleSale ? singleSale.quotation_id : '',
                 customer_id: singleSale ? singleSale.customer_id : '',
                 warehouse_id: singleSale ? singleSale.warehouse_id : '',

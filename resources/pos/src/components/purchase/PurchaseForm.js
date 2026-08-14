@@ -16,7 +16,7 @@ import { editPurchase } from '../../store/action/purchaseAction';
 import { fetchAllProducts, fetchProductsByWarehouse } from '../../store/action/productAction';
 import PurchaseTable from '../../shared/components/purchase/PurchaseTable';
 import { preparePurchaseProductArray } from '../../shared/prepareArray/preparePurchaseArray';
-import { decimalValidate, getFormattedMessage, placeholderText, onFocusInput, getFormattedOptions } from '../../shared/sharedMethod';
+import { decimalValidate, getFormattedMessage, placeholderText, onFocusInput, getFormattedOptions, toLocalDateObject } from '../../shared/sharedMethod';
 import { calculateCartTotalAmount, calculateCartTotalTaxAmount } from '../../shared/calculation/calculation';
 import ModelFooter from '../../shared/components/modelFooter';
 import ProductSearch from '../../shared/components/product-cart/search/ProductSearch';
@@ -50,7 +50,7 @@ const PurchaseForm = ( props ) => {
     const [ quantity, setQuantity ] = useState( 0 );
 
     const [ purchaseValue, setPurchaseValue ] = useState( {
-        date: singlePurchase ? dayjs( singlePurchase.date ).toDate() : new Date(),
+        date: singlePurchase ? toLocalDateObject( singlePurchase.date ) : new Date(),
         warehouse_id: singlePurchase ? singlePurchase.warehouse_id : '',
         supplier_id: singlePurchase ? singlePurchase.supplier_id : '',
         // (singlePurchase.tax_rate ?? 0) porque una compra puede llegar acá

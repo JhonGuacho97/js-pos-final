@@ -4,7 +4,8 @@ import {
     decimalValidate,
     getFormattedMessage,
     getFormattedOptions,
-    placeholderText
+    placeholderText,
+    toLocalDateObject
 } from "../../shared/sharedMethod";
 import dayjs from 'dayjs';
 import utc from 'dayjs/plugin/utc';
@@ -40,7 +41,7 @@ const EditPaymentModal = ( props ) => {
             setPaymentValue( {
                 amount_to_pay: editSaleItem ? editSaleItem.received_amount : "",
                 payment_type: paymentTypeDefaultValue && paymentTypeDefaultValue[ 0 ],
-                payment_date: editSaleItem ? dayjs( editSaleItem.payment_date ).toDate() : '',
+                payment_date: editSaleItem ? toLocalDateObject( editSaleItem.payment_date ) : '',
                 // paid_amount: payment_date ? payment_date.paid_amount === "0.00" ? createPaymentItem.grand_total : createPaymentItem.paid_amount : '',
                 payment_id: editSaleItem ? editSaleItem.id : "",
                 amount: editSaleItem ? editSaleItem.amount : "",

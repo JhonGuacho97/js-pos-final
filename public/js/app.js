@@ -48769,7 +48769,7 @@ var TransferForm = function TransferForm(props) {
     quantity = _useState12[0],
     setQuantity = _useState12[1];
   var _useState13 = (0,react__WEBPACK_IMPORTED_MODULE_0__.useState)({
-      date: singleTransfer ? dayjs__WEBPACK_IMPORTED_MODULE_3___default()(singleTransfer.date).toDate() : new Date(),
+      date: singleTransfer ? (0,_shared_sharedMethod__WEBPACK_IMPORTED_MODULE_13__.toLocalDateObject)(singleTransfer.date) : new Date(),
       from_warehouse_id: singleTransfer ? singleTransfer.from_warehouse_id : '',
       to_warehouse_id: singleTransfer ? singleTransfer.to_warehouse_id : '',
       warehouse_id: undefined,
@@ -56183,7 +56183,8 @@ __webpack_require__.r(__webpack_exports__);
 /* harmony export */   getFormattedOptions: () => (/* binding */ getFormattedOptions),
 /* harmony export */   numValidate: () => (/* binding */ numValidate),
 /* harmony export */   onFocusInput: () => (/* binding */ onFocusInput),
-/* harmony export */   placeholderText: () => (/* binding */ placeholderText)
+/* harmony export */   placeholderText: () => (/* binding */ placeholderText),
+/* harmony export */   toLocalDateObject: () => (/* binding */ toLocalDateObject)
 /* harmony export */ });
 /* harmony import */ var react__WEBPACK_IMPORTED_MODULE_0__ = __webpack_require__(/*! react */ "./node_modules/react/index.js");
 /* harmony import */ var react_intl__WEBPACK_IMPORTED_MODULE_1__ = __webpack_require__(/*! react-intl */ "./node_modules/react-intl/lib/src/components/useIntl.js");
@@ -56382,6 +56383,20 @@ var getFormattedDate = function getFormattedDate(date, config) {
     default:
       return parsedDate.format("YYYY-MM-DD");
   }
+};
+
+/**
+ * Mismo problema que getFormattedDate() de acá arriba, pero para precargar
+ * un date-picker (necesita un objeto Date, no un string formateado). Los
+ * formularios de editar (Compra, Ajuste, Gasto, Transferencia, Cotización,
+ * Devolución de venta/compra, Pago...) hacían dayjs(singleX.date).toDate()
+ * directo -- con un campo "date"-only devuelto como medianoche UTC, eso
+ * corría la fecha un día para atrás en Ecuador (UTC-5) y el date-picker
+ * mostraba "ayer" en vez del día real guardado.
+ */
+var toLocalDateObject = function toLocalDateObject(date) {
+  var esFechaSinHora = typeof date === "string" && /T00:00:00(\.0+)?Z$/.test(date);
+  return dayjs__WEBPACK_IMPORTED_MODULE_6___default()(esFechaSinHora ? date.slice(0, 10) : date).toDate();
 };
 
 /**
@@ -319261,7 +319276,7 @@ module.exports = /*#__PURE__*/JSON.parse('{"dashboard.title":"bảng điều khi
 /******/ 		// This function allow to reference async chunks
 /******/ 		__webpack_require__.u = (chunkId) => {
 /******/ 			// return url for filenames based on template
-/******/ 			return "js/chunks/" + chunkId + "." + {"catalog-masters":"816467f6","warehouse":"0e618c6f","supplier":"4bf9d5f3","customer":"352413fc","user":"c0dc281a","product":"4beb6d5f","settings":"f21b2373","expense":"431158b6","purchase":"8af747bd","pos-screen":"c6fb6291","pos-print":"45d6f262","sale":"6308b731","sale-return":"54ff5320","credit-note":"5af1a3b8","purchase-return":"674074c3","quotation":"01ad9b51","reports":"da64e0cc","print-barcode":"71323c8f","roles":"9e859083","stores":"c8b11245","adjustments":"2ed232b8","templates":"16b32fc2","sms-api":"86574df7","languages":"4c9f14fe","login-logs":"2bfa5173","seller-dashboard":"1d31d451","kardex":"c92cba4f","sri-config":"f0edfb18","electronic-invoices":"6e8654d2","node_modules_howler_dist_howler_js":"82141a56"}[chunkId] + ".js";
+/******/ 			return "js/chunks/" + chunkId + "." + {"catalog-masters":"94380960","warehouse":"14382a5e","supplier":"d66ad7d1","customer":"a42c0ef1","user":"eef0cacd","product":"13827f3f","settings":"3310924b","expense":"14ca6537","purchase":"bee45674","pos-screen":"931a12d2","pos-print":"2afccee0","sale":"7d092a19","sale-return":"c135a453","credit-note":"3adc5855","purchase-return":"bbdcf1ad","quotation":"98da8f18","reports":"69c34e3c","print-barcode":"18c73bf0","roles":"c0cfc6ab","stores":"bbca8094","adjustments":"623e1693","templates":"7aab1631","sms-api":"fb58fd4d","languages":"0ff74cb0","login-logs":"9e7a0e85","seller-dashboard":"39dbfb84","kardex":"9d139b77","sri-config":"f0edfb18","electronic-invoices":"99a2e0e3","node_modules_howler_dist_howler_js":"82141a56"}[chunkId] + ".js";
 /******/ 		};
 /******/ 	})();
 /******/ 	

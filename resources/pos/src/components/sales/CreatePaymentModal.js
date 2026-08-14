@@ -5,6 +5,7 @@ import {
     getFormattedMessage,
     getFormattedOptions,
     placeholderText,
+    toLocalDateObject,
 } from "../../shared/sharedMethod";
 import dayjs from 'dayjs';
 import utc from 'dayjs/plugin/utc';
@@ -47,7 +48,7 @@ const CreatePaymentModal = (props) => {
                 payment_type:
                     paymentTypeDefaultValue && paymentTypeDefaultValue[0],
                 payment_date: createPaymentItem?.date
-                    ? dayjs(createPaymentItem?.date).toDate()
+                    ? toLocalDateObject(createPaymentItem?.date)
                     : new Date(),
                 amount_to_pay: createPaymentItem
                     ? createPaymentItem?.grand_total -

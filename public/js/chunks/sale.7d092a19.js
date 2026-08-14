@@ -1053,7 +1053,7 @@ var CreatePaymentModal = function CreatePaymentModal(props) {
     if (createPaymentItem) {
       setPaymentValue({
         payment_type: paymentTypeDefaultValue && paymentTypeDefaultValue[0],
-        payment_date: createPaymentItem !== null && createPaymentItem !== void 0 && createPaymentItem.date ? dayjs__WEBPACK_IMPORTED_MODULE_3___default()(createPaymentItem === null || createPaymentItem === void 0 ? void 0 : createPaymentItem.date).toDate() : new Date(),
+        payment_date: createPaymentItem !== null && createPaymentItem !== void 0 && createPaymentItem.date ? (0,_shared_sharedMethod__WEBPACK_IMPORTED_MODULE_2__.toLocalDateObject)(createPaymentItem === null || createPaymentItem === void 0 ? void 0 : createPaymentItem.date) : new Date(),
         amount_to_pay: createPaymentItem ? (createPaymentItem === null || createPaymentItem === void 0 ? void 0 : createPaymentItem.grand_total) - (createPaymentItem === null || createPaymentItem === void 0 ? void 0 : createPaymentItem.paid_amount) : "",
         sale_id: createPaymentItem ? createPaymentItem === null || createPaymentItem === void 0 ? void 0 : createPaymentItem.id : "",
         amount: createPaymentItem ? (createPaymentItem === null || createPaymentItem === void 0 ? void 0 : createPaymentItem.grand_total) - (createPaymentItem === null || createPaymentItem === void 0 ? void 0 : createPaymentItem.paid_amount) : ""
@@ -1451,7 +1451,7 @@ var EditPaymentModal = function EditPaymentModal(props) {
       setPaymentValue({
         amount_to_pay: editSaleItem ? editSaleItem.received_amount : "",
         payment_type: paymentTypeDefaultValue && paymentTypeDefaultValue[0],
-        payment_date: editSaleItem ? dayjs__WEBPACK_IMPORTED_MODULE_3___default()(editSaleItem.payment_date).toDate() : '',
+        payment_date: editSaleItem ? (0,_shared_sharedMethod__WEBPACK_IMPORTED_MODULE_2__.toLocalDateObject)(editSaleItem.payment_date) : '',
         // paid_amount: payment_date ? payment_date.paid_amount === "0.00" ? createPaymentItem.grand_total : createPaymentItem.paid_amount : '',
         payment_id: editSaleItem ? editSaleItem.id : "",
         amount: editSaleItem ? editSaleItem.amount : "",
@@ -2953,7 +2953,7 @@ var SalesForm = function SalesForm(props) {
   (0,react__WEBPACK_IMPORTED_MODULE_0__.useEffect)(function () {
     if (singleSale && !isQuotation) {
       setSaleValue({
-        date: singleSale ? dayjs__WEBPACK_IMPORTED_MODULE_9___default()(singleSale.date, 'YYYY-MM-DD').toDate() : '',
+        date: singleSale ? (0,_shared_sharedMethod__WEBPACK_IMPORTED_MODULE_19__.toLocalDateObject)(singleSale.date) : '',
         customer_id: singleSale ? singleSale.customer_id : '',
         quotation_id: singleSale ? singleSale.quotation_id : '',
         warehouse_id: singleSale ? singleSale.warehouse_id : '',
@@ -2972,7 +2972,7 @@ var SalesForm = function SalesForm(props) {
     }
     if (singleSale && isQuotation) {
       setSaleValue({
-        date: singleSale ? dayjs__WEBPACK_IMPORTED_MODULE_9___default()(singleSale.date, 'YYYY-MM-DD').toDate() : '',
+        date: singleSale ? (0,_shared_sharedMethod__WEBPACK_IMPORTED_MODULE_19__.toLocalDateObject)(singleSale.date) : '',
         quotation_id: singleSale ? singleSale.quotation_id : '',
         customer_id: singleSale ? singleSale.customer_id : '',
         warehouse_id: singleSale ? singleSale.warehouse_id : '',

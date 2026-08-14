@@ -196,6 +196,20 @@ export const getFormattedDate = (date, config) => {
 };
 
 /**
+ * Mismo problema que getFormattedDate() de acá arriba, pero para precargar
+ * un date-picker (necesita un objeto Date, no un string formateado). Los
+ * formularios de editar (Compra, Ajuste, Gasto, Transferencia, Cotización,
+ * Devolución de venta/compra, Pago...) hacían dayjs(singleX.date).toDate()
+ * directo -- con un campo "date"-only devuelto como medianoche UTC, eso
+ * corría la fecha un día para atrás en Ecuador (UTC-5) y el date-picker
+ * mostraba "ayer" en vez del día real guardado.
+ */
+export const toLocalDateObject = (date) => {
+    const esFechaSinHora = typeof date === "string" && /T00:00:00(\.0+)?Z$/.test(date);
+    return dayjs(esFechaSinHora ? date.slice(0, 10) : date).toDate();
+};
+
+/**
  * A dónde mandar a un usuario según sus permisos reales -- busca en la
  * lista de rutas registradas (routes.js) en vez de adivinar la ruta
  * cortando el texto del permiso (ej. "manage_pos_screen" -> "pos_screen"

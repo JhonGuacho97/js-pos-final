@@ -747,7 +747,7 @@ var ExpenseForm = function ExpenseForm(props) {
     frontSetting = props.frontSetting;
   var navigate = (0,react_router_dom__WEBPACK_IMPORTED_MODULE_3__.useNavigate)();
   var _useState = (0,react__WEBPACK_IMPORTED_MODULE_0__.useState)({
-      date: singleExpense ? dayjs__WEBPACK_IMPORTED_MODULE_4___default()(singleExpense[0].date).toDate() : new Date(),
+      date: singleExpense ? (0,_shared_sharedMethod__WEBPACK_IMPORTED_MODULE_10__.toLocalDateObject)(singleExpense[0].date) : new Date(),
       warehouse_id: singleExpense ? singleExpense[0].warehouse_id : '',
       expense_category_id: singleExpense ? singleExpense[0].expense_category_id : '',
       amount: singleExpense ? singleExpense[0].amount : '',
@@ -780,7 +780,7 @@ var ExpenseForm = function ExpenseForm(props) {
     }] : null),
     _useState8 = _slicedToArray(_useState7, 1),
     selectExpenseCategory = _useState8[0];
-  var disabled = singleExpense && singleExpense[0].title === expenseValue.title && singleExpense[0].expense_category_id.value === expenseValue.expense_category_id.value && singleExpense[0].warehouse_id.value === expenseValue.warehouse_id.value && singleExpense[0].amount === expenseValue.amount && singleExpense[0].details === expenseValue.details && dayjs__WEBPACK_IMPORTED_MODULE_4___default()(singleExpense[0].date).toDate().toString() === expenseValue.date.toString();
+  var disabled = singleExpense && singleExpense[0].title === expenseValue.title && singleExpense[0].expense_category_id.value === expenseValue.expense_category_id.value && singleExpense[0].warehouse_id.value === expenseValue.warehouse_id.value && singleExpense[0].amount === expenseValue.amount && singleExpense[0].details === expenseValue.details && (0,_shared_sharedMethod__WEBPACK_IMPORTED_MODULE_10__.toLocalDateObject)(singleExpense[0].date).toString() === expenseValue.date.toString();
   var handleValidation = function handleValidation() {
     var errorss = {};
     var isValid = false;
