@@ -2,6 +2,7 @@
 
 namespace Database\Seeders;
 
+use App\Models\Store;
 use Illuminate\Database\Seeder;
 
 class DatabaseSeeder extends Seeder
@@ -11,6 +12,21 @@ class DatabaseSeeder extends Seeder
      */
     public function run(): void
     {
+        // config/permission.php tiene 'teams' => true de forma permanente,
+        // así que model_has_roles.store_id es NOT NULL (es parte de su
+        // primary key compuesta). DefaultUserSeeder hace
+        // $user->assignRole(...) más abajo, y Spatie inserta ahí el
+        // team id "activo" en el momento -- sin fijarlo antes, queda NULL
+        // y la inserción falla (probado en un fresh install: "Column
+        // 'store_id' cannot be null"). La migración
+        // 2026_08_10_000100_migrate_existing_data_to_initial_store ya
+        // corrió antes que este seeder y garantiza que exista al menos
+        // una Store, incluso en una base de datos nueva.
+        $store = Store::first();
+        if ($store) {
+            setPermissionsTeamId($store->id);
+        }
+
         // \App\Models\User::factory(10)->create();
         $this->call(DefaultPermissionsSeeder::class);
         $this->call(DefaultRoleSeeder::class);

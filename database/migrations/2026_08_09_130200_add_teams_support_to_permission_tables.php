@@ -44,20 +44,34 @@ return new class extends Migration
     {
         $teamForeignKey = config('permission.column_names.team_foreign_key', 'store_id');
 
-        Schema::table('roles', function (Blueprint $table) use ($teamForeignKey) {
-            $table->unsignedBigInteger($teamForeignKey)->nullable()->after('id');
-            $table->index($teamForeignKey, 'roles_store_id_index');
-        });
+        // Idempotente a propósito: config/permission.php ya tiene
+        // 'teams' => true de forma permanente, así que en una instalación
+        // NUEVA la propia migración de Spatie (2022_02_21_073634) lee ese
+        // config en el momento de correr y crea estas columnas de una vez
+        // -- esta migración de retrofit solo hace falta en instalaciones
+        // VIEJAS que corrieron esa migración antes de activar teams. Sin
+        // este chequeo, un fresh install fallaba acá con "Duplicate
+        // column name 'store_id'".
+        if (! Schema::hasColumn('roles', $teamForeignKey)) {
+            Schema::table('roles', function (Blueprint $table) use ($teamForeignKey) {
+                $table->unsignedBigInteger($teamForeignKey)->nullable()->after('id');
+                $table->index($teamForeignKey, 'roles_store_id_index');
+            });
+        }
 
-        Schema::table('model_has_roles', function (Blueprint $table) use ($teamForeignKey) {
-            $table->unsignedBigInteger($teamForeignKey)->nullable()->after('role_id');
-            $table->index($teamForeignKey, 'model_has_roles_store_id_index');
-        });
+        if (! Schema::hasColumn('model_has_roles', $teamForeignKey)) {
+            Schema::table('model_has_roles', function (Blueprint $table) use ($teamForeignKey) {
+                $table->unsignedBigInteger($teamForeignKey)->nullable()->after('role_id');
+                $table->index($teamForeignKey, 'model_has_roles_store_id_index');
+            });
+        }
 
-        Schema::table('model_has_permissions', function (Blueprint $table) use ($teamForeignKey) {
-            $table->unsignedBigInteger($teamForeignKey)->nullable()->after('permission_id');
-            $table->index($teamForeignKey, 'model_has_permissions_store_id_index');
-        });
+        if (! Schema::hasColumn('model_has_permissions', $teamForeignKey)) {
+            Schema::table('model_has_permissions', function (Blueprint $table) use ($teamForeignKey) {
+                $table->unsignedBigInteger($teamForeignKey)->nullable()->after('permission_id');
+                $table->index($teamForeignKey, 'model_has_permissions_store_id_index');
+            });
+        }
     }
 
     public function down(): void

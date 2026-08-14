@@ -5,6 +5,7 @@ namespace Database\Seeders;
 use App\Models\Currency;
 use App\Models\Customer;
 use App\Models\Setting;
+use App\Models\Store;
 use App\Models\Warehouse;
 use Illuminate\Database\Seeder;
 
@@ -15,6 +16,15 @@ class SettingTableSeeder extends Seeder
      */
     public function run(): void
     {
+        // customers.store_id y warehouses.store_id son NOT NULL con FK a
+        // stores desde el retrofit multitienda -- sin esto, este seeder
+        // fallaba en cualquier instalación nueva (probado: "Cannot add or
+        // update a child row: a foreign key constraint fails"). La
+        // migración 2026_08_10_000100_migrate_existing_data_to_initial_store
+        // ya corrió antes que los seeders y garantiza que exista al menos
+        // una Store.
+        $storeId = Store::first()?->id;
+
         Customer::Create([
             'name' => 'walk-in-customer',
             'email' => 'customer@infypos.com',
@@ -22,6 +32,7 @@ class SettingTableSeeder extends Seeder
             'country' => 'india',
             'city' => 'mumbai',
             'address' => 'Dr Deshmukh Marg , mumbai',
+            'store_id' => $storeId,
         ]);
         Warehouse::create([
             'name' => 'warehouse',
@@ -30,6 +41,7 @@ class SettingTableSeeder extends Seeder
             'city' => 'mumbai',
             'email' => 'warehouse1@infypos.com',
             'zip_code' => '12345',
+            'store_id' => $storeId,
         ]);
 
         Currency::create([
