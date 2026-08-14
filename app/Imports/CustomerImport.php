@@ -31,6 +31,18 @@ class CustomerImport implements ToCollection, WithChunkReading, WithStartRow, Wi
                     throw new UnprocessableEntityHttpException('Email '.$row[1].' is not the valid email address.');
                 }
 
+                $customerIdentification = Customer::where('identification', (string) $row[6])->whereStoreId($storeId)->exists();
+                if ($customerIdentification) {
+                    throw new UnprocessableEntityHttpException('Identification '.$row[6].' is already exist.');
+                }
+
+                // Sin 'identification', CustomerObserver::saving() trata a
+                // TODOS los clientes importados como "consumidor final" y
+                // les fuerza el mismo identification fijo ('9999999999999')
+                // -- probado: la primera fila ya choca contra el cliente
+                // "Consumidor Final" que existe por defecto en cada tienda
+                // (unique(store_id, identification)), y el import entero
+                // aborta sin crear a nadie.
                 $customerData = [
                     'name' => $row[0],
                     'email' => $row[1],
@@ -38,6 +50,7 @@ class CustomerImport implements ToCollection, WithChunkReading, WithStartRow, Wi
                     'country' => $row[3],
                     'city' => $row[4],
                     'address' => $row[5],
+                    'identification' => (string) $row[6],
                     'store_id' => $storeId,
                 ];
 
@@ -75,6 +88,7 @@ class CustomerImport implements ToCollection, WithChunkReading, WithStartRow, Wi
             '3' => 'required',
             '4' => 'required',
             '5' => 'required',
+            '6' => 'required',
         ];
     }
 
@@ -87,6 +101,7 @@ class CustomerImport implements ToCollection, WithChunkReading, WithStartRow, Wi
             '3.required' => 'Country field is required',
             '4.required' => 'City field is required',
             '5.required' => 'Address field is required',
+            '6.required' => 'Identification field is required',
         ];
     }
 }
