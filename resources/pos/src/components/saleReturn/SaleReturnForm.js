@@ -19,6 +19,7 @@ import {
     placeholderText,
     onFocusInput,
     getFormattedOptions,
+    toLocalDateObject,
 } from "../../shared/sharedMethod";
 import ReactDatePicker from "../../shared/datepicker/ReactDatePicker";
 import ProductMainCalculation from "../../components/sales/ProductMainCalculation";
@@ -101,7 +102,7 @@ const SaleReturnForm = (props) => {
     useEffect(() => {
         if (singleSale) {
             setSaleReturnValue({
-                date: singleSale ? dayjs(singleSale.date).toDate() : "",
+                date: singleSale ? toLocalDateObject(singleSale.date) : "",
                 customer_id: singleSale ? singleSale.customer_id : "",
                 warehouse_id: singleSale ? singleSale.warehouse_id : "",
                 tax_rate: singleSale ? singleSale.tax_rate.toFixed(2) : "0.00",

@@ -1295,7 +1295,7 @@ var SaleReturnForm = function SaleReturnForm(props) {
   (0,react__WEBPACK_IMPORTED_MODULE_0__.useEffect)(function () {
     if (singleSale) {
       setSaleReturnValue({
-        date: singleSale ? dayjs__WEBPACK_IMPORTED_MODULE_3___default()(singleSale.date).toDate() : "",
+        date: singleSale ? (0,_shared_sharedMethod__WEBPACK_IMPORTED_MODULE_11__.toLocalDateObject)(singleSale.date) : "",
         customer_id: singleSale ? singleSale.customer_id : "",
         warehouse_id: singleSale ? singleSale.warehouse_id : "",
         tax_rate: singleSale ? singleSale.tax_rate.toFixed(2) : "0.00",
@@ -1783,7 +1783,7 @@ var EditPaymentModal = function EditPaymentModal(props) {
       setPaymentValue({
         amount_to_pay: editSaleItem ? editSaleItem.received_amount : "",
         payment_type: paymentTypeDefaultValue && paymentTypeDefaultValue[0],
-        payment_date: editSaleItem ? dayjs__WEBPACK_IMPORTED_MODULE_3___default()(editSaleItem.payment_date).toDate() : '',
+        payment_date: editSaleItem ? (0,_shared_sharedMethod__WEBPACK_IMPORTED_MODULE_2__.toLocalDateObject)(editSaleItem.payment_date) : '',
         // paid_amount: payment_date ? payment_date.paid_amount === "0.00" ? createPaymentItem.grand_total : createPaymentItem.paid_amount : '',
         payment_id: editSaleItem ? editSaleItem.id : "",
         amount: editSaleItem ? editSaleItem.amount : "",

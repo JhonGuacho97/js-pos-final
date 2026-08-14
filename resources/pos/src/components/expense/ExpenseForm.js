@@ -12,7 +12,7 @@ dayjs.extend(localizedFormat);
 dayjs.extend(isoWeek);
 dayjs.extend(relativeTime);
 import { InputGroup } from 'react-bootstrap-v5';
-import { decimalValidate, getFormattedMessage, placeholderText } from '../../shared/sharedMethod';
+import { decimalValidate, getFormattedMessage, placeholderText, toLocalDateObject } from '../../shared/sharedMethod';
 import { editExpense } from '../../store/action/expenseAction';
 import ModelFooter from '../../shared/components/modelFooter';
 import ReactSelect from '../../shared/select/reactSelect';
@@ -22,7 +22,7 @@ const ExpenseForm = ( props ) => {
     const { addExpenseData, id, editExpense, singleExpense, warehouses, expenseCategories, frontSetting } = props;
     const navigate = useNavigate();
     const [ expenseValue, setExpenseValue ] = useState( {
-        date: singleExpense ? dayjs( singleExpense[ 0 ].date ).toDate() : new Date(),
+        date: singleExpense ? toLocalDateObject( singleExpense[ 0 ].date ) : new Date(),
         warehouse_id: singleExpense ? singleExpense[ 0 ].warehouse_id : '',
         expense_category_id: singleExpense ? singleExpense[ 0 ].expense_category_id : '',
         amount: singleExpense ? singleExpense[ 0 ].amount : '',
@@ -40,7 +40,7 @@ const ExpenseForm = ( props ) => {
         label: singleExpense[ 0 ].expense_category_id.label, value: singleExpense[ 0 ].expense_category_id.value
     } ] ) : null );
 
-    const disabled = singleExpense && singleExpense[ 0 ].title === expenseValue.title && singleExpense[ 0 ].expense_category_id.value === expenseValue.expense_category_id.value && singleExpense[ 0 ].warehouse_id.value === expenseValue.warehouse_id.value && singleExpense[ 0 ].amount === expenseValue.amount && singleExpense[ 0 ].details === expenseValue.details && dayjs( singleExpense[ 0 ].date ).toDate().toString() === expenseValue.date.toString()
+    const disabled = singleExpense && singleExpense[ 0 ].title === expenseValue.title && singleExpense[ 0 ].expense_category_id.value === expenseValue.expense_category_id.value && singleExpense[ 0 ].warehouse_id.value === expenseValue.warehouse_id.value && singleExpense[ 0 ].amount === expenseValue.amount && singleExpense[ 0 ].details === expenseValue.details && toLocalDateObject( singleExpense[ 0 ].date ).toString() === expenseValue.date.toString()
 
     const handleValidation = () => {
         let errorss = {};

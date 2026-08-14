@@ -15,7 +15,7 @@ import { fetchProductsByWarehouse } from '../../store/action/productAction';
 import { editSale } from '../../store/action/salesAction';
 import ProductSearch from '../../shared/components/product-cart/search/ProductSearch';
 import ProductRowTable from '../../shared/components/sales/ProductRowTable';
-import { placeholderText, getFormattedMessage, decimalValidate, onFocusInput, getFormattedOptions } from '../../shared/sharedMethod';
+import { placeholderText, getFormattedMessage, decimalValidate, onFocusInput, getFormattedOptions, toLocalDateObject } from '../../shared/sharedMethod';
 import ReactDatePicker from '../../shared/datepicker/ReactDatePicker';
 import ProductMainCalculation from './ProductMainCalculation';
 import { calculateCartTotalAmount, calculateCartTotalTaxAmount } from '../../shared/calculation/calculation';
@@ -89,7 +89,7 @@ const QuotationForm = ( props ) => {
     useEffect( () => {
         if ( singleQuotation ) {
             setSaleValue( {
-                date: singleQuotation ? dayjs( singleQuotation.date ).toDate() : '',
+                date: singleQuotation ? toLocalDateObject( singleQuotation.date ) : '',
                 customer_id: singleQuotation ? singleQuotation.customer_id : '',
                 warehouse_id: singleQuotation ? singleQuotation.warehouse_id : '',
                 tax_rate: singleQuotation ? singleQuotation.tax_rate.toFixed( 2 ) : '0.00',

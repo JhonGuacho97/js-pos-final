@@ -302,7 +302,7 @@ var AdjustmentForm = function AdjustmentForm(props) {
   (0,react__WEBPACK_IMPORTED_MODULE_0__.useEffect)(function () {
     if (singleAdjustMent) {
       setAdjustMentValue({
-        date: singleAdjustMent ? dayjs__WEBPACK_IMPORTED_MODULE_2___default()(singleAdjustMent.date).toDate() : '',
+        date: singleAdjustMent ? (0,_shared_sharedMethod__WEBPACK_IMPORTED_MODULE_12__.toLocalDateObject)(singleAdjustMent.date) : '',
         warehouse_id: singleAdjustMent ? singleAdjustMent.warehouse_id : '',
         AdjustmentType: singleAdjustMent ? singleAdjustMent.AdjustmentType : ''
       });

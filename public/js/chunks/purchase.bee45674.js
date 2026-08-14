@@ -709,7 +709,7 @@ var PurchaseForm = function PurchaseForm(props) {
     quantity = _useState12[0],
     setQuantity = _useState12[1];
   var _useState13 = (0,react__WEBPACK_IMPORTED_MODULE_0__.useState)({
-      date: singlePurchase ? dayjs__WEBPACK_IMPORTED_MODULE_3___default()(singlePurchase.date).toDate() : new Date(),
+      date: singlePurchase ? (0,_shared_sharedMethod__WEBPACK_IMPORTED_MODULE_15__.toLocalDateObject)(singlePurchase.date) : new Date(),
       warehouse_id: singlePurchase ? singlePurchase.warehouse_id : '',
       supplier_id: singlePurchase ? singlePurchase.supplier_id : '',
       // (singlePurchase.tax_rate ?? 0) porque una compra puede llegar acá
@@ -1689,7 +1689,7 @@ var EditPaymentModal = function EditPaymentModal(props) {
       setPaymentValue({
         amount_to_pay: editSaleItem ? editSaleItem.received_amount : "",
         payment_type: paymentTypeDefaultValue && paymentTypeDefaultValue[0],
-        payment_date: editSaleItem ? dayjs__WEBPACK_IMPORTED_MODULE_3___default()(editSaleItem.payment_date).toDate() : '',
+        payment_date: editSaleItem ? (0,_shared_sharedMethod__WEBPACK_IMPORTED_MODULE_2__.toLocalDateObject)(editSaleItem.payment_date) : '',
         // paid_amount: payment_date ? payment_date.paid_amount === "0.00" ? createPaymentItem.grand_total : createPaymentItem.paid_amount : '',
         payment_id: editSaleItem ? editSaleItem.id : "",
         amount: editSaleItem ? editSaleItem.amount : "",

@@ -1943,7 +1943,7 @@ var QuotationForm = function QuotationForm(props) {
   (0,react__WEBPACK_IMPORTED_MODULE_0__.useEffect)(function () {
     if (singleQuotation) {
       setSaleValue({
-        date: singleQuotation ? dayjs__WEBPACK_IMPORTED_MODULE_4___default()(singleQuotation.date).toDate() : '',
+        date: singleQuotation ? (0,_shared_sharedMethod__WEBPACK_IMPORTED_MODULE_14__.toLocalDateObject)(singleQuotation.date) : '',
         customer_id: singleQuotation ? singleQuotation.customer_id : '',
         warehouse_id: singleQuotation ? singleQuotation.warehouse_id : '',
         tax_rate: singleQuotation ? singleQuotation.tax_rate.toFixed(2) : '0.00',
@@ -2833,7 +2833,7 @@ var SalesForm = function SalesForm(props) {
   (0,react__WEBPACK_IMPORTED_MODULE_0__.useEffect)(function () {
     if (singleSale && !isQuotation) {
       setSaleValue({
-        date: singleSale ? dayjs__WEBPACK_IMPORTED_MODULE_9___default()(singleSale.date, 'YYYY-MM-DD').toDate() : '',
+        date: singleSale ? (0,_shared_sharedMethod__WEBPACK_IMPORTED_MODULE_19__.toLocalDateObject)(singleSale.date) : '',
         customer_id: singleSale ? singleSale.customer_id : '',
         quotation_id: singleSale ? singleSale.quotation_id : '',
         warehouse_id: singleSale ? singleSale.warehouse_id : '',
@@ -2852,7 +2852,7 @@ var SalesForm = function SalesForm(props) {
     }
     if (singleSale && isQuotation) {
       setSaleValue({
-        date: singleSale ? dayjs__WEBPACK_IMPORTED_MODULE_9___default()(singleSale.date, 'YYYY-MM-DD').toDate() : '',
+        date: singleSale ? (0,_shared_sharedMethod__WEBPACK_IMPORTED_MODULE_19__.toLocalDateObject)(singleSale.date) : '',
         quotation_id: singleSale ? singleSale.quotation_id : '',
         customer_id: singleSale ? singleSale.customer_id : '',
         warehouse_id: singleSale ? singleSale.warehouse_id : '',

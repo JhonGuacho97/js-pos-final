@@ -14,7 +14,7 @@ import { InputGroup, Table } from 'react-bootstrap-v5';
 import { editTransfer } from '../../store/action/transfersAction';
 import TransfersTable from '../../shared/components/transfers/TransfersTable';
 import { prepareTransferArray } from '../../shared/prepareArray/prepareTransferArray';
-import { decimalValidate, getFormattedMessage, placeholderText, onFocusInput, getFormattedOptions } from '../../shared/sharedMethod';
+import { decimalValidate, getFormattedMessage, placeholderText, onFocusInput, getFormattedOptions, toLocalDateObject } from '../../shared/sharedMethod';
 import { calculateCartTotalAmount, calculateCartTotalTaxAmount } from '../../shared/calculation/calculation';
 import ModelFooter from '../../shared/components/modelFooter';
 import ProductSearch from '../../shared/components/product-cart/search/ProductSearch';
@@ -47,7 +47,7 @@ const TransferForm = ( props ) => {
     const [ quantity, setQuantity ] = useState( 0 );
 
     const [ transferValue, setTransferValue ] = useState( {
-        date: singleTransfer ? dayjs( singleTransfer.date ).toDate() : new Date(),
+        date: singleTransfer ? toLocalDateObject( singleTransfer.date ) : new Date(),
         from_warehouse_id: singleTransfer ? singleTransfer.from_warehouse_id : '',
         to_warehouse_id: singleTransfer ? singleTransfer.to_warehouse_id : '',
         warehouse_id: undefined,

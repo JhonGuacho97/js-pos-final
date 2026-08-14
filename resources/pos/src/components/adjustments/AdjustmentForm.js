@@ -14,7 +14,7 @@ import { fetchProductsByWarehouse } from '../../store/action/productAction';
 import { editAdjustment } from '../../store/action/adjustMentAction';
 import ProductSearch from '../../shared/components/product-cart/search/ProductSearch';
 import AdjustmentRowTable from '../../shared/components/adjustments/AdjustmentRowTable';
-import { placeholderText, getFormattedMessage } from '../../shared/sharedMethod';
+import { placeholderText, getFormattedMessage, toLocalDateObject } from '../../shared/sharedMethod';
 import ReactDatePicker from '../../shared/datepicker/ReactDatePicker';
 import { prepareSaleProductArray } from '../../shared/prepareArray/prepareSaleArray';
 import ModelFooter from '../../shared/components/modelFooter';
@@ -72,7 +72,7 @@ const AdjustmentForm = ( props ) => {
     useEffect( () => {
         if ( singleAdjustMent ) {
             setAdjustMentValue( {
-                date: singleAdjustMent ? dayjs( singleAdjustMent.date ).toDate() : '',
+                date: singleAdjustMent ? toLocalDateObject( singleAdjustMent.date ) : '',
                 warehouse_id: singleAdjustMent ? singleAdjustMent.warehouse_id : '',
                 AdjustmentType: singleAdjustMent ? singleAdjustMent.AdjustmentType : ''
             } )
