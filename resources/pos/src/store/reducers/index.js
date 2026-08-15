@@ -34,11 +34,7 @@ import changeLanguageReducer from './changeLanguageReducer';
 import updateLanguageReducer from './updateLanguageReducer';
 import dashboardReducers from './dashboardReducers';
 import recentSaleDashboardReducer from './recentSaleDashboardReducer';
-import topSellingProductReducer from './topSellingProductReducer';
-import weekSalePurchaseReducer from './weekSalePurchaseReducer';
 import salesReturnReducer from './salesReturnReducer';
-import yearTopProductReducer from './yearTopProductReducer';
-import topCustomersReducer from './topCustomersReducer';
 import purchaseDetailsReducers from './purchaseDetailsReducers';
 import saleDetailsReducers from './saleDetailsReducers';
 import purchaseReturnReducers from './purchaseReturnReducers';
@@ -103,6 +99,13 @@ import loginLogsReducer from './loginLogsReducer';
 import kardexReducer from './kardexReducer';
 import storeReducer from './storeReducer';
 import storesReducer from './storesReducer';
+import todayOverviewReducer from './todayOverviewReducer';
+import todayHourlyBreakdownReducer from './todayHourlyBreakdownReducer';
+import performanceNetSalesReducer from './performanceNetSalesReducer';
+import categoryMixReducer from './categoryMixReducer';
+import topProductsReducer from './topProductsReducer';
+import salesHeatmapReducer from './salesHeatmapReducer';
+import activeShiftsReducer from './activeShiftsReducer';
 
 export default combineReducers({
     myStores: storeReducer,
@@ -145,10 +148,6 @@ export default combineReducers({
     updateLanguage: updateLanguageReducer,
     todayCount: dashboardReducers,
     recentSalesDashboard: recentSaleDashboardReducer,
-    topSelling: topSellingProductReducer,
-    weekSalePurchase: weekSalePurchaseReducer,
-    yearTopProduct: yearTopProductReducer,
-    topCustomers: topCustomersReducer,
     purchaseDetails: purchaseDetailsReducers,
     saleDetails: saleDetailsReducers,
     salesReturn: salesReturnReducer,
@@ -208,5 +207,12 @@ export default combineReducers({
     baseUnits: baseUnitsReducres,
     base: baseUnitReducer,
     closeRegisterDetails: posCloseRegisterDetailsReducer,
-    registerReportDetails: posRegisterReportDetailsReducer
+    registerReportDetails: posRegisterReportDetailsReducer,
+    todayOverview: todayOverviewReducer,
+    todayHourlyBreakdown: todayHourlyBreakdownReducer,
+    performanceNetSales: performanceNetSalesReducer,
+    categoryMix: categoryMixReducer,
+    topProducts: topProductsReducer,
+    salesHeatmap: salesHeatmapReducer,
+    activeShifts: activeShiftsReducer
 });

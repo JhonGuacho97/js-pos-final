@@ -1,8 +1,8 @@
-import {yearTopProductActionType} from '../../constants';
+import { activeShiftsActionType } from '../../constants';
 
 export default (state = [], action) => {
     switch (action.type) {
-        case yearTopProductActionType.YEAR_TOP_PRODUCT:
+        case activeShiftsActionType.ACTIVE_SHIFTS:
             return action.payload;
         default:
             return state;

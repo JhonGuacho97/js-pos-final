@@ -4104,3 +4104,870 @@ div .rdt_Pagination div:first-of-type svg {
 .main-product-details tbody tr:last-child td {
     border-bottom: 1px solid #dee2e6;
 }
+
+/* --- Rediseño dashboard (cabecera, ventas de hoy, tarjetas KPI) --- */
+
+.dash-header {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 16px;
+    margin-bottom: 20px;
+}
+
+.dash-header-greeting {
+    font-size: 1.5rem;
+    font-weight: 700;
+    color: #111827;
+    margin: 0 0 6px;
+}
+
+.dash-header-meta {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    font-size: 0.85rem;
+    color: #6b7280;
+}
+
+.dash-header-live {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    color: #16a34a;
+    font-weight: 600;
+}
+
+.dash-header-live-dot {
+    width: 7px;
+    height: 7px;
+    border-radius: 50%;
+    background-color: #16a34a;
+    animation: dash-live-pulse 2s infinite;
+}
+
+.dash-header-sep {
+    margin: 0 8px;
+    color: #d1d5db;
+}
+
+.dash-header-right {
+    display: flex;
+    gap: 10px;
+    flex-wrap: wrap;
+}
+
+.dash-header-chip {
+    display: flex;
+    flex-direction: column;
+    padding: 8px 14px;
+    background-color: #fff;
+    border: 1px solid #eef0f4;
+    border-radius: 10px;
+    min-width: 110px;
+}
+
+.dash-header-chip-label {
+    font-size: 0.72rem;
+    color: #6b7280;
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+}
+
+.dash-header-chip-value {
+    font-size: 0.95rem;
+    font-weight: 700;
+    color: #111827;
+}
+
+@keyframes dash-live-pulse {
+    0% { box-shadow: 0 0 0 0 rgba(22, 163, 74, 0.4); }
+    70% { box-shadow: 0 0 0 6px rgba(22, 163, 74, 0); }
+    100% { box-shadow: 0 0 0 0 rgba(22, 163, 74, 0); }
+}
+
+.stat-card {
+    background-color: #fff;
+    border: 1px solid #eef0f4;
+    border-radius: 14px;
+    padding: 18px 20px;
+    height: 100%;
+}
+
+.stat-card-top {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 10px;
+}
+
+.stat-card-title {
+    font-size: 0.82rem;
+    color: #6b7280;
+    font-weight: 600;
+}
+
+.stat-card-icon {
+    width: 32px;
+    height: 32px;
+    border-radius: 9px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background-color: rgba(47, 111, 237, 0.1);
+    color: #2F6FED;
+    font-size: 0.85rem;
+}
+
+.stat-card-value {
+    font-size: 1.5rem;
+    font-weight: 700;
+    color: #111827;
+    line-height: 1.2;
+}
+
+.stat-card-delta {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    font-size: 0.78rem;
+    font-weight: 600;
+    margin-top: 8px;
+}
+
+.stat-card-delta-up { color: #16a34a; }
+.stat-card-delta-down { color: #dc2626; }
+
+.today-sales-card {
+    background-color: #fff;
+    border: 1px solid #eef0f4;
+    border-radius: 14px;
+    padding: 22px 24px;
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+}
+
+.today-sales-card-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 8px;
+}
+
+.today-sales-card-title {
+    font-size: 0.92rem;
+    font-weight: 600;
+    color: #6b7280;
+}
+
+.today-sales-card-delta {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    font-size: 0.8rem;
+    font-weight: 700;
+}
+
+.today-sales-card-delta-label {
+    font-weight: 500;
+    color: #6b7280;
+}
+
+.today-sales-card-value {
+    font-size: 2.25rem;
+    font-weight: 800;
+    color: #111827;
+    margin: 6px 0 8px;
+}
+
+.today-sales-card-sparkline {
+    position: relative;
+    height: 90px;
+    flex: 1;
+    min-height: 90px;
+}
+
+.today-sales-card-footer {
+    display: flex;
+    gap: 28px;
+    margin-top: 14px;
+    padding-top: 14px;
+    border-top: 1px solid #eef0f4;
+}
+
+.today-sales-card-metric {
+    display: flex;
+    flex-direction: column;
+}
+
+.today-sales-card-metric-label {
+    font-size: 0.75rem;
+    color: #6b7280;
+}
+
+.today-sales-card-metric-value {
+    font-size: 1rem;
+    font-weight: 700;
+    color: #111827;
+}
+
+/* --- Rediseño dashboard: sección Rendimiento (ventas netas + mezcla de categorías) --- */
+
+.performance-section-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 10px;
+    margin-bottom: 14px;
+}
+
+.performance-section-title {
+    font-size: 1.05rem;
+    font-weight: 700;
+    color: #111827;
+    margin: 0;
+    padding-left: 12px;
+    border-left: 3px solid #f7823a;
+}
+
+.period-selector {
+    display: inline-flex;
+    background-color: #f1f2f5;
+    border-radius: 8px;
+    padding: 3px;
+    gap: 2px;
+}
+
+.period-selector-btn {
+    border: none;
+    background: transparent;
+    padding: 5px 12px;
+    font-size: 0.82rem;
+    font-weight: 600;
+    color: #6b7280;
+    border-radius: 6px;
+    cursor: pointer;
+}
+
+.period-selector-btn-active {
+    background-color: #fff;
+    color: #111827;
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.08);
+}
+
+.performance-card {
+    background-color: #fff;
+    border: 1px solid #eef0f4;
+    border-radius: 14px;
+    padding: 20px 22px;
+    height: 100%;
+}
+
+.performance-card-title {
+    font-size: 0.95rem;
+    font-weight: 700;
+    color: #111827;
+}
+
+.performance-card-title-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 12px;
+}
+
+.performance-card-period-tag {
+    font-size: 0.75rem;
+    font-weight: 600;
+    color: #6b7280;
+    background-color: #f1f2f5;
+    padding: 3px 9px;
+    border-radius: 6px;
+}
+
+.performance-card-subtitle {
+    font-size: 0.78rem;
+    color: #9ca3af;
+    margin-top: 2px;
+    margin-bottom: 16px;
+}
+
+.performance-metrics-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 28px;
+    margin-bottom: 18px;
+}
+
+.performance-metric {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.performance-metric-label {
+    font-size: 0.72rem;
+    color: #6b7280;
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+}
+
+.performance-metric-value-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.performance-metric-value {
+    font-size: 1.35rem;
+    font-weight: 700;
+    color: #111827;
+}
+
+.performance-delta {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    font-size: 0.72rem;
+    font-weight: 700;
+    padding: 2px 7px;
+    border-radius: 999px;
+}
+
+.performance-delta.stat-card-delta-up {
+    background-color: rgba(22, 163, 74, 0.1);
+}
+
+.performance-delta.stat-card-delta-down {
+    background-color: rgba(220, 38, 38, 0.1);
+}
+
+.category-mix-donut {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+}
+
+.category-mix-donut-chart {
+    position: relative;
+    width: 220px;
+    height: 220px;
+}
+
+.category-mix-donut-center {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    text-align: center;
+    pointer-events: none;
+}
+
+.category-mix-donut-center-value {
+    font-size: 1.15rem;
+    font-weight: 800;
+    color: #111827;
+}
+
+.category-mix-donut-center-label {
+    font-size: 0.68rem;
+    color: #9ca3af;
+    letter-spacing: 0.03em;
+}
+
+.category-mix-donut-legend {
+    width: 100%;
+    margin-top: 14px;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.category-mix-donut-legend-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 0.85rem;
+}
+
+.category-mix-donut-legend-dot {
+    width: 9px;
+    height: 9px;
+    border-radius: 50%;
+    flex-shrink: 0;
+}
+
+.category-mix-donut-legend-name {
+    color: #374151;
+    flex: 1;
+}
+
+.category-mix-donut-legend-value {
+    font-weight: 600;
+    color: #111827;
+}
+
+/* --- Rediseño dashboard: Insights de catálogo (top productos, stock bajo, actividad) --- */
+
+.insight-card {
+    background-color: #fff;
+    border: 1px solid #eef0f4;
+    border-radius: 14px;
+    padding: 18px 20px;
+    height: 100%;
+}
+
+.insight-card-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-bottom: 14px;
+}
+
+.insight-card-title {
+    font-size: 0.92rem;
+    font-weight: 700;
+    color: #111827;
+}
+
+.insight-card-count-badge {
+    font-size: 0.72rem;
+    font-weight: 700;
+    color: #dc2626;
+    background-color: rgba(220, 38, 38, 0.1);
+    padding: 2px 9px;
+    border-radius: 999px;
+}
+
+.insight-empty {
+    font-size: 0.85rem;
+    color: #9ca3af;
+    text-align: center;
+    padding: 24px 0;
+}
+
+.insight-period-tabs {
+    display: inline-flex;
+    gap: 2px;
+    background-color: #f1f2f5;
+    border-radius: 8px;
+    padding: 3px;
+}
+
+.insight-period-tab {
+    border: none;
+    background: transparent;
+    padding: 4px 9px;
+    font-size: 0.72rem;
+    font-weight: 600;
+    color: #6b7280;
+    border-radius: 6px;
+    cursor: pointer;
+}
+
+.insight-period-tab-active {
+    background-color: #fff;
+    color: #111827;
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.08);
+}
+
+/* Top productos */
+
+.top-products-list {
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+}
+
+.top-products-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.top-products-rank {
+    width: 18px;
+    flex-shrink: 0;
+    font-size: 0.78rem;
+    font-weight: 700;
+    color: #9ca3af;
+}
+
+.top-products-thumb {
+    width: 34px;
+    height: 34px;
+    border-radius: 8px;
+    object-fit: cover;
+    flex-shrink: 0;
+}
+
+.top-products-thumb-placeholder {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background-color: #f1f2f5;
+    color: #6b7280;
+    font-weight: 700;
+    font-size: 0.85rem;
+}
+
+.top-products-info {
+    display: flex;
+    flex-direction: column;
+    flex: 1;
+    min-width: 0;
+}
+
+.top-products-name {
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: #111827;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.top-products-category {
+    font-size: 0.72rem;
+    color: #9ca3af;
+}
+
+.top-products-metrics {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    flex-shrink: 0;
+}
+
+.top-products-qty {
+    font-size: 0.72rem;
+    color: #6b7280;
+}
+
+.top-products-total {
+    font-size: 0.85rem;
+    font-weight: 700;
+    color: #111827;
+}
+
+/* Stock bajo */
+
+.low-stock-list {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+}
+
+.low-stock-row-top {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 8px;
+    margin-bottom: 6px;
+}
+
+.low-stock-name {
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: #111827;
+}
+
+.low-stock-qty {
+    font-size: 0.75rem;
+    color: #6b7280;
+    white-space: nowrap;
+}
+
+.low-stock-bar-track {
+    height: 6px;
+    border-radius: 999px;
+    background-color: #f1f2f5;
+    overflow: hidden;
+}
+
+.low-stock-bar-fill {
+    height: 100%;
+    border-radius: 999px;
+}
+
+.low-stock-bar-critical {
+    background-color: #dc2626;
+}
+
+.low-stock-bar-warning {
+    background-color: #f0b429;
+}
+
+.low-stock-row-bottom {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-top: 6px;
+}
+
+.low-stock-warehouse {
+    font-size: 0.72rem;
+    color: #9ca3af;
+}
+
+.low-stock-reorder-btn {
+    font-size: 0.72rem;
+    font-weight: 700;
+    color: #2F6FED;
+    background-color: rgba(47, 111, 237, 0.1);
+    padding: 3px 10px;
+    border-radius: 6px;
+    text-decoration: none;
+}
+
+.low-stock-reorder-btn:hover {
+    background-color: rgba(47, 111, 237, 0.18);
+    color: #2F6FED;
+}
+
+/* Feed de actividad */
+
+.activity-feed-list {
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+}
+
+.activity-feed-row {
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+}
+
+.activity-feed-dot {
+    width: 7px;
+    height: 7px;
+    border-radius: 50%;
+    background-color: #2F6FED;
+    margin-top: 6px;
+    flex-shrink: 0;
+}
+
+.activity-feed-body {
+    flex: 1;
+    min-width: 0;
+}
+
+.activity-feed-line {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    flex-wrap: wrap;
+    font-size: 0.83rem;
+}
+
+.activity-feed-ref {
+    font-weight: 700;
+    color: #111827;
+}
+
+.activity-feed-customer {
+    color: #6b7280;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.activity-feed-amount {
+    margin-left: auto;
+    font-weight: 700;
+    color: #111827;
+}
+
+.activity-feed-meta {
+    display: flex;
+    gap: 8px;
+    font-size: 0.72rem;
+    color: #9ca3af;
+    margin-top: 2px;
+}
+
+/* --- Rediseño dashboard: Insights (mapa de calor + turnos) --- */
+
+.insight-card-link {
+    font-size: 0.82rem;
+    font-weight: 600;
+    color: #f7823a;
+    text-decoration: none;
+}
+
+.insight-card-link:hover {
+    color: #e8590c;
+}
+
+.heatmap-subtitle {
+    font-size: 0.75rem;
+    color: #9ca3af;
+    margin-top: 2px;
+}
+
+.heatmap-header {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 10px;
+    margin-bottom: 12px;
+}
+
+.heatmap-legend {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    font-size: 0.75rem;
+    color: #6b7280;
+}
+
+.heatmap-legend-swatch {
+    width: 13px;
+    height: 13px;
+    border-radius: 3px;
+}
+
+.heatmap-range {
+    font-size: 0.72rem;
+    color: #9ca3af;
+    margin-bottom: 10px;
+}
+
+.heatmap-scroll {
+    overflow-x: auto;
+}
+
+.heatmap-grid {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    min-width: 640px;
+}
+
+.heatmap-row {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+}
+
+.heatmap-day-label {
+    width: 34px;
+    flex-shrink: 0;
+    font-size: 0.75rem;
+    color: #6b7280;
+}
+
+.heatmap-hour-label {
+    flex: 1;
+    text-align: center;
+    font-size: 0.65rem;
+    color: #9ca3af;
+}
+
+.heatmap-cell {
+    flex: 1;
+    aspect-ratio: 1;
+    border-radius: 4px;
+    min-width: 20px;
+}
+
+/* Turno */
+
+.shift-table {
+    display: flex;
+    flex-direction: column;
+}
+
+.shift-table-head {
+    display: grid;
+    grid-template-columns: 1.6fr 1fr 1fr 0.6fr;
+    padding-bottom: 8px;
+    border-bottom: 1px solid #eef0f4;
+    font-size: 0.68rem;
+    font-weight: 700;
+    color: #9ca3af;
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+}
+
+.shift-table-row {
+    display: grid;
+    grid-template-columns: 1.6fr 1fr 1fr 0.6fr;
+    align-items: center;
+    padding: 12px 0;
+    border-bottom: 1px solid #f5f6f8;
+}
+
+.shift-table-row:last-child {
+    border-bottom: none;
+}
+
+.shift-col-right {
+    text-align: right;
+}
+
+.shift-staff-cell {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.shift-avatar {
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
+    background-color: rgba(247, 130, 58, 0.15);
+    color: #e8590c;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.78rem;
+    font-weight: 700;
+    flex-shrink: 0;
+}
+
+.shift-name {
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: #111827;
+}
+
+.shift-status-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    font-size: 0.72rem;
+    font-weight: 600;
+    padding: 3px 9px;
+    border-radius: 999px;
+}
+
+.shift-status-on {
+    background-color: rgba(22, 163, 74, 0.1);
+    color: #16a34a;
+}
+
+.shift-status-off {
+    background-color: rgba(107, 114, 128, 0.12);
+    color: #6b7280;
+}
+
+.shift-status-dot {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background-color: currentColor;
+}
+
+.shift-sales-value {
+    font-weight: 700;
+    color: #111827;
+}

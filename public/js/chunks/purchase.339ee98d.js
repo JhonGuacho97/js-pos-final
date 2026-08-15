@@ -15,13 +15,20 @@ __webpack_require__.r(__webpack_exports__);
 /* harmony import */ var react_redux__WEBPACK_IMPORTED_MODULE_1__ = __webpack_require__(/*! react-redux */ "./node_modules/react-redux/es/index.js");
 /* harmony import */ var _MasterLayout__WEBPACK_IMPORTED_MODULE_2__ = __webpack_require__(/*! ../MasterLayout */ "./resources/pos/src/components/MasterLayout.js");
 /* harmony import */ var _header_HeaderTitle__WEBPACK_IMPORTED_MODULE_3__ = __webpack_require__(/*! ../header/HeaderTitle */ "./resources/pos/src/components/header/HeaderTitle.js");
-/* harmony import */ var react_router_dom__WEBPACK_IMPORTED_MODULE_4__ = __webpack_require__(/*! react-router-dom */ "./node_modules/react-router/dist/index.js");
-/* harmony import */ var _store_action_warehouseAction__WEBPACK_IMPORTED_MODULE_5__ = __webpack_require__(/*! ../../store/action/warehouseAction */ "./resources/pos/src/store/action/warehouseAction.js");
-/* harmony import */ var _store_action_supplierAction__WEBPACK_IMPORTED_MODULE_6__ = __webpack_require__(/*! ../../store/action/supplierAction */ "./resources/pos/src/store/action/supplierAction.js");
-/* harmony import */ var _PurchaseForm__WEBPACK_IMPORTED_MODULE_7__ = __webpack_require__(/*! ./PurchaseForm */ "./resources/pos/src/components/purchase/PurchaseForm.js");
-/* harmony import */ var _store_action_purchaseAction__WEBPACK_IMPORTED_MODULE_8__ = __webpack_require__(/*! ../../store/action/purchaseAction */ "./resources/pos/src/store/action/purchaseAction.js");
-/* harmony import */ var _shared_sharedMethod__WEBPACK_IMPORTED_MODULE_9__ = __webpack_require__(/*! ../../shared/sharedMethod */ "./resources/pos/src/shared/sharedMethod.js");
-/* harmony import */ var react_jsx_runtime__WEBPACK_IMPORTED_MODULE_10__ = __webpack_require__(/*! react/jsx-runtime */ "./node_modules/react/jsx-runtime.js");
+/* harmony import */ var react_router_dom__WEBPACK_IMPORTED_MODULE_4__ = __webpack_require__(/*! react-router-dom */ "./node_modules/react-router-dom/dist/index.js");
+/* harmony import */ var react_router_dom__WEBPACK_IMPORTED_MODULE_5__ = __webpack_require__(/*! react-router-dom */ "./node_modules/react-router/dist/index.js");
+/* harmony import */ var _store_action_warehouseAction__WEBPACK_IMPORTED_MODULE_6__ = __webpack_require__(/*! ../../store/action/warehouseAction */ "./resources/pos/src/store/action/warehouseAction.js");
+/* harmony import */ var _store_action_supplierAction__WEBPACK_IMPORTED_MODULE_7__ = __webpack_require__(/*! ../../store/action/supplierAction */ "./resources/pos/src/store/action/supplierAction.js");
+/* harmony import */ var _PurchaseForm__WEBPACK_IMPORTED_MODULE_8__ = __webpack_require__(/*! ./PurchaseForm */ "./resources/pos/src/components/purchase/PurchaseForm.js");
+/* harmony import */ var _store_action_purchaseAction__WEBPACK_IMPORTED_MODULE_9__ = __webpack_require__(/*! ../../store/action/purchaseAction */ "./resources/pos/src/store/action/purchaseAction.js");
+/* harmony import */ var _shared_sharedMethod__WEBPACK_IMPORTED_MODULE_10__ = __webpack_require__(/*! ../../shared/sharedMethod */ "./resources/pos/src/shared/sharedMethod.js");
+/* harmony import */ var react_jsx_runtime__WEBPACK_IMPORTED_MODULE_11__ = __webpack_require__(/*! react/jsx-runtime */ "./node_modules/react/jsx-runtime.js");
+function _slicedToArray(r, e) { return _arrayWithHoles(r) || _iterableToArrayLimit(r, e) || _unsupportedIterableToArray(r, e) || _nonIterableRest(); }
+function _nonIterableRest() { throw new TypeError("Invalid attempt to destructure non-iterable instance.\nIn order to be iterable, non-array objects must have a [Symbol.iterator]() method."); }
+function _unsupportedIterableToArray(r, a) { if (r) { if ("string" == typeof r) return _arrayLikeToArray(r, a); var t = {}.toString.call(r).slice(8, -1); return "Object" === t && r.constructor && (t = r.constructor.name), "Map" === t || "Set" === t ? Array.from(r) : "Arguments" === t || /^(?:Ui|I)nt(?:8|16|32)(?:Clamped)?Array$/.test(t) ? _arrayLikeToArray(r, a) : void 0; } }
+function _arrayLikeToArray(r, a) { (null == a || a > r.length) && (a = r.length); for (var e = 0, n = Array(a); e < a; e++) n[e] = r[e]; return n; }
+function _iterableToArrayLimit(r, l) { var t = null == r ? null : "undefined" != typeof Symbol && r[Symbol.iterator] || r["@@iterator"]; if (null != t) { var e, n, i, u, a = [], f = !0, o = !1; try { if (i = (t = t.call(r)).next, 0 === l) { if (Object(t) !== t) return; f = !1; } else for (; !(f = (e = i.call(t)).done) && (a.push(e.value), a.length !== l); f = !0); } catch (r) { o = !0, n = r; } finally { try { if (!f && null != t["return"] && (u = t["return"](), Object(u) !== u)) return; } finally { if (o) throw n; } } return a; } }
+function _arrayWithHoles(r) { if (Array.isArray(r)) return r; }
 
 
 
@@ -39,7 +46,16 @@ var CreatePurchase = function CreatePurchase(props) {
     fetchAllWarehouses = props.fetchAllWarehouses,
     fetchAllSuppliers = props.fetchAllSuppliers,
     suppliers = props.suppliers;
-  var navigate = (0,react_router_dom__WEBPACK_IMPORTED_MODULE_4__.useNavigate)();
+  var navigate = (0,react_router_dom__WEBPACK_IMPORTED_MODULE_5__.useNavigate)();
+  // Prellenado opcional desde el botón "Reponer" del dashboard
+  // (Insights de catálogo, stock bajo) -- solo pone el almacén y el
+  // texto de búsqueda, el usuario igual tiene que elegir el producto
+  // de la lista para agregarlo, no se agrega nada automático.
+  var _useSearchParams = (0,react_router_dom__WEBPACK_IMPORTED_MODULE_4__.useSearchParams)(),
+    _useSearchParams2 = _slicedToArray(_useSearchParams, 1),
+    searchParams = _useSearchParams2[0];
+  var initialWarehouseId = searchParams.get('warehouse_id');
+  var initialSearchCode = searchParams.get('product_code');
   (0,react__WEBPACK_IMPORTED_MODULE_0__.useEffect)(function () {
     fetchAllWarehouses();
     fetchAllSuppliers();
@@ -47,14 +63,16 @@ var CreatePurchase = function CreatePurchase(props) {
   var addPurchaseData = function addPurchaseData(formValue) {
     addPurchase(formValue, navigate);
   };
-  return /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_10__.jsxs)(_MasterLayout__WEBPACK_IMPORTED_MODULE_2__["default"], {
-    children: [/*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_10__.jsx)(_header_HeaderTitle__WEBPACK_IMPORTED_MODULE_3__["default"], {
-      title: (0,_shared_sharedMethod__WEBPACK_IMPORTED_MODULE_9__.getFormattedMessage)("purchase.create.title"),
+  return /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_11__.jsxs)(_MasterLayout__WEBPACK_IMPORTED_MODULE_2__["default"], {
+    children: [/*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_11__.jsx)(_header_HeaderTitle__WEBPACK_IMPORTED_MODULE_3__["default"], {
+      title: (0,_shared_sharedMethod__WEBPACK_IMPORTED_MODULE_10__.getFormattedMessage)("purchase.create.title"),
       to: "/app/purchases"
-    }), /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_10__.jsx)(_PurchaseForm__WEBPACK_IMPORTED_MODULE_7__["default"], {
+    }), /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_11__.jsx)(_PurchaseForm__WEBPACK_IMPORTED_MODULE_8__["default"], {
       addPurchaseData: addPurchaseData,
       warehouses: warehouses,
-      suppliers: suppliers
+      suppliers: suppliers,
+      initialWarehouseId: initialWarehouseId,
+      initialSearchCode: initialSearchCode
     })]
   });
 };
@@ -69,9 +87,9 @@ var mapStateToProps = function mapStateToProps(state) {
   };
 };
 /* harmony default export */ const __WEBPACK_DEFAULT_EXPORT__ = ((0,react_redux__WEBPACK_IMPORTED_MODULE_1__.connect)(mapStateToProps, {
-  addPurchase: _store_action_purchaseAction__WEBPACK_IMPORTED_MODULE_8__.addPurchase,
-  fetchAllWarehouses: _store_action_warehouseAction__WEBPACK_IMPORTED_MODULE_5__.fetchAllWarehouses,
-  fetchAllSuppliers: _store_action_supplierAction__WEBPACK_IMPORTED_MODULE_6__.fetchAllSuppliers
+  addPurchase: _store_action_purchaseAction__WEBPACK_IMPORTED_MODULE_9__.addPurchase,
+  fetchAllWarehouses: _store_action_warehouseAction__WEBPACK_IMPORTED_MODULE_6__.fetchAllWarehouses,
+  fetchAllSuppliers: _store_action_supplierAction__WEBPACK_IMPORTED_MODULE_7__.fetchAllSuppliers
 })(CreatePurchase));
 
 /***/ },
@@ -677,7 +695,9 @@ var PurchaseForm = function PurchaseForm(props) {
     fetchProductsByWarehouse = props.fetchProductsByWarehouse,
     products = props.products,
     frontSetting = props.frontSetting,
-    allConfigData = props.allConfigData;
+    allConfigData = props.allConfigData,
+    initialWarehouseId = props.initialWarehouseId,
+    initialSearchCode = props.initialSearchCode;
   var navigate = (0,react_router_dom__WEBPACK_IMPORTED_MODULE_2__.useNavigate)();
   var dispatch = (0,react_redux__WEBPACK_IMPORTED_MODULE_1__.useDispatch)();
   var _useState = (0,react__WEBPACK_IMPORTED_MODULE_0__.useState)(''),
@@ -708,7 +728,18 @@ var PurchaseForm = function PurchaseForm(props) {
     _useState12 = _slicedToArray(_useState11, 2),
     quantity = _useState12[0],
     setQuantity = _useState12[1];
-  var _useState13 = (0,react__WEBPACK_IMPORTED_MODULE_0__.useState)({
+  // Solo para forzar un remount PUNTUAL de <ReactSelect> de almacén
+  // cuando el prellenado por query param ("Reponer" del dashboard) le
+  // cambia el valor DESPUÉS del montaje inicial -- ese Select usa
+  // defaultValue (no controlado), así que un cambio de estado posterior
+  // al mount no se refleja visualmente por sí solo. No se vuelve a tocar
+  // luego de la primera vez, así que no interfiere con que el usuario
+  // cambie el almacén a mano.
+  var _useState13 = (0,react__WEBPACK_IMPORTED_MODULE_0__.useState)(false),
+    _useState14 = _slicedToArray(_useState13, 2),
+    warehousePrefilled = _useState14[0],
+    setWarehousePrefilled = _useState14[1];
+  var _useState15 = (0,react__WEBPACK_IMPORTED_MODULE_0__.useState)({
       date: singlePurchase ? (0,_shared_sharedMethod__WEBPACK_IMPORTED_MODULE_15__.toLocalDateObject)(singlePurchase.date) : new Date(),
       warehouse_id: singlePurchase ? singlePurchase.warehouse_id : '',
       supplier_id: singlePurchase ? singlePurchase.supplier_id : '',
@@ -727,10 +758,10 @@ var PurchaseForm = function PurchaseForm(props) {
         value: 1
       }
     }),
-    _useState14 = _slicedToArray(_useState13, 2),
-    purchaseValue = _useState14[0],
-    setPurchaseValue = _useState14[1];
-  var _useState15 = (0,react__WEBPACK_IMPORTED_MODULE_0__.useState)({
+    _useState16 = _slicedToArray(_useState15, 2),
+    purchaseValue = _useState16[0],
+    setPurchaseValue = _useState16[1];
+  var _useState17 = (0,react__WEBPACK_IMPORTED_MODULE_0__.useState)({
       date: '',
       warehouse_id: '',
       supplier_id: '',
@@ -740,9 +771,9 @@ var PurchaseForm = function PurchaseForm(props) {
       shipping: '',
       status_id: ''
     }),
-    _useState16 = _slicedToArray(_useState15, 2),
-    errors = _useState16[0],
-    setErrors = _useState16[1];
+    _useState18 = _slicedToArray(_useState17, 2),
+    errors = _useState18[0],
+    setErrors = _useState18[1];
   (0,react__WEBPACK_IMPORTED_MODULE_0__.useEffect)(function () {
     setUpdateProducts(updateProducts);
   }, [updateProducts, quantity, newCost, newDiscount, newTax, subTotal, newPurchaseUnit]);
@@ -760,6 +791,28 @@ var PurchaseForm = function PurchaseForm(props) {
       setUpdateProducts(singlePurchase.purchase_items);
     }
   }, []);
+  (0,react__WEBPACK_IMPORTED_MODULE_0__.useEffect)(function () {
+    // Prellenado desde el botón "Reponer" del dashboard: solo aplica en
+    // creación (no en edición), solo una vez, y solo cuando ya
+    // llegaron los almacenes de la API para poder armar la opción
+    // {value, label} que espera <ReactSelect>.
+    if (!singlePurchase && initialWarehouseId && !purchaseValue.warehouse_id && warehouses !== null && warehouses !== void 0 && warehouses.length) {
+      var match = warehouses.find(function (w) {
+        return String(w.id) === String(initialWarehouseId);
+      });
+      if (match) {
+        setPurchaseValue(function (inputs) {
+          return _objectSpread(_objectSpread({}, inputs), {}, {
+            warehouse_id: {
+              value: match.id,
+              label: match.attributes.name
+            }
+          });
+        });
+        setWarehousePrefilled(true);
+      }
+    }
+  }, [warehouses, initialWarehouseId, singlePurchase]);
   (0,react__WEBPACK_IMPORTED_MODULE_0__.useEffect)(function () {
     // OJO: acá va fetchAllProducts(), NO fetchProductsByWarehouse().
     // Esta segunda EXCLUYE productos que todavía no tienen stock en el
@@ -968,7 +1021,7 @@ var PurchaseForm = function PurchaseForm(props) {
             title: (0,_shared_sharedMethod__WEBPACK_IMPORTED_MODULE_15__.getFormattedMessage)('warehouse.title'),
             errors: errors['warehouse_id'],
             placeholder: (0,_shared_sharedMethod__WEBPACK_IMPORTED_MODULE_15__.placeholderText)('purchase.select.warehouse.placeholder.label')
-          })
+          }, warehousePrefilled ? 'warehouse-prefilled' : 'warehouse-default')
         }), /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_24__.jsx)("div", {
           className: "col-md-4 mb-3",
           children: /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_24__.jsx)(_shared_select_reactSelect__WEBPACK_IMPORTED_MODULE_23__["default"], {
@@ -992,7 +1045,8 @@ var PurchaseForm = function PurchaseForm(props) {
             updateProducts: updateProducts,
             setUpdateProducts: setUpdateProducts,
             customProducts: customProducts,
-            presentationMode: "purchase"
+            presentationMode: "purchase",
+            initialSearchCode: initialSearchCode
           })]
         }), /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_24__.jsxs)("div", {
           className: "col-12 md-12",

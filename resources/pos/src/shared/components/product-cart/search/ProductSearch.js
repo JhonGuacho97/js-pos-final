@@ -1,4 +1,4 @@
-import React, {useState} from 'react';
+import React, {useEffect, useState} from 'react';
 import {connect, useDispatch} from 'react-redux';
 import {ReactSearchAutocomplete} from 'react-search-autocomplete';
 import {addToast} from '../../../../store/action/toastAction';
@@ -34,6 +34,7 @@ const ProductSearch = (props) => {
         handleValidation,
         isAllProducts,
         presentationMode,
+        initialSearchCode,
     } = props;
     const [searchString, setSearchString] = useState("");
     const [presentationProduct, setPresentationProduct] = useState(null);
@@ -45,6 +46,17 @@ const ProductSearch = (props) => {
         name: item.attributes.name, code: item.attributes.code, id: item.id,
         variationLabel: item.attributes.variation_product?.variation_type_name || null,
     }))
+
+    useEffect(() => {
+        // Prellenado desde "Reponer" (dashboard): solo escribe el texto de
+        // búsqueda una vez que ya hay productos cargados para el almacén --
+        // el usuario sigue teniendo que elegirlo de la lista, esto no
+        // agrega nada al carrito por sí solo.
+        if (initialSearchCode && values.warehouse_id && filterProducts?.length && !searchString) {
+            setSearchString(initialSearchCode);
+        }
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [initialSearchCode, values.warehouse_id, filterProducts?.length]);
 
     const onProductSearch = (code) => {
         if (!values.warehouse_id) {

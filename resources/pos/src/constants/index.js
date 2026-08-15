@@ -71,6 +71,13 @@ export const apiBaseURL = {
     STOCK_DETAILS_WAREHOUSE: "get-product-count",
     TOP_SELLING_PRODUCT_REPORT: "top-selling-product-report",
     STOCK_ALERT: "stock-alerts",
+    TODAY_OVERVIEW: "dashboard/today-overview",
+    TODAY_HOURLY_BREAKDOWN: "dashboard/today-hourly-breakdown",
+    PERFORMANCE_NET_SALES: "dashboard/performance-net-sales",
+    CATEGORY_MIX: "dashboard/category-mix",
+    TOP_PRODUCTS: "dashboard/top-products",
+    SALES_HEATMAP: "dashboard/sales-heatmap",
+    ACTIVE_SHIFTS: "dashboard/active-shifts",
     VALIDATE_AUTH_TOKEN: "validate-auth-token",
     CONFIG: "config",
     MY_STORES: "my-stores",
@@ -376,6 +383,34 @@ export const dashboardActionType = {
     FETCH_ALL_SALE_PURCHASE: "FETCH_ALL_SALE_PURCHASE",
 };
 
+export const todayOverviewActionType = {
+    TODAY_OVERVIEW: "TODAY_OVERVIEW",
+};
+
+export const todayHourlyBreakdownActionType = {
+    TODAY_HOURLY_BREAKDOWN: "TODAY_HOURLY_BREAKDOWN",
+};
+
+export const performanceNetSalesActionType = {
+    PERFORMANCE_NET_SALES: "PERFORMANCE_NET_SALES",
+};
+
+export const categoryMixActionType = {
+    CATEGORY_MIX: "CATEGORY_MIX",
+};
+
+export const topProductsActionType = {
+    TOP_PRODUCTS: "TOP_PRODUCTS",
+};
+
+export const salesHeatmapActionType = {
+    SALES_HEATMAP: "SALES_HEATMAP",
+};
+
+export const activeShiftsActionType = {
+    ACTIVE_SHIFTS: "ACTIVE_SHIFTS",
+};
+
 export const saleActionType = {
     FETCH_SALES: "FETCH_SALES",
     FETCH_SALE_TOTALS: "FETCH_SALE_TOTALS",
@@ -485,21 +520,11 @@ export const profitAndLossReportActionType = {
 };
 
 export const topSellingActionType = {
-    TOP_SELLING: "TOP_SELLING",
     TOP_SELLING_REPORT: "TOP_SELLING_REPORT",
 };
 
 export const topCustomersActionType = {
-    TOP_CUSTOMERS: "TOP_CUSTOMERS",
     FETCH_STOCK_ALERT: "FETCH_STOCK_ALERT",
-};
-
-export const weekSalePurchasesActionType = {
-    WEEK_SALE_PURCHASES: "WEEK_SALE_PURCHASES",
-};
-
-export const yearTopProductActionType = {
-    YEAR_TOP_PRODUCT: "YEAR_TOP_PRODUCT",
 };
 
 export const Filters = {
