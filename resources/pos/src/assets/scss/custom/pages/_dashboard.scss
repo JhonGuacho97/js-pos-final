@@ -77,3 +77,10 @@
     background-color: #a9ecff !important;
 }
 
+/*
+ * NOTA: este directorio scss/custom/pages/ no forma parte del pipeline de
+ * build actual (webpack.mix.js no tiene ninguna llamada .sass()/.css() que
+ * lo compile). Los estilos realmente servidos al navegador vienen de
+ * resources/pos/src/assets/css/custom.css (CSS plano, requerido directo
+ * desde App.js). Cualquier estilo nuevo debe agregarse ahí, no aquí.
+ */

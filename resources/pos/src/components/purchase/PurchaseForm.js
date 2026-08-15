@@ -37,7 +37,9 @@ const PurchaseForm = ( props ) => {
         suppliers,
         fetchAllProducts,
         fetchProductsByWarehouse,
-        products, frontSetting, allConfigData
+        products, frontSetting, allConfigData,
+        initialWarehouseId,
+        initialSearchCode,
     } = props;
     const navigate = useNavigate();
     const dispatch = useDispatch();
@@ -48,6 +50,14 @@ const PurchaseForm = ( props ) => {
     const [ subTotal, setSubTotal ] = useState( '' );
     const [ updateProducts, setUpdateProducts ] = useState( [] );
     const [ quantity, setQuantity ] = useState( 0 );
+    // Solo para forzar un remount PUNTUAL de <ReactSelect> de almacén
+    // cuando el prellenado por query param ("Reponer" del dashboard) le
+    // cambia el valor DESPUÉS del montaje inicial -- ese Select usa
+    // defaultValue (no controlado), así que un cambio de estado posterior
+    // al mount no se refleja visualmente por sí solo. No se vuelve a tocar
+    // luego de la primera vez, así que no interfiere con que el usuario
+    // cambie el almacén a mano.
+    const [ warehousePrefilled, setWarehousePrefilled ] = useState( false );
 
     const [ purchaseValue, setPurchaseValue ] = useState( {
         date: singlePurchase ? toLocalDateObject( singlePurchase.date ) : new Date(),
@@ -90,6 +100,20 @@ const PurchaseForm = ( props ) => {
             setUpdateProducts( singlePurchase.purchase_items );
         }
     }, [] );
+
+    useEffect( () => {
+        // Prellenado desde el botón "Reponer" del dashboard: solo aplica en
+        // creación (no en edición), solo una vez, y solo cuando ya
+        // llegaron los almacenes de la API para poder armar la opción
+        // {value, label} que espera <ReactSelect>.
+        if ( !singlePurchase && initialWarehouseId && !purchaseValue.warehouse_id && warehouses?.length ) {
+            const match = warehouses.find( ( w ) => String( w.id ) === String( initialWarehouseId ) );
+            if ( match ) {
+                setPurchaseValue( inputs => ( { ...inputs, warehouse_id: { value: match.id, label: match.attributes.name } } ) );
+                setWarehousePrefilled( true );
+            }
+        }
+    }, [ warehouses, initialWarehouseId, singlePurchase ] );
 
     useEffect( () => {
         // OJO: acá va fetchAllProducts(), NO fetchProductsByWarehouse().
@@ -269,7 +293,8 @@ const PurchaseForm = ( props ) => {
                         <span className='text-danger d-block fw-400 fs-small mt-2'>{errors[ 'date' ] ? errors[ 'date' ] : null}</span>
                     </div>
                     <div className='col-md-4 mb-3'>
-                        <ReactSelect data={warehouses} onChange={onWarehouseChange}
+                        <ReactSelect key={warehousePrefilled ? 'warehouse-prefilled' : 'warehouse-default'}
+                            data={warehouses} onChange={onWarehouseChange}
                             defaultValue={purchaseValue.warehouse_id} addSearchItems={singlePurchase}
                             isWarehouseDisable={true}
                             title={getFormattedMessage( 'warehouse.title' )} errors={errors[ 'warehouse_id' ]}
@@ -288,7 +313,7 @@ const PurchaseForm = ( props ) => {
                         <ProductSearch values={purchaseValue} products={products} isAllProducts={true}
                             handleValidation={handleValidation} updateProducts={updateProducts}
                             setUpdateProducts={setUpdateProducts} customProducts={customProducts}
-                            presentationMode="purchase" />
+                            presentationMode="purchase" initialSearchCode={initialSearchCode} />
                     </div>
                     <div className='col-12 md-12'>
                         <label

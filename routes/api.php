@@ -105,6 +105,13 @@ Route::middleware(['auth:sanctum', 'store.context'])->group(function () {
     Route::get('yearly-top-selling', [DashboardAPIController::class, 'getYearlyTopSelling']);
     Route::get('top-customers', [DashboardAPIController::class, 'getTopCustomer']);
     Route::get('stock-alerts', [DashboardAPIController::class, 'stockAlerts']);
+    Route::get('dashboard/today-overview', [DashboardAPIController::class, 'getTodayOverview']);
+    Route::get('dashboard/today-hourly-breakdown', [DashboardAPIController::class, 'getTodayHourlyBreakdown']);
+    Route::get('dashboard/performance-net-sales', [DashboardAPIController::class, 'getPerformanceNetSales']);
+    Route::get('dashboard/category-mix', [DashboardAPIController::class, 'getCategoryMix']);
+    Route::get('dashboard/top-products', [DashboardAPIController::class, 'getTopProducts']);
+    Route::get('dashboard/sales-heatmap', [DashboardAPIController::class, 'getSalesHeatmap']);
+    Route::get('dashboard/active-shifts', [DashboardAPIController::class, 'getActiveShifts']);
 
     // get all permission
     Route::get('/permissions', [PermissionController::class, 'getPermissions'])->name('get-permissions');

@@ -2,7 +2,7 @@ import React, {useEffect} from 'react';
 import {connect} from 'react-redux';
 import MasterLayout from '../MasterLayout';
 import HeaderTitle from '../header/HeaderTitle';
-import {useNavigate} from 'react-router-dom';
+import {useNavigate, useSearchParams} from 'react-router-dom';
 import {fetchAllWarehouses} from '../../store/action/warehouseAction';
 import {fetchAllSuppliers} from '../../store/action/supplierAction';
 import PurchaseForm from './PurchaseForm';
@@ -12,6 +12,13 @@ import {getFormattedMessage} from "../../shared/sharedMethod";
 const CreatePurchase = (props) => {
     const {addPurchase, warehouses, fetchAllWarehouses, fetchAllSuppliers, suppliers} = props;
     const navigate = useNavigate();
+    // Prellenado opcional desde el botón "Reponer" del dashboard
+    // (Insights de catálogo, stock bajo) -- solo pone el almacén y el
+    // texto de búsqueda, el usuario igual tiene que elegir el producto
+    // de la lista para agregarlo, no se agrega nada automático.
+    const [searchParams] = useSearchParams();
+    const initialWarehouseId = searchParams.get('warehouse_id');
+    const initialSearchCode = searchParams.get('product_code');
 
     useEffect(() => {
         fetchAllWarehouses();
@@ -26,7 +33,8 @@ const CreatePurchase = (props) => {
         <MasterLayout>
             <HeaderTitle title={getFormattedMessage("purchase.create.title")} to='/app/purchases'/>
             <PurchaseForm addPurchaseData={addPurchaseData} warehouses={warehouses}
-                          suppliers={suppliers}/>
+                          suppliers={suppliers} initialWarehouseId={initialWarehouseId}
+                          initialSearchCode={initialSearchCode}/>
         </MasterLayout>
     );
 };

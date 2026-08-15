@@ -3,10 +3,10 @@ import { apiBaseURL, toastType, topCustomersActionType } from '../../constants';
 import { addToast } from './toastAction';
 import { setLoading } from "./loadingAction";
 
-export const fetchStockAlert = () => async (dispatch) => {
+export const fetchStockAlert = (limit) => async (dispatch) => {
     dispatch(setLoading(true));
 
-    apiConfig.get(apiBaseURL.STOCK_ALERT)
+    apiConfig.get(apiBaseURL.STOCK_ALERT, { params: limit ? { limit } : {} })
         .then((response) => {
             dispatch({ type: topCustomersActionType.FETCH_STOCK_ALERT, payload: response.data.data })
             dispatch(setLoading(false));
