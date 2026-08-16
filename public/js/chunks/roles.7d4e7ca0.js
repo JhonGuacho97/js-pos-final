@@ -68,7 +68,9 @@ var preparePermissions = function preparePermissions(permissions) {
   permissions.forEach(function (permission) {
     permissionArray.push({
       id: permission.id,
-      name: permission.attributes.display_name
+      name: permission.attributes.display_name,
+      slug: permission.attributes.name,
+      selected: false
     });
   });
   return permissionArray;
@@ -177,6 +179,7 @@ var EditRole = function EditRole(props) {
   var itemsValue = roles.length === 1 && roles.map(function (role) {
     return {
       name: role.attributes.name,
+      description: role.attributes.description,
       permissions: role.attributes.permissions
     };
   });
@@ -197,6 +200,7 @@ var EditRole = function EditRole(props) {
       permissionArray.push({
         id: permission.id,
         name: permission.attributes.display_name,
+        slug: permission.attributes.name,
         selected: selected,
         isChecked: selected
       });
@@ -384,9 +388,13 @@ __webpack_require__.r(__webpack_exports__);
 /* harmony import */ var react_redux__WEBPACK_IMPORTED_MODULE_2__ = __webpack_require__(/*! react-redux */ "./node_modules/react-redux/es/index.js");
 /* harmony import */ var react_router_dom__WEBPACK_IMPORTED_MODULE_3__ = __webpack_require__(/*! react-router-dom */ "./node_modules/react-router-dom/dist/index.js");
 /* harmony import */ var react_router_dom__WEBPACK_IMPORTED_MODULE_4__ = __webpack_require__(/*! react-router-dom */ "./node_modules/react-router/dist/index.js");
-/* harmony import */ var _store_action_roleAction__WEBPACK_IMPORTED_MODULE_5__ = __webpack_require__(/*! ../../store/action/roleAction */ "./resources/pos/src/store/action/roleAction.js");
-/* harmony import */ var _shared_sharedMethod__WEBPACK_IMPORTED_MODULE_6__ = __webpack_require__(/*! ../../shared/sharedMethod */ "./resources/pos/src/shared/sharedMethod.js");
-/* harmony import */ var react_jsx_runtime__WEBPACK_IMPORTED_MODULE_7__ = __webpack_require__(/*! react/jsx-runtime */ "./node_modules/react/jsx-runtime.js");
+/* harmony import */ var _fortawesome_react_fontawesome__WEBPACK_IMPORTED_MODULE_5__ = __webpack_require__(/*! @fortawesome/react-fontawesome */ "./node_modules/@fortawesome/react-fontawesome/index.es.js");
+/* harmony import */ var _fortawesome_free_solid_svg_icons__WEBPACK_IMPORTED_MODULE_6__ = __webpack_require__(/*! @fortawesome/free-solid-svg-icons */ "./node_modules/@fortawesome/free-solid-svg-icons/index.mjs");
+/* harmony import */ var _store_action_roleAction__WEBPACK_IMPORTED_MODULE_7__ = __webpack_require__(/*! ../../store/action/roleAction */ "./resources/pos/src/store/action/roleAction.js");
+/* harmony import */ var _shared_sharedMethod__WEBPACK_IMPORTED_MODULE_8__ = __webpack_require__(/*! ../../shared/sharedMethod */ "./resources/pos/src/shared/sharedMethod.js");
+/* harmony import */ var _config_permissionGroups__WEBPACK_IMPORTED_MODULE_9__ = __webpack_require__(/*! ../../config/permissionGroups */ "./resources/pos/src/config/permissionGroups.js");
+/* harmony import */ var _config_permissionLabels__WEBPACK_IMPORTED_MODULE_10__ = __webpack_require__(/*! ../../config/permissionLabels */ "./resources/pos/src/config/permissionLabels.js");
+/* harmony import */ var react_jsx_runtime__WEBPACK_IMPORTED_MODULE_11__ = __webpack_require__(/*! react/jsx-runtime */ "./node_modules/react/jsx-runtime.js");
 function _typeof(o) { "@babel/helpers - typeof"; return _typeof = "function" == typeof Symbol && "symbol" == typeof Symbol.iterator ? function (o) { return typeof o; } : function (o) { return o && "function" == typeof Symbol && o.constructor === Symbol && o !== Symbol.prototype ? "symbol" : typeof o; }, _typeof(o); }
 function ownKeys(e, r) { var t = Object.keys(e); if (Object.getOwnPropertySymbols) { var o = Object.getOwnPropertySymbols(e); r && (o = o.filter(function (r) { return Object.getOwnPropertyDescriptor(e, r).enumerable; })), t.push.apply(t, o); } return t; }
 function _objectSpread(e) { for (var r = 1; r < arguments.length; r++) { var t = null != arguments[r] ? arguments[r] : {}; r % 2 ? ownKeys(Object(t), !0).forEach(function (r) { _defineProperty(e, r, t[r]); }) : Object.getOwnPropertyDescriptors ? Object.defineProperties(e, Object.getOwnPropertyDescriptors(t)) : ownKeys(Object(t)).forEach(function (r) { Object.defineProperty(e, r, Object.getOwnPropertyDescriptor(t, r)); }); } return e; }
@@ -399,6 +407,10 @@ function _unsupportedIterableToArray(r, a) { if (r) { if ("string" == typeof r) 
 function _arrayLikeToArray(r, a) { (null == a || a > r.length) && (a = r.length); for (var e = 0, n = Array(a); e < a; e++) n[e] = r[e]; return n; }
 function _iterableToArrayLimit(r, l) { var t = null == r ? null : "undefined" != typeof Symbol && r[Symbol.iterator] || r["@@iterator"]; if (null != t) { var e, n, i, u, a = [], f = !0, o = !1; try { if (i = (t = t.call(r)).next, 0 === l) { if (Object(t) !== t) return; f = !1; } else for (; !(f = (e = i.call(t)).done) && (a.push(e.value), a.length !== l); f = !0); } catch (r) { o = !0, n = r; } finally { try { if (!f && null != t["return"] && (u = t["return"](), Object(u) !== u)) return; } finally { if (o) throw n; } } return a; } }
 function _arrayWithHoles(r) { if (Array.isArray(r)) return r; }
+
+
+
+
 
 
 
@@ -425,23 +437,29 @@ var RoleForm = function RoleForm(props) {
     _useState6 = _slicedToArray(_useState5, 2),
     allChecked = _useState6[0],
     setAllChecked = _useState6[1];
-  var _useState7 = (0,react__WEBPACK_IMPORTED_MODULE_0__.useState)({
+  var _useState7 = (0,react__WEBPACK_IMPORTED_MODULE_0__.useState)({}),
+    _useState8 = _slicedToArray(_useState7, 2),
+    collapsedGroups = _useState8[0],
+    setCollapsedGroups = _useState8[1];
+  var _useState9 = (0,react__WEBPACK_IMPORTED_MODULE_0__.useState)({
       name: '',
+      description: '',
       permissions: []
     }),
-    _useState8 = _slicedToArray(_useState7, 2),
-    rolesValue = _useState8[0],
-    setRolesValue = _useState8[1];
-  var _useState9 = (0,react__WEBPACK_IMPORTED_MODULE_0__.useState)({
+    _useState0 = _slicedToArray(_useState9, 2),
+    rolesValue = _useState0[0],
+    setRolesValue = _useState0[1];
+  var _useState1 = (0,react__WEBPACK_IMPORTED_MODULE_0__.useState)({
       name: '',
       permissions: ''
     }),
-    _useState0 = _slicedToArray(_useState9, 2),
-    errors = _useState0[0],
-    setErrors = _useState0[1];
+    _useState10 = _slicedToArray(_useState1, 2),
+    errors = _useState10[0],
+    setErrors = _useState10[1];
   (0,react__WEBPACK_IMPORTED_MODULE_0__.useEffect)(function () {
     setRolesValue({
       name: singleRole ? singleRole.name : "",
+      description: singleRole ? singleRole.description || '' : "",
       permissions: singleRole ? singleRole.permissions : ''
     });
   }, [singleRole]);
@@ -456,16 +474,16 @@ var RoleForm = function RoleForm(props) {
       return item.selected;
     }));
   }, [permissions, allChecked]);
-  var disabled = saveButtonEnable.length === 0 ? true : singleRole && singleRole.name === rolesValue.name && JSON.stringify(singleRole.permissions.map(function (item) {
+  var disabled = saveButtonEnable.length === 0 ? true : singleRole && singleRole.name === rolesValue.name && (singleRole.description || '') === rolesValue.description && JSON.stringify(singleRole.permissions.map(function (item) {
     return item.id;
   })) === JSON.stringify(saveButtonEnable);
   var handleValidation = function handleValidation() {
     var errorss = {};
     var isValid = false;
     if (!rolesValue['name']) {
-      errorss['name'] = (0,_shared_sharedMethod__WEBPACK_IMPORTED_MODULE_6__.getFormattedMessage)("role.input.name.validate.label");
+      errorss['name'] = (0,_shared_sharedMethod__WEBPACK_IMPORTED_MODULE_8__.getFormattedMessage)("role.input.name.validate.label");
     } else if (rolesValue['name'] && rolesValue['name'].length > 50) {
-      errorss['name'] = (0,_shared_sharedMethod__WEBPACK_IMPORTED_MODULE_6__.getFormattedMessage)("role.input.name.valid.validate.label");
+      errorss['name'] = (0,_shared_sharedMethod__WEBPACK_IMPORTED_MODULE_8__.getFormattedMessage)("role.input.name.valid.validate.label");
     } else if (!saveButtonEnable) {
       errorss['permissions'] = 'Please select permissions';
     } else {
@@ -478,7 +496,7 @@ var RoleForm = function RoleForm(props) {
     var errorss = {};
     var isValid = false;
     if (!rolesValue['name']) {
-      errorss['name'] = (0,_shared_sharedMethod__WEBPACK_IMPORTED_MODULE_6__.getFormattedMessage)("globally.input.name.label");
+      errorss['name'] = (0,_shared_sharedMethod__WEBPACK_IMPORTED_MODULE_8__.getFormattedMessage)("globally.input.name.label");
     } else if (!rolesValue['permissions']) {
       errorss['permissions'] = 'Please select permissions';
     } else {
@@ -512,6 +530,30 @@ var RoleForm = function RoleForm(props) {
       }));
     }
   };
+  var handleGroupChanged = function handleGroupChanged(groupKey, checked) {
+    setNewPer(permissions.map(function (item) {
+      return (0,_config_permissionGroups__WEBPACK_IMPORTED_MODULE_9__.getPermissionGroup)(item.slug) === groupKey ? _objectSpread(_objectSpread({}, item), {}, {
+        selected: checked
+      }) : item;
+    }));
+  };
+  var toggleGroupCollapsed = function toggleGroupCollapsed(groupKey) {
+    setCollapsedGroups(function (prev) {
+      return _objectSpread(_objectSpread({}, prev), {}, _defineProperty({}, groupKey, !prev[groupKey]));
+    });
+  };
+  var groupedPermissions = _config_permissionGroups__WEBPACK_IMPORTED_MODULE_9__.PERMISSION_GROUP_ORDER.map(function (groupKey) {
+    return [groupKey, permissions.filter(function (item) {
+      return (0,_config_permissionGroups__WEBPACK_IMPORTED_MODULE_9__.getPermissionGroup)(item.slug) === groupKey;
+    })];
+  }).filter(function (_ref) {
+    var _ref2 = _slicedToArray(_ref, 2),
+      items = _ref2[1];
+    return items.length > 0;
+  });
+  var selectedCount = permissions.filter(function (item) {
+    return item.selected;
+  }).length;
   var onSubmit = function onSubmit(event, rolesValue) {
     event.preventDefault();
     var Valid = handleValidation();
@@ -541,131 +583,335 @@ var RoleForm = function RoleForm(props) {
       editRole(id, rolesValue, navigate);
     }
   };
-  return /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_7__.jsx)("div", {
+  return /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_11__.jsx)("div", {
     className: "container-fluid pt-10",
-    children: /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_7__.jsx)("div", {
-      className: "card custom-card p-5 bg-white",
-      children: /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_7__.jsx)(react_bootstrap_v5__WEBPACK_IMPORTED_MODULE_1__["default"], {
-        className: "m-4",
-        children: /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_7__.jsxs)("div", {
-          className: "row",
-          children: [/*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_7__.jsx)("div", {
-            className: "col-md-12",
-            children: /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_7__.jsxs)(react_bootstrap_v5__WEBPACK_IMPORTED_MODULE_1__["default"].Group, {
+    children: /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_11__.jsxs)(react_bootstrap_v5__WEBPACK_IMPORTED_MODULE_1__["default"], {
+      children: [/*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_11__.jsxs)("div", {
+        className: "role-form-layout",
+        children: [/*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_11__.jsx)("div", {
+          className: "role-form-sidebar",
+          children: /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_11__.jsxs)("div", {
+            className: "card custom-card p-5 bg-white role-form-sidebar-card",
+            children: [/*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_11__.jsxs)(react_bootstrap_v5__WEBPACK_IMPORTED_MODULE_1__["default"].Group, {
               className: "mb-5 form-group",
-              children: [/*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_7__.jsxs)(react_bootstrap_v5__WEBPACK_IMPORTED_MODULE_1__["default"].Label, {
+              children: [/*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_11__.jsxs)(react_bootstrap_v5__WEBPACK_IMPORTED_MODULE_1__["default"].Label, {
                 className: "form-label fs-6 fw-bolder text-gray-700 mb-3",
-                children: [(0,_shared_sharedMethod__WEBPACK_IMPORTED_MODULE_6__.getFormattedMessage)("globally.input.name.label"), ": "]
-              }), /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_7__.jsx)("span", {
+                children: [(0,_shared_sharedMethod__WEBPACK_IMPORTED_MODULE_8__.getFormattedMessage)("globally.input.name.label"), ": "]
+              }), /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_11__.jsx)("span", {
                 className: "required"
-              }), /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_7__.jsx)(react_bootstrap_v5__WEBPACK_IMPORTED_MODULE_1__["default"].Control, {
+              }), /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_11__.jsx)(react_bootstrap_v5__WEBPACK_IMPORTED_MODULE_1__["default"].Control, {
                 type: "text",
                 name: "name",
-                placeholder: (0,_shared_sharedMethod__WEBPACK_IMPORTED_MODULE_6__.placeholderText)("globally.input.name.placeholder.label"),
+                placeholder: (0,_shared_sharedMethod__WEBPACK_IMPORTED_MODULE_8__.placeholderText)("globally.input.name.placeholder.label"),
                 className: "form-control-solid",
                 autoFocus: true,
                 onChange: function onChange(event) {
                   return onChangeInput(event);
                 },
                 value: rolesValue.name
-              }), /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_7__.jsx)("span", {
+              }), /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_11__.jsx)("span", {
                 className: "text-danger",
                 children: errors['name'] ? errors['name'] : null
               })]
-            })
-          }), /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_7__.jsx)("div", {
-            children: /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_7__.jsxs)(react_bootstrap_v5__WEBPACK_IMPORTED_MODULE_1__["default"].Group, {
+            }), /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_11__.jsxs)(react_bootstrap_v5__WEBPACK_IMPORTED_MODULE_1__["default"].Group, {
               className: "mb-5 form-group",
-              children: [/*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_7__.jsxs)("div", {
-                className: "d-flex col-md-12 flex-wrap align-items-center",
-                children: [/*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_7__.jsxs)(react_bootstrap_v5__WEBPACK_IMPORTED_MODULE_1__["default"].Label, {
-                  className: "form-label fs-6 fw-bolder text-gray-700 mb-0",
-                  children: [(0,_shared_sharedMethod__WEBPACK_IMPORTED_MODULE_6__.getFormattedMessage)("role.input.permission.label"), ": "]
-                }), /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_7__.jsx)("span", {
-                  className: "required"
-                }), /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_7__.jsx)("div", {
-                  className: "d-flex col-md-6 flex-wrap ps-5",
-                  children: /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_7__.jsx)("div", {
-                    className: "col-md-8",
-                    children: /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_7__.jsxs)("label", {
-                      className: "form-check form-check-custom form-check-solid form-check-inline d-flex align-items-center my-3 cursor-pointer custom-label",
-                      children: [/*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_7__.jsx)("input", {
-                        type: "checkbox",
-                        checked: allChecked,
-                        name: "all_check",
-                        onChange: function onChange(event) {
-                          return handleChanged(event);
-                        },
-                        className: "me-3 form-check-input cursor-pointer"
-                      }), /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_7__.jsx)("div", {
-                        className: "control__indicator"
-                      }), (0,_shared_sharedMethod__WEBPACK_IMPORTED_MODULE_6__.getFormattedMessage)("role.select.all-permission.label")]
-                    })
-                  })
+              children: [/*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_11__.jsxs)(react_bootstrap_v5__WEBPACK_IMPORTED_MODULE_1__["default"].Label, {
+                className: "form-label fs-6 fw-bolder text-gray-700 mb-3",
+                children: [(0,_shared_sharedMethod__WEBPACK_IMPORTED_MODULE_8__.getFormattedMessage)("role.input.description.label"), ": "]
+              }), /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_11__.jsx)(react_bootstrap_v5__WEBPACK_IMPORTED_MODULE_1__["default"].Control, {
+                as: "textarea",
+                rows: 4,
+                name: "description",
+                placeholder: (0,_shared_sharedMethod__WEBPACK_IMPORTED_MODULE_8__.placeholderText)("role.input.description.placeholder.label"),
+                className: "form-control-solid",
+                onChange: function onChange(event) {
+                  return onChangeInput(event);
+                },
+                value: rolesValue.description
+              })]
+            }), /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_11__.jsxs)("div", {
+              className: "role-form-selected-count",
+              children: [selectedCount, " ", (0,_shared_sharedMethod__WEBPACK_IMPORTED_MODULE_8__.getFormattedMessage)('role.selected-count.label')]
+            }), /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_11__.jsx)("span", {
+              className: "text-danger",
+              children: errors['permissions'] ? errors['permissions'] : null
+            })]
+          })
+        }), /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_11__.jsxs)("div", {
+          className: "role-form-permissions",
+          children: [/*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_11__.jsx)("div", {
+            className: "role-permissions-toolbar",
+            children: /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_11__.jsxs)("label", {
+              className: "role-permission-select-all role-permission-select-all-global",
+              children: [/*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_11__.jsx)("input", {
+                type: "checkbox",
+                checked: allChecked,
+                name: "all_check",
+                onChange: function onChange(event) {
+                  return handleChanged(event);
+                },
+                className: "form-check-input cursor-pointer"
+              }), /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_11__.jsx)("span", {
+                children: (0,_shared_sharedMethod__WEBPACK_IMPORTED_MODULE_8__.getFormattedMessage)("role.select.all-permission.label")
+              })]
+            })
+          }), groupedPermissions.map(function (_ref3) {
+            var _ref4 = _slicedToArray(_ref3, 2),
+              groupKey = _ref4[0],
+              items = _ref4[1];
+            var isCollapsed = !!collapsedGroups[groupKey];
+            var selectedInGroup = items.filter(function (item) {
+              return item.selected;
+            }).length;
+            return /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_11__.jsxs)("div", {
+              className: "role-permission-accordion",
+              children: [/*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_11__.jsxs)("div", {
+                className: "role-permission-accordion-header",
+                onClick: function onClick() {
+                  return toggleGroupCollapsed(groupKey);
+                },
+                children: [/*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_11__.jsxs)("div", {
+                  className: "role-permission-accordion-header-left",
+                  children: [/*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_11__.jsx)(_fortawesome_react_fontawesome__WEBPACK_IMPORTED_MODULE_5__.FontAwesomeIcon, {
+                    icon: _fortawesome_free_solid_svg_icons__WEBPACK_IMPORTED_MODULE_6__.faAngleDown,
+                    className: "role-permission-chevron".concat(isCollapsed ? ' role-permission-chevron-collapsed' : '')
+                  }), /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_11__.jsx)("span", {
+                    className: "role-permission-accordion-title",
+                    children: (0,_shared_sharedMethod__WEBPACK_IMPORTED_MODULE_8__.getFormattedMessage)(_config_permissionGroups__WEBPACK_IMPORTED_MODULE_9__.PERMISSION_GROUP_LABEL_KEYS[groupKey])
+                  }), /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_11__.jsxs)("span", {
+                    className: "role-permission-count-badge",
+                    children: [selectedInGroup, " / ", items.length]
+                  })]
+                }), /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_11__.jsxs)("label", {
+                  className: "role-permission-select-all",
+                  onClick: function onClick(event) {
+                    return event.stopPropagation();
+                  },
+                  children: [/*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_11__.jsx)("input", {
+                    type: "checkbox",
+                    checked: items.every(function (item) {
+                      return item.selected;
+                    }),
+                    onChange: function onChange(event) {
+                      return handleGroupChanged(groupKey, event.target.checked);
+                    },
+                    className: "form-check-input cursor-pointer"
+                  }), /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_11__.jsx)("span", {
+                    children: (0,_shared_sharedMethod__WEBPACK_IMPORTED_MODULE_8__.getFormattedMessage)('role.select-all.label')
+                  })]
                 })]
-              }), /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_7__.jsx)("div", {
-                className: "d-flex col-md-12 flex-wrap",
-                children: permissions && permissions.map(function (permission, index) {
-                  return /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_7__.jsx)("div", {
-                    className: "col-md-4",
-                    children: /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_7__.jsxs)("label", {
-                      className: "form-check form-check-custom form-check-solid form-check-inline d-flex align-items-center my-3 cursor-pointer custom-label",
-                      children: [/*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_7__.jsx)("input", {
+              }), !isCollapsed && /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_11__.jsx)("div", {
+                className: "role-permission-accordion-body",
+                children: /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_11__.jsx)("div", {
+                  className: "role-permission-grid",
+                  children: items.map(function (permission) {
+                    var labelKey = (0,_config_permissionLabels__WEBPACK_IMPORTED_MODULE_10__.getPermissionLabelKey)(permission.slug);
+                    return /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_11__.jsxs)("label", {
+                      className: "role-permission-card",
+                      children: [/*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_11__.jsx)("input", {
                         type: "checkbox",
-                        checked: permissions[index].selected,
+                        checked: permission.selected,
                         name: permission.name,
                         value: permission.name,
                         onChange: function onChange(event) {
-                          return handleChanged(event, index);
+                          return handleChanged(event);
                         },
-                        className: "me-3 form-check-input cursor-pointer"
-                      }), /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_7__.jsx)("div", {
-                        className: "control__indicator"
-                      }), permission.name]
-                    }, index)
-                  });
+                        className: "form-check-input cursor-pointer"
+                      }), /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_11__.jsxs)("div", {
+                        className: "role-permission-card-text",
+                        children: [/*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_11__.jsx)("span", {
+                          className: "role-permission-card-label",
+                          children: labelKey ? (0,_shared_sharedMethod__WEBPACK_IMPORTED_MODULE_8__.getFormattedMessage)(labelKey) : permission.name
+                        }), /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_11__.jsx)("code", {
+                          className: "role-permission-card-slug",
+                          children: permission.slug
+                        })]
+                      })]
+                    }, permission.id);
+                  })
                 })
-              }), /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_7__.jsx)("span", {
-                className: "text-danger",
-                children: errors['permissions'] ? errors['permissions'] : null
               })]
-            })
-          }), /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_7__.jsxs)("div", {
-            className: "d-flex mt-5",
-            children: [singleRole ? /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_7__.jsx)("div", {
-              onClick: function onClick(event) {
-                return onEdit(event);
-              },
-              children: /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_7__.jsx)("input", {
-                className: "btn btn-primary me-3",
-                type: "submit",
-                value: (0,_shared_sharedMethod__WEBPACK_IMPORTED_MODULE_6__.placeholderText)("globally.save-btn"),
-                disabled: disabled
-              })
-            }) : /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_7__.jsx)("div", {
-              onClick: function onClick(event) {
-                return onSubmit(event, rolesValue);
-              },
-              children: /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_7__.jsx)("input", {
-                className: "btn btn-primary me-3",
-                type: "submit",
-                value: (0,_shared_sharedMethod__WEBPACK_IMPORTED_MODULE_6__.placeholderText)("globally.save-btn"),
-                disabled: !rolesValue.name || !(saveButtonEnable.length !== 0)
-              })
-            }), /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_7__.jsx)(react_router_dom__WEBPACK_IMPORTED_MODULE_3__.Link, {
-              to: "/app/roles",
-              className: "btn btn-light btn-active-light-primary me-3",
-              children: (0,_shared_sharedMethod__WEBPACK_IMPORTED_MODULE_6__.getFormattedMessage)("globally.cancel-btn")
-            })]
+            }, groupKey);
           })]
-        })
-      })
+        })]
+      }), /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_11__.jsxs)("div", {
+        className: "d-flex mt-5",
+        children: [singleRole ? /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_11__.jsx)("div", {
+          onClick: function onClick(event) {
+            return onEdit(event);
+          },
+          children: /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_11__.jsx)("input", {
+            className: "btn btn-primary me-3",
+            type: "submit",
+            value: (0,_shared_sharedMethod__WEBPACK_IMPORTED_MODULE_8__.placeholderText)("globally.save-btn"),
+            disabled: disabled
+          })
+        }) : /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_11__.jsx)("div", {
+          onClick: function onClick(event) {
+            return onSubmit(event, rolesValue);
+          },
+          children: /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_11__.jsx)("input", {
+            className: "btn btn-primary me-3",
+            type: "submit",
+            value: (0,_shared_sharedMethod__WEBPACK_IMPORTED_MODULE_8__.placeholderText)("globally.save-btn"),
+            disabled: !rolesValue.name || !(saveButtonEnable.length !== 0)
+          })
+        }), /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_11__.jsx)(react_router_dom__WEBPACK_IMPORTED_MODULE_3__.Link, {
+          to: "/app/roles",
+          className: "btn btn-light btn-active-light-primary me-3",
+          children: (0,_shared_sharedMethod__WEBPACK_IMPORTED_MODULE_8__.getFormattedMessage)("globally.cancel-btn")
+        })]
+      })]
     })
   });
 };
 /* harmony default export */ const __WEBPACK_DEFAULT_EXPORT__ = ((0,react_redux__WEBPACK_IMPORTED_MODULE_2__.connect)(null, {
-  editRole: _store_action_roleAction__WEBPACK_IMPORTED_MODULE_5__.editRole
+  editRole: _store_action_roleAction__WEBPACK_IMPORTED_MODULE_7__.editRole
 })(RoleForm));
+
+/***/ },
+
+/***/ "./resources/pos/src/config/permissionGroups.js"
+/*!******************************************************!*\
+  !*** ./resources/pos/src/config/permissionGroups.js ***!
+  \******************************************************/
+(__unused_webpack_module, __webpack_exports__, __webpack_require__) {
+
+__webpack_require__.r(__webpack_exports__);
+/* harmony export */ __webpack_require__.d(__webpack_exports__, {
+/* harmony export */   PERMISSION_GROUP_LABEL_KEYS: () => (/* binding */ PERMISSION_GROUP_LABEL_KEYS),
+/* harmony export */   PERMISSION_GROUP_ORDER: () => (/* binding */ PERMISSION_GROUP_ORDER),
+/* harmony export */   getPermissionGroup: () => (/* binding */ getPermissionGroup)
+/* harmony export */ });
+/**
+ * Agrupación puramente visual de los permisos (planos, uno por módulo,
+ * todo-o-nada -- no hay granularidad view/create/update/delete real en
+ * el backend) para RoleForm.js. Reutiliza las mismas 7 secciones del
+ * sidebar (ver asideConfig.js) más "Reportes" y "Configuración", que en
+ * el sidebar quedaron como accordions propios sin un groupHeader.
+ * Cualquier permiso que no matchee ningún slug de abajo cae en "general"
+ * como red de seguridad -- así un permiso nuevo que se nos olvide mapear
+ * sigue siendo visible (no desaparece), solo queda mal agrupado.
+ */
+var PERMISSION_GROUP_ORDER = ['general', 'sales', 'purchases', 'catalog', 'inventory', 'expenses', 'people', 'reports', 'settings'];
+var PERMISSION_GROUP_LABEL_KEYS = {
+  general: 'sidebar.group.general',
+  sales: 'sidebar.group.sales',
+  purchases: 'sidebar.group.purchases',
+  catalog: 'sidebar.group.catalog',
+  inventory: 'sidebar.group.inventory',
+  expenses: 'sidebar.group.expenses',
+  people: 'sidebar.group.people',
+  reports: 'role.permission-group.reports',
+  settings: 'role.permission-group.settings'
+};
+var SLUG_TO_GROUP = {
+  manage_dashboard: 'general',
+  'manage_my-sales': 'general',
+  manage_pos_screen: 'general',
+  manage_sale: 'sales',
+  manage_sale_return: 'sales',
+  manage_quotations: 'sales',
+  manage_electronic_invoices: 'sales',
+  manage_purchase: 'purchases',
+  manage_purchase_return: 'purchases',
+  manage_products: 'catalog',
+  manage_product_categories: 'catalog',
+  manage_variations: 'catalog',
+  manage_brands: 'catalog',
+  manage_units: 'catalog',
+  manage_print_barcode: 'catalog',
+  manage_warehouses: 'inventory',
+  manage_adjustments: 'inventory',
+  manage_transfers: 'inventory',
+  manage_kardex: 'inventory',
+  manage_expenses: 'expenses',
+  manage_expense_categories: 'expenses',
+  manage_suppliers: 'people',
+  manage_customers: 'people',
+  manage_users: 'people',
+  manage_login_logs: 'people',
+  manage_report: 'reports',
+  manage_reports: 'reports',
+  manage_roles: 'settings',
+  manage_stores: 'settings',
+  manage_setting: 'settings',
+  manage_currency: 'settings',
+  manage_language: 'settings',
+  manage_email_templates: 'settings',
+  manage_sms_apis: 'settings',
+  manage_sms_templates: 'settings',
+  manage_sri_config: 'settings'
+};
+var getPermissionGroup = function getPermissionGroup(slug) {
+  return SLUG_TO_GROUP[slug] || 'general';
+};
+
+/***/ },
+
+/***/ "./resources/pos/src/config/permissionLabels.js"
+/*!******************************************************!*\
+  !*** ./resources/pos/src/config/permissionLabels.js ***!
+  \******************************************************/
+(__unused_webpack_module, __webpack_exports__, __webpack_require__) {
+
+__webpack_require__.r(__webpack_exports__);
+/* harmony export */ __webpack_require__.d(__webpack_exports__, {
+/* harmony export */   getPermissionLabelKey: () => (/* binding */ getPermissionLabelKey)
+/* harmony export */ });
+/**
+ * Traducción puramente de presentación para los permisos: el backend
+ * sigue guardando/devolviendo `display_name` en inglés tal cual está en
+ * la tabla `permissions` (ver Permission::prepareAttributes()) -- no se
+ * toca nada de ahí. Este mapa slug -> clave de i18n vive solo en el
+ * frontend y se usa para mostrar una etiqueta traducida en RoleForm.js
+ * en vez del display_name crudo. Si un slug no está mapeado acá (un
+ * permiso nuevo que todavía no se tradujo), el caller debe caer de
+ * vuelta al display_name original -- así ningún permiso desaparece o
+ * rompe la pantalla, sólo se ve en inglés hasta que se agregue su
+ * entrada.
+ */
+var SLUG_TO_LABEL_KEY = {
+  manage_dashboard: 'role.permission.manage_dashboard',
+  'manage_my-sales': 'role.permission.manage_my-sales',
+  manage_pos_screen: 'role.permission.manage_pos_screen',
+  manage_sale: 'role.permission.manage_sale',
+  manage_sale_return: 'role.permission.manage_sale_return',
+  manage_quotations: 'role.permission.manage_quotations',
+  manage_electronic_invoices: 'role.permission.manage_electronic_invoices',
+  manage_purchase: 'role.permission.manage_purchase',
+  manage_purchase_return: 'role.permission.manage_purchase_return',
+  manage_products: 'role.permission.manage_products',
+  manage_product_categories: 'role.permission.manage_product_categories',
+  manage_variations: 'role.permission.manage_variations',
+  manage_brands: 'role.permission.manage_brands',
+  manage_units: 'role.permission.manage_units',
+  manage_print_barcode: 'role.permission.manage_print_barcode',
+  manage_warehouses: 'role.permission.manage_warehouses',
+  manage_adjustments: 'role.permission.manage_adjustments',
+  manage_transfers: 'role.permission.manage_transfers',
+  manage_kardex: 'role.permission.manage_kardex',
+  manage_expenses: 'role.permission.manage_expenses',
+  manage_expense_categories: 'role.permission.manage_expense_categories',
+  manage_suppliers: 'role.permission.manage_suppliers',
+  manage_customers: 'role.permission.manage_customers',
+  manage_users: 'role.permission.manage_users',
+  manage_login_logs: 'role.permission.manage_login_logs',
+  manage_report: 'role.permission.manage_report',
+  manage_reports: 'role.permission.manage_reports',
+  manage_roles: 'role.permission.manage_roles',
+  manage_stores: 'role.permission.manage_stores',
+  manage_setting: 'role.permission.manage_setting',
+  manage_currency: 'role.permission.manage_currency',
+  manage_language: 'role.permission.manage_language',
+  manage_email_templates: 'role.permission.manage_email_templates',
+  manage_sms_apis: 'role.permission.manage_sms_apis',
+  manage_sms_templates: 'role.permission.manage_sms_templates',
+  manage_sri_config: 'role.permission.manage_sri_config'
+};
+var getPermissionLabelKey = function getPermissionLabelKey(slug) {
+  return SLUG_TO_LABEL_KEY[slug] || null;
+};
 
 /***/ },
 

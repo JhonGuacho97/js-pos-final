@@ -44,6 +44,7 @@ class Role extends roleModal
     protected $fillable = [
         'name',
         'display_name',
+        'description',
         'guard_name',
         // Spatie\Permission\Models\Role::create() (la clase padre) inyecta
         // store_id automáticamente en modo teams a partir del team activo
@@ -58,6 +59,7 @@ class Role extends roleModal
 
     public static $rules = [
         'name' => 'required|unique:roles',
+        'description' => 'nullable|string',
         'permissions' => 'required',
     ];
 
@@ -73,6 +75,7 @@ class Role extends roleModal
         $fields = [
             'name' => $this->name,
             'display_name' => $this->display_name,
+            'description' => $this->description,
             'permissions' => $this->permissions,
             'created_at' => $this->created_at,
         ];

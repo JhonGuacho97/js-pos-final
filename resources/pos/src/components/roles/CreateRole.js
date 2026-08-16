@@ -40,7 +40,12 @@ const CreateRole = (props) => {
 const preparePermissions = permissions => {
     let permissionArray = [];
     permissions.forEach(permission => {
-        permissionArray.push({ id: permission.id, name: permission.attributes.display_name })
+        permissionArray.push({
+            id: permission.id,
+            name: permission.attributes.display_name,
+            slug: permission.attributes.name,
+            selected: false,
+        })
     });
     return permissionArray;
 };

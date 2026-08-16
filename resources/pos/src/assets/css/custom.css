@@ -5217,3 +5217,172 @@ div .rdt_Pagination div:first-of-type svg {
         min-height: 70px;
     }
 }
+
+/* --- Crear/Editar rol: layout de dos columnas + acordeones ---
+   Columna izquierda fija (nombre/descripción/contador) + columna derecha
+   con un acordeón colapsable por sección (mismas 7 secciones que el
+   sidebar, ver config/permissionGroups.js, más Reportes/Configuración).
+   Cada permiso sigue siendo uno solo por módulo (todo-o-nada, sin
+   view/create/update/delete real) -- por eso cada card de permiso
+   muestra el slug tal cual (ej. "manage_products") en vez de columnas
+   de acceso separadas, para no insinuar una granularidad que el
+   backend no tiene. */
+.role-form-layout {
+    display: grid;
+    grid-template-columns: 320px 1fr;
+    gap: 20px;
+    align-items: start;
+}
+
+.role-form-sidebar-card {
+    position: sticky;
+    top: 90px;
+}
+
+.role-form-selected-count {
+    padding-top: 14px;
+    margin-top: 4px;
+    border-top: 1px solid #eef0f4;
+    color: #6b7280;
+    font-size: 0.85rem;
+    font-weight: 600;
+}
+
+.role-permissions-toolbar {
+    display: flex;
+    justify-content: flex-end;
+    margin-bottom: 10px;
+}
+
+.role-permission-select-all {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 0.82rem;
+    color: #6b7280;
+    font-weight: 600;
+    cursor: pointer;
+    user-select: none;
+}
+
+.role-permission-select-all-global {
+    color: #2F6FED;
+}
+
+.role-permission-accordion {
+    background-color: #fff;
+    border: 1px solid #eef0f4;
+    border-radius: 12px;
+    margin-bottom: 14px;
+    overflow: hidden;
+}
+
+.role-permission-accordion-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 14px 18px;
+    cursor: pointer;
+}
+
+.role-permission-accordion-header-left {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.role-permission-chevron {
+    color: #9ca3af;
+    font-size: 0.85rem;
+    transition: transform 0.15s ease;
+}
+
+.role-permission-chevron-collapsed {
+    transform: rotate(-90deg);
+}
+
+.role-permission-accordion-title {
+    font-weight: 700;
+    color: #111827;
+    font-size: 0.95rem;
+}
+
+.role-permission-count-badge {
+    background-color: #f5f7fa;
+    color: #6b7280;
+    font-size: 0.75rem;
+    font-weight: 700;
+    padding: 2px 10px;
+    border-radius: 999px;
+}
+
+.role-permission-accordion-body {
+    padding: 4px 18px 18px;
+    border-top: 1px solid #eef0f4;
+}
+
+.role-permission-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 8px 24px;
+    padding-top: 14px;
+}
+
+.role-permission-card {
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+    padding: 8px;
+    border-radius: 8px;
+    cursor: pointer;
+}
+
+.role-permission-card:hover {
+    background-color: #f5f7fa;
+}
+
+.role-permission-card input[type="checkbox"] {
+    margin-top: 3px;
+    flex-shrink: 0;
+}
+
+.role-permission-card-text {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+
+.role-permission-card-label {
+    color: #111827;
+    font-size: 0.88rem;
+    font-weight: 500;
+}
+
+.role-permission-card-slug {
+    color: #9ca3af;
+    font-size: 0.75rem;
+}
+
+.role-permission-card input[type="checkbox"],
+.role-permission-select-all input[type="checkbox"] {
+    width: 18px;
+    height: 18px;
+    accent-color: #2F6FED;
+    cursor: pointer;
+}
+
+@media (max-width: 991.98px) {
+    .role-form-layout {
+        grid-template-columns: 1fr;
+    }
+
+    .role-form-sidebar-card {
+        position: static;
+    }
+}
+
+@media (max-width: 575.98px) {
+    .role-permission-grid {
+        grid-template-columns: 1fr;
+    }
+}

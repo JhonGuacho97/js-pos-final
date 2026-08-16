@@ -16,6 +16,7 @@ const EditRole = (props) => {
 
     const itemsValue = roles.length === 1 && roles.map((role) => ({
         name: role.attributes.name,
+        description: role.attributes.description,
         permissions: role.attributes.permissions
     }));
 
@@ -35,6 +36,7 @@ const EditRole = (props) => {
             permissionArray.push({
                 id: permission.id,
                 name: permission.attributes.display_name,
+                slug: permission.attributes.name,
                 selected,
                 isChecked: selected
             })
