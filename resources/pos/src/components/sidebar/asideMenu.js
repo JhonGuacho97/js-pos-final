@@ -185,6 +185,13 @@ const AsideMenu = (props) => {
                     <Menu>
                         {filteredMenu.length ? (
                             filteredMenu.map((mainItems, index) => {
+                                if (mainItems.groupHeader) {
+                                    return isMenuCollapse ? null : (
+                                        <div className="aside-group-header" key={index}>
+                                            {intl.formatMessage({ id: `${mainItems.title}` })}
+                                        </div>
+                                    );
+                                }
                                 return mainItems.newRoute ? (
                                     <SubMenu
                                         key={index}

@@ -1,4 +1,11 @@
 {
+    "sidebar.group.general": "General",
+    "sidebar.group.sales": "Ventas",
+    "sidebar.group.purchases": "Compras",
+    "sidebar.group.catalog": "Catálogo",
+    "sidebar.group.inventory": "Inventario",
+    "sidebar.group.expenses": "Gastos",
+    "sidebar.group.people": "Personas",
     "dashboard.title": "Dashboard",
     "dashboard.header.greeting.morning": "Buenos días",
     "dashboard.header.greeting.afternoon": "Buenas tardes",

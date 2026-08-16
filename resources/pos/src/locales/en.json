@@ -1,4 +1,11 @@
 {
+    "sidebar.group.general": "General",
+    "sidebar.group.sales": "Sales",
+    "sidebar.group.purchases": "Purchases",
+    "sidebar.group.catalog": "Catalog",
+    "sidebar.group.inventory": "Inventory",
+    "sidebar.group.expenses": "Expenses",
+    "sidebar.group.people": "People",
     "dashboard.title": "Dashboard",
     "dashboard.header.greeting.morning": "Good morning",
     "dashboard.header.greeting.afternoon": "Good afternoon",
