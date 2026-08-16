@@ -4209,6 +4209,22 @@ div .rdt_Pagination div:first-of-type svg {
     box-shadow: 0 12px 32px rgba(17, 24, 39, 0.14);
 }
 
+/* El toggle vive pegado al borde izquierdo del header en mobile -- Popper
+   (usado por react-bootstrap para posicionar el Dropdown.Menu) ignora el
+   breakpoint y siempre calcula la posición "end" (alineada al borde
+   derecho del toggle), lo que empuja el menú, más ancho que el toggle,
+   fuera de la pantalla por la izquierda. React-bootstrap solo pone el
+   left real vía la propiedad `left` (el offset vertical va en
+   `transform`, que no tocamos para no romper la posición Y), así que
+   alcanza con forzar left aquí sin pelear con Popper. */
+@media (max-width: 767.98px) {
+    .dash-filter-menu {
+        left: 0 !important;
+        right: auto !important;
+        max-width: calc(100vw - 30px);
+    }
+}
+
 .dash-filter-option {
     display: flex;
     align-items: center;
@@ -5178,4 +5194,26 @@ div .rdt_Pagination div:first-of-type svg {
     position: sticky;
     top: 0;
     z-index: 100;
+}
+
+/* --- Navbar superior en mobile ---
+   El sub-menú horizontal (AsideTopSubMenuItem, ej. "Dashboard") es un
+   acceso rápido duplicado del sidebar -- en mobile el sidebar ya está a
+   un tap vía el botón hamburguesa, así que ese sub-menú solo le come
+   ancho a los íconos de la derecha (POS, pantalla completa, avatar),
+   forzándolos a una segunda fila. Como .header tiene height fijo (no
+   min-height, heredado de style.css), esa segunda fila se salía de la
+   caja y quedaba flotando encima del contenido de la página. Se oculta
+   el sub-menú y se deja height:auto como respaldo por si algo más
+   vuelve a envolver. */
+@media (max-width: 767.98px) {
+    .header .top-nav-heding,
+    .header .top-navbar {
+        display: none !important;
+    }
+
+    .header {
+        height: auto;
+        min-height: 70px;
+    }
 }
