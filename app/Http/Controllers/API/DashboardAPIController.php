@@ -624,7 +624,11 @@ class DashboardAPIController extends AppBaseController
      * en calendario de Guayaquil -- sin conversión UTC -- se usa para el
      * día de la semana; 'created_at' SÍ es timestamp UTC real y se
      * convierte a Guayaquil para la hora, mismo criterio que
-     * getTodayHourlyBreakdown().
+     * getTodayHourlyBreakdown(). Además de 'sales' (para el color de cada
+     * celda) se devuelven 'transactions' e 'items' por celda -- el
+     * tooltip enriquecido del frontend necesita ambos para calcular venta
+     * promedio, y el resto de las métricas (parte del día/semana, vs hora
+     * pico) las calcula el frontend a partir de estas mismas matrices.
      */
     public function getSalesHeatmap(): JsonResponse
     {
@@ -632,25 +636,36 @@ class DashboardAPIController extends AppBaseController
         $start = Carbon::now('America/Guayaquil')->subDays(6)->toDateString();
 
         $sales = $this->scopeQueryToCurrentStore(Sale::whereBetween('date', [$start, $today]))
-            ->get(['date', 'created_at', 'grand_total']);
+            ->get(['id', 'date', 'created_at', 'grand_total']);
+
+        $itemsBySaleId = SaleItem::whereIn('sale_id', $sales->pluck('id'))
+            ->get(['sale_id', 'quantity'])
+            ->groupBy('sale_id')
+            ->map(fn ($group) => (float) $group->sum('quantity'));
 
         // 0=lunes .. 6=domingo, coincide con 'days' de abajo.
-        $matrix = array_fill(0, 7, array_fill(0, 24, 0.0));
+        $salesMatrix = array_fill(0, 7, array_fill(0, 24, 0.0));
+        $transactionsMatrix = array_fill(0, 7, array_fill(0, 24, 0));
+        $itemsMatrix = array_fill(0, 7, array_fill(0, 24, 0.0));
         foreach ($sales as $sale) {
             $dayIndex = $sale->date->dayOfWeekIso - 1;
             $hour = Carbon::parse($sale->created_at)->setTimezone('America/Guayaquil')->hour;
-            $matrix[$dayIndex][$hour] += (float) $sale->grand_total;
+            $salesMatrix[$dayIndex][$hour] += (float) $sale->grand_total;
+            $transactionsMatrix[$dayIndex][$hour]++;
+            $itemsMatrix[$dayIndex][$hour] += $itemsBySaleId->get($sale->id, 0.0);
         }
 
         $max = 0.0;
-        foreach ($matrix as $row) {
+        foreach ($salesMatrix as $row) {
             $max = max($max, max($row));
         }
 
         $data = [
             'days' => ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'],
             'hours' => array_map(fn ($h) => str_pad((string) $h, 2, '0', STR_PAD_LEFT), range(0, 23)),
-            'matrix' => $matrix,
+            'sales' => $salesMatrix,
+            'transactions' => $transactionsMatrix,
+            'items' => $itemsMatrix,
             'max' => round($max, 2),
         ];
 

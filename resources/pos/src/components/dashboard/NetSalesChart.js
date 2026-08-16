@@ -86,12 +86,12 @@ const NetSalesChart = ({ dates, current, previous, currency = '$' }) => {
             {
                 label: 'Actual',
                 data: current || [],
-                borderColor: '#f7823a',
-                backgroundColor: 'rgba(247, 130, 58, 0.12)',
+                borderColor: '#2F6FED',
+                backgroundColor: 'rgba(47, 111, 237, 0.12)',
                 borderWidth: 2,
                 tension: 0.4,
                 fill: true,
-                pointBackgroundColor: '#f7823a',
+                pointBackgroundColor: '#2F6FED',
             },
         ],
     };

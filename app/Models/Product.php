@@ -167,9 +167,15 @@ class Product extends BaseModel implements HasMedia, JsonResourceful
     public function getImageUrlAttribute()
     {
         /** @var Media $media */
+        // OJO: $medias es una Collection -- !empty() sobre un objeto SIEMPRE
+        // da true en PHP (empty() solo evalúa valores realmente falsy:
+        // 0, '', null, false, [], "0"), así que esta condición entraba
+        // siempre al branch del foreach aunque la colección viniera vacía,
+        // y terminaba devolviendo [] en vez de '' cuando el producto no
+        // tiene imagen. isNotEmpty() sí revisa el contenido real.
         $medias = $this->getMedia(Product::PATH);
         $images = [];
-        if (!empty($medias)) {
+        if ($medias->isNotEmpty()) {
             foreach ($medias as $key => $media) {
                 $images['imageUrls'][$key] = $media->getFullUrl();
                 $images['id'][$key] = $media->id;

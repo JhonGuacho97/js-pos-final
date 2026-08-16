@@ -2,7 +2,9 @@ import React from 'react';
 import ReactECharts from 'echarts-for-react';
 import { getFormattedMessage } from '../../shared/sharedMethod';
 
-const COLORS = ['#f7823a', '#5b5fef', '#14b8a6', '#f0b429', '#ec4899', '#8b5cf6', '#9ca3af'];
+// Ancla en el azul primario del sistema (#2F6FED, ver _variables.scss)
+// en vez de un naranja ajeno al resto del dashboard.
+const COLORS = ['#2F6FED', '#8b5cf6', '#14b8a6', '#f0b429', '#ec4899', '#22c55e', '#9ca3af'];
 
 const CategoryMixDonut = ({ categories, total, currency = '$' }) => {
     const rows = categories || [];
