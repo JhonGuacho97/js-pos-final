@@ -2,8 +2,8 @@ import apiConfig from '../../config/apiConfig';
 import { apiBaseURL, todayOverviewActionType, toastType } from '../../constants';
 import { addToast } from './toastAction';
 
-export const fetchTodayOverview = () => (dispatch) => {
-    apiConfig.get(apiBaseURL.TODAY_OVERVIEW)
+export const fetchTodayOverview = (params) => (dispatch) => {
+    apiConfig.get(apiBaseURL.TODAY_OVERVIEW, { params })
         .then((response) => {
             dispatch({ type: todayOverviewActionType.TODAY_OVERVIEW, payload: response.data.data });
         })

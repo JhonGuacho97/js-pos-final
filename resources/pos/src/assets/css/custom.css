@@ -4154,37 +4154,144 @@ div .rdt_Pagination div:first-of-type svg {
 
 .dash-header-right {
     display: flex;
+    align-items: center;
     gap: 10px;
     flex-wrap: wrap;
 }
 
-.dash-header-chip {
-    display: flex;
-    flex-direction: column;
-    padding: 8px 14px;
-    background-color: #fff;
-    border: 1px solid #eef0f4;
-    border-radius: 10px;
-    min-width: 110px;
-}
-
-.dash-header-chip-label {
-    font-size: 0.72rem;
-    color: #6b7280;
-    text-transform: uppercase;
-    letter-spacing: 0.03em;
-}
-
-.dash-header-chip-value {
-    font-size: 0.95rem;
-    font-weight: 700;
-    color: #111827;
+.dash-header-store,
+.dash-header-cashiers {
+    font-weight: 600;
+    color: #374151;
 }
 
 @keyframes dash-live-pulse {
     0% { box-shadow: 0 0 0 0 rgba(22, 163, 74, 0.4); }
     70% { box-shadow: 0 0 0 6px rgba(22, 163, 74, 0); }
     100% { box-shadow: 0 0 0 0 rgba(22, 163, 74, 0); }
+}
+
+/* Selector de rango de la tarjeta de ventas de hoy */
+
+.dash-filter-toggle {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 14px;
+    background-color: #fff;
+    border: 1px solid #eef0f4;
+    border-radius: 10px;
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: #111827;
+    cursor: pointer;
+}
+
+.dash-filter-toggle:hover {
+    border-color: #d7dce3;
+}
+
+.dash-filter-toggle-icon {
+    color: #2F6FED;
+    font-size: 0.78rem;
+}
+
+.dash-filter-toggle-chevron {
+    color: #9ca3af;
+    font-size: 0.7rem;
+}
+
+.dash-filter-menu {
+    padding: 8px;
+    min-width: 240px;
+    border: 1px solid #eef0f4;
+    border-radius: 12px;
+    box-shadow: 0 12px 32px rgba(17, 24, 39, 0.14);
+}
+
+.dash-filter-option {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    width: 100%;
+    border: none;
+    background: transparent;
+    padding: 8px 10px;
+    border-radius: 8px;
+    font-size: 0.85rem;
+    color: #374151;
+    text-align: left;
+}
+
+.dash-filter-option:hover {
+    background-color: #f5f7fa;
+}
+
+.dash-filter-option-active {
+    color: #2F6FED;
+    font-weight: 700;
+}
+
+.dash-filter-divider {
+    height: 1px;
+    background-color: #eef0f4;
+    margin: 8px 4px;
+}
+
+.dash-filter-custom-label {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 4px 10px 8px;
+    font-size: 0.75rem;
+    font-weight: 700;
+    color: #9ca3af;
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+}
+
+.dash-filter-custom-field {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    padding: 4px 10px;
+}
+
+.dash-filter-custom-field label {
+    font-size: 0.8rem;
+    color: #6b7280;
+    margin: 0;
+}
+
+.dash-filter-custom-field input[type="date"] {
+    border: 1px solid #eef0f4;
+    border-radius: 6px;
+    padding: 4px 8px;
+    font-size: 0.8rem;
+    color: #111827;
+}
+
+.dash-filter-apply-btn {
+    width: calc(100% - 20px);
+    margin: 10px 10px 4px;
+    padding: 8px 0;
+    border: none;
+    border-radius: 8px;
+    background-color: #2F6FED;
+    color: #fff;
+    font-size: 0.85rem;
+    font-weight: 700;
+    cursor: pointer;
+}
+
+.dash-filter-apply-btn:hover {
+    background-color: #1d4ed8;
+}
+
+.dash-filter-apply-btn:disabled {
+    background-color: #c9cdd6;
+    cursor: not-allowed;
 }
 
 .stat-card {
