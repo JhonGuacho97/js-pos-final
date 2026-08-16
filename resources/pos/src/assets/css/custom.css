@@ -4331,7 +4331,7 @@ div .rdt_Pagination div:first-of-type svg {
     color: #111827;
     margin: 0;
     padding-left: 12px;
-    border-left: 3px solid #f7823a;
+    border-left: 3px solid #2F6FED;
 }
 
 .period-selector {
@@ -4701,7 +4701,7 @@ div .rdt_Pagination div:first-of-type svg {
 }
 
 .low-stock-bar-warning {
-    background-color: #f0b429;
+    background-color: #d97706;
 }
 
 .low-stock-row-bottom {
@@ -4798,12 +4798,12 @@ div .rdt_Pagination div:first-of-type svg {
 .insight-card-link {
     font-size: 0.82rem;
     font-weight: 600;
-    color: #f7823a;
+    color: #2F6FED;
     text-decoration: none;
 }
 
 .insight-card-link:hover {
-    color: #e8590c;
+    color: #1d4ed8;
 }
 
 .heatmap-subtitle {
@@ -4924,8 +4924,8 @@ div .rdt_Pagination div:first-of-type svg {
     width: 28px;
     height: 28px;
     border-radius: 50%;
-    background-color: rgba(247, 130, 58, 0.15);
-    color: #e8590c;
+    background-color: rgba(47, 111, 237, 0.12);
+    color: #2F6FED;
     display: flex;
     align-items: center;
     justify-content: center;
@@ -4970,4 +4970,105 @@ div .rdt_Pagination div:first-of-type svg {
 .shift-sales-value {
     font-weight: 700;
     color: #111827;
+}
+
+/* Tooltip enriquecido del mapa de calor (hover sobre una celda) */
+
+.heatmap-tooltip {
+    position: fixed;
+    z-index: 1050;
+    width: 260px;
+    background-color: #fff;
+    border-radius: 12px;
+    box-shadow: 0 12px 32px rgba(17, 24, 39, 0.16);
+    padding: 14px 16px;
+    pointer-events: none;
+}
+
+.heatmap-tooltip-header {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 10px;
+    padding-bottom: 10px;
+    margin-bottom: 10px;
+    border-bottom: 1px solid #eef0f4;
+}
+
+.heatmap-tooltip-day {
+    font-size: 0.9rem;
+    font-weight: 700;
+    color: #111827;
+}
+
+.heatmap-tooltip-time {
+    font-size: 0.72rem;
+    color: #9ca3af;
+}
+
+.heatmap-tooltip-sales-row {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    margin-bottom: 8px;
+}
+
+.heatmap-tooltip-dot {
+    width: 7px;
+    height: 7px;
+    border-radius: 50%;
+    background-color: #2F6FED;
+    flex-shrink: 0;
+}
+
+.heatmap-tooltip-sales-label {
+    flex: 1;
+    font-size: 0.7rem;
+    font-weight: 700;
+    color: #6b7280;
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+}
+
+.heatmap-tooltip-sales-value {
+    font-size: 0.98rem;
+    font-weight: 700;
+    color: #111827;
+}
+
+.heatmap-tooltip-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    font-size: 0.8rem;
+    color: #374151;
+    padding: 3px 0;
+}
+
+.heatmap-tooltip-row span:last-child {
+    font-weight: 600;
+    color: #111827;
+}
+
+.heatmap-tooltip-footer {
+    margin-top: 10px;
+    padding-top: 10px;
+    border-top: 1px solid #eef0f4;
+    font-size: 0.72rem;
+    color: #9ca3af;
+}
+
+/* --- Navbar superior fijo al hacer scroll ---
+   El sidebar (.aside-menu-container) ya es position:fixed; el navbar de
+   arriba (.header, dentro de .wrapper) no tenía ninguna posición fija y
+   por eso se iba con el scroll de la página. sticky respeta el
+   padding-left que .wrapper ya usa para no quedar debajo del sidebar, así
+   que no hace falta calcular left/right a mano como en position:fixed.
+   z-index 100 coincide con el que ya usa la clase .fixed-header muerta de
+   la plantilla original, y queda por debajo del sidebar (1009) y del
+   overlay del menú móvil (109). */
+.header {
+    position: sticky;
+    top: 0;
+    z-index: 100;
 }
