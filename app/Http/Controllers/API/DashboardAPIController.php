@@ -42,72 +42,118 @@ class DashboardAPIController extends AppBaseController
     }
 
     /**
-     * Panorama de "hoy" para la cabecera + tarjeta de ventas + fila de
-     * operaciones del dashboard nuevo: totales de hoy y su delta contra
-     * el promedio diario de los 7 días anteriores (mismo baseline para
-     * las 4 métricas, para no mezclar criterios distintos entre
-     * tarjetas). "Cajeros activos" son cajas (pos_register) sin cerrar
-     * ahora mismo -- no hay columna de última actividad en este sistema,
-     * así que es "caja abierta", no presencia real.
-     *
-     * sales/sale_returns.date son columnas DATE puras, ya en calendario
-     * de Guayaquil -- se comparan directo, sin conversión UTC (ver
-     * getPurchaseSalesCounts() arriba, mismo criterio). customers.created_at
-     * SÍ es timestamp UTC real y necesita el límite de día convertido,
-     * igual que POSRegisterAPIController::getRegisterDetails().
+     * Traduce el filtro del selector de rango ("today"/"yesterday"/"7d"/
+     * "15d"/"30d"/"60d"/"90d"/"custom") a [fecha_inicio, fecha_fin] en
+     * calendario de Guayaquil. Compartido por getTodayOverview() y
+     * getTodayHourlyBreakdown() para que ambos siempre miren exactamente
+     * la misma ventana.
      */
-    public function getTodayOverview(): JsonResponse
+    private function resolveOverviewRange(Request $request): array
     {
+        $range = $request->get('range', 'today');
         $today = Carbon::now('America/Guayaquil')->toDateString();
-        $sevenDaysAgo = Carbon::now('America/Guayaquil')->subDays(7)->toDateString();
-        $yesterday = Carbon::now('America/Guayaquil')->subDay()->toDateString();
 
-        $todaySaleIds = $this->scopeQueryToCurrentStore(Sale::whereDate('date', $today))->pluck('id');
-        $totalSales = (float) Sale::whereIn('id', $todaySaleIds)->sum('grand_total');
-        $transactionCount = $todaySaleIds->count();
-        $itemsSold = (float) SaleItem::whereIn('sale_id', $todaySaleIds)->sum('quantity');
+        return match ($range) {
+            'yesterday' => [
+                Carbon::now('America/Guayaquil')->subDay()->toDateString(),
+                Carbon::now('America/Guayaquil')->subDay()->toDateString(),
+            ],
+            '7d' => [Carbon::now('America/Guayaquil')->subDays(6)->toDateString(), $today],
+            '15d' => [Carbon::now('America/Guayaquil')->subDays(14)->toDateString(), $today],
+            '30d' => [Carbon::now('America/Guayaquil')->subDays(29)->toDateString(), $today],
+            '60d' => [Carbon::now('America/Guayaquil')->subDays(59)->toDateString(), $today],
+            '90d' => [Carbon::now('America/Guayaquil')->subDays(89)->toDateString(), $today],
+            'custom' => (function () use ($request, $today) {
+                $from = $request->get('from') ?: $today;
+                $to = $request->get('to') ?: $today;
+
+                return $from <= $to ? [$from, $to] : [$to, $from];
+            })(),
+            default => [$today, $today], // 'today'
+        };
+    }
+
+    /**
+     * Totales + transacciones + artículos + reembolsos + clientes nuevos
+     * para una ventana [start,end] arbitraria -- usado tanto para la
+     * ventana ACTUAL como para la ventana de comparación en
+     * getTodayOverview(). 'date' es columna DATE pura ya en calendario de
+     * Guayaquil (sin conversión UTC); created_at de customers SÍ es
+     * timestamp UTC real y necesita el límite de día convertido, igual
+     * que POSRegisterAPIController::getRegisterDetails().
+     */
+    private function windowOverviewMetrics(string $start, string $end): array
+    {
+        $saleIds = $this->scopeQueryToCurrentStore(Sale::whereBetween('date', [$start, $end]))->pluck('id');
+        $totalSales = (float) Sale::whereIn('id', $saleIds)->sum('grand_total');
+        $transactionCount = $saleIds->count();
+        $itemsSold = (float) SaleItem::whereIn('sale_id', $saleIds)->sum('quantity');
         $avgBasket = $transactionCount > 0 ? round($totalSales / $transactionCount, 2) : 0.0;
 
-        $refundsAmount = (float) $this->scopeQueryToCurrentStore(SaleReturn::whereDate('date', $today))->sum('grand_total');
+        $refundsAmount = (float) $this->scopeQueryToCurrentStore(SaleReturn::whereBetween('date', [$start, $end]))->sum('grand_total');
 
-        $startOfTodayUtc = Carbon::now('America/Guayaquil')->startOfDay()->utc()->toDateTimeString();
-        $endOfTodayUtc = Carbon::now('America/Guayaquil')->endOfDay()->utc()->toDateTimeString();
-        $newCustomersCount = Customer::whereBetween('created_at', [$startOfTodayUtc, $endOfTodayUtc])
+        $startUtc = Carbon::parse($start, 'America/Guayaquil')->startOfDay()->utc()->toDateTimeString();
+        $endUtc = Carbon::parse($end, 'America/Guayaquil')->endOfDay()->utc()->toDateTimeString();
+        $newCustomersCount = Customer::whereBetween('created_at', [$startUtc, $endUtc])
             ->when($this->currentStoreId(), function ($q, $storeId) {
                 $q->where('store_id', $storeId);
             })
             ->count();
 
-        // Promedio diario de los últimos 7 días ANTES de hoy (no incluye
-        // hoy), mismo criterio para las 4 métricas con delta.
-        $last7DaysSales = (float) $this->scopeQueryToCurrentStore(
-            Sale::whereBetween('date', [$sevenDaysAgo, $yesterday])
-        )->sum('grand_total');
-        $last7DaysTransactionCount = (int) $this->scopeQueryToCurrentStore(
-            Sale::whereBetween('date', [$sevenDaysAgo, $yesterday])
-        )->count();
-        $last7DaysRefunds = (float) $this->scopeQueryToCurrentStore(
-            SaleReturn::whereBetween('date', [$sevenDaysAgo, $yesterday])
-        )->sum('grand_total');
-        $startOfWindowUtc = Carbon::now('America/Guayaquil')->subDays(7)->startOfDay()->utc()->toDateTimeString();
-        $endOfWindowUtc = Carbon::now('America/Guayaquil')->subDay()->endOfDay()->utc()->toDateTimeString();
-        $last7DaysNewCustomers = Customer::whereBetween('created_at', [$startOfWindowUtc, $endOfWindowUtc])
-            ->when($this->currentStoreId(), function ($q, $storeId) {
-                $q->where('store_id', $storeId);
-            })
-            ->count();
+        return [
+            'total_sales' => $totalSales,
+            'transaction_count' => $transactionCount,
+            'avg_basket' => $avgBasket,
+            'items_sold' => $itemsSold,
+            'refunds_amount' => $refundsAmount,
+            'new_customers_count' => $newCustomersCount,
+        ];
+    }
 
-        $avgDailySales = $last7DaysSales / 7;
-        $avgDailyTransactions = $last7DaysTransactionCount / 7;
-        $avgDailyRefunds = $last7DaysRefunds / 7;
-        $avgDailyNewCustomers = $last7DaysNewCustomers / 7;
+    /**
+     * Panorama para la cabecera + tarjeta de ventas + fila de operaciones
+     * del dashboard: totales de la ventana elegida (?range=, default
+     * "today") y su delta vs. la ventana de comparación. Para "today"
+     * (el default, sin tocar el selector) se mantiene EXACTO el criterio
+     * original ya verificado: hoy vs. el promedio diario de los 7 días
+     * anteriores. Para cualquier otro rango elegido a mano, se compara
+     * contra el período inmediatamente anterior de igual longitud (mismo
+     * criterio que ya usa getPerformanceNetSales() más abajo), para no
+     * mezclar dos metodologías de comparación distintas sin necesidad.
+     *
+     * "Cajeros activos" y "stock bajo" son un corte AHORA MISMO, no
+     * dependen del rango elegido -- no tendría sentido "cajeros activos
+     * hace 30 días".
+     */
+    public function getTodayOverview(Request $request): JsonResponse
+    {
+        $range = $request->get('range', 'today');
+        [$start, $end] = $this->resolveOverviewRange($request);
+        $current = $this->windowOverviewMetrics($start, $end);
 
-        $percentVsAvg = function ($today, $avg) {
+        if ($range === 'today') {
+            $sevenDaysAgo = Carbon::now('America/Guayaquil')->subDays(7)->toDateString();
+            $yesterday = Carbon::now('America/Guayaquil')->subDay()->toDateString();
+            $last7Days = $this->windowOverviewMetrics($sevenDaysAgo, $yesterday);
+            $previous = [
+                'total_sales' => $last7Days['total_sales'] / 7,
+                'transaction_count' => $last7Days['transaction_count'] / 7,
+                'refunds_amount' => $last7Days['refunds_amount'] / 7,
+                'new_customers_count' => $last7Days['new_customers_count'] / 7,
+            ];
+        } else {
+            $days = Carbon::parse($start)->diffInDays(Carbon::parse($end)) + 1;
+            $prevEnd = Carbon::parse($start)->subDay()->toDateString();
+            $prevStart = Carbon::parse($prevEnd)->subDays($days - 1)->toDateString();
+            $previous = $this->windowOverviewMetrics($prevStart, $prevEnd);
+        }
+
+        $percentVsAvg = function ($value, $avg) {
             if ($avg <= 0) {
-                return $today > 0 ? 100.0 : 0.0;
+                return $value > 0 ? 100.0 : 0.0;
             }
 
-            return round((($today - $avg) / $avg) * 100, 1);
+            return round((($value - $avg) / $avg) * 100, 1);
         };
 
         $activeCashiersCount = POSRegister::whereNull('closed_at')
@@ -128,16 +174,19 @@ class DashboardAPIController extends AppBaseController
             ->count();
 
         $data = [
-            'total_sales' => $totalSales,
-            'total_sales_vs_avg_percent' => $percentVsAvg($totalSales, $avgDailySales),
-            'transaction_count' => $transactionCount,
-            'transaction_count_vs_avg_percent' => $percentVsAvg($transactionCount, $avgDailyTransactions),
-            'avg_basket' => $avgBasket,
-            'items_sold' => $itemsSold,
-            'refunds_amount' => $refundsAmount,
-            'refunds_vs_avg_percent' => $percentVsAvg($refundsAmount, $avgDailyRefunds),
-            'new_customers_count' => $newCustomersCount,
-            'new_customers_vs_avg_percent' => $percentVsAvg($newCustomersCount, $avgDailyNewCustomers),
+            'range' => $range,
+            'start_date' => $start,
+            'end_date' => $end,
+            'total_sales' => $current['total_sales'],
+            'total_sales_vs_avg_percent' => $percentVsAvg($current['total_sales'], $previous['total_sales']),
+            'transaction_count' => $current['transaction_count'],
+            'transaction_count_vs_avg_percent' => $percentVsAvg($current['transaction_count'], $previous['transaction_count']),
+            'avg_basket' => $current['avg_basket'],
+            'items_sold' => $current['items_sold'],
+            'refunds_amount' => $current['refunds_amount'],
+            'refunds_vs_avg_percent' => $percentVsAvg($current['refunds_amount'], $previous['refunds_amount']),
+            'new_customers_count' => $current['new_customers_count'],
+            'new_customers_vs_avg_percent' => $percentVsAvg($current['new_customers_count'], $previous['new_customers_count']),
             'active_cashiers_count' => $activeCashiersCount,
             'low_stock_count' => $lowStockCount,
         ];
@@ -146,35 +195,53 @@ class DashboardAPIController extends AppBaseController
     }
 
     /**
-     * Desglose por hora de HOY, para las sparklines de la tarjeta de
-     * ventas y las 3 tarjetas laterales. created_at es timestamp UTC
-     * real -- se limita el rango con el mismo patrón de
-     * POSRegisterAPIController::getRegisterDetails(), y se agrupa por
-     * hora EN PHP (Carbon::setTimezone()), no con HOUR()/CONVERT_TZ() en
-     * SQL, porque nada más en esta app depende de que MySQL tenga
-     * cargadas las tablas de zonas horarias.
+     * Serie para la sparkline de la tarjeta de ventas: por HORA cuando la
+     * ventana elegida es un solo día (today/yesterday/custom de un solo
+     * día), por DÍA cuando abarca varios días (7d/15d/30d/60d/90d/custom
+     * multi-día) -- mostrar 90 días por hora no tendría sentido. El
+     * 'granularity' de la respuesta le dice al frontend cómo formatear
+     * las etiquetas del eje.
      */
-    public function getTodayHourlyBreakdown(): JsonResponse
+    public function getTodayHourlyBreakdown(Request $request): JsonResponse
     {
-        $startOfTodayUtc = Carbon::now('America/Guayaquil')->startOfDay()->utc();
-        $endOfTodayUtc = Carbon::now('America/Guayaquil')->endOfDay()->utc();
-        $currentHour = (int) Carbon::now('America/Guayaquil')->format('H');
+        [$start, $end] = $this->resolveOverviewRange($request);
+
+        if ($start === $end) {
+            return $this->hourlyBreakdownForDay($start);
+        }
+
+        return $this->dailyBreakdownForRange($start, $end);
+    }
+
+    /**
+     * created_at es timestamp UTC real -- se limita el rango con el mismo
+     * patrón de POSRegisterAPIController::getRegisterDetails(), y se
+     * agrupa por hora EN PHP (Carbon::setTimezone()), no con
+     * HOUR()/CONVERT_TZ() en SQL, porque nada más en esta app depende de
+     * que MySQL tenga cargadas las tablas de zonas horarias.
+     */
+    private function hourlyBreakdownForDay(string $date): JsonResponse
+    {
+        $dayStartUtc = Carbon::parse($date, 'America/Guayaquil')->startOfDay()->utc();
+        $dayEndUtc = Carbon::parse($date, 'America/Guayaquil')->endOfDay()->utc();
+        $isToday = $date === Carbon::now('America/Guayaquil')->toDateString();
+        $maxHour = $isToday ? (int) Carbon::now('America/Guayaquil')->format('H') : 23;
 
         $sales = $this->scopeQueryToCurrentStore(
-            Sale::whereBetween('created_at', [$startOfTodayUtc, $endOfTodayUtc])
+            Sale::whereBetween('created_at', [$dayStartUtc, $dayEndUtc])
         )->get(['created_at', 'grand_total']);
 
         $refunds = $this->scopeQueryToCurrentStore(
-            SaleReturn::whereBetween('created_at', [$startOfTodayUtc, $endOfTodayUtc])
+            SaleReturn::whereBetween('created_at', [$dayStartUtc, $dayEndUtc])
         )->get(['created_at', 'grand_total']);
 
-        $newCustomers = Customer::whereBetween('created_at', [$startOfTodayUtc, $endOfTodayUtc])
+        $newCustomers = Customer::whereBetween('created_at', [$dayStartUtc, $dayEndUtc])
             ->when($this->currentStoreId(), function ($q, $storeId) {
                 $q->where('store_id', $storeId);
             })
             ->get(['created_at']);
 
-        $hours = range(0, $currentHour);
+        $hours = range(0, $maxHour);
         $salesByHour = array_fill_keys($hours, 0.0);
         $transactionsByHour = array_fill_keys($hours, 0);
         $refundsByHour = array_fill_keys($hours, 0.0);
@@ -203,7 +270,8 @@ class DashboardAPIController extends AppBaseController
         }
 
         $data = [
-            'hours' => array_map(fn ($h) => str_pad((string) $h, 2, '0', STR_PAD_LEFT), $hours),
+            'granularity' => 'hourly',
+            'labels' => array_map(fn ($h) => str_pad((string) $h, 2, '0', STR_PAD_LEFT), $hours),
             'sales' => array_values($salesByHour),
             'transactions' => array_values($transactionsByHour),
             'refunds' => array_values($refundsByHour),
@@ -211,6 +279,72 @@ class DashboardAPIController extends AppBaseController
         ];
 
         return $this->sendResponse($data, 'Today hourly breakdown retrieved successfully');
+    }
+
+    /**
+     * Un punto por día -- mismo cuidado con el cast de 'date' a Carbon ya
+     * documentado en windowPerformanceMetrics() más abajo (nunca
+     * groupBy('date') directo, formatear explícito).
+     */
+    private function dailyBreakdownForRange(string $start, string $end): JsonResponse
+    {
+        $sales = $this->scopeQueryToCurrentStore(Sale::whereBetween('date', [$start, $end]))
+            ->get(['date', 'grand_total']);
+        $refunds = $this->scopeQueryToCurrentStore(SaleReturn::whereBetween('date', [$start, $end]))
+            ->get(['date', 'grand_total']);
+
+        $startUtc = Carbon::parse($start, 'America/Guayaquil')->startOfDay()->utc()->toDateTimeString();
+        $endUtc = Carbon::parse($end, 'America/Guayaquil')->endOfDay()->utc()->toDateTimeString();
+        $newCustomers = Customer::whereBetween('created_at', [$startUtc, $endUtc])
+            ->when($this->currentStoreId(), function ($q, $storeId) {
+                $q->where('store_id', $storeId);
+            })
+            ->get(['created_at']);
+
+        $labels = [];
+        $salesByDay = [];
+        $transactionsByDay = [];
+        $refundsByDay = [];
+        $newCustomersByDay = [];
+        foreach (CarbonPeriod::create($start, $end) as $date) {
+            $key = $date->format('Y-m-d');
+            $labels[] = $key;
+            $salesByDay[$key] = 0.0;
+            $transactionsByDay[$key] = 0;
+            $refundsByDay[$key] = 0.0;
+            $newCustomersByDay[$key] = 0;
+        }
+
+        foreach ($sales as $sale) {
+            $key = $sale->date->format('Y-m-d');
+            if (array_key_exists($key, $salesByDay)) {
+                $salesByDay[$key] += (float) $sale->grand_total;
+                $transactionsByDay[$key]++;
+            }
+        }
+        foreach ($refunds as $refund) {
+            $key = $refund->date->format('Y-m-d');
+            if (array_key_exists($key, $refundsByDay)) {
+                $refundsByDay[$key] += (float) $refund->grand_total;
+            }
+        }
+        foreach ($newCustomers as $customer) {
+            $key = Carbon::parse($customer->created_at)->setTimezone('America/Guayaquil')->format('Y-m-d');
+            if (array_key_exists($key, $newCustomersByDay)) {
+                $newCustomersByDay[$key]++;
+            }
+        }
+
+        $data = [
+            'granularity' => 'daily',
+            'labels' => $labels,
+            'sales' => array_values($salesByDay),
+            'transactions' => array_values($transactionsByDay),
+            'refunds' => array_values($refundsByDay),
+            'new_customers' => array_values($newCustomersByDay),
+        ];
+
+        return $this->sendResponse($data, 'Sales trend retrieved successfully');
     }
 
     /**

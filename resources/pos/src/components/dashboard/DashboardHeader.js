@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { useSelector } from 'react-redux';
 import { getFormattedMessage } from '../../shared/sharedMethod';
+import TodaySalesFilter from './TodaySalesFilter';
 
 const getGreetingKey = (hour) => {
     if (hour < 12) {
@@ -58,19 +59,20 @@ const DashboardHeader = ({ activeCashiersCount }) => {
                     <span className="dash-header-date text-capitalize">{dateLabel}</span>
                     <span className="dash-header-sep">&middot;</span>
                     <span className="dash-header-time">{timeLabel}</span>
+                    {currentStoreName && (
+                        <>
+                            <span className="dash-header-sep">&middot;</span>
+                            <span className="dash-header-store">{currentStoreName}</span>
+                        </>
+                    )}
+                    <span className="dash-header-sep">&middot;</span>
+                    <span className="dash-header-cashiers">
+                        {(activeCashiersCount ?? 0)} {getFormattedMessage('dashboard.header.cashiers.label')}
+                    </span>
                 </div>
             </div>
             <div className="dash-header-right">
-                {currentStoreName && (
-                    <div className="dash-header-chip">
-                        <span className="dash-header-chip-label">{getFormattedMessage('dashboard.header.store.label')}</span>
-                        <span className="dash-header-chip-value">{currentStoreName}</span>
-                    </div>
-                )}
-                <div className="dash-header-chip">
-                    <span className="dash-header-chip-label">{getFormattedMessage('dashboard.header.cashiers.label')}</span>
-                    <span className="dash-header-chip-value">{activeCashiersCount ?? 0}</span>
-                </div>
+                <TodaySalesFilter />
             </div>
         </div>
     );
