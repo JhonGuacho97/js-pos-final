@@ -124,9 +124,12 @@ class MainProduct extends Model implements HasMedia, JsonResourceful
     public function getImageUrlAttribute()
     {
         /** @var Media $media */
+        // Mismo bug (y mismo fix) que Product::getImageUrlAttribute():
+        // !empty() sobre una Collection es siempre true en PHP, así que sin
+        // isNotEmpty() esto devolvía [] en vez de '' cuando no hay imagen.
         $medias = $this->getMedia(MainProduct::PATH);
         $images = [];
-        if (!empty($medias)) {
+        if ($medias->isNotEmpty()) {
             foreach ($medias as $key => $media) {
                 $images['imageUrls'][$key] = $media->getFullUrl();
                 $images['id'][$key] = $media->id;

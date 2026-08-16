@@ -694,6 +694,7 @@ class DashboardAPIController extends AppBaseController
             ->groupBy('products.id')
             ->orderBy('total_quantity', 'desc')
             ->take($limit)
+            ->with('mainProduct')
             ->get();
 
         $data = [];
@@ -708,7 +709,13 @@ class DashboardAPIController extends AppBaseController
                 'total_quantity' => (float) $product->total_quantity,
                 'grand_total' => (float) $product->grand_total,
                 'sale_unit' => isset($product->getSaleUnitName()['short_name']) ? $product->getSaleUnitName()['short_name'] : null,
-                'image' => $product->image_url,
+                // OJO: la imagen NO se sube al Product (variación) sino al
+                // MainProduct padre -- Product::getImageUrlAttribute() mira
+                // media() del propio Product, que para variaciones casi
+                // siempre está vacía. Mismo patrón que ya usa
+                // Product::prepareAttributes() ('images' => $this->
+                // mainProduct?->image_url ?? '').
+                'image' => $product->mainProduct?->image_url ?: '',
                 'product_category_name' => optional($product->productCategory)->name,
             ];
         }
