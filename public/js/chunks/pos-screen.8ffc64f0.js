@@ -672,10 +672,10 @@ var PosRegisterOpenAlertModel = function PosRegisterOpenAlertModel(_ref) {
 
 /***/ },
 
-/***/ "./resources/pos/src/frontend/components/Brand.js"
-/*!********************************************************!*\
-  !*** ./resources/pos/src/frontend/components/Brand.js ***!
-  \********************************************************/
+/***/ "./resources/pos/src/frontend/components/Category.js"
+/*!***********************************************************!*\
+  !*** ./resources/pos/src/frontend/components/Category.js ***!
+  \***********************************************************/
 (__unused_webpack_module, __webpack_exports__, __webpack_require__) {
 
 "use strict";
@@ -690,7 +690,7 @@ __webpack_require__.r(__webpack_exports__);
 /* harmony import */ var react_bootstrap_v5__WEBPACK_IMPORTED_MODULE_3__ = __webpack_require__(/*! react-bootstrap-v5 */ "./node_modules/react-bootstrap-v5/lib/esm/Button.js");
 /* harmony import */ var react_bootstrap_v5__WEBPACK_IMPORTED_MODULE_4__ = __webpack_require__(/*! react-bootstrap-v5 */ "./node_modules/react-bootstrap-v5/lib/esm/Nav.js");
 /* harmony import */ var react_redux__WEBPACK_IMPORTED_MODULE_5__ = __webpack_require__(/*! react-redux */ "./node_modules/react-redux/es/index.js");
-/* harmony import */ var _store_action_brandsAction__WEBPACK_IMPORTED_MODULE_6__ = __webpack_require__(/*! ../../store/action/brandsAction */ "./resources/pos/src/store/action/brandsAction.js");
+/* harmony import */ var _store_action_productCategoryAction__WEBPACK_IMPORTED_MODULE_6__ = __webpack_require__(/*! ../../store/action/productCategoryAction */ "./resources/pos/src/store/action/productCategoryAction.js");
 /* harmony import */ var _shared_sharedMethod__WEBPACK_IMPORTED_MODULE_7__ = __webpack_require__(/*! ../../shared/sharedMethod */ "./resources/pos/src/shared/sharedMethod.js");
 /* harmony import */ var react_jsx_runtime__WEBPACK_IMPORTED_MODULE_8__ = __webpack_require__(/*! react/jsx-runtime */ "./node_modules/react/jsx-runtime.js");
 function _typeof(o) { "@babel/helpers - typeof"; return _typeof = "function" == typeof Symbol && "symbol" == typeof Symbol.iterator ? function (o) { return typeof o; } : function (o) { return o && "function" == typeof Symbol && o.constructor === Symbol && o !== Symbol.prototype ? "symbol" : typeof o; }, _typeof(o); }
@@ -706,111 +706,6 @@ function _arrayLikeToArray(r, a) { (null == a || a > r.length) && (a = r.length)
 function _iterableToArrayLimit(r, l) { var t = null == r ? null : "undefined" != typeof Symbol && r[Symbol.iterator] || r["@@iterator"]; if (null != t) { var e, n, i, u, a = [], f = !0, o = !1; try { if (i = (t = t.call(r)).next, 0 === l) { if (Object(t) !== t) return; f = !1; } else for (; !(f = (e = i.call(t)).done) && (a.push(e.value), a.length !== l); f = !0); } catch (r) { o = !0, n = r; } finally { try { if (!f && null != t["return"] && (u = t["return"](), Object(u) !== u)) return; } finally { if (o) throw n; } } return a; } }
 function _arrayWithHoles(r) { if (Array.isArray(r)) return r; }
 
-
-
-
-
-
-
-
-var swiperParams = {
-  slidesPerView: 'auto',
-  observer: true
-};
-var Brands = function Brands(props) {
-  var fetchAllBrands = props.fetchAllBrands,
-    brands = props.brands,
-    setBrand = props.setBrand;
-  var _useState = (0,react__WEBPACK_IMPORTED_MODULE_0__.useState)(0),
-    _useState2 = _slicedToArray(_useState, 2),
-    productBrandName = _useState2[0],
-    setProductBrandName = _useState2[1];
-  (0,react__WEBPACK_IMPORTED_MODULE_0__.useEffect)(function () {
-    fetchAllBrands();
-  }, []);
-
-  //filter brand function
-  var onSelectBrand = function onSelectBrand(brand) {
-    setBrand(brand);
-    setProductBrandName(brand);
-  };
-  var brandsItem = brands === null || brands === void 0 ? void 0 : brands.filter(function (brand) {
-    var _brand$attributes;
-    return ((_brand$attributes = brand.attributes) === null || _brand$attributes === void 0 ? void 0 : _brand$attributes.product_count) > 0;
-  }).map(function (brand, index) {
-    return /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_8__.jsx)(react_bootstrap_v5__WEBPACK_IMPORTED_MODULE_4__["default"].Item, {
-      className: "button-list__item",
-      children: /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_8__.jsx)(react_bootstrap_v5__WEBPACK_IMPORTED_MODULE_3__["default"], {
-        variant: "light",
-        className: "custom-btn-size w-100 ".concat(productBrandName === brand.id ? "button-list__item-active text-white" : ""),
-        onClick: function onClick() {
-          onSelectBrand(brand.id);
-        },
-        children: brand.attributes.name
-      })
-    }, index);
-  });
-  return /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_8__.jsxs)(react_bootstrap_v5__WEBPACK_IMPORTED_MODULE_4__["default"], {
-    className: "button-list d-flex flex-nowrap",
-    children: [/*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_8__.jsx)(react_bootstrap_v5__WEBPACK_IMPORTED_MODULE_4__["default"].Item, {
-      className: "button-list__item me-2",
-      children: /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_8__.jsx)(react_bootstrap_v5__WEBPACK_IMPORTED_MODULE_3__["default"], {
-        variant: "light",
-        className: "text-nowrap custom-btn-size ".concat(productBrandName === 0 ? 'button-list__item-active text-white' : ''),
-        onClick: function onClick() {
-          return onSelectBrand(0);
-        },
-        children: (0,_shared_sharedMethod__WEBPACK_IMPORTED_MODULE_7__.getFormattedMessage)('pos-all.brands.label')
-      })
-    }), /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_8__.jsx)((react_id_swiper__WEBPACK_IMPORTED_MODULE_1___default()), _objectSpread(_objectSpread({}, swiperParams), {}, {
-      children: brandsItem
-    }))]
-  });
-};
-var mapStateToProps = function mapStateToProps(state) {
-  var brands = state.brands;
-  return {
-    brands: brands
-  };
-};
-/* harmony default export */ const __WEBPACK_DEFAULT_EXPORT__ = ((0,react_redux__WEBPACK_IMPORTED_MODULE_5__.connect)(mapStateToProps, {
-  fetchAllBrands: _store_action_brandsAction__WEBPACK_IMPORTED_MODULE_6__.fetchAllBrands
-})(Brands));
-
-/***/ },
-
-/***/ "./resources/pos/src/frontend/components/Category.js"
-/*!***********************************************************!*\
-  !*** ./resources/pos/src/frontend/components/Category.js ***!
-  \***********************************************************/
-(__unused_webpack_module, __webpack_exports__, __webpack_require__) {
-
-"use strict";
-__webpack_require__.r(__webpack_exports__);
-/* harmony export */ __webpack_require__.d(__webpack_exports__, {
-/* harmony export */   "default": () => (__WEBPACK_DEFAULT_EXPORT__)
-/* harmony export */ });
-/* harmony import */ var react__WEBPACK_IMPORTED_MODULE_0__ = __webpack_require__(/*! react */ "./node_modules/react/index.js");
-/* harmony import */ var react_id_swiper__WEBPACK_IMPORTED_MODULE_1__ = __webpack_require__(/*! react-id-swiper */ "./node_modules/react-id-swiper/lib/index.js");
-/* harmony import */ var react_id_swiper__WEBPACK_IMPORTED_MODULE_1___default = /*#__PURE__*/__webpack_require__.n(react_id_swiper__WEBPACK_IMPORTED_MODULE_1__);
-/* harmony import */ var react_bootstrap_v5__WEBPACK_IMPORTED_MODULE_2__ = __webpack_require__(/*! react-bootstrap-v5 */ "./node_modules/react-bootstrap-v5/lib/esm/Button.js");
-/* harmony import */ var react_bootstrap_v5__WEBPACK_IMPORTED_MODULE_3__ = __webpack_require__(/*! react-bootstrap-v5 */ "./node_modules/react-bootstrap-v5/lib/esm/Nav.js");
-/* harmony import */ var react_redux__WEBPACK_IMPORTED_MODULE_4__ = __webpack_require__(/*! react-redux */ "./node_modules/react-redux/es/index.js");
-/* harmony import */ var _store_action_productCategoryAction__WEBPACK_IMPORTED_MODULE_5__ = __webpack_require__(/*! ../../store/action/productCategoryAction */ "./resources/pos/src/store/action/productCategoryAction.js");
-/* harmony import */ var _shared_sharedMethod__WEBPACK_IMPORTED_MODULE_6__ = __webpack_require__(/*! ../../shared/sharedMethod */ "./resources/pos/src/shared/sharedMethod.js");
-/* harmony import */ var react_jsx_runtime__WEBPACK_IMPORTED_MODULE_7__ = __webpack_require__(/*! react/jsx-runtime */ "./node_modules/react/jsx-runtime.js");
-function _typeof(o) { "@babel/helpers - typeof"; return _typeof = "function" == typeof Symbol && "symbol" == typeof Symbol.iterator ? function (o) { return typeof o; } : function (o) { return o && "function" == typeof Symbol && o.constructor === Symbol && o !== Symbol.prototype ? "symbol" : typeof o; }, _typeof(o); }
-function ownKeys(e, r) { var t = Object.keys(e); if (Object.getOwnPropertySymbols) { var o = Object.getOwnPropertySymbols(e); r && (o = o.filter(function (r) { return Object.getOwnPropertyDescriptor(e, r).enumerable; })), t.push.apply(t, o); } return t; }
-function _objectSpread(e) { for (var r = 1; r < arguments.length; r++) { var t = null != arguments[r] ? arguments[r] : {}; r % 2 ? ownKeys(Object(t), !0).forEach(function (r) { _defineProperty(e, r, t[r]); }) : Object.getOwnPropertyDescriptors ? Object.defineProperties(e, Object.getOwnPropertyDescriptors(t)) : ownKeys(Object(t)).forEach(function (r) { Object.defineProperty(e, r, Object.getOwnPropertyDescriptor(t, r)); }); } return e; }
-function _defineProperty(e, r, t) { return (r = _toPropertyKey(r)) in e ? Object.defineProperty(e, r, { value: t, enumerable: !0, configurable: !0, writable: !0 }) : e[r] = t, e; }
-function _toPropertyKey(t) { var i = _toPrimitive(t, "string"); return "symbol" == _typeof(i) ? i : i + ""; }
-function _toPrimitive(t, r) { if ("object" != _typeof(t) || !t) return t; var e = t[Symbol.toPrimitive]; if (void 0 !== e) { var i = e.call(t, r || "default"); if ("object" != _typeof(i)) return i; throw new TypeError("@@toPrimitive must return a primitive value."); } return ("string" === r ? String : Number)(t); }
-function _slicedToArray(r, e) { return _arrayWithHoles(r) || _iterableToArrayLimit(r, e) || _unsupportedIterableToArray(r, e) || _nonIterableRest(); }
-function _nonIterableRest() { throw new TypeError("Invalid attempt to destructure non-iterable instance.\nIn order to be iterable, non-array objects must have a [Symbol.iterator]() method."); }
-function _unsupportedIterableToArray(r, a) { if (r) { if ("string" == typeof r) return _arrayLikeToArray(r, a); var t = {}.toString.call(r).slice(8, -1); return "Object" === t && r.constructor && (t = r.constructor.name), "Map" === t || "Set" === t ? Array.from(r) : "Arguments" === t || /^(?:Ui|I)nt(?:8|16|32)(?:Clamped)?Array$/.test(t) ? _arrayLikeToArray(r, a) : void 0; } }
-function _arrayLikeToArray(r, a) { (null == a || a > r.length) && (a = r.length); for (var e = 0, n = Array(a); e < a; e++) n[e] = r[e]; return n; }
-function _iterableToArrayLimit(r, l) { var t = null == r ? null : "undefined" != typeof Symbol && r[Symbol.iterator] || r["@@iterator"]; if (null != t) { var e, n, i, u, a = [], f = !0, o = !1; try { if (i = (t = t.call(r)).next, 0 === l) { if (Object(t) !== t) return; f = !1; } else for (; !(f = (e = i.call(t)).done) && (a.push(e.value), a.length !== l); f = !0); } catch (r) { o = !0, n = r; } finally { try { if (!f && null != t["return"] && (u = t["return"](), Object(u) !== u)) return; } finally { if (o) throw n; } } return a; } }
-function _arrayWithHoles(r) { if (Array.isArray(r)) return r; }
 
 
 
@@ -847,9 +742,9 @@ var Category = function Category(props) {
   var categoryItem = productCategories === null || productCategories === void 0 ? void 0 : productCategories.filter(function (productCategory) {
     return productCategory.attributes.products_count > 0;
   }).map(function (productCategory, index) {
-    return /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_7__.jsx)(react_bootstrap_v5__WEBPACK_IMPORTED_MODULE_3__["default"].Item, {
+    return /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_8__.jsx)(react_bootstrap_v5__WEBPACK_IMPORTED_MODULE_4__["default"].Item, {
       className: "button-list__item",
-      children: /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_7__.jsx)(react_bootstrap_v5__WEBPACK_IMPORTED_MODULE_2__["default"], {
+      children: /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_8__.jsx)(react_bootstrap_v5__WEBPACK_IMPORTED_MODULE_3__["default"], {
         variant: "light",
         className: "custom-btn-size w-100 ".concat(productCategoryName === productCategory.id ? "button-list__item-active text-white" : ""),
         onClick: function onClick() {
@@ -860,19 +755,19 @@ var Category = function Category(props) {
       })
     }, index);
   });
-  return /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_7__.jsxs)(react_bootstrap_v5__WEBPACK_IMPORTED_MODULE_3__["default"], {
+  return /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_8__.jsxs)(react_bootstrap_v5__WEBPACK_IMPORTED_MODULE_4__["default"], {
     className: "button-list mb-2 d-flex flex-nowrap",
-    children: [/*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_7__.jsx)(react_bootstrap_v5__WEBPACK_IMPORTED_MODULE_3__["default"].Item, {
+    children: [/*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_8__.jsx)(react_bootstrap_v5__WEBPACK_IMPORTED_MODULE_4__["default"].Item, {
       className: "button-list__item me-2",
-      children: /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_7__.jsx)(react_bootstrap_v5__WEBPACK_IMPORTED_MODULE_2__["default"], {
+      children: /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_8__.jsx)(react_bootstrap_v5__WEBPACK_IMPORTED_MODULE_3__["default"], {
         variant: "light",
         className: "custom-btn-size ".concat(productCategoryName === 0 ? 'button-list__item-active text-white' : ''),
         onClick: function onClick() {
           return onSelectCategory(0);
         },
-        children: (0,_shared_sharedMethod__WEBPACK_IMPORTED_MODULE_6__.getFormattedMessage)('pos-all.categories.label')
+        children: (0,_shared_sharedMethod__WEBPACK_IMPORTED_MODULE_7__.getFormattedMessage)('pos-all.categories.label')
       })
-    }), /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_7__.jsx)((react_id_swiper__WEBPACK_IMPORTED_MODULE_1___default()), _objectSpread(_objectSpread({}, swiperParams), {}, {
+    }), /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_8__.jsx)((react_id_swiper__WEBPACK_IMPORTED_MODULE_1___default()), _objectSpread(_objectSpread({}, swiperParams), {}, {
       children: categoryItem
     }))]
   });
@@ -883,8 +778,8 @@ var mapStateToProps = function mapStateToProps(state) {
     productCategories: productCategories
   };
 };
-/* harmony default export */ const __WEBPACK_DEFAULT_EXPORT__ = ((0,react_redux__WEBPACK_IMPORTED_MODULE_4__.connect)(mapStateToProps, {
-  fetchAllProductCategories: _store_action_productCategoryAction__WEBPACK_IMPORTED_MODULE_5__.fetchAllProductCategories
+/* harmony default export */ const __WEBPACK_DEFAULT_EXPORT__ = ((0,react_redux__WEBPACK_IMPORTED_MODULE_5__.connect)(mapStateToProps, {
+  fetchAllProductCategories: _store_action_productCategoryAction__WEBPACK_IMPORTED_MODULE_6__.fetchAllProductCategories
 })(Category));
 
 /***/ },
@@ -919,39 +814,38 @@ __webpack_require__.r(__webpack_exports__);
 /* harmony import */ var react_to_print__WEBPACK_IMPORTED_MODULE_11__ = __webpack_require__(/*! react-to-print */ "./node_modules/react-to-print/lib/index.js");
 /* harmony import */ var react_to_print__WEBPACK_IMPORTED_MODULE_11___default = /*#__PURE__*/__webpack_require__.n(react_to_print__WEBPACK_IMPORTED_MODULE_11__);
 /* harmony import */ var _Category__WEBPACK_IMPORTED_MODULE_12__ = __webpack_require__(/*! ./Category */ "./resources/pos/src/frontend/components/Category.js");
-/* harmony import */ var _Brand__WEBPACK_IMPORTED_MODULE_13__ = __webpack_require__(/*! ./Brand */ "./resources/pos/src/frontend/components/Brand.js");
-/* harmony import */ var _product_Product__WEBPACK_IMPORTED_MODULE_14__ = __webpack_require__(/*! ./product/Product */ "./resources/pos/src/frontend/components/product/Product.js");
-/* harmony import */ var _cart_product_ProductCartList__WEBPACK_IMPORTED_MODULE_15__ = __webpack_require__(/*! ./cart-product/ProductCartList */ "./resources/pos/src/frontend/components/cart-product/ProductCartList.js");
-/* harmony import */ var _store_action_pos_posfetchProductAction__WEBPACK_IMPORTED_MODULE_16__ = __webpack_require__(/*! ../../store/action/pos/posfetchProductAction */ "./resources/pos/src/store/action/pos/posfetchProductAction.js");
-/* harmony import */ var _product_ProductSearchbar__WEBPACK_IMPORTED_MODULE_17__ = __webpack_require__(/*! ./product/ProductSearchbar */ "./resources/pos/src/frontend/components/product/ProductSearchbar.js");
-/* harmony import */ var _shared_PrepareCartArray__WEBPACK_IMPORTED_MODULE_18__ = __webpack_require__(/*! ../shared/PrepareCartArray */ "./resources/pos/src/frontend/shared/PrepareCartArray.js");
-/* harmony import */ var _shared_ProductDetailsModel__WEBPACK_IMPORTED_MODULE_19__ = __webpack_require__(/*! ../shared/ProductDetailsModel */ "./resources/pos/src/frontend/shared/ProductDetailsModel.js");
-/* harmony import */ var _cart_product_CartItemMainCalculation__WEBPACK_IMPORTED_MODULE_20__ = __webpack_require__(/*! ./cart-product/CartItemMainCalculation */ "./resources/pos/src/frontend/components/cart-product/CartItemMainCalculation.js");
-/* harmony import */ var _header_PosHeader__WEBPACK_IMPORTED_MODULE_21__ = __webpack_require__(/*! ./header/PosHeader */ "./resources/pos/src/frontend/components/header/PosHeader.js");
-/* harmony import */ var _store_action_pos_posCashPaymentAction__WEBPACK_IMPORTED_MODULE_22__ = __webpack_require__(/*! ../../store/action/pos/posCashPaymentAction */ "./resources/pos/src/store/action/pos/posCashPaymentAction.js");
-/* harmony import */ var _cart_product_PaymentButton__WEBPACK_IMPORTED_MODULE_23__ = __webpack_require__(/*! ./cart-product/PaymentButton */ "./resources/pos/src/frontend/components/cart-product/PaymentButton.js");
-/* harmony import */ var _cart_product_paymentModel_CashPaymentModel__WEBPACK_IMPORTED_MODULE_24__ = __webpack_require__(/*! ./cart-product/paymentModel/CashPaymentModel */ "./resources/pos/src/frontend/components/cart-product/paymentModel/CashPaymentModel.js");
-/* harmony import */ var _paymentSlipModal_PaymentSlipModal__WEBPACK_IMPORTED_MODULE_25__ = __webpack_require__(/*! ./paymentSlipModal/PaymentSlipModal */ "./resources/pos/src/frontend/components/paymentSlipModal/PaymentSlipModal.js");
-/* harmony import */ var _store_action_frontSettingAction__WEBPACK_IMPORTED_MODULE_26__ = __webpack_require__(/*! ../../store/action/frontSettingAction */ "./resources/pos/src/store/action/frontSettingAction.js");
-/* harmony import */ var _store_action_settingAction__WEBPACK_IMPORTED_MODULE_27__ = __webpack_require__(/*! ../../store/action/settingAction */ "./resources/pos/src/store/action/settingAction.js");
-/* harmony import */ var _shared_SharedMethod__WEBPACK_IMPORTED_MODULE_28__ = __webpack_require__(/*! ../shared/SharedMethod */ "./resources/pos/src/frontend/shared/SharedMethod.js");
-/* harmony import */ var _store_action_pos_posAllProductAction__WEBPACK_IMPORTED_MODULE_29__ = __webpack_require__(/*! ../../store/action/pos/posAllProductAction */ "./resources/pos/src/store/action/pos/posAllProductAction.js");
-/* harmony import */ var _shared_tab_title_TabTitle__WEBPACK_IMPORTED_MODULE_30__ = __webpack_require__(/*! ../../shared/tab-title/TabTitle */ "./resources/pos/src/shared/tab-title/TabTitle.js");
-/* harmony import */ var _header_HeaderAllButton__WEBPACK_IMPORTED_MODULE_31__ = __webpack_require__(/*! ./header/HeaderAllButton */ "./resources/pos/src/frontend/components/header/HeaderAllButton.js");
-/* harmony import */ var _register_detailsModal_RegisterDetailsModel__WEBPACK_IMPORTED_MODULE_32__ = __webpack_require__(/*! ./register-detailsModal/RegisterDetailsModel */ "./resources/pos/src/frontend/components/register-detailsModal/RegisterDetailsModel.js");
-/* harmony import */ var _printModal_PrintRegisterDetailsData__WEBPACK_IMPORTED_MODULE_33__ = __webpack_require__(/*! ./printModal/PrintRegisterDetailsData */ "./resources/pos/src/frontend/components/printModal/PrintRegisterDetailsData.js");
-/* harmony import */ var _store_action_pos_posRegisterDetailsAction__WEBPACK_IMPORTED_MODULE_34__ = __webpack_require__(/*! ../../store/action/pos/posRegisterDetailsAction */ "./resources/pos/src/store/action/pos/posRegisterDetailsAction.js");
-/* harmony import */ var _shared_sharedMethod__WEBPACK_IMPORTED_MODULE_35__ = __webpack_require__(/*! ../../shared/sharedMethod */ "./resources/pos/src/shared/sharedMethod.js");
-/* harmony import */ var _constants__WEBPACK_IMPORTED_MODULE_36__ = __webpack_require__(/*! ../../constants */ "./resources/pos/src/constants/index.js");
-/* harmony import */ var _shared_components_loaders_TopProgressBar__WEBPACK_IMPORTED_MODULE_37__ = __webpack_require__(/*! ../../shared/components/loaders/TopProgressBar */ "./resources/pos/src/shared/components/loaders/TopProgressBar.js");
-/* harmony import */ var _customerModel_CustomerForm__WEBPACK_IMPORTED_MODULE_38__ = __webpack_require__(/*! ./customerModel/CustomerForm */ "./resources/pos/src/frontend/components/customerModel/CustomerForm.js");
-/* harmony import */ var _holdListModal_HoldListModal__WEBPACK_IMPORTED_MODULE_39__ = __webpack_require__(/*! ./holdListModal/HoldListModal */ "./resources/pos/src/frontend/components/holdListModal/HoldListModal.js");
-/* harmony import */ var _store_action_pos_HoldListAction__WEBPACK_IMPORTED_MODULE_40__ = __webpack_require__(/*! ../../store/action/pos/HoldListAction */ "./resources/pos/src/store/action/pos/HoldListAction.js");
-/* harmony import */ var react_router__WEBPACK_IMPORTED_MODULE_41__ = __webpack_require__(/*! react-router */ "./node_modules/react-router/dist/index.js");
-/* harmony import */ var _components_posRegister_PosCloseRegisterDetailsModel_js__WEBPACK_IMPORTED_MODULE_42__ = __webpack_require__(/*! ../../components/posRegister/PosCloseRegisterDetailsModel.js */ "./resources/pos/src/components/posRegister/PosCloseRegisterDetailsModel.js");
-/* harmony import */ var _store_action_toastAction__WEBPACK_IMPORTED_MODULE_43__ = __webpack_require__(/*! ../../store/action/toastAction */ "./resources/pos/src/store/action/toastAction.js");
-/* harmony import */ var _hooks_facturacion_useElectronicInvoice_js__WEBPACK_IMPORTED_MODULE_44__ = __webpack_require__(/*! ../../hooks/facturacion/useElectronicInvoice.js */ "./resources/pos/src/hooks/facturacion/useElectronicInvoice.js");
-/* harmony import */ var react_jsx_runtime__WEBPACK_IMPORTED_MODULE_45__ = __webpack_require__(/*! react/jsx-runtime */ "./node_modules/react/jsx-runtime.js");
+/* harmony import */ var _product_Product__WEBPACK_IMPORTED_MODULE_13__ = __webpack_require__(/*! ./product/Product */ "./resources/pos/src/frontend/components/product/Product.js");
+/* harmony import */ var _cart_product_ProductCartList__WEBPACK_IMPORTED_MODULE_14__ = __webpack_require__(/*! ./cart-product/ProductCartList */ "./resources/pos/src/frontend/components/cart-product/ProductCartList.js");
+/* harmony import */ var _store_action_pos_posfetchProductAction__WEBPACK_IMPORTED_MODULE_15__ = __webpack_require__(/*! ../../store/action/pos/posfetchProductAction */ "./resources/pos/src/store/action/pos/posfetchProductAction.js");
+/* harmony import */ var _product_ProductSearchbar__WEBPACK_IMPORTED_MODULE_16__ = __webpack_require__(/*! ./product/ProductSearchbar */ "./resources/pos/src/frontend/components/product/ProductSearchbar.js");
+/* harmony import */ var _shared_PrepareCartArray__WEBPACK_IMPORTED_MODULE_17__ = __webpack_require__(/*! ../shared/PrepareCartArray */ "./resources/pos/src/frontend/shared/PrepareCartArray.js");
+/* harmony import */ var _shared_ProductDetailsModel__WEBPACK_IMPORTED_MODULE_18__ = __webpack_require__(/*! ../shared/ProductDetailsModel */ "./resources/pos/src/frontend/shared/ProductDetailsModel.js");
+/* harmony import */ var _cart_product_CartItemMainCalculation__WEBPACK_IMPORTED_MODULE_19__ = __webpack_require__(/*! ./cart-product/CartItemMainCalculation */ "./resources/pos/src/frontend/components/cart-product/CartItemMainCalculation.js");
+/* harmony import */ var _header_PosHeader__WEBPACK_IMPORTED_MODULE_20__ = __webpack_require__(/*! ./header/PosHeader */ "./resources/pos/src/frontend/components/header/PosHeader.js");
+/* harmony import */ var _store_action_pos_posCashPaymentAction__WEBPACK_IMPORTED_MODULE_21__ = __webpack_require__(/*! ../../store/action/pos/posCashPaymentAction */ "./resources/pos/src/store/action/pos/posCashPaymentAction.js");
+/* harmony import */ var _cart_product_PaymentButton__WEBPACK_IMPORTED_MODULE_22__ = __webpack_require__(/*! ./cart-product/PaymentButton */ "./resources/pos/src/frontend/components/cart-product/PaymentButton.js");
+/* harmony import */ var _cart_product_paymentModel_CashPaymentModel__WEBPACK_IMPORTED_MODULE_23__ = __webpack_require__(/*! ./cart-product/paymentModel/CashPaymentModel */ "./resources/pos/src/frontend/components/cart-product/paymentModel/CashPaymentModel.js");
+/* harmony import */ var _paymentSlipModal_PaymentSlipModal__WEBPACK_IMPORTED_MODULE_24__ = __webpack_require__(/*! ./paymentSlipModal/PaymentSlipModal */ "./resources/pos/src/frontend/components/paymentSlipModal/PaymentSlipModal.js");
+/* harmony import */ var _store_action_frontSettingAction__WEBPACK_IMPORTED_MODULE_25__ = __webpack_require__(/*! ../../store/action/frontSettingAction */ "./resources/pos/src/store/action/frontSettingAction.js");
+/* harmony import */ var _store_action_settingAction__WEBPACK_IMPORTED_MODULE_26__ = __webpack_require__(/*! ../../store/action/settingAction */ "./resources/pos/src/store/action/settingAction.js");
+/* harmony import */ var _shared_SharedMethod__WEBPACK_IMPORTED_MODULE_27__ = __webpack_require__(/*! ../shared/SharedMethod */ "./resources/pos/src/frontend/shared/SharedMethod.js");
+/* harmony import */ var _store_action_pos_posAllProductAction__WEBPACK_IMPORTED_MODULE_28__ = __webpack_require__(/*! ../../store/action/pos/posAllProductAction */ "./resources/pos/src/store/action/pos/posAllProductAction.js");
+/* harmony import */ var _shared_tab_title_TabTitle__WEBPACK_IMPORTED_MODULE_29__ = __webpack_require__(/*! ../../shared/tab-title/TabTitle */ "./resources/pos/src/shared/tab-title/TabTitle.js");
+/* harmony import */ var _header_HeaderAllButton__WEBPACK_IMPORTED_MODULE_30__ = __webpack_require__(/*! ./header/HeaderAllButton */ "./resources/pos/src/frontend/components/header/HeaderAllButton.js");
+/* harmony import */ var _register_detailsModal_RegisterDetailsModel__WEBPACK_IMPORTED_MODULE_31__ = __webpack_require__(/*! ./register-detailsModal/RegisterDetailsModel */ "./resources/pos/src/frontend/components/register-detailsModal/RegisterDetailsModel.js");
+/* harmony import */ var _printModal_PrintRegisterDetailsData__WEBPACK_IMPORTED_MODULE_32__ = __webpack_require__(/*! ./printModal/PrintRegisterDetailsData */ "./resources/pos/src/frontend/components/printModal/PrintRegisterDetailsData.js");
+/* harmony import */ var _store_action_pos_posRegisterDetailsAction__WEBPACK_IMPORTED_MODULE_33__ = __webpack_require__(/*! ../../store/action/pos/posRegisterDetailsAction */ "./resources/pos/src/store/action/pos/posRegisterDetailsAction.js");
+/* harmony import */ var _shared_sharedMethod__WEBPACK_IMPORTED_MODULE_34__ = __webpack_require__(/*! ../../shared/sharedMethod */ "./resources/pos/src/shared/sharedMethod.js");
+/* harmony import */ var _constants__WEBPACK_IMPORTED_MODULE_35__ = __webpack_require__(/*! ../../constants */ "./resources/pos/src/constants/index.js");
+/* harmony import */ var _shared_components_loaders_TopProgressBar__WEBPACK_IMPORTED_MODULE_36__ = __webpack_require__(/*! ../../shared/components/loaders/TopProgressBar */ "./resources/pos/src/shared/components/loaders/TopProgressBar.js");
+/* harmony import */ var _customerModel_CustomerForm__WEBPACK_IMPORTED_MODULE_37__ = __webpack_require__(/*! ./customerModel/CustomerForm */ "./resources/pos/src/frontend/components/customerModel/CustomerForm.js");
+/* harmony import */ var _holdListModal_HoldListModal__WEBPACK_IMPORTED_MODULE_38__ = __webpack_require__(/*! ./holdListModal/HoldListModal */ "./resources/pos/src/frontend/components/holdListModal/HoldListModal.js");
+/* harmony import */ var _store_action_pos_HoldListAction__WEBPACK_IMPORTED_MODULE_39__ = __webpack_require__(/*! ../../store/action/pos/HoldListAction */ "./resources/pos/src/store/action/pos/HoldListAction.js");
+/* harmony import */ var react_router__WEBPACK_IMPORTED_MODULE_40__ = __webpack_require__(/*! react-router */ "./node_modules/react-router/dist/index.js");
+/* harmony import */ var _components_posRegister_PosCloseRegisterDetailsModel_js__WEBPACK_IMPORTED_MODULE_41__ = __webpack_require__(/*! ../../components/posRegister/PosCloseRegisterDetailsModel.js */ "./resources/pos/src/components/posRegister/PosCloseRegisterDetailsModel.js");
+/* harmony import */ var _store_action_toastAction__WEBPACK_IMPORTED_MODULE_42__ = __webpack_require__(/*! ../../store/action/toastAction */ "./resources/pos/src/store/action/toastAction.js");
+/* harmony import */ var _hooks_facturacion_useElectronicInvoice_js__WEBPACK_IMPORTED_MODULE_43__ = __webpack_require__(/*! ../../hooks/facturacion/useElectronicInvoice.js */ "./resources/pos/src/hooks/facturacion/useElectronicInvoice.js");
+/* harmony import */ var react_jsx_runtime__WEBPACK_IMPORTED_MODULE_44__ = __webpack_require__(/*! react/jsx-runtime */ "./node_modules/react/jsx-runtime.js");
 function _typeof(o) { "@babel/helpers - typeof"; return _typeof = "function" == typeof Symbol && "symbol" == typeof Symbol.iterator ? function (o) { return typeof o; } : function (o) { return o && "function" == typeof Symbol && o.constructor === Symbol && o !== Symbol.prototype ? "symbol" : typeof o; }, _typeof(o); }
 function _toConsumableArray(r) { return _arrayWithoutHoles(r) || _iterableToArray(r) || _unsupportedIterableToArray(r) || _nonIterableSpread(); }
 function _nonIterableSpread() { throw new TypeError("Invalid attempt to spread non-iterable instance.\nIn order to be iterable, non-array objects must have a [Symbol.iterator]() method."); }
@@ -980,7 +874,6 @@ dayjs__WEBPACK_IMPORTED_MODULE_6___default().extend((dayjs_plugin_utc__WEBPACK_I
 dayjs__WEBPACK_IMPORTED_MODULE_6___default().extend((dayjs_plugin_localizedFormat__WEBPACK_IMPORTED_MODULE_8___default()));
 dayjs__WEBPACK_IMPORTED_MODULE_6___default().extend((dayjs_plugin_isoWeek__WEBPACK_IMPORTED_MODULE_9___default()));
 dayjs__WEBPACK_IMPORTED_MODULE_6___default().extend((dayjs_plugin_relativeTime__WEBPACK_IMPORTED_MODULE_10___default()));
-
 
 
 
@@ -1119,7 +1012,7 @@ var PosMainPage = function PosMainPage(props) {
   var _useState37 = (0,react__WEBPACK_IMPORTED_MODULE_0__.useState)({
       notes: "",
       payment_status: {
-        label: (0,_shared_sharedMethod__WEBPACK_IMPORTED_MODULE_35__.getFormattedMessage)("dashboard.recentSales.paid.label"),
+        label: (0,_shared_sharedMethod__WEBPACK_IMPORTED_MODULE_34__.getFormattedMessage)("dashboard.recentSales.paid.label"),
         value: 1
       }
     }),
@@ -1136,7 +1029,7 @@ var PosMainPage = function PosMainPage(props) {
     _useState42 = _slicedToArray(_useState41, 2),
     tipoComprobanteSri = _useState42[0],
     setTipoComprobanteSri = _useState42[1];
-  var _useElectronicInvoice = (0,_hooks_facturacion_useElectronicInvoice_js__WEBPACK_IMPORTED_MODULE_44__.useElectronicInvoice)(),
+  var _useElectronicInvoice = (0,_hooks_facturacion_useElectronicInvoice_js__WEBPACK_IMPORTED_MODULE_43__.useElectronicInvoice)(),
     emitirFactura = _useElectronicInvoice.emitir;
   // const [searchString, setSearchString] = useState('');
   var _useState43 = (0,react__WEBPACK_IMPORTED_MODULE_0__.useState)(false),
@@ -1148,7 +1041,7 @@ var PosMainPage = function PosMainPage(props) {
     }),
     closeRegisterDetails = _useSelector.closeRegisterDetails;
   var dispatch = (0,react_redux__WEBPACK_IMPORTED_MODULE_5__.useDispatch)();
-  var navigate = (0,react_router__WEBPACK_IMPORTED_MODULE_41__.useNavigate)();
+  var navigate = (0,react_router__WEBPACK_IMPORTED_MODULE_40__.useNavigate)();
 
   //total Qty on cart item
   var localCart = updateProducts.map(function (updateQty) {
@@ -1160,7 +1053,7 @@ var PosMainPage = function PosMainPage(props) {
 
   //subtotal on cart item
   var localTotal = updateProducts.map(function (updateQty) {
-    return (0,_shared_SharedMethod__WEBPACK_IMPORTED_MODULE_28__.calculateProductCost)(updateQty).toFixed(2) * updateQty.quantity;
+    return (0,_shared_SharedMethod__WEBPACK_IMPORTED_MODULE_27__.calculateProductCost)(updateQty).toFixed(2) * updateQty.quantity;
   });
   var subTotal = localTotal.length > 0 && localTotal.reduce(function (cart, current) {
     return cart + current;
@@ -1215,7 +1108,7 @@ var PosMainPage = function PosMainPage(props) {
   (0,react__WEBPACK_IMPORTED_MODULE_0__.useEffect)(function () {
     fetchSetting();
     fetchFrontSetting();
-    (0,_store_action_pos_posRegisterDetailsAction__WEBPACK_IMPORTED_MODULE_34__.fetchTodaySaleOverAllReport)();
+    (0,_store_action_pos_posRegisterDetailsAction__WEBPACK_IMPORTED_MODULE_33__.fetchTodaySaleOverAllReport)();
     fetchHoldLists();
   }, []);
   (0,react__WEBPACK_IMPORTED_MODULE_0__.useEffect)(function () {
@@ -1280,7 +1173,7 @@ var PosMainPage = function PosMainPage(props) {
   };
 
   // payment type dropdown functionality
-  var paymentTypeFilterOptions = (0,_shared_sharedMethod__WEBPACK_IMPORTED_MODULE_35__.getFormattedOptions)(_constants__WEBPACK_IMPORTED_MODULE_36__.paymentMethodOptions);
+  var paymentTypeFilterOptions = (0,_shared_sharedMethod__WEBPACK_IMPORTED_MODULE_34__.getFormattedOptions)(_constants__WEBPACK_IMPORTED_MODULE_35__.paymentMethodOptions);
   var paymentTypeDefaultValue = paymentTypeFilterOptions.map(function (option) {
     return {
       value: option.id,
@@ -1380,7 +1273,7 @@ var PosMainPage = function PosMainPage(props) {
     setCashPaymentValue({
       notes: "",
       payment_status: {
-        label: (0,_shared_sharedMethod__WEBPACK_IMPORTED_MODULE_35__.getFormattedMessage)("dashboard.recentSales.paid.label"),
+        label: (0,_shared_sharedMethod__WEBPACK_IMPORTED_MODULE_34__.getFormattedMessage)("dashboard.recentSales.paid.label"),
         value: 1
       }
     });
@@ -1522,7 +1415,7 @@ var PosMainPage = function PosMainPage(props) {
     event.preventDefault();
     var valid = handleValidation();
     if (valid) {
-      posCashPaymentAction(prepareData(updateProducts), setUpdateProducts, setModalShowPaymentSlip, _store_action_pos_posAllProductAction__WEBPACK_IMPORTED_MODULE_29__.posAllProduct, {
+      posCashPaymentAction(prepareData(updateProducts), setUpdateProducts, setModalShowPaymentSlip, _store_action_pos_posAllProductAction__WEBPACK_IMPORTED_MODULE_28__.posAllProduct, {
         brandId: brandId,
         categoryId: categoryId,
         selectedOption: selectedOption
@@ -1546,7 +1439,7 @@ var PosMainPage = function PosMainPage(props) {
       setCashPaymentValue({
         notes: "",
         payment_status: {
-          label: (0,_shared_sharedMethod__WEBPACK_IMPORTED_MODULE_35__.getFormattedMessage)("dashboard.recentSales.paid.label"),
+          label: (0,_shared_sharedMethod__WEBPACK_IMPORTED_MODULE_34__.getFormattedMessage)("dashboard.recentSales.paid.label"),
           value: 1
         }
       });
@@ -1568,13 +1461,13 @@ var PosMainPage = function PosMainPage(props) {
 
   //Register details  slip
   var loadRegisterDetailsPrint = function loadRegisterDetailsPrint() {
-    return /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_45__.jsxs)("div", {
+    return /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_44__.jsxs)("div", {
       className: "d-none",
-      children: [/*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_45__.jsx)("button", {
+      children: [/*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_44__.jsx)("button", {
         id: "printRegisterDetailsId",
         onClick: handleRegisterDetailsPrint,
         children: "Print this out!"
-      }), /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_45__.jsx)(_printModal_PrintRegisterDetailsData__WEBPACK_IMPORTED_MODULE_33__["default"], {
+      }), /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_44__.jsx)(_printModal_PrintRegisterDetailsData__WEBPACK_IMPORTED_MODULE_32__["default"], {
         ref: registerDetailsRef,
         allConfigData: allConfigData,
         frontSetting: frontSetting,
@@ -1595,7 +1488,7 @@ var PosMainPage = function PosMainPage(props) {
     return (
       /*#__PURE__*/
       // ✅ Ya no necesita "d-none" ni el botón oculto
-      (0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_45__.jsx)(_paymentSlipModal_PaymentSlipModal__WEBPACK_IMPORTED_MODULE_25__["default"], {
+      (0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_44__.jsx)(_paymentSlipModal_PaymentSlipModal__WEBPACK_IMPORTED_MODULE_24__["default"], {
         setPaymentValue: resetPaymentRows,
         setModalShowPaymentSlip: setModalShowPaymentSlip,
         settings: settings,
@@ -1635,64 +1528,64 @@ var PosMainPage = function PosMainPage(props) {
     setHoldShow(true);
   };
   var handleClickCloseRegister = function handleClickCloseRegister() {
-    dispatch((0,_store_action_pos_posRegisterDetailsAction__WEBPACK_IMPORTED_MODULE_34__.getAllRegisterDetailsAction)());
+    dispatch((0,_store_action_pos_posRegisterDetailsAction__WEBPACK_IMPORTED_MODULE_33__.getAllRegisterDetailsAction)());
     setShowCloseDetailsModal(true);
   };
   var handleCloseRegisterDetails = function handleCloseRegisterDetails(data) {
     var _data$cash_in_hand_wh;
     if (((_data$cash_in_hand_wh = data.cash_in_hand_while_closing.toString().trim()) === null || _data$cash_in_hand_wh === void 0 ? void 0 : _data$cash_in_hand_wh.length) === 0) {
-      dispatch((0,_store_action_toastAction__WEBPACK_IMPORTED_MODULE_43__.addToast)({
-        text: (0,_shared_sharedMethod__WEBPACK_IMPORTED_MODULE_35__.getFormattedMessage)("pos.cclose-register.enter-total-cash.message"),
-        type: _constants__WEBPACK_IMPORTED_MODULE_36__.toastType.ERROR
+      dispatch((0,_store_action_toastAction__WEBPACK_IMPORTED_MODULE_42__.addToast)({
+        text: (0,_shared_sharedMethod__WEBPACK_IMPORTED_MODULE_34__.getFormattedMessage)("pos.cclose-register.enter-total-cash.message"),
+        type: _constants__WEBPACK_IMPORTED_MODULE_35__.toastType.ERROR
       }));
     } else {
       setShowCloseDetailsModal(false);
-      dispatch((0,_store_action_pos_posRegisterDetailsAction__WEBPACK_IMPORTED_MODULE_34__.closeRegisterAction)(data, navigate));
+      dispatch((0,_store_action_pos_posRegisterDetailsAction__WEBPACK_IMPORTED_MODULE_33__.closeRegisterAction)(data, navigate));
     }
   };
-  return /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_45__.jsxs)(react_bootstrap_v5__WEBPACK_IMPORTED_MODULE_2__["default"], {
+  return /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_44__.jsxs)(react_bootstrap_v5__WEBPACK_IMPORTED_MODULE_2__["default"], {
     className: "pos-screen px-3",
     fluid: true,
-    children: [/*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_45__.jsx)(_shared_tab_title_TabTitle__WEBPACK_IMPORTED_MODULE_30__["default"], {
+    children: [/*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_44__.jsx)(_shared_tab_title_TabTitle__WEBPACK_IMPORTED_MODULE_29__["default"], {
       title: "POS"
-    }), loadPaymentSlip(), loadRegisterDetailsPrint(), /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_45__.jsxs)(react_bootstrap_v5__WEBPACK_IMPORTED_MODULE_3__["default"], {
-      children: [/*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_45__.jsx)(_shared_components_loaders_TopProgressBar__WEBPACK_IMPORTED_MODULE_37__["default"], {}), /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_45__.jsxs)(react_bootstrap_v5__WEBPACK_IMPORTED_MODULE_1__["default"], {
+    }), loadPaymentSlip(), loadRegisterDetailsPrint(), /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_44__.jsxs)(react_bootstrap_v5__WEBPACK_IMPORTED_MODULE_3__["default"], {
+      children: [/*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_44__.jsx)(_shared_components_loaders_TopProgressBar__WEBPACK_IMPORTED_MODULE_36__["default"], {}), /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_44__.jsxs)(react_bootstrap_v5__WEBPACK_IMPORTED_MODULE_1__["default"], {
         lg: 5,
         xxl: 4,
         xs: 6,
         className: "pos-left-scs",
-        children: [/*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_45__.jsx)(_header_PosHeader__WEBPACK_IMPORTED_MODULE_21__["default"], {
+        children: [/*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_44__.jsx)(_header_PosHeader__WEBPACK_IMPORTED_MODULE_20__["default"], {
           setSelectedCustomerOption: setSelectedCustomerOption,
           selectedCustomerOption: selectedCustomerOption,
           setSelectedOption: setSelectedOption,
           selectedOption: selectedOption,
           customerModel: customerModel,
           updateCustomer: modalShowCustomer
-        }), /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_45__.jsxs)("div", {
+        }), /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_44__.jsxs)("div", {
           className: "left-content custom-card mb-3 p-3",
-          children: [/*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_45__.jsx)("div", {
+          children: [/*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_44__.jsx)("div", {
             className: "main-table overflow-auto",
-            children: /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_45__.jsxs)(react_bootstrap_v5__WEBPACK_IMPORTED_MODULE_4__["default"], {
+            children: /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_44__.jsxs)(react_bootstrap_v5__WEBPACK_IMPORTED_MODULE_4__["default"], {
               className: "mb-0",
-              children: [/*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_45__.jsx)("thead", {
+              children: [/*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_44__.jsx)("thead", {
                 className: "position-sticky top-0",
-                children: /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_45__.jsxs)("tr", {
-                  children: [/*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_45__.jsx)("th", {
-                    children: (0,_shared_sharedMethod__WEBPACK_IMPORTED_MODULE_35__.getFormattedMessage)("pos-product.title")
-                  }), /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_45__.jsx)("th", {
+                children: /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_44__.jsxs)("tr", {
+                  children: [/*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_44__.jsx)("th", {
+                    children: (0,_shared_sharedMethod__WEBPACK_IMPORTED_MODULE_34__.getFormattedMessage)("pos-product.title")
+                  }), /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_44__.jsx)("th", {
                     className: updateProducts && updateProducts.length ? "text-center" : "",
-                    children: (0,_shared_sharedMethod__WEBPACK_IMPORTED_MODULE_35__.getFormattedMessage)("pos-qty.title")
-                  }), /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_45__.jsx)("th", {
-                    children: (0,_shared_sharedMethod__WEBPACK_IMPORTED_MODULE_35__.getFormattedMessage)("pos-price.title")
-                  }), /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_45__.jsx)("th", {
+                    children: (0,_shared_sharedMethod__WEBPACK_IMPORTED_MODULE_34__.getFormattedMessage)("pos-qty.title")
+                  }), /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_44__.jsx)("th", {
+                    children: (0,_shared_sharedMethod__WEBPACK_IMPORTED_MODULE_34__.getFormattedMessage)("pos-price.title")
+                  }), /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_44__.jsx)("th", {
                     colSpan: "2",
-                    children: (0,_shared_sharedMethod__WEBPACK_IMPORTED_MODULE_35__.getFormattedMessage)("pos-sub-total.title")
+                    children: (0,_shared_sharedMethod__WEBPACK_IMPORTED_MODULE_34__.getFormattedMessage)("pos-sub-total.title")
                   })]
                 })
-              }), /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_45__.jsx)("tbody", {
+              }), /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_44__.jsx)("tbody", {
                 className: "border-0",
                 children: updateProducts && updateProducts.length ? updateProducts.map(function (updateProduct, index) {
-                  return /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_45__.jsx)(_cart_product_ProductCartList__WEBPACK_IMPORTED_MODULE_15__["default"], {
+                  return /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_44__.jsx)(_cart_product_ProductCartList__WEBPACK_IMPORTED_MODULE_14__["default"], {
                     singleProduct: updateProduct,
                     index: index,
                     posAllProducts: posAllProducts,
@@ -1706,16 +1599,16 @@ var PosMainPage = function PosMainPage(props) {
                     allConfigData: allConfigData,
                     setUpdateProducts: setUpdateProducts
                   }, index + 1);
-                }) : /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_45__.jsx)("tr", {
-                  children: /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_45__.jsx)("td", {
+                }) : /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_44__.jsx)("tr", {
+                  children: /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_44__.jsx)("td", {
                     colSpan: 4,
                     className: "custom-text-center text-gray-900 fw-bold py-5",
-                    children: (0,_shared_sharedMethod__WEBPACK_IMPORTED_MODULE_35__.getFormattedMessage)("sale.product.table.no-data.label")
+                    children: (0,_shared_sharedMethod__WEBPACK_IMPORTED_MODULE_34__.getFormattedMessage)("sale.product.table.no-data.label")
                   })
                 })
               })]
             })
-          }), /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_45__.jsx)(_cart_product_CartItemMainCalculation__WEBPACK_IMPORTED_MODULE_20__["default"], {
+          }), /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_44__.jsx)(_cart_product_CartItemMainCalculation__WEBPACK_IMPORTED_MODULE_19__["default"], {
             totalQty: totalQty,
             subTotal: subTotal,
             grandTotal: grandTotal,
@@ -1724,7 +1617,7 @@ var PosMainPage = function PosMainPage(props) {
             allConfigData: allConfigData,
             frontSetting: frontSetting,
             onChangeTaxCart: onChangeTaxCart
-          }), /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_45__.jsx)(_cart_product_PaymentButton__WEBPACK_IMPORTED_MODULE_23__["default"], {
+          }), /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_44__.jsx)(_cart_product_PaymentButton__WEBPACK_IMPORTED_MODULE_22__["default"], {
             updateProducts: updateProducts,
             updateCart: addToCarts,
             setUpdateProducts: setUpdateProducts,
@@ -1741,22 +1634,22 @@ var PosMainPage = function PosMainPage(props) {
             setUpdateHoldList: setUpdateHoldList
           })]
         })]
-      }), /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_45__.jsx)(react_bootstrap_v5__WEBPACK_IMPORTED_MODULE_1__["default"], {
+      }), /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_44__.jsx)(react_bootstrap_v5__WEBPACK_IMPORTED_MODULE_1__["default"], {
         lg: 7,
         xxl: 8,
         xs: 6,
         className: "ps-lg-0 pos-right-scs",
-        children: /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_45__.jsxs)("div", {
+        children: /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_44__.jsxs)("div", {
           className: "right-content mb-3",
-          children: [/*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_45__.jsxs)("div", {
+          children: [/*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_44__.jsxs)("div", {
             className: "d-sm-flex align-items-center flex-xxl-nowrap flex-wrap",
-            children: [/*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_45__.jsx)(_product_ProductSearchbar__WEBPACK_IMPORTED_MODULE_17__["default"], {
+            children: [/*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_44__.jsx)(_product_ProductSearchbar__WEBPACK_IMPORTED_MODULE_16__["default"], {
               customCart: customCart,
               setUpdateProducts: setUpdateProducts,
               updateProducts: updateProducts
               // handleOnSelect={handleOnSelect} handleOnSearch={handleOnSearch}
               // searchString={searchString}
-            }), /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_45__.jsx)(_header_HeaderAllButton__WEBPACK_IMPORTED_MODULE_31__["default"], {
+            }), /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_44__.jsx)(_header_HeaderAllButton__WEBPACK_IMPORTED_MODULE_30__["default"], {
               holdListData: holdListData,
               goToHoldScreen: onClickHoldModel,
               goToDetailScreen: onClickDetailsModel,
@@ -1765,20 +1658,16 @@ var PosMainPage = function PosMainPage(props) {
               setOpneCalculator: setOpenCalculator,
               handleClickCloseRegister: handleClickCloseRegister
             })]
-          }), /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_45__.jsxs)("div", {
+          }), /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_44__.jsxs)("div", {
             className: "custom-card h-100",
-            children: [/*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_45__.jsxs)("div", {
+            children: [/*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_44__.jsx)("div", {
               className: "p-3",
-              children: [/*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_45__.jsx)(_Category__WEBPACK_IMPORTED_MODULE_12__["default"], {
+              children: /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_44__.jsx)(_Category__WEBPACK_IMPORTED_MODULE_12__["default"], {
                 setCategory: setCategory,
                 brandId: brandId,
                 selectedOption: selectedOption
-              }), /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_45__.jsx)(_Brand__WEBPACK_IMPORTED_MODULE_13__["default"], {
-                categoryId: categoryId,
-                setBrand: setBrand,
-                selectedOption: selectedOption
-              })]
-            }), /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_45__.jsx)(_product_Product__WEBPACK_IMPORTED_MODULE_14__["default"], {
+              })
+            }), /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_44__.jsx)(_product_Product__WEBPACK_IMPORTED_MODULE_13__["default"], {
               cartProducts: updateProducts,
               updateCart: addToCarts,
               customCart: customCart,
@@ -1793,7 +1682,7 @@ var PosMainPage = function PosMainPage(props) {
           })]
         })
       })]
-    }), isOpenCartItemUpdateModel && /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_45__.jsx)(_shared_ProductDetailsModel__WEBPACK_IMPORTED_MODULE_19__["default"], {
+    }), isOpenCartItemUpdateModel && /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_44__.jsx)(_shared_ProductDetailsModel__WEBPACK_IMPORTED_MODULE_18__["default"], {
       openProductDetailModal: openProductDetailModal,
       productModelId: product.id,
       onProductUpdateInCart: onProductUpdateInCart,
@@ -1801,7 +1690,7 @@ var PosMainPage = function PosMainPage(props) {
       cartProduct: product,
       isOpenCartItemUpdateModel: isOpenCartItemUpdateModel,
       frontSetting: frontSetting
-    }), cashPayment && /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_45__.jsx)(_cart_product_paymentModel_CashPaymentModel__WEBPACK_IMPORTED_MODULE_24__["default"], {
+    }), cashPayment && /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_44__.jsx)(_cart_product_paymentModel_CashPaymentModel__WEBPACK_IMPORTED_MODULE_23__["default"], {
       cashPayment: cashPayment,
       totalQty: totalQty,
       cartItemValue: cartItemValue,
@@ -1823,12 +1712,12 @@ var PosMainPage = function PosMainPage(props) {
       onPaymentRowTypeChange: onPaymentRowTypeChange,
       tipoComprobanteSri: tipoComprobanteSri,
       onTipoComprobanteChange: setTipoComprobanteSri
-    }), lgShow && /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_45__.jsx)(_register_detailsModal_RegisterDetailsModel__WEBPACK_IMPORTED_MODULE_32__["default"], {
+    }), lgShow && /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_44__.jsx)(_register_detailsModal_RegisterDetailsModel__WEBPACK_IMPORTED_MODULE_31__["default"], {
       printRegisterDetails: printRegisterDetails,
       frontSetting: frontSetting,
       lgShow: lgShow,
       setLgShow: setLgShow
-    }), holdShow && /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_45__.jsx)(_holdListModal_HoldListModal__WEBPACK_IMPORTED_MODULE_39__["default"], {
+    }), holdShow && /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_44__.jsx)(_holdListModal_HoldListModal__WEBPACK_IMPORTED_MODULE_38__["default"], {
       setUpdateHoldList: setUpdateHoldList,
       setCartItemValue: setCartItemValue,
       setUpdateProducts: setUpdateProducts,
@@ -1843,10 +1732,10 @@ var PosMainPage = function PosMainPage(props) {
       updateCart: updateCart,
       setSelectedCustomerOption: setSelectedCustomerOption,
       setSelectedOption: setSelectedOption
-    }), modalShowCustomer && /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_45__.jsx)(_customerModel_CustomerForm__WEBPACK_IMPORTED_MODULE_38__["default"], {
+    }), modalShowCustomer && /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_44__.jsx)(_customerModel_CustomerForm__WEBPACK_IMPORTED_MODULE_37__["default"], {
       show: modalShowCustomer,
       hide: setModalShowCustomer
-    }), /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_45__.jsx)(_components_posRegister_PosCloseRegisterDetailsModel_js__WEBPACK_IMPORTED_MODULE_42__["default"], {
+    }), /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_44__.jsx)(_components_posRegister_PosCloseRegisterDetailsModel_js__WEBPACK_IMPORTED_MODULE_41__["default"], {
       showCloseDetailsModal: showCloseDetailsModal,
       handleCloseRegisterDetails: handleCloseRegisterDetails,
       setShowCloseDetailsModal: setShowCloseDetailsModal
@@ -1867,20 +1756,20 @@ var mapStateToProps = function mapStateToProps(state) {
     frontSetting: frontSetting,
     settings: settings,
     paymentDetails: cashPayment,
-    customCart: (0,_shared_PrepareCartArray__WEBPACK_IMPORTED_MODULE_18__.prepareCartArray)(posAllProducts),
+    customCart: (0,_shared_PrepareCartArray__WEBPACK_IMPORTED_MODULE_17__.prepareCartArray)(posAllProducts),
     allConfigData: allConfigData,
     posAllTodaySaleOverAllReport: posAllTodaySaleOverAllReport
   };
 };
 /* harmony default export */ const __WEBPACK_DEFAULT_EXPORT__ = ((0,react_redux__WEBPACK_IMPORTED_MODULE_5__.connect)(mapStateToProps, {
-  fetchSetting: _store_action_settingAction__WEBPACK_IMPORTED_MODULE_27__.fetchSetting,
-  fetchFrontSetting: _store_action_frontSettingAction__WEBPACK_IMPORTED_MODULE_26__.fetchFrontSetting,
-  posSearchNameProduct: _store_action_pos_posfetchProductAction__WEBPACK_IMPORTED_MODULE_16__.posSearchNameProduct,
-  posCashPaymentAction: _store_action_pos_posCashPaymentAction__WEBPACK_IMPORTED_MODULE_22__.posCashPaymentAction,
-  posSearchCodeProduct: _store_action_pos_posfetchProductAction__WEBPACK_IMPORTED_MODULE_16__.posSearchCodeProduct,
-  posAllProduct: _store_action_pos_posAllProductAction__WEBPACK_IMPORTED_MODULE_29__.posAllProduct,
-  fetchBrandClickable: _store_action_pos_posAllProductAction__WEBPACK_IMPORTED_MODULE_29__.fetchBrandClickable,
-  fetchHoldLists: _store_action_pos_HoldListAction__WEBPACK_IMPORTED_MODULE_40__.fetchHoldLists
+  fetchSetting: _store_action_settingAction__WEBPACK_IMPORTED_MODULE_26__.fetchSetting,
+  fetchFrontSetting: _store_action_frontSettingAction__WEBPACK_IMPORTED_MODULE_25__.fetchFrontSetting,
+  posSearchNameProduct: _store_action_pos_posfetchProductAction__WEBPACK_IMPORTED_MODULE_15__.posSearchNameProduct,
+  posCashPaymentAction: _store_action_pos_posCashPaymentAction__WEBPACK_IMPORTED_MODULE_21__.posCashPaymentAction,
+  posSearchCodeProduct: _store_action_pos_posfetchProductAction__WEBPACK_IMPORTED_MODULE_15__.posSearchCodeProduct,
+  posAllProduct: _store_action_pos_posAllProductAction__WEBPACK_IMPORTED_MODULE_28__.posAllProduct,
+  fetchBrandClickable: _store_action_pos_posAllProductAction__WEBPACK_IMPORTED_MODULE_28__.fetchBrandClickable,
+  fetchHoldLists: _store_action_pos_HoldListAction__WEBPACK_IMPORTED_MODULE_39__.fetchHoldLists
 })(PosMainPage));
 
 /***/ },
@@ -3451,17 +3340,19 @@ __webpack_require__.r(__webpack_exports__);
 /* harmony import */ var _fortawesome_react_fontawesome__WEBPACK_IMPORTED_MODULE_1__ = __webpack_require__(/*! @fortawesome/react-fontawesome */ "./node_modules/@fortawesome/react-fontawesome/index.es.js");
 /* harmony import */ var react__WEBPACK_IMPORTED_MODULE_2__ = __webpack_require__(/*! react */ "./node_modules/react/index.js");
 /* harmony import */ var react_bootstrap_v5__WEBPACK_IMPORTED_MODULE_3__ = __webpack_require__(/*! react-bootstrap-v5 */ "./node_modules/react-bootstrap-v5/lib/esm/Nav.js");
-/* harmony import */ var _PosCalculator__WEBPACK_IMPORTED_MODULE_4__ = __webpack_require__(/*! ./PosCalculator */ "./resources/pos/src/frontend/components/header/PosCalculator.js");
-/* harmony import */ var react_bootstrap_Dropdown__WEBPACK_IMPORTED_MODULE_5__ = __webpack_require__(/*! react-bootstrap/Dropdown */ "./node_modules/react-bootstrap/esm/Dropdown.js");
-/* harmony import */ var _shared_sharedMethod__WEBPACK_IMPORTED_MODULE_6__ = __webpack_require__(/*! ../../../shared/sharedMethod */ "./resources/pos/src/shared/sharedMethod.js");
-/* harmony import */ var _components_posRegister_PosRegisterOpenAlertModel__WEBPACK_IMPORTED_MODULE_7__ = __webpack_require__(/*! ../../../components/posRegister/PosRegisterOpenAlertModel */ "./resources/pos/src/components/posRegister/PosRegisterOpenAlertModel.jsx");
-/* harmony import */ var react_jsx_runtime__WEBPACK_IMPORTED_MODULE_8__ = __webpack_require__(/*! react/jsx-runtime */ "./node_modules/react/jsx-runtime.js");
+/* harmony import */ var react_router__WEBPACK_IMPORTED_MODULE_4__ = __webpack_require__(/*! react-router */ "./node_modules/react-router/dist/index.js");
+/* harmony import */ var _PosCalculator__WEBPACK_IMPORTED_MODULE_5__ = __webpack_require__(/*! ./PosCalculator */ "./resources/pos/src/frontend/components/header/PosCalculator.js");
+/* harmony import */ var react_bootstrap_Dropdown__WEBPACK_IMPORTED_MODULE_6__ = __webpack_require__(/*! react-bootstrap/Dropdown */ "./node_modules/react-bootstrap/esm/Dropdown.js");
+/* harmony import */ var _shared_sharedMethod__WEBPACK_IMPORTED_MODULE_7__ = __webpack_require__(/*! ../../../shared/sharedMethod */ "./resources/pos/src/shared/sharedMethod.js");
+/* harmony import */ var _components_posRegister_PosRegisterOpenAlertModel__WEBPACK_IMPORTED_MODULE_8__ = __webpack_require__(/*! ../../../components/posRegister/PosRegisterOpenAlertModel */ "./resources/pos/src/components/posRegister/PosRegisterOpenAlertModel.jsx");
+/* harmony import */ var react_jsx_runtime__WEBPACK_IMPORTED_MODULE_9__ = __webpack_require__(/*! react/jsx-runtime */ "./node_modules/react/jsx-runtime.js");
 function _slicedToArray(r, e) { return _arrayWithHoles(r) || _iterableToArrayLimit(r, e) || _unsupportedIterableToArray(r, e) || _nonIterableRest(); }
 function _nonIterableRest() { throw new TypeError("Invalid attempt to destructure non-iterable instance.\nIn order to be iterable, non-array objects must have a [Symbol.iterator]() method."); }
 function _unsupportedIterableToArray(r, a) { if (r) { if ("string" == typeof r) return _arrayLikeToArray(r, a); var t = {}.toString.call(r).slice(8, -1); return "Object" === t && r.constructor && (t = r.constructor.name), "Map" === t || "Set" === t ? Array.from(r) : "Arguments" === t || /^(?:Ui|I)nt(?:8|16|32)(?:Clamped)?Array$/.test(t) ? _arrayLikeToArray(r, a) : void 0; } }
 function _arrayLikeToArray(r, a) { (null == a || a > r.length) && (a = r.length); for (var e = 0, n = Array(a); e < a; e++) n[e] = r[e]; return n; }
 function _iterableToArrayLimit(r, l) { var t = null == r ? null : "undefined" != typeof Symbol && r[Symbol.iterator] || r["@@iterator"]; if (null != t) { var e, n, i, u, a = [], f = !0, o = !1; try { if (i = (t = t.call(r)).next, 0 === l) { if (Object(t) !== t) return; f = !1; } else for (; !(f = (e = i.call(t)).done) && (a.push(e.value), a.length !== l); f = !0); } catch (r) { o = !0, n = r; } finally { try { if (!f && null != t["return"] && (u = t["return"](), Object(u) !== u)) return; } finally { if (o) throw n; } } return a; } }
 function _arrayWithHoles(r) { if (Array.isArray(r)) return r; }
+
 
 
 
@@ -3486,6 +3377,7 @@ var HeaderAllButton = function HeaderAllButton(props) {
     _useState4 = _slicedToArray(_useState3, 2),
     showROAlertModel = _useState4[0],
     setShowROAlertModel = _useState4[1];
+  var navigate = (0,react_router__WEBPACK_IMPORTED_MODULE_4__.useNavigate)();
   var fullScreen = function fullScreen() {
     if (!document.fullscreenElement) {
       document.documentElement.requestFullscreen();
@@ -3504,86 +3396,92 @@ var HeaderAllButton = function HeaderAllButton(props) {
       setOpneCalculator(true);
     }
   };
-  return /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_8__.jsxs)(react_jsx_runtime__WEBPACK_IMPORTED_MODULE_8__.Fragment, {
-    children: [/*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_8__.jsxs)(react_bootstrap_v5__WEBPACK_IMPORTED_MODULE_3__["default"], {
+  return /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_9__.jsxs)(react_jsx_runtime__WEBPACK_IMPORTED_MODULE_9__.Fragment, {
+    children: [/*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_9__.jsxs)(react_bootstrap_v5__WEBPACK_IMPORTED_MODULE_3__["default"], {
       className: "align-items-center header-btn-grp justify-xxl-content-end justify-lg-content-center justify-content-start flex-nowrap pb-xxl-0 pb-lg-2 pb-2 ",
-      children: [/*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_8__.jsxs)(react_bootstrap_v5__WEBPACK_IMPORTED_MODULE_3__["default"].Item, {
+      children: [/*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_9__.jsxs)(react_bootstrap_v5__WEBPACK_IMPORTED_MODULE_3__["default"].Item, {
         className: "d-flex align-items-center position-relative justify-content-center ms-3 nav-pink",
-        children: [/*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_8__.jsx)(react_bootstrap_v5__WEBPACK_IMPORTED_MODULE_3__["default"].Link, {
+        children: [/*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_9__.jsx)(react_bootstrap_v5__WEBPACK_IMPORTED_MODULE_3__["default"].Link, {
           className: "pe-0 ps-1 text-white",
           onClick: function onClick(e) {
             e.stopPropagation();
             goToHoldScreen();
           },
-          children: /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_8__.jsx)(_fortawesome_react_fontawesome__WEBPACK_IMPORTED_MODULE_1__.FontAwesomeIcon, {
+          children: /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_9__.jsx)(_fortawesome_react_fontawesome__WEBPACK_IMPORTED_MODULE_1__.FontAwesomeIcon, {
             icon: _fortawesome_free_solid_svg_icons__WEBPACK_IMPORTED_MODULE_0__.faList,
             className: "fa-2x"
           })
-        }), /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_8__.jsx)("div", {
+        }), /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_9__.jsx)("div", {
           className: "hold-list-badge",
           children: holdListData.length ? holdListData.length : 0
         })]
-      }), /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_8__.jsx)(react_bootstrap_v5__WEBPACK_IMPORTED_MODULE_3__["default"].Item, {
-        className: "d-flex align-items-center justify-content-center ms-3 nav-green register_dropdown",
-        children: /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_8__.jsx)("div", {
-          className: "pe-0 text-white",
-          children: /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_8__.jsxs)(react_bootstrap_Dropdown__WEBPACK_IMPORTED_MODULE_5__["default"], {
-            children: [/*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_8__.jsx)(react_bootstrap_Dropdown__WEBPACK_IMPORTED_MODULE_5__["default"].Toggle, {
-              variant: "success",
-              id: "dropdown-basic",
-              children: /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_8__.jsx)("i", {
-                className: "bi bi-bag fa-2x"
-              })
-            }), /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_8__.jsxs)(react_bootstrap_Dropdown__WEBPACK_IMPORTED_MODULE_5__["default"].Menu, {
-              children: [/*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_8__.jsx)(react_bootstrap_Dropdown__WEBPACK_IMPORTED_MODULE_5__["default"].Item, {
-                onClick: function onClick(e) {
-                  e.stopPropagation();
-                  goToDetailScreen();
-                },
-                children: (0,_shared_sharedMethod__WEBPACK_IMPORTED_MODULE_6__.getFormattedMessage)("register.details.title")
-              }), /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_8__.jsx)(react_bootstrap_Dropdown__WEBPACK_IMPORTED_MODULE_5__["default"].Item, {
-                onClick: function onClick() {
-                  return handleClickCloseRegister();
-                },
-                children: (0,_shared_sharedMethod__WEBPACK_IMPORTED_MODULE_6__.getFormattedMessage)("globally.close-register.title")
-              })]
-            })]
-          })
-        })
-      }), /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_8__.jsx)(react_bootstrap_v5__WEBPACK_IMPORTED_MODULE_3__["default"].Item, {
+      }), /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_9__.jsx)(react_bootstrap_v5__WEBPACK_IMPORTED_MODULE_3__["default"].Item, {
         className: "ms-3 d-flex align-items-center justify-content-center",
-        children: isFullscreen === true ? /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_8__.jsx)("i", {
+        children: isFullscreen === true ? /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_9__.jsx)("i", {
           className: "bi bi-fullscreen-exit cursor-pointer text-white fs-1",
           onClick: function onClick() {
             return fullScreen();
           }
-        }) : /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_8__.jsx)("i", {
+        }) : /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_9__.jsx)("i", {
           className: "bi bi-arrows-fullscreen cursor-pointer text-white con fs-1",
           onClick: function onClick() {
             return fullScreen();
           }
         })
-      }), /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_8__.jsx)(react_bootstrap_v5__WEBPACK_IMPORTED_MODULE_3__["default"].Item, {
+      }), /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_9__.jsx)(react_bootstrap_v5__WEBPACK_IMPORTED_MODULE_3__["default"].Item, {
         className: "d-flex align-items-center justify-content-center ms-3",
-        children: /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_8__.jsx)("i", {
+        children: /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_9__.jsx)("i", {
           className: "bi bi-calculator cursor-pointer text-white fa-2x",
           onClick: opneCalculatorModel
         })
-      }), /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_8__.jsx)(react_bootstrap_v5__WEBPACK_IMPORTED_MODULE_3__["default"].Item, {
-        className: "d-flex align-items-center justify-content-center ms-3",
-        children: /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_8__.jsx)(react_bootstrap_v5__WEBPACK_IMPORTED_MODULE_3__["default"].Link, {
-          onClick: function onClick() {
-            return setShowROAlertModel(true);
-          },
-          className: "pe-0 ps-1 text-white",
-          children: /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_8__.jsx)("i", {
-            className: "bi bi-speedometer2 cursor-pointer fa-2x"
-          })
+      }), /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_9__.jsx)(react_bootstrap_v5__WEBPACK_IMPORTED_MODULE_3__["default"].Item, {
+        className: "d-flex align-items-center justify-content-center ms-3 pos-more-menu",
+        children: /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_9__.jsxs)(react_bootstrap_Dropdown__WEBPACK_IMPORTED_MODULE_6__["default"], {
+          align: "end",
+          children: [/*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_9__.jsx)(react_bootstrap_Dropdown__WEBPACK_IMPORTED_MODULE_6__["default"].Toggle, {
+            as: "div",
+            className: "pe-0 text-white cursor-pointer hide-arrow",
+            id: "pos-more-actions-dropdown",
+            children: /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_9__.jsx)("i", {
+              className: "bi bi-three-dots-vertical fa-2x"
+            })
+          }), /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_9__.jsxs)(react_bootstrap_Dropdown__WEBPACK_IMPORTED_MODULE_6__["default"].Menu, {
+            children: [/*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_9__.jsxs)(react_bootstrap_Dropdown__WEBPACK_IMPORTED_MODULE_6__["default"].Item, {
+              onClick: function onClick() {
+                return setShowROAlertModel(true);
+              },
+              children: [/*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_9__.jsx)("i", {
+                className: "bi bi-speedometer2 me-2"
+              }), (0,_shared_sharedMethod__WEBPACK_IMPORTED_MODULE_7__.getFormattedMessage)("pos.more-menu.dashboard.label")]
+            }), /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_9__.jsxs)(react_bootstrap_Dropdown__WEBPACK_IMPORTED_MODULE_6__["default"].Item, {
+              onClick: function onClick(e) {
+                e.stopPropagation();
+                goToDetailScreen();
+              },
+              children: [/*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_9__.jsx)("i", {
+                className: "bi bi-file-earmark-text me-2"
+              }), (0,_shared_sharedMethod__WEBPACK_IMPORTED_MODULE_7__.getFormattedMessage)("register.details.title")]
+            }), /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_9__.jsxs)(react_bootstrap_Dropdown__WEBPACK_IMPORTED_MODULE_6__["default"].Item, {
+              onClick: function onClick() {
+                return handleClickCloseRegister();
+              },
+              children: [/*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_9__.jsx)("i", {
+                className: "bi bi-lock me-2"
+              }), (0,_shared_sharedMethod__WEBPACK_IMPORTED_MODULE_7__.getFormattedMessage)("globally.close-register.title")]
+            }), /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_9__.jsx)(react_bootstrap_Dropdown__WEBPACK_IMPORTED_MODULE_6__["default"].Divider, {}), /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_9__.jsxs)(react_bootstrap_Dropdown__WEBPACK_IMPORTED_MODULE_6__["default"].Item, {
+              onClick: function onClick() {
+                return navigate('/app/sale-return');
+              },
+              children: [/*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_9__.jsx)("i", {
+                className: "bi bi-arrow-return-left me-2"
+              }), (0,_shared_sharedMethod__WEBPACK_IMPORTED_MODULE_7__.getFormattedMessage)("sale-return.title")]
+            })]
+          })]
         })
       })]
-    }), opneCalculator && /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_8__.jsx)(_PosCalculator__WEBPACK_IMPORTED_MODULE_4__["default"], {
+    }), opneCalculator && /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_9__.jsx)(_PosCalculator__WEBPACK_IMPORTED_MODULE_5__["default"], {
       opneCalculatorModel: opneCalculatorModel
-    }), /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_8__.jsx)(_components_posRegister_PosRegisterOpenAlertModel__WEBPACK_IMPORTED_MODULE_7__["default"], {
+    }), /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_9__.jsx)(_components_posRegister_PosRegisterOpenAlertModel__WEBPACK_IMPORTED_MODULE_8__["default"], {
       showROAlertModel: showROAlertModel,
       setShowROAlertModel: setShowROAlertModel
     })]
@@ -7916,239 +7814,6 @@ var useCustomerForm = function useCustomerForm(_ref) {
 
 /***/ },
 
-/***/ "./resources/pos/src/store/action/brandsAction.js"
-/*!********************************************************!*\
-  !*** ./resources/pos/src/store/action/brandsAction.js ***!
-  \********************************************************/
-(__unused_webpack_module, __webpack_exports__, __webpack_require__) {
-
-"use strict";
-__webpack_require__.r(__webpack_exports__);
-/* harmony export */ __webpack_require__.d(__webpack_exports__, {
-/* harmony export */   addBrand: () => (/* binding */ addBrand),
-/* harmony export */   deleteBrand: () => (/* binding */ deleteBrand),
-/* harmony export */   editBrand: () => (/* binding */ editBrand),
-/* harmony export */   fetchAllBrands: () => (/* binding */ fetchAllBrands),
-/* harmony export */   fetchBrand: () => (/* binding */ fetchBrand),
-/* harmony export */   fetchBrands: () => (/* binding */ fetchBrands)
-/* harmony export */ });
-/* harmony import */ var _config_apiConfig__WEBPACK_IMPORTED_MODULE_0__ = __webpack_require__(/*! ../../config/apiConfig */ "./resources/pos/src/config/apiConfig.js");
-/* harmony import */ var _constants__WEBPACK_IMPORTED_MODULE_1__ = __webpack_require__(/*! ../../constants */ "./resources/pos/src/constants/index.js");
-/* harmony import */ var _shared_requestParam__WEBPACK_IMPORTED_MODULE_2__ = __webpack_require__(/*! ../../shared/requestParam */ "./resources/pos/src/shared/requestParam.js");
-/* harmony import */ var _toastAction__WEBPACK_IMPORTED_MODULE_3__ = __webpack_require__(/*! ./toastAction */ "./resources/pos/src/store/action/toastAction.js");
-/* harmony import */ var _totalRecordAction__WEBPACK_IMPORTED_MODULE_4__ = __webpack_require__(/*! ./totalRecordAction */ "./resources/pos/src/store/action/totalRecordAction.js");
-/* harmony import */ var _loadingAction__WEBPACK_IMPORTED_MODULE_5__ = __webpack_require__(/*! ./loadingAction */ "./resources/pos/src/store/action/loadingAction.js");
-/* harmony import */ var _shared_sharedMethod__WEBPACK_IMPORTED_MODULE_6__ = __webpack_require__(/*! ../../shared/sharedMethod */ "./resources/pos/src/shared/sharedMethod.js");
-/* harmony import */ var _updateBrand__WEBPACK_IMPORTED_MODULE_7__ = __webpack_require__(/*! ./updateBrand */ "./resources/pos/src/store/action/updateBrand.js");
-function _regenerator() { /*! regenerator-runtime -- Copyright (c) 2014-present, Facebook, Inc. -- license (MIT): https://github.com/babel/babel/blob/main/packages/babel-helpers/LICENSE */ var e, t, r = "function" == typeof Symbol ? Symbol : {}, n = r.iterator || "@@iterator", o = r.toStringTag || "@@toStringTag"; function i(r, n, o, i) { var c = n && n.prototype instanceof Generator ? n : Generator, u = Object.create(c.prototype); return _regeneratorDefine2(u, "_invoke", function (r, n, o) { var i, c, u, f = 0, p = o || [], y = !1, G = { p: 0, n: 0, v: e, a: d, f: d.bind(e, 4), d: function d(t, r) { return i = t, c = 0, u = e, G.n = r, a; } }; function d(r, n) { for (c = r, u = n, t = 0; !y && f && !o && t < p.length; t++) { var o, i = p[t], d = G.p, l = i[2]; r > 3 ? (o = l === n) && (u = i[(c = i[4]) ? 5 : (c = 3, 3)], i[4] = i[5] = e) : i[0] <= d && ((o = r < 2 && d < i[1]) ? (c = 0, G.v = n, G.n = i[1]) : d < l && (o = r < 3 || i[0] > n || n > l) && (i[4] = r, i[5] = n, G.n = l, c = 0)); } if (o || r > 1) return a; throw y = !0, n; } return function (o, p, l) { if (f > 1) throw TypeError("Generator is already running"); for (y && 1 === p && d(p, l), c = p, u = l; (t = c < 2 ? e : u) || !y;) { i || (c ? c < 3 ? (c > 1 && (G.n = -1), d(c, u)) : G.n = u : G.v = u); try { if (f = 2, i) { if (c || (o = "next"), t = i[o]) { if (!(t = t.call(i, u))) throw TypeError("iterator result is not an object"); if (!t.done) return t; u = t.value, c < 2 && (c = 0); } else 1 === c && (t = i["return"]) && t.call(i), c < 2 && (u = TypeError("The iterator does not provide a '" + o + "' method"), c = 1); i = e; } else if ((t = (y = G.n < 0) ? u : r.call(n, G)) !== a) break; } catch (t) { i = e, c = 1, u = t; } finally { f = 1; } } return { value: t, done: y }; }; }(r, o, i), !0), u; } var a = {}; function Generator() {} function GeneratorFunction() {} function GeneratorFunctionPrototype() {} t = Object.getPrototypeOf; var c = [][n] ? t(t([][n]())) : (_regeneratorDefine2(t = {}, n, function () { return this; }), t), u = GeneratorFunctionPrototype.prototype = Generator.prototype = Object.create(c); function f(e) { return Object.setPrototypeOf ? Object.setPrototypeOf(e, GeneratorFunctionPrototype) : (e.__proto__ = GeneratorFunctionPrototype, _regeneratorDefine2(e, o, "GeneratorFunction")), e.prototype = Object.create(u), e; } return GeneratorFunction.prototype = GeneratorFunctionPrototype, _regeneratorDefine2(u, "constructor", GeneratorFunctionPrototype), _regeneratorDefine2(GeneratorFunctionPrototype, "constructor", GeneratorFunction), GeneratorFunction.displayName = "GeneratorFunction", _regeneratorDefine2(GeneratorFunctionPrototype, o, "GeneratorFunction"), _regeneratorDefine2(u), _regeneratorDefine2(u, o, "Generator"), _regeneratorDefine2(u, n, function () { return this; }), _regeneratorDefine2(u, "toString", function () { return "[object Generator]"; }), (_regenerator = function _regenerator() { return { w: i, m: f }; })(); }
-function _regeneratorDefine2(e, r, n, t) { var i = Object.defineProperty; try { i({}, "", {}); } catch (e) { i = 0; } _regeneratorDefine2 = function _regeneratorDefine(e, r, n, t) { function o(r, n) { _regeneratorDefine2(e, r, function (e) { return this._invoke(r, n, e); }); } r ? i ? i(e, r, { value: n, enumerable: !t, configurable: !t, writable: !t }) : e[r] = n : (o("next", 0), o("throw", 1), o("return", 2)); }, _regeneratorDefine2(e, r, n, t); }
-function asyncGeneratorStep(n, t, e, r, o, a, c) { try { var i = n[a](c), u = i.value; } catch (n) { return void e(n); } i.done ? t(u) : Promise.resolve(u).then(r, o); }
-function _asyncToGenerator(n) { return function () { var t = this, e = arguments; return new Promise(function (r, o) { var a = n.apply(t, e); function _next(n) { asyncGeneratorStep(a, r, o, _next, _throw, "next", n); } function _throw(n) { asyncGeneratorStep(a, r, o, _next, _throw, "throw", n); } _next(void 0); }); }; }
-
-
-
-
-
-
-
-
-var fetchBrands = function fetchBrands() {
-  var filter = arguments.length > 0 && arguments[0] !== undefined ? arguments[0] : {};
-  var isLoading = arguments.length > 1 && arguments[1] !== undefined ? arguments[1] : true;
-  return /*#__PURE__*/function () {
-    var _ref = _asyncToGenerator(/*#__PURE__*/_regenerator().m(function _callee(dispatch) {
-      var url;
-      return _regenerator().w(function (_context) {
-        while (1) switch (_context.n) {
-          case 0:
-            if (isLoading) {
-              dispatch((0,_loadingAction__WEBPACK_IMPORTED_MODULE_5__.setLoading)(true));
-            }
-            url = _constants__WEBPACK_IMPORTED_MODULE_1__.apiBaseURL.BRANDS;
-            if (!_.isEmpty(filter) && (filter.page || filter.pageSize || filter.search || filter.order_By || filter.created_at)) {
-              url += (0,_shared_requestParam__WEBPACK_IMPORTED_MODULE_2__["default"])(filter, null, null, null, url);
-            }
-            _config_apiConfig__WEBPACK_IMPORTED_MODULE_0__["default"].get(url).then(function (response) {
-              dispatch({
-                type: _constants__WEBPACK_IMPORTED_MODULE_1__.brandsActionType.FETCH_BRANDS,
-                payload: response.data.data
-              });
-              dispatch((0,_totalRecordAction__WEBPACK_IMPORTED_MODULE_4__.setTotalRecord)(response.data.meta.total !== undefined && response.data.meta.total >= 0 ? response.data.meta.total : response.data.data.total));
-              if (isLoading) {
-                dispatch((0,_loadingAction__WEBPACK_IMPORTED_MODULE_5__.setLoading)(false));
-              }
-            })["catch"](function (_ref2) {
-              var response = _ref2.response;
-              dispatch((0,_toastAction__WEBPACK_IMPORTED_MODULE_3__.addToast)({
-                text: response.data.message,
-                type: _constants__WEBPACK_IMPORTED_MODULE_1__.toastType.ERROR
-              }));
-            });
-          case 1:
-            return _context.a(2);
-        }
-      }, _callee);
-    }));
-    return function (_x) {
-      return _ref.apply(this, arguments);
-    };
-  }();
-};
-var fetchBrand = function fetchBrand(brandsId, singleUser) {
-  return /*#__PURE__*/function () {
-    var _ref3 = _asyncToGenerator(/*#__PURE__*/_regenerator().m(function _callee2(dispatch) {
-      return _regenerator().w(function (_context2) {
-        while (1) switch (_context2.n) {
-          case 0:
-            _config_apiConfig__WEBPACK_IMPORTED_MODULE_0__["default"].get(_constants__WEBPACK_IMPORTED_MODULE_1__.apiBaseURL.BRANDS + "/" + brandsId, singleUser).then(function (response) {
-              dispatch({
-                type: _constants__WEBPACK_IMPORTED_MODULE_1__.brandsActionType.FETCH_BRAND,
-                payload: response.data.data
-              });
-            })["catch"](function (_ref4) {
-              var response = _ref4.response;
-              dispatch((0,_toastAction__WEBPACK_IMPORTED_MODULE_3__.addToast)({
-                text: response.data.message,
-                type: _constants__WEBPACK_IMPORTED_MODULE_1__.toastType.ERROR
-              }));
-            });
-          case 1:
-            return _context2.a(2);
-        }
-      }, _callee2);
-    }));
-    return function (_x2) {
-      return _ref3.apply(this, arguments);
-    };
-  }();
-};
-var addBrand = function addBrand(brands) {
-  return /*#__PURE__*/function () {
-    var _ref5 = _asyncToGenerator(/*#__PURE__*/_regenerator().m(function _callee3(dispatch) {
-      return _regenerator().w(function (_context3) {
-        while (1) switch (_context3.n) {
-          case 0:
-            _context3.n = 1;
-            return _config_apiConfig__WEBPACK_IMPORTED_MODULE_0__["default"].post(_constants__WEBPACK_IMPORTED_MODULE_1__.apiBaseURL.BRANDS, brands).then(function (response) {
-              dispatch({
-                type: _constants__WEBPACK_IMPORTED_MODULE_1__.brandsActionType.ADD_BRANDS,
-                payload: response.data.data
-              });
-              dispatch((0,_toastAction__WEBPACK_IMPORTED_MODULE_3__.addToast)({
-                text: (0,_shared_sharedMethod__WEBPACK_IMPORTED_MODULE_6__.getFormattedMessage)("brand.success.create.message")
-              }));
-              dispatch((0,_totalRecordAction__WEBPACK_IMPORTED_MODULE_4__.addInToTotalRecord)(1));
-            })["catch"](function (_ref6) {
-              var response = _ref6.response;
-              dispatch((0,_toastAction__WEBPACK_IMPORTED_MODULE_3__.addToast)({
-                text: response.data.message,
-                type: _constants__WEBPACK_IMPORTED_MODULE_1__.toastType.ERROR
-              }));
-            });
-          case 1:
-            return _context3.a(2);
-        }
-      }, _callee3);
-    }));
-    return function (_x3) {
-      return _ref5.apply(this, arguments);
-    };
-  }();
-};
-var editBrand = function editBrand(brandsId, brands, handleClose) {
-  return /*#__PURE__*/function () {
-    var _ref7 = _asyncToGenerator(/*#__PURE__*/_regenerator().m(function _callee4(dispatch) {
-      return _regenerator().w(function (_context4) {
-        while (1) switch (_context4.n) {
-          case 0:
-            _config_apiConfig__WEBPACK_IMPORTED_MODULE_0__["default"].post(_constants__WEBPACK_IMPORTED_MODULE_1__.apiBaseURL.BRANDS + "/" + brandsId, brands).then(function (response) {
-              dispatch((0,_updateBrand__WEBPACK_IMPORTED_MODULE_7__.callUpdateBrandApi)(true));
-              // dispatch({type: productActionType.ADD_IMPORT_PRODUCT, payload: response.data.data});
-              handleClose(false);
-              dispatch((0,_toastAction__WEBPACK_IMPORTED_MODULE_3__.addToast)({
-                text: (0,_shared_sharedMethod__WEBPACK_IMPORTED_MODULE_6__.getFormattedMessage)("brand.success.edit.message")
-              }));
-              dispatch((0,_totalRecordAction__WEBPACK_IMPORTED_MODULE_4__.addInToTotalRecord)(1));
-            })["catch"](function (_ref8) {
-              var response = _ref8.response;
-              dispatch((0,_toastAction__WEBPACK_IMPORTED_MODULE_3__.addToast)({
-                text: response.data.message,
-                type: _constants__WEBPACK_IMPORTED_MODULE_1__.toastType.ERROR
-              }));
-            });
-          case 1:
-            return _context4.a(2);
-        }
-      }, _callee4);
-    }));
-    return function (_x4) {
-      return _ref7.apply(this, arguments);
-    };
-  }();
-};
-var deleteBrand = function deleteBrand(brandsId) {
-  return /*#__PURE__*/function () {
-    var _ref9 = _asyncToGenerator(/*#__PURE__*/_regenerator().m(function _callee5(dispatch) {
-      return _regenerator().w(function (_context5) {
-        while (1) switch (_context5.n) {
-          case 0:
-            _config_apiConfig__WEBPACK_IMPORTED_MODULE_0__["default"]["delete"](_constants__WEBPACK_IMPORTED_MODULE_1__.apiBaseURL.BRANDS + "/" + brandsId).then(function (response) {
-              dispatch((0,_totalRecordAction__WEBPACK_IMPORTED_MODULE_4__.removeFromTotalRecord)(1));
-              dispatch({
-                type: _constants__WEBPACK_IMPORTED_MODULE_1__.brandsActionType.DELETE_BRANDS,
-                payload: brandsId
-              });
-              dispatch((0,_toastAction__WEBPACK_IMPORTED_MODULE_3__.addToast)({
-                text: (0,_shared_sharedMethod__WEBPACK_IMPORTED_MODULE_6__.getFormattedMessage)("brand.success.delete.message")
-              }));
-            })["catch"](function (_ref0) {
-              var response = _ref0.response;
-              dispatch((0,_toastAction__WEBPACK_IMPORTED_MODULE_3__.addToast)({
-                text: response.data.message,
-                type: _constants__WEBPACK_IMPORTED_MODULE_1__.toastType.ERROR
-              }));
-            });
-          case 1:
-            return _context5.a(2);
-        }
-      }, _callee5);
-    }));
-    return function (_x5) {
-      return _ref9.apply(this, arguments);
-    };
-  }();
-};
-var fetchAllBrands = function fetchAllBrands() {
-  return /*#__PURE__*/function () {
-    var _ref1 = _asyncToGenerator(/*#__PURE__*/_regenerator().m(function _callee6(dispatch) {
-      return _regenerator().w(function (_context6) {
-        while (1) switch (_context6.n) {
-          case 0:
-            _config_apiConfig__WEBPACK_IMPORTED_MODULE_0__["default"].get("brands?page[size]=0").then(function (response) {
-              dispatch({
-                type: _constants__WEBPACK_IMPORTED_MODULE_1__.brandsActionType.FETCH_ALL_BRANDS,
-                payload: response.data.data
-              });
-            })["catch"](function (_ref10) {
-              var response = _ref10.response;
-              dispatch((0,_toastAction__WEBPACK_IMPORTED_MODULE_3__.addToast)({
-                text: response.data.message,
-                type: _constants__WEBPACK_IMPORTED_MODULE_1__.toastType.ERROR
-              }));
-            });
-          case 1:
-            return _context6.a(2);
-        }
-      }, _callee6);
-    }));
-    return function (_x6) {
-      return _ref1.apply(this, arguments);
-    };
-  }();
-};
-
-/***/ },
-
 /***/ "./resources/pos/src/store/action/customerAction.js"
 /*!**********************************************************!*\
   !*** ./resources/pos/src/store/action/customerAction.js ***!
@@ -9447,28 +9112,6 @@ var fetchState = function fetchState(id) {
       return _ref7.apply(this, arguments);
     };
   }();
-};
-
-/***/ },
-
-/***/ "./resources/pos/src/store/action/updateBrand.js"
-/*!*******************************************************!*\
-  !*** ./resources/pos/src/store/action/updateBrand.js ***!
-  \*******************************************************/
-(__unused_webpack_module, __webpack_exports__, __webpack_require__) {
-
-"use strict";
-__webpack_require__.r(__webpack_exports__);
-/* harmony export */ __webpack_require__.d(__webpack_exports__, {
-/* harmony export */   callUpdateBrandApi: () => (/* binding */ callUpdateBrandApi)
-/* harmony export */ });
-/* harmony import */ var _constants__WEBPACK_IMPORTED_MODULE_0__ = __webpack_require__(/*! ../../constants */ "./resources/pos/src/constants/index.js");
-
-var callUpdateBrandApi = function callUpdateBrandApi(isCall) {
-  return {
-    type: _constants__WEBPACK_IMPORTED_MODULE_0__.constants.CALL_UPDATE_BRAND_API,
-    payload: isCall
-  };
 };
 
 /***/ },

@@ -851,6 +851,7 @@
     "sale-return.product-qty.validate.message": "La cantidad devuelta es mayor que la cantidad vendida",
     "template.title": "Plantillas",
     "pos.product-quantity-error.message": "No hay más cantidad disponible.",
+    "pos.more-menu.dashboard.label": "Volver al dashboard",
     "product-list.lable": "Lista de productos",
     "register.details.title": "Detalles del Registro",
     "register.total-sales.label": "Ventas Totales",
