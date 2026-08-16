@@ -1,5 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { useSelector } from 'react-redux';
+import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
+import { faCalendarDay, faStore, faCashRegister } from '@fortawesome/free-solid-svg-icons';
 import { getFormattedMessage } from '../../shared/sharedMethod';
 import TodaySalesFilter from './TodaySalesFilter';
 
@@ -51,22 +53,24 @@ const DashboardHeader = ({ activeCashiersCount }) => {
                     {getFormattedMessage(getGreetingKey(guayaquilHour))}{firstName ? `, ${firstName}` : ''}
                 </h2>
                 <div className="dash-header-meta">
-                    <span className="dash-header-live">
+                    <span className="dash-header-chip dash-header-chip-live">
                         <span className="dash-header-live-dot" />
                         {getFormattedMessage('dashboard.header.live.label')}
                     </span>
-                    <span className="dash-header-sep">&middot;</span>
-                    <span className="dash-header-date text-capitalize">{dateLabel}</span>
-                    <span className="dash-header-sep">&middot;</span>
-                    <span className="dash-header-time">{timeLabel}</span>
+                    <span className="dash-header-chip">
+                        <FontAwesomeIcon icon={faCalendarDay} className="dash-header-chip-icon" />
+                        <span className="text-capitalize">{dateLabel}</span>
+                        <span className="dash-header-chip-divider" />
+                        {timeLabel}
+                    </span>
                     {currentStoreName && (
-                        <>
-                            <span className="dash-header-sep">&middot;</span>
-                            <span className="dash-header-store">{currentStoreName}</span>
-                        </>
+                        <span className="dash-header-chip">
+                            <FontAwesomeIcon icon={faStore} className="dash-header-chip-icon" />
+                            {currentStoreName}
+                        </span>
                     )}
-                    <span className="dash-header-sep">&middot;</span>
-                    <span className="dash-header-cashiers">
+                    <span className="dash-header-chip dash-header-chip-cashiers">
+                        <FontAwesomeIcon icon={faCashRegister} className="dash-header-chip-icon" />
                         {(activeCashiersCount ?? 0)} {getFormattedMessage('dashboard.header.cashiers.label')}
                     </span>
                 </div>
