@@ -4117,26 +4117,47 @@ div .rdt_Pagination div:first-of-type svg {
 }
 
 .dash-header-greeting {
-    font-size: 1.5rem;
+    font-size: 1.75rem;
     font-weight: 700;
+    letter-spacing: -0.01em;
     color: #111827;
-    margin: 0 0 6px;
+    margin: 0 0 12px;
 }
 
 .dash-header-meta {
     display: flex;
     align-items: center;
     flex-wrap: wrap;
-    font-size: 0.85rem;
-    color: #6b7280;
+    gap: 8px;
 }
 
-.dash-header-live {
+.dash-header-chip {
     display: inline-flex;
     align-items: center;
-    gap: 6px;
-    color: #16a34a;
+    gap: 7px;
+    padding: 6px 12px;
+    border-radius: 999px;
+    background-color: #f5f7fa;
+    color: #4b5563;
+    font-size: 0.82rem;
     font-weight: 600;
+    line-height: 1;
+}
+
+.dash-header-chip-icon {
+    font-size: 0.72rem;
+    color: #9ca3af;
+}
+
+.dash-header-chip-divider {
+    width: 1px;
+    height: 10px;
+    background-color: #d1d5db;
+}
+
+.dash-header-chip-live {
+    background-color: rgba(22, 163, 74, 0.1);
+    color: #15803d;
 }
 
 .dash-header-live-dot {
@@ -4147,9 +4168,13 @@ div .rdt_Pagination div:first-of-type svg {
     animation: dash-live-pulse 2s infinite;
 }
 
-.dash-header-sep {
-    margin: 0 8px;
-    color: #d1d5db;
+.dash-header-chip-cashiers {
+    background-color: rgba(47, 111, 237, 0.1);
+    color: #185fa5;
+}
+
+.dash-header-chip-cashiers .dash-header-chip-icon {
+    color: #2F6FED;
 }
 
 .dash-header-right {
@@ -4157,12 +4182,6 @@ div .rdt_Pagination div:first-of-type svg {
     align-items: center;
     gap: 10px;
     flex-wrap: wrap;
-}
-
-.dash-header-store,
-.dash-header-cashiers {
-    font-weight: 600;
-    color: #374151;
 }
 
 @keyframes dash-live-pulse {
