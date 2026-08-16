@@ -12,7 +12,6 @@ dayjs.extend(isoWeek);
 dayjs.extend(relativeTime);
 import { useReactToPrint } from "react-to-print";
 import Category from "./Category";
-import Brands from "./Brand";
 import Product from "./product/Product";
 import ProductCartList from "./cart-product/ProductCartList";
 import {
@@ -837,11 +836,6 @@ const PosMainPage = (props) => {
                                 <Category
                                     setCategory={setCategory}
                                     brandId={brandId}
-                                    selectedOption={selectedOption}
-                                />
-                                <Brands
-                                    categoryId={categoryId}
-                                    setBrand={setBrand}
                                     selectedOption={selectedOption}
                                 />
                             </div>

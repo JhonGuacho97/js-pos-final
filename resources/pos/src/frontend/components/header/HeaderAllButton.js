@@ -2,6 +2,7 @@ import { faList } from '@fortawesome/free-solid-svg-icons';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import React, { useState } from 'react';
 import { Nav } from 'react-bootstrap-v5';
+import { useNavigate } from 'react-router';
 import PosCalculator from './PosCalculator';
 import Dropdown from 'react-bootstrap/Dropdown';
 import { getFormattedMessage } from '../../../shared/sharedMethod';
@@ -11,6 +12,7 @@ const HeaderAllButton = ( props ) => {
     const { setOpneCalculator, opneCalculator, goToDetailScreen, goToHoldScreen, holdListData, handleClickCloseRegister } = props
     const [ isFullscreen, setIsFullscreen ] = useState( false );
     const [ showROAlertModel, setShowROAlertModel ] = useState( false )
+    const navigate = useNavigate();
 
     const fullScreen = () => {
         if ( !document.fullscreenElement ) {
@@ -45,23 +47,6 @@ const HeaderAllButton = ( props ) => {
                     </Nav.Link>
                     <div className='hold-list-badge'>{holdListData.length ? holdListData.length : 0}</div>
                 </Nav.Item>
-                <Nav.Item className='d-flex align-items-center justify-content-center ms-3 nav-green register_dropdown'>
-                    <div className='pe-0 text-white' >
-                        <Dropdown>
-                            <Dropdown.Toggle variant="success" id="dropdown-basic">
-                                <i className="bi bi-bag fa-2x" />
-                            </Dropdown.Toggle>
-
-                            <Dropdown.Menu>
-                                <Dropdown.Item onClick={( e ) => {
-                                    e.stopPropagation();
-                                    goToDetailScreen()
-                                }}>{getFormattedMessage( "register.details.title" )}</Dropdown.Item>
-                                <Dropdown.Item onClick={() => handleClickCloseRegister()}>{getFormattedMessage( "globally.close-register.title" )}</Dropdown.Item>
-                            </Dropdown.Menu>
-                        </Dropdown>
-                    </div>
-                </Nav.Item>
                 {/*full screen icon*/}
                 <Nav.Item className='ms-3 d-flex align-items-center justify-content-center'>
                     {isFullscreen === true ?
@@ -77,11 +62,35 @@ const HeaderAllButton = ( props ) => {
                     <i className="bi bi-calculator cursor-pointer text-white fa-2x"
                         onClick={opneCalculatorModel} />
                 </Nav.Item>
-                {/*{dashboard redirect icon}*/}
-                <Nav.Item className='d-flex align-items-center justify-content-center ms-3'>
-                    <Nav.Link onClick={() => setShowROAlertModel( true )} className='pe-0 ps-1 text-white'>
-                        <i className="bi bi-speedometer2 cursor-pointer fa-2x" />
-                    </Nav.Link>
+                {/* Menú de más acciones: dashboard, detalles/cierre de registro,
+                    devolución de venta -- antes repartido entre un ícono suelto
+                    (dashboard) y un dropdown aparte (bolsa verde, solo
+                    registro), ahora consolidado en un solo lugar. */}
+                <Nav.Item className='d-flex align-items-center justify-content-center ms-3 pos-more-menu'>
+                    <Dropdown align='end'>
+                        <Dropdown.Toggle as='div' className='pe-0 text-white cursor-pointer hide-arrow' id='pos-more-actions-dropdown'>
+                            <i className="bi bi-three-dots-vertical fa-2x" />
+                        </Dropdown.Toggle>
+
+                        <Dropdown.Menu>
+                            <Dropdown.Item onClick={() => setShowROAlertModel( true )}>
+                                <i className="bi bi-speedometer2 me-2" />{getFormattedMessage( "pos.more-menu.dashboard.label" )}
+                            </Dropdown.Item>
+                            <Dropdown.Item onClick={( e ) => {
+                                e.stopPropagation();
+                                goToDetailScreen()
+                            }}>
+                                <i className="bi bi-file-earmark-text me-2" />{getFormattedMessage( "register.details.title" )}
+                            </Dropdown.Item>
+                            <Dropdown.Item onClick={() => handleClickCloseRegister()}>
+                                <i className="bi bi-lock me-2" />{getFormattedMessage( "globally.close-register.title" )}
+                            </Dropdown.Item>
+                            <Dropdown.Divider />
+                            <Dropdown.Item onClick={() => navigate( '/app/sale-return' )}>
+                                <i className="bi bi-arrow-return-left me-2" />{getFormattedMessage( "sale-return.title" )}
+                            </Dropdown.Item>
+                        </Dropdown.Menu>
+                    </Dropdown>
                 </Nav.Item>
             </Nav>
             {opneCalculator && <PosCalculator opneCalculatorModel={opneCalculatorModel} />}
