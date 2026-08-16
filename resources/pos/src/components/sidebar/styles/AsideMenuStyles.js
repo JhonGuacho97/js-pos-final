@@ -275,4 +275,18 @@ export const asideStyles = `
 .aside-menu-container .pro-sub-menu.pro-active-sub .pro-inner-list-item .pro-menu-item.active > .pro-inner-item .svg-inline--fa {
   color: #2F6FED !important;
 }
+
+/* ── Encabezado de grupo (GENERAL, VENTAS, ...) ── */
+.aside-menu-container .aside-group-header {
+  padding: 14px 14px 4px !important;
+  font-size: 11px !important;
+  font-weight: 700 !important;
+  letter-spacing: 0.04em !important;
+  color: #94A3B8 !important;
+  text-transform: uppercase !important;
+}
+
+.aside-menu-container .aside-group-header:first-child {
+  padding-top: 4px !important;
+}
 `;

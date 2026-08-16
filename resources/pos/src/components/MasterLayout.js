@@ -101,6 +101,12 @@ const prepareRoutes = (config) => {
     const permissions = config;
     let filterRoutes = [];
     asideConfig.forEach((route) => {
+        if (route.groupHeader) {
+            // Pasa de largo -- se filtra abajo en pruneEmptyGroups() una vez
+            // que ya sabemos qué rutas reales quedaron a cada lado.
+            filterRoutes.push(route);
+            return;
+        }
         const permissionsRoute = getRouteWithSubMenu(route, permissions);
         if (
             (permissions && permissions.indexOf(route.permission) !== -1) ||
@@ -110,7 +116,22 @@ const prepareRoutes = (config) => {
             filterRoutes.push(permissionsRoute);
         }
     });
-    return filterRoutes;
+    return pruneEmptyGroups(filterRoutes);
+};
+
+// Un encabezado de grupo (GENERAL, VENTAS, ...) no tiene permission propio
+// -- si ningún ítem real le sobrevivió al filtro de permisos justo
+// después (porque el usuario no tiene acceso a nada de ese grupo, o
+// porque el siguiente elemento es otro encabezado), se descarta para no
+// mostrar un título de sección seguido de nada.
+const pruneEmptyGroups = (routes) => {
+    return routes.filter((route, index) => {
+        if (!route.groupHeader) {
+            return true;
+        }
+        const next = routes[index + 1];
+        return Boolean(next) && !next.groupHeader;
+    });
 };
 
 const mapStateToProps = (state) => {
