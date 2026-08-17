@@ -843,9 +843,10 @@ __webpack_require__.r(__webpack_exports__);
 /* harmony import */ var _store_action_pos_HoldListAction__WEBPACK_IMPORTED_MODULE_39__ = __webpack_require__(/*! ../../store/action/pos/HoldListAction */ "./resources/pos/src/store/action/pos/HoldListAction.js");
 /* harmony import */ var react_router__WEBPACK_IMPORTED_MODULE_40__ = __webpack_require__(/*! react-router */ "./node_modules/react-router/dist/index.js");
 /* harmony import */ var _components_posRegister_PosCloseRegisterDetailsModel_js__WEBPACK_IMPORTED_MODULE_41__ = __webpack_require__(/*! ../../components/posRegister/PosCloseRegisterDetailsModel.js */ "./resources/pos/src/components/posRegister/PosCloseRegisterDetailsModel.js");
-/* harmony import */ var _store_action_toastAction__WEBPACK_IMPORTED_MODULE_42__ = __webpack_require__(/*! ../../store/action/toastAction */ "./resources/pos/src/store/action/toastAction.js");
-/* harmony import */ var _hooks_facturacion_useElectronicInvoice_js__WEBPACK_IMPORTED_MODULE_43__ = __webpack_require__(/*! ../../hooks/facturacion/useElectronicInvoice.js */ "./resources/pos/src/hooks/facturacion/useElectronicInvoice.js");
-/* harmony import */ var react_jsx_runtime__WEBPACK_IMPORTED_MODULE_44__ = __webpack_require__(/*! react/jsx-runtime */ "./node_modules/react/jsx-runtime.js");
+/* harmony import */ var _shared_action_buttons_DeleteModel__WEBPACK_IMPORTED_MODULE_42__ = __webpack_require__(/*! ../../shared/action-buttons/DeleteModel */ "./resources/pos/src/shared/action-buttons/DeleteModel.js");
+/* harmony import */ var _store_action_toastAction__WEBPACK_IMPORTED_MODULE_43__ = __webpack_require__(/*! ../../store/action/toastAction */ "./resources/pos/src/store/action/toastAction.js");
+/* harmony import */ var _hooks_facturacion_useElectronicInvoice_js__WEBPACK_IMPORTED_MODULE_44__ = __webpack_require__(/*! ../../hooks/facturacion/useElectronicInvoice.js */ "./resources/pos/src/hooks/facturacion/useElectronicInvoice.js");
+/* harmony import */ var react_jsx_runtime__WEBPACK_IMPORTED_MODULE_45__ = __webpack_require__(/*! react/jsx-runtime */ "./node_modules/react/jsx-runtime.js");
 function _typeof(o) { "@babel/helpers - typeof"; return _typeof = "function" == typeof Symbol && "symbol" == typeof Symbol.iterator ? function (o) { return typeof o; } : function (o) { return o && "function" == typeof Symbol && o.constructor === Symbol && o !== Symbol.prototype ? "symbol" : typeof o; }, _typeof(o); }
 function _toConsumableArray(r) { return _arrayWithoutHoles(r) || _iterableToArray(r) || _unsupportedIterableToArray(r) || _nonIterableSpread(); }
 function _nonIterableSpread() { throw new TypeError("Invalid attempt to spread non-iterable instance.\nIn order to be iterable, non-array objects must have a [Symbol.iterator]() method."); }
@@ -874,6 +875,7 @@ dayjs__WEBPACK_IMPORTED_MODULE_6___default().extend((dayjs_plugin_utc__WEBPACK_I
 dayjs__WEBPACK_IMPORTED_MODULE_6___default().extend((dayjs_plugin_localizedFormat__WEBPACK_IMPORTED_MODULE_8___default()));
 dayjs__WEBPACK_IMPORTED_MODULE_6___default().extend((dayjs_plugin_isoWeek__WEBPACK_IMPORTED_MODULE_9___default()));
 dayjs__WEBPACK_IMPORTED_MODULE_6___default().extend((dayjs_plugin_relativeTime__WEBPACK_IMPORTED_MODULE_10___default()));
+
 
 
 
@@ -973,69 +975,73 @@ var PosMainPage = function PosMainPage(props) {
     _useState20 = _slicedToArray(_useState19, 2),
     modalShowCustomer = _useState20[0],
     setModalShowCustomer = _useState20[1];
-  var _useState21 = (0,react__WEBPACK_IMPORTED_MODULE_0__.useState)(0),
+  var _useState21 = (0,react__WEBPACK_IMPORTED_MODULE_0__.useState)(null),
     _useState22 = _slicedToArray(_useState21, 2),
-    productMsg = _useState22[0],
-    _ = _useState22[1];
-  var _useState23 = (0,react__WEBPACK_IMPORTED_MODULE_0__.useState)(),
+    deleteCartItem = _useState22[0],
+    setDeleteCartItem = _useState22[1];
+  var _useState23 = (0,react__WEBPACK_IMPORTED_MODULE_0__.useState)(0),
     _useState24 = _slicedToArray(_useState23, 2),
-    brandId = _useState24[0],
-    setBrandId = _useState24[1];
+    productMsg = _useState24[0],
+    _ = _useState24[1];
   var _useState25 = (0,react__WEBPACK_IMPORTED_MODULE_0__.useState)(),
     _useState26 = _slicedToArray(_useState25, 2),
-    categoryId = _useState26[0],
-    setCategoryId = _useState26[1];
-  var _useState27 = (0,react__WEBPACK_IMPORTED_MODULE_0__.useState)(null),
+    brandId = _useState26[0],
+    setBrandId = _useState26[1];
+  var _useState27 = (0,react__WEBPACK_IMPORTED_MODULE_0__.useState)(),
     _useState28 = _slicedToArray(_useState27, 2),
-    selectedCustomerOption = _useState28[0],
-    setSelectedCustomerOption = _useState28[1];
+    categoryId = _useState28[0],
+    setCategoryId = _useState28[1];
   var _useState29 = (0,react__WEBPACK_IMPORTED_MODULE_0__.useState)(null),
     _useState30 = _slicedToArray(_useState29, 2),
-    selectedOption = _useState30[0],
-    setSelectedOption = _useState30[1];
-  var _useState31 = (0,react__WEBPACK_IMPORTED_MODULE_0__.useState)(false),
+    selectedCustomerOption = _useState30[0],
+    setSelectedCustomerOption = _useState30[1];
+  var _useState31 = (0,react__WEBPACK_IMPORTED_MODULE_0__.useState)(null),
     _useState32 = _slicedToArray(_useState31, 2),
-    updateHolList = _useState32[0],
-    setUpdateHoldList = _useState32[1];
-  var _useState33 = (0,react__WEBPACK_IMPORTED_MODULE_0__.useState)(""),
+    selectedOption = _useState32[0],
+    setSelectedOption = _useState32[1];
+  var _useState33 = (0,react__WEBPACK_IMPORTED_MODULE_0__.useState)(false),
     _useState34 = _slicedToArray(_useState33, 2),
-    hold_ref_no = _useState34[0],
-    setHold_ref_no = _useState34[1];
-  var _useState35 = (0,react__WEBPACK_IMPORTED_MODULE_0__.useState)({
+    updateHolList = _useState34[0],
+    setUpdateHoldList = _useState34[1];
+  var _useState35 = (0,react__WEBPACK_IMPORTED_MODULE_0__.useState)(""),
+    _useState36 = _slicedToArray(_useState35, 2),
+    hold_ref_no = _useState36[0],
+    setHold_ref_no = _useState36[1];
+  var _useState37 = (0,react__WEBPACK_IMPORTED_MODULE_0__.useState)({
       discount: 0,
       tax: 0,
       shipping: 0
     }),
-    _useState36 = _slicedToArray(_useState35, 2),
-    cartItemValue = _useState36[0],
-    setCartItemValue = _useState36[1];
-  var _useState37 = (0,react__WEBPACK_IMPORTED_MODULE_0__.useState)({
+    _useState38 = _slicedToArray(_useState37, 2),
+    cartItemValue = _useState38[0],
+    setCartItemValue = _useState38[1];
+  var _useState39 = (0,react__WEBPACK_IMPORTED_MODULE_0__.useState)({
       notes: "",
       payment_status: {
         label: (0,_shared_sharedMethod__WEBPACK_IMPORTED_MODULE_34__.getFormattedMessage)("dashboard.recentSales.paid.label"),
         value: 1
       }
     }),
-    _useState38 = _slicedToArray(_useState37, 2),
-    cashPaymentValue = _useState38[0],
-    setCashPaymentValue = _useState38[1];
-  var _useState39 = (0,react__WEBPACK_IMPORTED_MODULE_0__.useState)({
+    _useState40 = _slicedToArray(_useState39, 2),
+    cashPaymentValue = _useState40[0],
+    setCashPaymentValue = _useState40[1];
+  var _useState41 = (0,react__WEBPACK_IMPORTED_MODULE_0__.useState)({
       notes: ""
     }),
-    _useState40 = _slicedToArray(_useState39, 2),
-    errors = _useState40[0],
-    setErrors = _useState40[1];
-  var _useState41 = (0,react__WEBPACK_IMPORTED_MODULE_0__.useState)(""),
     _useState42 = _slicedToArray(_useState41, 2),
-    tipoComprobanteSri = _useState42[0],
-    setTipoComprobanteSri = _useState42[1];
-  var _useElectronicInvoice = (0,_hooks_facturacion_useElectronicInvoice_js__WEBPACK_IMPORTED_MODULE_43__.useElectronicInvoice)(),
+    errors = _useState42[0],
+    setErrors = _useState42[1];
+  var _useState43 = (0,react__WEBPACK_IMPORTED_MODULE_0__.useState)(""),
+    _useState44 = _slicedToArray(_useState43, 2),
+    tipoComprobanteSri = _useState44[0],
+    setTipoComprobanteSri = _useState44[1];
+  var _useElectronicInvoice = (0,_hooks_facturacion_useElectronicInvoice_js__WEBPACK_IMPORTED_MODULE_44__.useElectronicInvoice)(),
     emitirFactura = _useElectronicInvoice.emitir;
   // const [searchString, setSearchString] = useState('');
-  var _useState43 = (0,react__WEBPACK_IMPORTED_MODULE_0__.useState)(false),
-    _useState44 = _slicedToArray(_useState43, 2),
-    showCloseDetailsModal = _useState44[0],
-    setShowCloseDetailsModal = _useState44[1];
+  var _useState45 = (0,react__WEBPACK_IMPORTED_MODULE_0__.useState)(false),
+    _useState46 = _slicedToArray(_useState45, 2),
+    showCloseDetailsModal = _useState46[0],
+    setShowCloseDetailsModal = _useState46[1];
   var _useSelector = (0,react_redux__WEBPACK_IMPORTED_MODULE_5__.useSelector)(function (state) {
       return state;
     }),
@@ -1058,12 +1064,12 @@ var PosMainPage = function PosMainPage(props) {
   var subTotal = localTotal.length > 0 && localTotal.reduce(function (cart, current) {
     return cart + current;
   });
-  var _useState45 = (0,react__WEBPACK_IMPORTED_MODULE_0__.useState)({
+  var _useState47 = (0,react__WEBPACK_IMPORTED_MODULE_0__.useState)({
       referenceNumber: ""
     }),
-    _useState46 = _slicedToArray(_useState45, 2),
-    holdListId = _useState46[0],
-    setHoldListValue = _useState46[1];
+    _useState48 = _slicedToArray(_useState47, 2),
+    holdListId = _useState48[0],
+    setHoldListValue = _useState48[1];
 
   //grand total on cart item
   var discountTotal = subTotal - cartItemValue.discount;
@@ -1184,14 +1190,14 @@ var PosMainPage = function PosMainPage(props) {
   // Filas de pago del POS: por defecto una sola (efectivo), pero se
   // pueden agregar más para dividir el cobro entre varias formas de
   // pago (ej. $20 efectivo + $10 transferencia).
-  var _useState47 = (0,react__WEBPACK_IMPORTED_MODULE_0__.useState)([{
+  var _useState49 = (0,react__WEBPACK_IMPORTED_MODULE_0__.useState)([{
       id: 1,
       amount: "",
       payment_type: paymentTypeDefaultValue[0]
     }]),
-    _useState48 = _slicedToArray(_useState47, 2),
-    paymentRows = _useState48[0],
-    setPaymentRows = _useState48[1];
+    _useState50 = _slicedToArray(_useState49, 2),
+    paymentRows = _useState50[0],
+    setPaymentRows = _useState50[1];
   var onAddPaymentRow = function onAddPaymentRow() {
     setPaymentRows(function (prev) {
       var totalPagado = prev.reduce(function (sum, row) {
@@ -1461,13 +1467,13 @@ var PosMainPage = function PosMainPage(props) {
 
   //Register details  slip
   var loadRegisterDetailsPrint = function loadRegisterDetailsPrint() {
-    return /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_44__.jsxs)("div", {
+    return /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_45__.jsxs)("div", {
       className: "d-none",
-      children: [/*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_44__.jsx)("button", {
+      children: [/*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_45__.jsx)("button", {
         id: "printRegisterDetailsId",
         onClick: handleRegisterDetailsPrint,
         children: "Print this out!"
-      }), /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_44__.jsx)(_printModal_PrintRegisterDetailsData__WEBPACK_IMPORTED_MODULE_32__["default"], {
+      }), /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_45__.jsx)(_printModal_PrintRegisterDetailsData__WEBPACK_IMPORTED_MODULE_32__["default"], {
         ref: registerDetailsRef,
         allConfigData: allConfigData,
         frontSetting: frontSetting,
@@ -1488,7 +1494,7 @@ var PosMainPage = function PosMainPage(props) {
     return (
       /*#__PURE__*/
       // ✅ Ya no necesita "d-none" ni el botón oculto
-      (0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_44__.jsx)(_paymentSlipModal_PaymentSlipModal__WEBPACK_IMPORTED_MODULE_24__["default"], {
+      (0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_45__.jsx)(_paymentSlipModal_PaymentSlipModal__WEBPACK_IMPORTED_MODULE_24__["default"], {
         setPaymentValue: resetPaymentRows,
         setModalShowPaymentSlip: setModalShowPaymentSlip,
         settings: settings,
@@ -1511,14 +1517,14 @@ var PosMainPage = function PosMainPage(props) {
       })
     );
   };
-  var _useState49 = (0,react__WEBPACK_IMPORTED_MODULE_0__.useState)(false),
-    _useState50 = _slicedToArray(_useState49, 2),
-    lgShow = _useState50[0],
-    setLgShow = _useState50[1];
   var _useState51 = (0,react__WEBPACK_IMPORTED_MODULE_0__.useState)(false),
     _useState52 = _slicedToArray(_useState51, 2),
-    holdShow = _useState52[0],
-    setHoldShow = _useState52[1];
+    lgShow = _useState52[0],
+    setLgShow = _useState52[1];
+  var _useState53 = (0,react__WEBPACK_IMPORTED_MODULE_0__.useState)(false),
+    _useState54 = _slicedToArray(_useState53, 2),
+    holdShow = _useState54[0],
+    setHoldShow = _useState54[1];
   var onClickDetailsModel = function onClickDetailsModel() {
     var isDetails = arguments.length > 0 && arguments[0] !== undefined ? arguments[0] : null;
     setLgShow(true);
@@ -1534,7 +1540,7 @@ var PosMainPage = function PosMainPage(props) {
   var handleCloseRegisterDetails = function handleCloseRegisterDetails(data) {
     var _data$cash_in_hand_wh;
     if (((_data$cash_in_hand_wh = data.cash_in_hand_while_closing.toString().trim()) === null || _data$cash_in_hand_wh === void 0 ? void 0 : _data$cash_in_hand_wh.length) === 0) {
-      dispatch((0,_store_action_toastAction__WEBPACK_IMPORTED_MODULE_42__.addToast)({
+      dispatch((0,_store_action_toastAction__WEBPACK_IMPORTED_MODULE_43__.addToast)({
         text: (0,_shared_sharedMethod__WEBPACK_IMPORTED_MODULE_34__.getFormattedMessage)("pos.cclose-register.enter-total-cash.message"),
         type: _constants__WEBPACK_IMPORTED_MODULE_35__.toastType.ERROR
       }));
@@ -1543,64 +1549,64 @@ var PosMainPage = function PosMainPage(props) {
       dispatch((0,_store_action_pos_posRegisterDetailsAction__WEBPACK_IMPORTED_MODULE_33__.closeRegisterAction)(data, navigate));
     }
   };
-  return /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_44__.jsxs)(react_bootstrap_v5__WEBPACK_IMPORTED_MODULE_2__["default"], {
+  return /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_45__.jsxs)(react_bootstrap_v5__WEBPACK_IMPORTED_MODULE_2__["default"], {
     className: "pos-screen px-3",
     fluid: true,
-    children: [/*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_44__.jsx)(_shared_tab_title_TabTitle__WEBPACK_IMPORTED_MODULE_29__["default"], {
+    children: [/*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_45__.jsx)(_shared_tab_title_TabTitle__WEBPACK_IMPORTED_MODULE_29__["default"], {
       title: "POS"
-    }), loadPaymentSlip(), loadRegisterDetailsPrint(), /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_44__.jsxs)(react_bootstrap_v5__WEBPACK_IMPORTED_MODULE_3__["default"], {
-      children: [/*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_44__.jsx)(_shared_components_loaders_TopProgressBar__WEBPACK_IMPORTED_MODULE_36__["default"], {}), /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_44__.jsxs)(react_bootstrap_v5__WEBPACK_IMPORTED_MODULE_1__["default"], {
+    }), loadPaymentSlip(), loadRegisterDetailsPrint(), /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_45__.jsxs)(react_bootstrap_v5__WEBPACK_IMPORTED_MODULE_3__["default"], {
+      children: [/*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_45__.jsx)(_shared_components_loaders_TopProgressBar__WEBPACK_IMPORTED_MODULE_36__["default"], {}), /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_45__.jsxs)(react_bootstrap_v5__WEBPACK_IMPORTED_MODULE_1__["default"], {
         lg: 5,
         xxl: 4,
         xs: 6,
         className: "pos-left-scs",
-        children: [/*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_44__.jsx)(_header_PosHeader__WEBPACK_IMPORTED_MODULE_20__["default"], {
+        children: [/*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_45__.jsx)(_header_PosHeader__WEBPACK_IMPORTED_MODULE_20__["default"], {
           setSelectedCustomerOption: setSelectedCustomerOption,
           selectedCustomerOption: selectedCustomerOption,
           setSelectedOption: setSelectedOption,
           selectedOption: selectedOption,
           customerModel: customerModel,
           updateCustomer: modalShowCustomer
-        }), /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_44__.jsxs)("div", {
+        }), /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_45__.jsxs)("div", {
           className: "left-content custom-card mb-3 p-3",
-          children: [/*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_44__.jsx)("div", {
+          children: [/*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_45__.jsx)("div", {
             className: "main-table overflow-auto",
-            children: /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_44__.jsxs)(react_bootstrap_v5__WEBPACK_IMPORTED_MODULE_4__["default"], {
+            children: /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_45__.jsxs)(react_bootstrap_v5__WEBPACK_IMPORTED_MODULE_4__["default"], {
               className: "mb-0",
-              children: [/*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_44__.jsx)("thead", {
+              children: [/*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_45__.jsx)("thead", {
                 className: "position-sticky top-0",
-                children: /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_44__.jsxs)("tr", {
-                  children: [/*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_44__.jsx)("th", {
+                children: /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_45__.jsxs)("tr", {
+                  children: [/*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_45__.jsx)("th", {
                     children: (0,_shared_sharedMethod__WEBPACK_IMPORTED_MODULE_34__.getFormattedMessage)("pos-product.title")
-                  }), /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_44__.jsx)("th", {
+                  }), /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_45__.jsx)("th", {
                     className: updateProducts && updateProducts.length ? "text-center" : "",
                     children: (0,_shared_sharedMethod__WEBPACK_IMPORTED_MODULE_34__.getFormattedMessage)("pos-qty.title")
-                  }), /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_44__.jsx)("th", {
+                  }), /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_45__.jsx)("th", {
                     children: (0,_shared_sharedMethod__WEBPACK_IMPORTED_MODULE_34__.getFormattedMessage)("pos-price.title")
-                  }), /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_44__.jsx)("th", {
+                  }), /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_45__.jsx)("th", {
                     colSpan: "2",
                     children: (0,_shared_sharedMethod__WEBPACK_IMPORTED_MODULE_34__.getFormattedMessage)("pos-sub-total.title")
                   })]
                 })
-              }), /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_44__.jsx)("tbody", {
+              }), /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_45__.jsx)("tbody", {
                 className: "border-0",
                 children: updateProducts && updateProducts.length ? updateProducts.map(function (updateProduct, index) {
-                  return /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_44__.jsx)(_cart_product_ProductCartList__WEBPACK_IMPORTED_MODULE_14__["default"], {
+                  return /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_45__.jsx)(_cart_product_ProductCartList__WEBPACK_IMPORTED_MODULE_14__["default"], {
                     singleProduct: updateProduct,
                     index: index,
                     posAllProducts: posAllProducts,
                     onClickUpdateItemInCart: onClickUpdateItemInCart,
                     updatedQty: updatedQty,
                     updateCost: updateCost,
-                    onDeleteCartItem: onDeleteCartItem,
+                    onRequestDeleteCartItem: setDeleteCartItem,
                     quantity: quantity,
                     frontSetting: frontSetting,
                     newCost: newCost,
                     allConfigData: allConfigData,
                     setUpdateProducts: setUpdateProducts
                   }, index + 1);
-                }) : /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_44__.jsx)("tr", {
-                  children: /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_44__.jsx)("td", {
+                }) : /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_45__.jsx)("tr", {
+                  children: /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_45__.jsx)("td", {
                     colSpan: 4,
                     className: "custom-text-center text-gray-900 fw-bold py-5",
                     children: (0,_shared_sharedMethod__WEBPACK_IMPORTED_MODULE_34__.getFormattedMessage)("sale.product.table.no-data.label")
@@ -1608,7 +1614,7 @@ var PosMainPage = function PosMainPage(props) {
                 })
               })]
             })
-          }), /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_44__.jsx)(_cart_product_CartItemMainCalculation__WEBPACK_IMPORTED_MODULE_19__["default"], {
+          }), /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_45__.jsx)(_cart_product_CartItemMainCalculation__WEBPACK_IMPORTED_MODULE_19__["default"], {
             totalQty: totalQty,
             subTotal: subTotal,
             grandTotal: grandTotal,
@@ -1617,7 +1623,7 @@ var PosMainPage = function PosMainPage(props) {
             allConfigData: allConfigData,
             frontSetting: frontSetting,
             onChangeTaxCart: onChangeTaxCart
-          }), /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_44__.jsx)(_cart_product_PaymentButton__WEBPACK_IMPORTED_MODULE_22__["default"], {
+          }), /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_45__.jsx)(_cart_product_PaymentButton__WEBPACK_IMPORTED_MODULE_22__["default"], {
             updateProducts: updateProducts,
             updateCart: addToCarts,
             setUpdateProducts: setUpdateProducts,
@@ -1634,22 +1640,22 @@ var PosMainPage = function PosMainPage(props) {
             setUpdateHoldList: setUpdateHoldList
           })]
         })]
-      }), /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_44__.jsx)(react_bootstrap_v5__WEBPACK_IMPORTED_MODULE_1__["default"], {
+      }), /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_45__.jsx)(react_bootstrap_v5__WEBPACK_IMPORTED_MODULE_1__["default"], {
         lg: 7,
         xxl: 8,
         xs: 6,
         className: "ps-lg-0 pos-right-scs",
-        children: /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_44__.jsxs)("div", {
+        children: /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_45__.jsxs)("div", {
           className: "right-content mb-3",
-          children: [/*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_44__.jsxs)("div", {
+          children: [/*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_45__.jsxs)("div", {
             className: "d-sm-flex align-items-center flex-xxl-nowrap flex-wrap",
-            children: [/*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_44__.jsx)(_product_ProductSearchbar__WEBPACK_IMPORTED_MODULE_16__["default"], {
+            children: [/*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_45__.jsx)(_product_ProductSearchbar__WEBPACK_IMPORTED_MODULE_16__["default"], {
               customCart: customCart,
               setUpdateProducts: setUpdateProducts,
               updateProducts: updateProducts
               // handleOnSelect={handleOnSelect} handleOnSearch={handleOnSearch}
               // searchString={searchString}
-            }), /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_44__.jsx)(_header_HeaderAllButton__WEBPACK_IMPORTED_MODULE_30__["default"], {
+            }), /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_45__.jsx)(_header_HeaderAllButton__WEBPACK_IMPORTED_MODULE_30__["default"], {
               holdListData: holdListData,
               goToHoldScreen: onClickHoldModel,
               goToDetailScreen: onClickDetailsModel,
@@ -1658,16 +1664,16 @@ var PosMainPage = function PosMainPage(props) {
               setOpneCalculator: setOpenCalculator,
               handleClickCloseRegister: handleClickCloseRegister
             })]
-          }), /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_44__.jsxs)("div", {
+          }), /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_45__.jsxs)("div", {
             className: "custom-card h-100",
-            children: [/*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_44__.jsx)("div", {
+            children: [/*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_45__.jsx)("div", {
               className: "p-3",
-              children: /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_44__.jsx)(_Category__WEBPACK_IMPORTED_MODULE_12__["default"], {
+              children: /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_45__.jsx)(_Category__WEBPACK_IMPORTED_MODULE_12__["default"], {
                 setCategory: setCategory,
                 brandId: brandId,
                 selectedOption: selectedOption
               })
-            }), /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_44__.jsx)(_product_Product__WEBPACK_IMPORTED_MODULE_13__["default"], {
+            }), /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_45__.jsx)(_product_Product__WEBPACK_IMPORTED_MODULE_13__["default"], {
               cartProducts: updateProducts,
               updateCart: addToCarts,
               customCart: customCart,
@@ -1682,7 +1688,7 @@ var PosMainPage = function PosMainPage(props) {
           })]
         })
       })]
-    }), isOpenCartItemUpdateModel && /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_44__.jsx)(_shared_ProductDetailsModel__WEBPACK_IMPORTED_MODULE_18__["default"], {
+    }), isOpenCartItemUpdateModel && /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_45__.jsx)(_shared_ProductDetailsModel__WEBPACK_IMPORTED_MODULE_18__["default"], {
       openProductDetailModal: openProductDetailModal,
       productModelId: product.id,
       onProductUpdateInCart: onProductUpdateInCart,
@@ -1690,7 +1696,7 @@ var PosMainPage = function PosMainPage(props) {
       cartProduct: product,
       isOpenCartItemUpdateModel: isOpenCartItemUpdateModel,
       frontSetting: frontSetting
-    }), cashPayment && /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_44__.jsx)(_cart_product_paymentModel_CashPaymentModel__WEBPACK_IMPORTED_MODULE_23__["default"], {
+    }), cashPayment && /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_45__.jsx)(_cart_product_paymentModel_CashPaymentModel__WEBPACK_IMPORTED_MODULE_23__["default"], {
       cashPayment: cashPayment,
       totalQty: totalQty,
       cartItemValue: cartItemValue,
@@ -1712,12 +1718,12 @@ var PosMainPage = function PosMainPage(props) {
       onPaymentRowTypeChange: onPaymentRowTypeChange,
       tipoComprobanteSri: tipoComprobanteSri,
       onTipoComprobanteChange: setTipoComprobanteSri
-    }), lgShow && /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_44__.jsx)(_register_detailsModal_RegisterDetailsModel__WEBPACK_IMPORTED_MODULE_31__["default"], {
+    }), lgShow && /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_45__.jsx)(_register_detailsModal_RegisterDetailsModel__WEBPACK_IMPORTED_MODULE_31__["default"], {
       printRegisterDetails: printRegisterDetails,
       frontSetting: frontSetting,
       lgShow: lgShow,
       setLgShow: setLgShow
-    }), holdShow && /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_44__.jsx)(_holdListModal_HoldListModal__WEBPACK_IMPORTED_MODULE_38__["default"], {
+    }), holdShow && /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_45__.jsx)(_holdListModal_HoldListModal__WEBPACK_IMPORTED_MODULE_38__["default"], {
       setUpdateHoldList: setUpdateHoldList,
       setCartItemValue: setCartItemValue,
       setUpdateProducts: setUpdateProducts,
@@ -1732,13 +1738,22 @@ var PosMainPage = function PosMainPage(props) {
       updateCart: updateCart,
       setSelectedCustomerOption: setSelectedCustomerOption,
       setSelectedOption: setSelectedOption
-    }), modalShowCustomer && /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_44__.jsx)(_customerModel_CustomerForm__WEBPACK_IMPORTED_MODULE_37__["default"], {
+    }), modalShowCustomer && /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_45__.jsx)(_customerModel_CustomerForm__WEBPACK_IMPORTED_MODULE_37__["default"], {
       show: modalShowCustomer,
       hide: setModalShowCustomer
-    }), /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_44__.jsx)(_components_posRegister_PosCloseRegisterDetailsModel_js__WEBPACK_IMPORTED_MODULE_41__["default"], {
+    }), /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_45__.jsx)(_components_posRegister_PosCloseRegisterDetailsModel_js__WEBPACK_IMPORTED_MODULE_41__["default"], {
       showCloseDetailsModal: showCloseDetailsModal,
       handleCloseRegisterDetails: handleCloseRegisterDetails,
       setShowCloseDetailsModal: setShowCloseDetailsModal
+    }), deleteCartItem && /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_45__.jsx)(_shared_action_buttons_DeleteModel__WEBPACK_IMPORTED_MODULE_42__["default"], {
+      onClickDeleteModel: function onClickDeleteModel() {
+        return setDeleteCartItem(null);
+      },
+      deleteUserClick: function deleteUserClick() {
+        onDeleteCartItem(deleteCartItem.id);
+        setDeleteCartItem(null);
+      },
+      name: deleteCartItem.name
     })]
   });
 };
@@ -2401,7 +2416,7 @@ var ProductCartList = function ProductCartList(props) {
   var singleProduct = props.singleProduct,
     index = props.index,
     onClickUpdateItemInCart = props.onClickUpdateItemInCart,
-    onDeleteCartItem = props.onDeleteCartItem,
+    onRequestDeleteCartItem = props.onRequestDeleteCartItem,
     frontSetting = props.frontSetting,
     setUpdateProducts = props.setUpdateProducts,
     posAllProducts = props.posAllProducts,
@@ -2492,7 +2507,7 @@ var ProductCartList = function ProductCartList(props) {
       children: /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_6__.jsxs)("div", {
         className: "d-flex flex-column",
         children: [/*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_6__.jsx)("span", {
-          className: "product-title text-truncate",
+          className: "product-title",
           children: singleProduct.name
         }), /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_6__.jsxs)("div", {
           className: "d-flex align-items-center gap-2 mt-1",
@@ -2541,16 +2556,14 @@ var ProductCartList = function ProductCartList(props) {
       children: /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_6__.jsx)("button", {
         className: "delete-btn",
         onClick: function onClick() {
-          if (window.confirm("\xBFQuitar \"".concat(singleProduct.name, "\" del carrito?"))) {
-            onDeleteCartItem(singleProduct.id);
-          }
+          return onRequestDeleteCartItem(singleProduct);
         },
         children: /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_6__.jsx)("i", {
           className: "bi bi-trash3"
         })
       })
     }), /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_6__.jsx)("style", {
-      children: "\n        /* \uD83D\uDD25 PRODUCTO */\n        .product-title {\n            font-weight: 600;\n            font-size: 14px;\n            color: #111827;\n        }\n\n        .sku-badge {\n            font-size: 11px;\n            background: #eef2ff;\n            color: #2F6FED;\n            padding: 2px 8px;\n            border-radius: 6px;\n        }\n\n        .edit-icon {\n            font-size: 12px;\n            color: #6b7280;\n            cursor: pointer;\n            transition: 0.2s;\n        }\n\n        .edit-icon:hover {\n            color: #2F6FED;\n        }\n\n        /* \uD83D\uDD22 CANTIDAD (\uD83D\uDD25 clave del POS) */\n        .qty-container {\n            display: flex;\n            align-items: center;\n            justify-content: center;\n            gap: 6px;\n        }\n\n        .qty-btn {\n            width: 30px;\n            height: 30px;\n            border-radius: 8px;\n            border: none;\n            background: #eef2ff;\n            color: #2F6FED;\n            font-weight: bold;\n            transition: 0.2s;\n        }\n\n        .qty-btn:hover {\n            background: #2F6FED;\n            color: white;\n        }\n\n        .qty-input {\n            width: 45px;\n            text-align: center;\n            border: 1px solid #e5e7eb;\n            border-radius: 6px;\n            height: 30px;\n            font-weight: 600;\n        }\n\n        .qty-input:focus {\n            outline: none;\n            border-color: #2F6FED;\n        }\n\n        /* \uD83D\uDCB0 PRECIO */\n        .price-text {\n            font-size: 13px;\n            color: #6b7280;\n        }\n\n        /* \uD83D\uDCB5 SUBTOTAL (m\xE1s importante) */\n        .subtotal-text {\n            font-weight: 700;\n            color: #111827;\n        }\n\n        /* \uD83D\uDDD1\uFE0F DELETE */\n        .delete-btn {\n            border: none;\n            background: transparent;\n            color: #ef4444;\n            font-size: 16px;\n            transition: 0.2s;\n        }\n\n        .delete-btn:hover {\n            transform: scale(1.2);\n        }\n        "
+      children: "\n        /* \uD83D\uDD25 PRODUCTO */\n        .product-title {\n            font-weight: 600;\n            font-size: 14px;\n            color: #111827;\n            white-space: normal;\n            word-break: break-word;\n            line-height: 1.3;\n        }\n\n        .sku-badge {\n            font-size: 11px;\n            background: #eef2ff;\n            color: #2F6FED;\n            padding: 2px 8px;\n            border-radius: 6px;\n        }\n\n        .edit-icon {\n            font-size: 12px;\n            color: #6b7280;\n            cursor: pointer;\n            transition: 0.2s;\n        }\n\n        .edit-icon:hover {\n            color: #2F6FED;\n        }\n\n        /* \uD83D\uDD22 CANTIDAD (\uD83D\uDD25 clave del POS) */\n        .qty-container {\n            display: flex;\n            align-items: center;\n            justify-content: center;\n            gap: 6px;\n        }\n\n        .qty-btn {\n            width: 30px;\n            height: 30px;\n            border-radius: 8px;\n            border: none;\n            background: #eef2ff;\n            color: #2F6FED;\n            font-weight: bold;\n            transition: 0.2s;\n        }\n\n        .qty-btn:hover {\n            background: #2F6FED;\n            color: white;\n        }\n\n        .qty-input {\n            width: 45px;\n            text-align: center;\n            border: 1px solid #e5e7eb;\n            border-radius: 6px;\n            height: 30px;\n            font-weight: 600;\n        }\n\n        .qty-input:focus {\n            outline: none;\n            border-color: #2F6FED;\n        }\n\n        /* \uD83D\uDCB0 PRECIO */\n        .price-text {\n            font-size: 13px;\n            color: #6b7280;\n        }\n\n        /* \uD83D\uDCB5 SUBTOTAL (m\xE1s importante) */\n        .subtotal-text {\n            font-weight: 700;\n            color: #111827;\n        }\n\n        /* \uD83D\uDDD1\uFE0F DELETE */\n        .delete-btn {\n            border: none;\n            background: transparent;\n            color: #ef4444;\n            font-size: 16px;\n            transition: 0.2s;\n        }\n\n        .delete-btn:hover {\n            transform: scale(1.2);\n        }\n        "
     })]
   });
 };

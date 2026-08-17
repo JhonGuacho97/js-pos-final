@@ -15,7 +15,7 @@ const ProductCartList = (props) => {
         singleProduct,
         index,
         onClickUpdateItemInCart,
-        onDeleteCartItem,
+        onRequestDeleteCartItem,
         frontSetting,
         setUpdateProducts,
         posAllProducts,
@@ -112,7 +112,7 @@ const ProductCartList = (props) => {
             {/* 🛍️ PRODUCTO */}
             <td className="ps-3">
                 <div className="d-flex flex-column">
-                    <span className="product-title text-truncate">
+                    <span className="product-title">
                         {singleProduct.name}
                     </span>
 
@@ -178,11 +178,7 @@ const ProductCartList = (props) => {
             <td className="text-end pe-3">
                 <button
                     className="delete-btn"
-                    onClick={() => {
-                        if (window.confirm(`¿Quitar "${singleProduct.name}" del carrito?`)) {
-                            onDeleteCartItem(singleProduct.id);
-                        }
-                    }}
+                    onClick={() => onRequestDeleteCartItem(singleProduct)}
                 >
                     <i className="bi bi-trash3" />
                 </button>
@@ -195,6 +191,9 @@ const ProductCartList = (props) => {
             font-weight: 600;
             font-size: 14px;
             color: #111827;
+            white-space: normal;
+            word-break: break-word;
+            line-height: 1.3;
         }
 
         .sku-badge {
