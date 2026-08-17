@@ -373,9 +373,15 @@ export const headerStyles = `
   }
 
   .hdr-user-name {
-    display: flex;
+    /* !important -- d-sm-block (necesaria para ocultar este bloque en
+       mobile) trae display:block !important de Bootstrap y le ganaba al
+       flex-direction:column de acá: el nombre y el rol terminaban en la
+       misma línea, pegados sin espacio ("Jhon GuachoBOSS"). */
+    display: flex !important;
     flex-direction: column;
-    line-height: 1.2;
+    justify-content: center;
+    gap: 2px;
+    line-height: 1.15;
     font-family: 'Poppins', sans-serif;
     font-size: 13px;
     font-weight: 500;
@@ -388,9 +394,25 @@ export const headerStyles = `
     white-space: nowrap;
   }
   .hdr-user-role {
-    font-size: 11px;
-    font-weight: 400;
-    color: #9ca3af;
+    align-self: flex-start;
+    font-family: 'Poppins', sans-serif;
+    font-size: 9.5px;
+    font-weight: 700;
+    letter-spacing: 0.4px;
+    text-transform: uppercase;
+    color: #2F6FED;
+    background: rgba(47, 111, 237, 0.1);
+    border-radius: 4px;
+    padding: 1px 6px;
+    max-width: 100%;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    transition: background 0.18s, color 0.18s;
+  }
+  .hdr-user-trigger:hover .hdr-user-role {
+    color: #ffffff;
+    background: rgba(255, 255, 255, 0.22);
   }
 
   .hdr-chevron {

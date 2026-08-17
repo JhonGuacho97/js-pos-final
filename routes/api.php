@@ -365,8 +365,15 @@ Route::middleware(['auth:sanctum', 'store.context'])->group(function () {
         Route::post('mail-settings/update', [SettingAPIController::class, 'updateMailSettings']);
     });
 
+    // El listado de idiomas alimenta el selector de idioma del navbar,
+    // visible para cualquier usuario logueado (no solo quien administra
+    // traducciones) -- por eso index() queda fuera del permiso
+    // manage_language, igual que el patrón ya usado arriba con
+    // settings->except(['index']). Crear/editar idiomas y traducciones
+    // sigue exigiendo el permiso.
+    Route::get('languages', [LanguageAPIController::class, 'index']);
     Route::middleware('permission:manage_language')->group(function () {
-        Route::resource('languages', LanguageAPIController::class);
+        Route::resource('languages', LanguageAPIController::class)->except(['index']);
         Route::get('languages/translation/{language}', [LanguageAPIController::class, 'showTranslation']);
         Route::post('languages/translation/{language}/update', [LanguageAPIController::class, 'updateTranslation']);
     });
