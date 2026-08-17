@@ -54,6 +54,7 @@ import HoldListModal from "./holdListModal/HoldListModal";
 import { fetchHoldLists } from "../../store/action/pos/HoldListAction";
 import { useNavigate } from "react-router";
 import PosCloseRegisterDetailsModel from "../../components/posRegister/PosCloseRegisterDetailsModel.js";
+import DeleteModel from "../../shared/action-buttons/DeleteModel";
 import { addToast } from "../../store/action/toastAction";
 import { useElectronicInvoice } from "../../hooks/facturacion/useElectronicInvoice.js";
 
@@ -92,6 +93,7 @@ const PosMainPage = (props) => {
     const [cashPayment, setCashPayment] = useState(false);
     const [modalShowPaymentSlip, setModalShowPaymentSlip] = useState(false);
     const [modalShowCustomer, setModalShowCustomer] = useState(false);
+    const [deleteCartItem, setDeleteCartItem] = useState(null);
     const [productMsg, _] = useState(0);
     const [brandId, setBrandId] = useState();
     const [categoryId, setCategoryId] = useState();
@@ -748,8 +750,8 @@ const PosMainPage = (props) => {
                                                         }
                                                         updatedQty={updatedQty}
                                                         updateCost={updateCost}
-                                                        onDeleteCartItem={
-                                                            onDeleteCartItem
+                                                        onRequestDeleteCartItem={
+                                                            setDeleteCartItem
                                                         }
                                                         quantity={quantity}
                                                         frontSetting={
@@ -928,6 +930,16 @@ const PosMainPage = (props) => {
                 handleCloseRegisterDetails={handleCloseRegisterDetails}
                 setShowCloseDetailsModal={setShowCloseDetailsModal}
             />
+            {deleteCartItem && (
+                <DeleteModel
+                    onClickDeleteModel={() => setDeleteCartItem(null)}
+                    deleteUserClick={() => {
+                        onDeleteCartItem(deleteCartItem.id);
+                        setDeleteCartItem(null);
+                    }}
+                    name={deleteCartItem.name}
+                />
+            )}
         </Container>
     );
 };
