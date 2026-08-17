@@ -1,4 +1,5 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { useNavigate } from 'react-router-dom';
 import { useIntl } from 'react-intl';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
@@ -130,7 +131,7 @@ const GlobalSearch = ({ newRoutes }) => {
                 <span className='hdr-search-kbd'>{isMac ? '⌘' : 'Ctrl'} K</span>
             </button>
 
-            {open && (
+            {open && createPortal(
                 <div className='hdr-search-overlay' onClick={() => setOpen(false)}>
                     <div className='hdr-search-modal' onClick={(event) => event.stopPropagation()}>
                         <div className='hdr-search-modal-input-row'>
@@ -184,7 +185,8 @@ const GlobalSearch = ({ newRoutes }) => {
                             <span><kbd>Esc</kbd> {getFormattedMessage('header.search.close')}</span>
                         </div>
                     </div>
-                </div>
+                </div>,
+                document.body
             )}
         </>
     );
