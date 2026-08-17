@@ -261,7 +261,16 @@ const AsideTopSubMenuItem = (props) => {
                                         : "d-none"
                                         }`}
                                 >
-                                    <div className="report-nav-scroll d-flex align-items-center">
+                                    <div
+                                        className="report-nav-scroll d-flex align-items-center"
+                                        onWheel={(event) => {
+                                            const el = event.currentTarget;
+                                            if (el.scrollWidth > el.clientWidth) {
+                                                el.scrollLeft += event.deltaY;
+                                                event.preventDefault();
+                                            }
+                                        }}
+                                    >
                                     {mainItems.items
                                         ? mainItems.items.map((item, index) => {
                                             if (index <= 4) {
