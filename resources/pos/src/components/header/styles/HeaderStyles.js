@@ -39,6 +39,14 @@ export const headerStyles = `
     .hdr-user-trigger {
       margin-left: 4px;
     }
+    /* Pantalla completa no es una acción confiable en navegadores
+       móviles (iOS Safari ni siquiera implementa la Fullscreen API
+       fuera de <video>) -- ocultarla en mobile libera ~44px que hacían
+       falta para que la tira de tabs de reportes (abajo) tuviera dónde
+       existir sin desbordar la página. */
+    .hdr-icon-btn {
+      display: none !important;
+    }
   }
 
   /* ── Botón POS ── */
@@ -373,11 +381,6 @@ export const headerStyles = `
   }
 
   .hdr-user-name {
-    /* !important -- d-sm-block (necesaria para ocultar este bloque en
-       mobile) trae display:block !important de Bootstrap y le ganaba al
-       flex-direction:column de acá: el nombre y el rol terminaban en la
-       misma línea, pegados sin espacio ("Jhon GuachoBOSS"). */
-    display: flex !important;
     flex-direction: column;
     justify-content: center;
     gap: 2px;
@@ -387,6 +390,20 @@ export const headerStyles = `
     font-weight: 500;
     max-width: 130px;
     overflow: hidden;
+  }
+  /* !important -- d-sm-block (necesaria para ocultar este bloque en
+     mobile con d-none) trae display:block !important de Bootstrap y le
+     ganaba al flex-direction:column de acá: el nombre y el rol
+     terminaban en la misma línea, pegados sin espacio ("Jhon
+     GuachoBOSS"). Se limita el !important al mismo breakpoint (576px)
+     en el que d-sm-block ya se activa, para no pisar el d-none de abajo
+     de ese punto y así no romper el ocultamiento en mobile (eso causaba
+     que el nombre completo se siguiera mostrando en mobile y desbordara
+     el header). */
+  @media (min-width: 576px) {
+    .hdr-user-name {
+      display: flex !important;
+    }
   }
   .hdr-user-name-value {
     overflow: hidden;
@@ -432,6 +449,18 @@ export const headerStyles = `
     background: white !important;
     overflow: hidden;
     border: 1px solid #f0f0f8 !important;
+  }
+
+  /* Menú de acceso rápido (+) -- es un <div> propio portalado a
+     document.body (ver comentario en asideTopSubMenuItem.js), no un
+     Dropdown.Menu de react-bootstrap, así que no hereda su
+     position:absolute -- se posiciona fijo con las coordenadas
+     calculadas a mano desde el botón. Mismo z-index que el overlay del
+     buscador (ambos son los únicos elementos portalados a body). */
+  .hdr-quick-add-menu {
+    position: fixed;
+    z-index: 1050;
+    margin-top: 0 !important;
   }
 
   /* Header del dropdown */

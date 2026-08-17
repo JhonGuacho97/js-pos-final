@@ -3838,20 +3838,6 @@ div .rdt_Pagination div:first-of-type svg {
     width: 50%;
 }
 
-.shortcut-btn {
-    font-size: 20px;
-    border-radius: 20% !important;
-}
-
-.shortcut-menu {
-    left: 0 !important;
-    top: 15px !important;
-    min-width: 225px !important;
-}
-.shortcut-menu a {
-    font-size: 15px !important;
-}
-
 .chart-dropdown .dropdown-menu {
     min-width: 87px !important;
     transform: unset !important;
@@ -5216,19 +5202,34 @@ div .rdt_Pagination div:first-of-type svg {
 }
 
 /* --- Navbar superior en mobile ---
-   El sub-menú horizontal (AsideTopSubMenuItem, ej. "Dashboard") es un
-   acceso rápido duplicado del sidebar -- en mobile el sidebar ya está a
-   un tap vía el botón hamburguesa, así que ese sub-menú solo le come
-   ancho a los íconos de la derecha (POS, pantalla completa, avatar),
-   forzándolos a una segunda fila. Como .header tiene height fijo (no
-   min-height, heredado de style.css), esa segunda fila se salía de la
-   caja y quedaba flotando encima del contenido de la página. Se oculta
-   el sub-menú y se deja height:auto como respaldo por si algo más
-   vuelve a envolver. */
+   Antes esto ocultaba el sub-menú horizontal (AsideTopSubMenuItem) por
+   completo en mobile -- razonable para páginas donde solo repite el
+   sidebar, pero en Reportes ESE submenú es la única forma de cambiar
+   entre "Informe de almacén/venta/existencias/...", así que ocultarlo
+   ahí dejaba el header sin ninguna forma de navegar entre reportes
+   ("no aparece nada"). Ahora que .report-nav-scroll (abajo) absorbe el
+   desborde con scroll propio en vez de romper el layout, ya no hace
+   falta esconder TODO el submenú en TODAS las páginas: se muestra en
+   mobile solo para grupos con más de un tab entre los que cambiar
+   (Reportes, Configuración) -- ver .top-nav-single-item, agregado en
+   asideTopSubMenuItem.js, que sigue ocultando los grupos de un solo tab
+   (ej. "Dashboard", que no navega a ningún lado nuevo y solo duplicaba
+   el título de la página, rompiendo encima el layout junto al buscador). */
 @media (max-width: 767.98px) {
     .header .top-nav-heding,
     .header .top-navbar {
+        display: flex !important;
+        padding: 0 !important;
+    }
+    .header .top-nav-heding .navbar-collapse,
+    .header .top-navbar .navbar-collapse {
+        min-width: 0;
+    }
+    .header .top-nav-single-item {
         display: none !important;
+    }
+    .report-nav-scroll {
+        min-width: 70px;
     }
 
     /* !important -- sin esto pierde contra el .header{height:70px} de
@@ -5271,9 +5272,31 @@ div .rdt_Pagination div:first-of-type svg {
     min-width: 0;
     flex-shrink: 1;
     scrollbar-width: none;
+    cursor: grab;
 }
 .report-nav-scroll::-webkit-scrollbar {
     display: none;
+}
+/* Sin esto, un mousedown+arrastre sobre el texto de un tab dispara el
+   drag nativo de un <a> (el navegador arma una miniatura fantasma para
+   soltarlo en otro lado) en vez de dejarle el gesto al handler de
+   arrastre de abajo -- combinado con el preventDefault() del
+   onPointerDown, esto es lo que hacía que el scroll no se moviera en
+   tiempo real y recién "saltara" al soltar el mouse. */
+.report-nav-scroll a {
+    -webkit-user-drag: none;
+    user-drag: none;
+}
+/* Arrastre con el mouse (onPointerDown/move/up en asideTopSubMenuItem.js)
+   -- en touch el navegador ya desliza esta tira de forma nativa via
+   overflow-x:auto, pero con mouse (sin trackpad) no hay otra manera de
+   moverla salvo la rueda. Mientras se arrastra: cursor "grabbing" y se
+   desactiva la selección de texto (si no, cada drag selecciona las
+   palabras de los tabs en vez de mover el scroll). */
+.report-nav-scroll-dragging {
+    cursor: grabbing;
+    user-select: none;
+    -webkit-user-select: none;
 }
 /* min-width:0 en .report-nav-scroll no alcanza solo: por default un flex
    item mide como mínimo el tamaño de su CONTENIDO (min-width: auto), y
