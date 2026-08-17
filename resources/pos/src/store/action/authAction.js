@@ -35,6 +35,11 @@ export const loginAction = (user, navigate, setLoading) => async (dispatch) => {
             localStorage.setItem(Tokens.FIRST_NAME, response.data.data.user.first_name);
             localStorage.setItem(Tokens.LANGUAGE, response.data.data.user.language);
             localStorage.setItem(Tokens.LAST_NAME, response.data.data.user.last_name);
+            if (response.data.data.role_name) {
+                localStorage.setItem(Tokens.ROLE_NAME, response.data.data.role_name);
+            } else {
+                localStorage.removeItem(Tokens.ROLE_NAME);
+            }
             localStorage.setItem('loginUserArray', JSON.stringify(response.data.data.user));
             dispatch({ type: authActionType.LOGIN_USER, payload: response.data.data });
             dispatch(setLanguage(response.data.data.user.language));
@@ -87,6 +92,7 @@ export const logoutAction = (token, navigate) => async (dispatch) => {
             localStorage.removeItem(Tokens.UPDATED_LAST_NAME);
             localStorage.removeItem(Tokens.USER_IMAGE_URL);
             localStorage.removeItem(Tokens.CURRENT_STORE_ID);
+            localStorage.removeItem(Tokens.ROLE_NAME);
             navigate('/login');
             dispatch(addToast({ text: getFormattedMessage('logout.success.message') }));
         })

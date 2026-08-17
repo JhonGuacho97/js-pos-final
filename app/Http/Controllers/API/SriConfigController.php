@@ -93,6 +93,7 @@ class SriConfigController extends AppBaseController
             'sri_obligado_contabilidad',
             'sri_regimen_rimpe',
             'sri_certificado_path',
+            'sri_logo',
         ];
 
         $settings = $this->scopedSettingsQuery()
@@ -319,6 +320,64 @@ class SriConfigController extends AppBaseController
             'dir_matriz' => $direccionMatriz,
             'cert_path' => $nombreArchivo,
         ], 'Certificado subido y validado correctamente.');
+    }
+
+    // ── Logo del RIDE ──────────────────────────────────────────────────────
+
+    /**
+     * Se guarda como una key más de Setting ('sri_logo'), igual que el
+     * logo general de la app ('logo' en SettingRepository::updateSettings())
+     * -- el archivo va a Spatie MediaLibrary y la URL pública queda
+     * cacheada en la columna `value` de la misma fila, así que
+     * index()/SriConfigService::get() lo leen sin ninguna query extra,
+     * igual que cualquier otro campo de texto de esta config.
+     * clearMediaCollection() antes de adjuntar el nuevo archivo evita
+     * que el logo anterior quede huérfano en storage (a diferencia del
+     * logo general, que sí acumula versiones viejas sin limpiarlas).
+     */
+    public function subirLogo(Request $request): JsonResponse
+    {
+        $storeId = requireCurrentStoreId();
+
+        $validator = Validator::make($request->all(), [
+            'logo' => 'required|image|mimes:png,jpg,jpeg|max:2048',
+        ], [
+            'logo.required' => 'Debes seleccionar una imagen.',
+            'logo.image' => 'El archivo debe ser una imagen.',
+            'logo.mimes' => 'El logo debe ser PNG o JPG.',
+            'logo.max' => 'El logo no debe superar 2 MB.',
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json([
+                'success' => false,
+                'message' => $validator->errors()->first(),
+            ], 422);
+        }
+
+        $setting = Setting::firstOrCreate(['key' => 'sri_logo', 'store_id' => $storeId], ['value' => '']);
+        $setting->clearMediaCollection(Setting::PATH);
+        $media = $setting->addMedia($request->file('logo'))
+            ->toMediaCollection(Setting::PATH, config('app.media_disc'));
+        $urlLogo = str_replace('\\', '/', $media->getFullUrl());
+        $setting->update(['value' => $urlLogo]);
+
+        return $this->sendResponse([
+            'logo_url' => $urlLogo,
+        ], 'Logo actualizado correctamente.');
+    }
+
+    public function eliminarLogo(): JsonResponse
+    {
+        $storeId = requireCurrentStoreId();
+        $setting = Setting::where('key', 'sri_logo')->where('store_id', $storeId)->first();
+
+        if ($setting) {
+            $setting->clearMediaCollection(Setting::PATH);
+            $setting->update(['value' => '']);
+        }
+
+        return $this->sendResponse([], 'Logo eliminado correctamente.');
     }
 
     // ── Guardar configuración SRI ─────────────────────────────────────────

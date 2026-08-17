@@ -299,6 +299,7 @@ export default [
         permission: Permissions.MANAGE_LOGIN_LOGS,
     },
 
+    { groupHeader: true, title: "sidebar.group.reports" },
     {
         title: "reports.title",
         name: "reports",
@@ -387,6 +388,7 @@ export default [
             },
         ],
     },
+    { groupHeader: true, title: "sidebar.group.settings" },
     {
         title: "general-settings.title",
         name: "general settings",

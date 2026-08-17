@@ -29,12 +29,13 @@ class SriRideService
 
         $formaPagoTexto = self::FORMAS_PAGO_TEXTO[$venta->formaPagoSri()] ?? 'OTROS';
 
-        $logoBase64 = $this->obtenerLogoBase64($factura->store_id);
+        $sriConfig = SriConfigService::get($factura->store_id);
+        $logoBase64 = $this->obtenerLogoBase64($sriConfig, $factura->store_id);
 
         $pdf = Pdf::loadView('sri.ride', [
             'factura' => $factura,
             'venta' => $venta,
-            'sri' => SriConfigService::get($factura->store_id),
+            'sri' => $sriConfig,
             'qrBase64' => $qrBase64,
             'logoBase64' => $logoBase64,
             'formaPagoTexto' => $formaPagoTexto,
@@ -75,7 +76,8 @@ class SriRideService
             ->generate($comprobante->clave_acceso);
         $qrBase64 = 'data:image/svg+xml;base64,' . base64_encode($qrSvg);
 
-        $logoBase64 = $this->obtenerLogoBase64($comprobante->store_id);
+        $sriConfig = SriConfigService::get($comprobante->store_id);
+        $logoBase64 = $this->obtenerLogoBase64($sriConfig, $comprobante->store_id);
 
         $conceptoTexto = match ($creditNote->concepto) {
             'POR_DEVOLUCION' => 'Por Devolución',
@@ -88,7 +90,7 @@ class SriRideService
         $pdf = Pdf::loadView('sri.ride-nota-credito', [
             'comprobante' => $comprobante,
             'creditNote' => $creditNote,
-            'sri' => SriConfigService::get($comprobante->store_id),
+            'sri' => $sriConfig,
             'qrBase64' => $qrBase64,
             'logoBase64' => $logoBase64,
             'conceptoTexto' => $conceptoTexto,
@@ -110,12 +112,19 @@ class SriRideService
     }
 
     /**
-     * Obtiene el logo de la empresa como data URI base64, usando el mismo
-     * helper getLogoUrl() que ya usa el flujo de venta (pdf.sale-pdf).
+     * Prefiere el logo subido en la propia Configuración SRI
+     * (sri_logo, pensado específicamente para el RIDE) sobre el logo
+     * general de la app (getLogoUrl(), pensado para sidebar/login/
+     * emails) -- así el RIDE no depende de que alguien haya subido el
+     * logo "de branding general" sin saber que también alimentaba el
+     * comprobante fiscal.
      */
-    private function obtenerLogoBase64(?int $storeId = null): string
+    private function obtenerLogoBase64(array $sriConfig, ?int $storeId = null): string
     {
-        $logoUrl = getLogoUrl($storeId);
+        $logoUrl = $sriConfig['logo_url'] ?? '';
+        if (empty($logoUrl)) {
+            $logoUrl = getLogoUrl($storeId);
+        }
         $urlPath = parse_url($logoUrl, PHP_URL_PATH);
         $urlPath = ltrim(str_replace(['/', '\\'], DIRECTORY_SEPARATOR, $urlPath), DIRECTORY_SEPARATOR);
         $logoPath = public_path($urlPath);

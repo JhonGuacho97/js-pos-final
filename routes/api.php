@@ -79,6 +79,8 @@ Route::middleware(['auth:sanctum', 'store.context'])->group(function () {
         Route::post('/certificado', [SriConfigController::class, 'subirCertificado']);
         Route::post('/guardar', [SriConfigController::class, 'guardarConfig']);
         Route::get('/verificar-certificado', [SriConfigController::class, 'verificarCertificado']);
+        Route::post('/logo', [SriConfigController::class, 'subirLogo']);
+        Route::delete('/logo', [SriConfigController::class, 'eliminarLogo']);
     });
 
     Route::prefix('sales/{sale}/electronic-invoice')->group(function () {

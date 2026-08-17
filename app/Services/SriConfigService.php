@@ -67,6 +67,11 @@ class SriConfigService
             // no se agrega ninguna etiqueta al XML.
             'regimen_rimpe' => $settings['sri_regimen_rimpe'] ?? '',
             'certificado_path' => $settings['sri_certificado_path'] ?? null,
+            // Logo específico para el RIDE, subido desde la propia
+            // pantalla de Configuración SRI -- ver SriRideService, que
+            // lo prefiere sobre el logo general de la app (getLogoUrl())
+            // si está seteado.
+            'logo_url' => $settings['sri_logo'] ?? null,
             'certificado_clave' => !empty($settings['sri_certificado_clave'])
                 ? Crypt::decryptString($settings['sri_certificado_clave'])
                 : null,
