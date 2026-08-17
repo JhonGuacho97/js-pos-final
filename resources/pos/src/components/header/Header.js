@@ -8,17 +8,17 @@ import { setCurrentStore } from '../../store/action/storeAction';
 import ChangePassword from '../auth/change-password/ChangePassword';
 import { getAvatarName, getFormattedMessage } from '../../shared/sharedMethod';
 import { updateLanguage } from '../../store/action/updateLanguageAction';
+import { fetchAllLanguage } from '../../store/action/languageAction';
 import User from '../../assets/images/avatar.png';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import {
     faMaximize, faMinimize, faUser,
     faLock, faRightFromBracket, faAngleDown,
-    faLanguage, faStore, faCheck
+    faStore, faCheck, faGlobe
 } from '@fortawesome/free-solid-svg-icons';
 import { Dropdown } from 'react-bootstrap';
 import { productQuantityReportAction } from '../../store/action/paymentQuantityReport';
 import { Filters } from '../../constants';
-import LanguageModel from '../user-profile/LanguageModel';
 import PosRegisterModel from '../posRegister/PosRegisterModel.js';
 import { headerStyles } from './styles/HeaderStyles.js';
 
@@ -33,21 +33,22 @@ const Header = (props) => {
     const users            = localStorage.getItem(Tokens.USER);
     const firstName        = localStorage.getItem(Tokens.FIRST_NAME);
     const lastName         = localStorage.getItem(Tokens.LAST_NAME);
+    const roleName         = localStorage.getItem(Tokens.ROLE_NAME);
     const token            = localStorage.getItem(Tokens.ADMIN);
     const imageUrl         = localStorage.getItem(Tokens.USER_IMAGE_URL);
-    const image            = localStorage.getItem(Tokens.IMAGE);
+    const image             = localStorage.getItem(Tokens.IMAGE);
     const updatedEmail     = localStorage.getItem(Tokens.UPDATED_EMAIL);
     const updatedFirstName = localStorage.getItem(Tokens.UPDATED_FIRST_NAME);
     const updatedLastName  = localStorage.getItem(Tokens.UPDATED_LAST_NAME);
+    const currentLanguageIso = localStorage.getItem(Tokens.UPDATED_LANGUAGE);
 
     const [deleteModel,          setDeleteModel]          = useState(false);
-    const [languageModel,        setLanguageModel]        = useState(false);
     const [isFullscreen,         setIsFullscreen]         = useState(false);
     const [warehouseValue]                                = useState({ label: 'All', value: null });
     const [totalRecords,         setTotalRecords]         = useState(0);
     const [showPosRegisterModel, setShowPosRegisterModel] = useState(false);
 
-    const { allConfigData } = useSelector(state => state);
+    const { allConfigData, languages } = useSelector(state => state);
     const { stores, currentStoreId } = useSelector(state => state.myStores);
     const dispatch = useDispatch();
 
@@ -64,6 +65,22 @@ const Header = (props) => {
         let isLoading;
         productQuantityReportAction(warehouseValue.value, Filters.OBJ, isLoading = false, setTotalRecords);
     }, []);
+
+    // El dropdown de idioma necesita la lista completa (antes solo la
+    // pedía LanguageModel, que ahora se reemplaza por este dropdown
+    // directo -- sin modal de por medio).
+    useEffect(() => {
+        dispatch(fetchAllLanguage());
+    }, []);
+
+    const currentLanguage = languages.find(
+        (lang) => String(lang.attributes?.iso_code) === String(currentLanguageIso)
+    );
+
+    const onSelectLanguage = (lang) => {
+        if (String(lang.attributes.iso_code) === String(currentLanguageIso)) return;
+        updateLanguage({ language: lang.attributes.iso_code }, lang.id);
+    };
 
     const fullName  = (updatedFirstName && updatedLastName)
         ? `${updatedFirstName} ${updatedLastName}`
@@ -97,7 +114,7 @@ const Header = (props) => {
                     <div className='me-2'>
                         {allConfigData?.open_register === true ? (
                             <button onClick={() => setShowPosRegisterModel(true)} className='hdr-pos-btn'>
-                                {getFormattedMessage('header.pos.title')} 
+                                {getFormattedMessage('header.pos.title')}
                             </button>
                         ) : (
                             <Link to='/app/pos' className='hdr-pos-btn'>
@@ -138,6 +155,34 @@ const Header = (props) => {
                     </Dropdown>
                 )}
 
+                {/* Selector de idioma -- antes vivía como un modal disparado
+                    desde el menú del avatar, ahora es un dropdown directo
+                    igual que el de tienda (selección instantánea, sin
+                    modal de por medio). */}
+                {languages.length > 0 && (
+                    <Dropdown align='end'>
+                        <Dropdown.Toggle as='div' className='hdr-store-btn hide-arrow' id='hdr-language-dropdown'>
+                            <FontAwesomeIcon icon={faGlobe} className='hdr-store-icon' />
+                            <span className='hdr-store-name d-none d-sm-block'>{currentLanguage?.attributes?.name || getFormattedMessage('header.language-menu.select.label')}</span>
+                            <FontAwesomeIcon icon={faAngleDown} className='hdr-store-chevron d-none d-sm-block' />
+                        </Dropdown.Toggle>
+                        <Dropdown.Menu className='hdr-dropdown-menu'>
+                            {languages.map((lang) => (
+                                <Dropdown.Item
+                                    key={lang.id}
+                                    onClick={() => onSelectLanguage(lang)}
+                                    className='hdr-dropdown-item'
+                                >
+                                    <div className='hdr-item-icon'>
+                                        {String(lang.attributes?.iso_code) === String(currentLanguageIso) && <FontAwesomeIcon icon={faCheck} />}
+                                    </div>
+                                    <span>{lang.attributes?.name}</span>
+                                </Dropdown.Item>
+                            ))}
+                        </Dropdown.Menu>
+                    </Dropdown>
+                )}
+
                 {/* Fullscreen */}
                 <div className='hdr-icon-btn' onClick={fullScreen} title={isFullscreen ? 'Salir pantalla completa' : 'Pantalla completa'}>
                     <FontAwesomeIcon icon={isFullscreen ? faMinimize : faMaximize} style={{ fontSize: 14 }} />
@@ -151,7 +196,10 @@ const Header = (props) => {
                         ) : (
                             <div className='hdr-avatar-initials'>{getAvatarName(fullName)}</div>
                         )}
-                        <span className='hdr-user-name d-none d-sm-block'>{fullName}</span>
+                        <span className='hdr-user-name d-none d-sm-block'>
+                            <span className='hdr-user-name-value'>{fullName}</span>
+                            {roleName && <span className='hdr-user-role'>{roleName}</span>}
+                        </span>
                         <FontAwesomeIcon icon={faAngleDown} className='hdr-chevron d-none d-sm-block' />
                     </Dropdown.Toggle>
 
@@ -177,11 +225,6 @@ const Header = (props) => {
                             {getFormattedMessage('header.profile-menu.change-password.label')}
                         </Dropdown.Item>
 
-                        <Dropdown.Item onClick={() => setLanguageModel(true)} className='hdr-dropdown-item'>
-                            <div className='hdr-item-icon'><FontAwesomeIcon icon={faLanguage} /></div>
-                            {getFormattedMessage('header.profile-menu.change-language.label')}
-                        </Dropdown.Item>
-
                         <div className='hdr-divider' />
 
                         <Dropdown.Item onClick={onLogOut} className='hdr-dropdown-item hdr-dropdown-item--logout'>
@@ -194,9 +237,6 @@ const Header = (props) => {
 
             {deleteModel && (
                 <ChangePassword deleteModel={deleteModel} onClickDeleteModel={() => setDeleteModel(false)} />
-            )}
-            {languageModel && (
-                <LanguageModel languageModel={languageModel} onClickLanguageModel={() => setLanguageModel(false)} />
             )}
             <PosRegisterModel
                 showPosRegisterModel={showPosRegisterModel}

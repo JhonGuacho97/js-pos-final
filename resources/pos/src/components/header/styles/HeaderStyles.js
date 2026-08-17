@@ -15,6 +15,32 @@ export const headerStyles = `
     font-family: 'Poppins', sans-serif;
   }
 
+  /* En mobile: los 24px de padding a cada lado + los 6-12px de margin
+     entre cada píldora se comen buena parte de un viewport angosto --
+     sumado a que este <Navbar> (react-bootstrap) nunca tuvo
+     Navbar.Toggle/Navbar.Collapse (por eso expand='lg' no hace nada
+     acá), sus hijos solo fluyen con flexbox y envuelven en cuanto no
+     entran. Se fuerza una sola fila (nowrap) y se recorta el padding y
+     los márgenes entre píldoras -- ya vienen reducidas a solo ícono
+     acá abajo, así que con esto alcanza para que quepan todas juntas.
+     Sin el nowrap, un envoltorio parcial hacía que el header creciera
+     de golpe (o, peor, que el contenido de la fila de más se
+     encimara con la página de abajo). */
+  @media (max-width: 767.98px) {
+    .hdr-navbar {
+      padding: 0 10px !important;
+      flex-wrap: nowrap !important;
+    }
+    .hdr-store-btn,
+    .hdr-search-trigger,
+    .hdr-icon-btn {
+      margin: 0 3px;
+    }
+    .hdr-user-trigger {
+      margin-left: 4px;
+    }
+  }
+
   /* ── Botón POS ── */
   .hdr-pos-btn {
     font-family: 'Nunito', sans-serif;
@@ -42,7 +68,8 @@ export const headerStyles = `
     box-shadow: 0 6px 18px rgba(47, 111, 237,0.3);
   }
 
-  /* ── Selector de tienda ── */
+  /* ── Selector de tienda / idioma (una sola línea: ícono + valor +
+     flecha -- mismo componente visual para ambos) ── */
   .hdr-store-btn {
     display: flex;
     align-items: center;
@@ -79,6 +106,205 @@ export const headerStyles = `
     color: #94A3B8 !important;
     font-size: 10px;
     flex-shrink: 0;
+  }
+
+  /* ── Buscador global (trigger en la barra + modal Cmd/Ctrl+K) ── */
+  .hdr-search-trigger {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    height: 38px;
+    padding: 0 12px;
+    border-radius: 10px;
+    background: #f8f7ff;
+    border: 1.5px solid #E2E8F0;
+    cursor: pointer;
+    flex: 1 1 auto;
+    max-width: 420px;
+    min-width: 0;
+    margin: 0 12px;
+    transition: background 0.18s, border-color 0.18s;
+  }
+  .hdr-search-trigger:hover {
+    background: #E2E8F0;
+    border-color: #94A3B8;
+  }
+  .hdr-search-icon {
+    color: #9ca3af;
+    font-size: 13px;
+    flex-shrink: 0;
+  }
+  .hdr-search-placeholder {
+    font-family: 'Poppins', sans-serif;
+    font-size: 13px;
+    color: #9ca3af;
+    flex: 1;
+    text-align: left;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .hdr-search-kbd {
+    font-family: 'Poppins', sans-serif;
+    font-size: 11px;
+    font-weight: 600;
+    color: #9ca3af;
+    background: #fff;
+    border: 1px solid #E2E8F0;
+    border-radius: 6px;
+    padding: 2px 6px;
+    flex-shrink: 0;
+  }
+
+  /* En mobile el trigger se reduce a solo el ícono (mismo criterio que
+     el resto de los botones de la barra, que ya ocultan su texto con
+     d-none d-sm-block) -- el placeholder completo no entra junto con
+     tienda/idioma/pantalla-completa/usuario sin que el navbar se
+     desborde a varias filas. */
+  @media (max-width: 575.98px) {
+    .hdr-search-trigger {
+      flex: 0 0 auto;
+      width: 38px;
+      max-width: 38px;
+      padding: 0;
+      justify-content: center;
+      margin: 0 4px;
+    }
+    .hdr-search-placeholder,
+    .hdr-search-kbd {
+      display: none;
+    }
+  }
+
+  .hdr-search-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(15, 15, 25, 0.45);
+    backdrop-filter: blur(4px);
+    -webkit-backdrop-filter: blur(4px);
+    z-index: 1050;
+    display: flex;
+    align-items: flex-start;
+    justify-content: center;
+    padding-top: 12vh;
+    animation: hdr-search-overlay-in 0.18s ease-out;
+  }
+  .hdr-search-modal {
+    width: 100%;
+    max-width: 640px;
+    max-height: 70vh;
+    background: #fff;
+    border-radius: 16px;
+    box-shadow: 0 24px 70px rgba(0,0,0,0.3);
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    margin: 0 16px;
+    animation: hdr-search-modal-in 0.22s cubic-bezier(0.16, 1, 0.3, 1);
+  }
+  @keyframes hdr-search-overlay-in {
+    from { opacity: 0; }
+    to { opacity: 1; }
+  }
+  @keyframes hdr-search-modal-in {
+    from { opacity: 0; transform: translateY(-12px) scale(0.97); }
+    to { opacity: 1; transform: translateY(0) scale(1); }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .hdr-search-overlay,
+    .hdr-search-modal {
+      animation: none;
+    }
+  }
+  .hdr-search-modal-input-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 16px 18px;
+    border-bottom: 1px solid #f0f0f8;
+    flex-shrink: 0;
+  }
+  .hdr-search-modal-icon {
+    color: #9ca3af;
+    font-size: 15px;
+  }
+  .hdr-search-modal-input {
+    flex: 1;
+    border: none;
+    outline: none;
+    font-family: 'Poppins', sans-serif;
+    font-size: 15px;
+    color: #1e1b4b;
+  }
+  .hdr-search-modal-close {
+    border: none;
+    background: #f3f4f6;
+    color: #9ca3af;
+    width: 26px;
+    height: 26px;
+    border-radius: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    flex-shrink: 0;
+  }
+  .hdr-search-modal-results {
+    overflow-y: auto;
+    padding: 8px;
+  }
+  .hdr-search-modal-empty {
+    padding: 24px;
+    text-align: center;
+    color: #9ca3af;
+    font-family: 'Poppins', sans-serif;
+    font-size: 13px;
+  }
+  .hdr-search-modal-group {
+    margin-bottom: 6px;
+  }
+  .hdr-search-modal-group-label {
+    font-family: 'Poppins', sans-serif;
+    font-size: 10.5px;
+    font-weight: 700;
+    letter-spacing: 0.5px;
+    text-transform: uppercase;
+    color: #9ca3af;
+    padding: 8px 10px 4px;
+  }
+  .hdr-search-modal-item {
+    display: flex;
+    align-items: center;
+    padding: 10px 12px;
+    border-radius: 10px;
+    font-family: 'Poppins', sans-serif;
+    font-size: 13.5px;
+    color: #374151;
+    cursor: pointer;
+  }
+  .hdr-search-modal-item-active {
+    background: #f0f0ff;
+    color: #2F6FED;
+  }
+  .hdr-search-modal-footer {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    padding: 10px 18px;
+    border-top: 1px solid #f0f0f8;
+    font-family: 'Poppins', sans-serif;
+    font-size: 11.5px;
+    color: #9ca3af;
+    flex-shrink: 0;
+  }
+  .hdr-search-modal-footer kbd {
+    background: #f3f4f6;
+    border: 1px solid #e5e7eb;
+    border-radius: 5px;
+    padding: 1px 5px;
+    font-size: 10.5px;
+    margin-right: 3px;
+    color: #6b7280;
   }
 
   /* ── Botón ícono (fullscreen) ── */
@@ -147,13 +373,24 @@ export const headerStyles = `
   }
 
   .hdr-user-name {
+    display: flex;
+    flex-direction: column;
+    line-height: 1.2;
     font-family: 'Poppins', sans-serif;
     font-size: 13px;
     font-weight: 500;
     max-width: 130px;
     overflow: hidden;
+  }
+  .hdr-user-name-value {
+    overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
+  }
+  .hdr-user-role {
+    font-size: 11px;
+    font-weight: 400;
+    color: #9ca3af;
   }
 
   .hdr-chevron {

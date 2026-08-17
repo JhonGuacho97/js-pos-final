@@ -117,6 +117,14 @@ class AuthController extends AppBaseController
         // para el criterio completo (única tienda / unión de 2+ / ninguna).
         $userPermissions = $this->allPermissionNamesForUser($user);
 
+        // Nombre de rol legible para mostrar en el header (ej. "Admin")
+        // -- se lee ANTES del unset() de abajo, que borra a propósito
+        // $user->roles/permissions del objeto que se serializa completo
+        // como 'user' en la respuesta (no queremos mandar los objetos
+        // Role/Permission completos al cliente, solo este string).
+        $roleName = $user->roles->first()?->name;
+        $roleLabel = $roleName ? ucfirst($roleName) : null;
+
         unset($user->roles);
         unset($user->permissions);
 
@@ -129,6 +137,7 @@ class AuthController extends AppBaseController
                 'token' => $token,
                 'user' => $user,
                 'permissions' => $userPermissions,
+                'role_name' => $roleLabel,
             ],
             'message' => 'Logged in successfully.',
         ]);

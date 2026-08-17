@@ -4,6 +4,7 @@ import AsideDefault from "./sidebar/asideDefault";
 import Header from "./header/Header";
 import Footer from "./footer/Footer";
 import AsideTopSubMenuItem from "./sidebar/asideTopSubMenuItem";
+import GlobalSearch from "./header/GlobalSearch";
 import { Tokens } from "../constants";
 import asideConfig from "../config/asideConfig";
 import { environment } from "../config/environment";
@@ -66,6 +67,7 @@ const MasterLayout = (props) => {
                             asideConfig={asideConfig}
                             isMenuCollapse={isMenuCollapse}
                         />
+                        <GlobalSearch newRoutes={newRoutes} />
                         <Header newRoutes={newRoutes} />
                     </div>
                 </div>

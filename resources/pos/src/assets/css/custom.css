@@ -5231,8 +5231,14 @@ div .rdt_Pagination div:first-of-type svg {
         display: none !important;
     }
 
+    /* !important -- sin esto pierde contra el .header{height:70px} de
+       style.css (mismo selector, mismo orden de carga: sin !important
+       gana el que compila después, no el más específico). Se comprobó
+       que sin este !important la regla de abajo simplemente no se
+       aplicaba (el header se quedaba en 70px fijos aunque el contenido
+       necesitara más). */
     .header {
-        height: auto;
+        height: auto !important;
         min-height: 70px;
     }
 }
@@ -5404,4 +5410,61 @@ div .rdt_Pagination div:first-of-type svg {
     .role-permission-grid {
         grid-template-columns: 1fr;
     }
+}
+
+/* --- Logo del RIDE (Configuración SRI) ---
+   Fila compacta integrada en la tarjeta "Datos del Emisor" (antes era
+   su propia tarjeta con header + body + párrafo de ayuda, demasiado
+   alto para lo que es -- solo una miniatura y dos botones). El thumb
+   sigue siendo rectangular a propósito, no circular como
+   ImagePicker.js (que es para avatares): el logo se ve en el RIDE con
+   max-width:190px/max-height:80px (ver resources/views/sri/ride.blade.php),
+   y una miniatura angosta en vez de cuadrada representa mejor esa
+   proporción. */
+.sri-logo-row {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    padding-bottom: 16px;
+    margin-bottom: 16px;
+    border-bottom: 1px solid #eef0f4;
+}
+
+.sri-logo-thumb {
+    width: 88px;
+    height: 56px;
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border: 1px dashed #d1d5db;
+    border-radius: 8px;
+    background-color: #f9fafb;
+    overflow: hidden;
+}
+
+.sri-logo-thumb img {
+    max-width: 100%;
+    max-height: 100%;
+    object-fit: contain;
+}
+
+.sri-logo-thumb-empty {
+    font-size: 0.68rem;
+    color: #9ca3af;
+    text-align: center;
+    padding: 0 4px;
+}
+
+.sri-logo-row-label {
+    font-size: 0.78rem;
+    font-weight: 600;
+    color: #374151;
+    margin-bottom: 4px;
+}
+
+.sri-logo-row-hint {
+    font-size: 0.75rem;
+    color: #9ca3af;
+    margin-top: 4px;
 }

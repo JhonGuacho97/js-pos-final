@@ -28,14 +28,30 @@ const SriConfigPage = () => {
     const [subiendoCert, setSubiendoCert] = useState(false);
     const [guardando, setGuardando] = useState(false);
 
+    const [logoUrl, setLogoUrl] = useState(null);
+    const [logoFile, setLogoFile] = useState(null);
+    const [logoPreview, setLogoPreview] = useState(null);
+    const [subiendoLogo, setSubiendoLogo] = useState(false);
+    const [eliminandoLogo, setEliminandoLogo] = useState(false);
+    const logoInputRef = useRef();
+
     useEffect(() => {
         apiConfig.get("/sri-config").then((res) => {
             const data = res.data.data;
-            console.log({ data });
             setConfig((prev) => ({ ...prev, ...data.config }));
             setCertInfo(data.cert_info);
+            setLogoUrl(data.config?.sri_logo || null);
         });
     }, []);
+
+    // Libera el object URL de la previsualización local para no
+    // acumular memoria si el usuario cambia de archivo varias veces
+    // antes de subirlo.
+    useEffect(() => {
+        return () => {
+            if (logoPreview) URL.revokeObjectURL(logoPreview);
+        };
+    }, [logoPreview]);
 
     const handleArchivoChange = (e) => {
         setArchivo(e.target.files[0] || null);
@@ -88,6 +104,61 @@ const SriConfigPage = () => {
             }));
         } finally {
             setSubiendoCert(false);
+        }
+    };
+
+    const handleLogoFileChange = (e) => {
+        const file = e.target.files[0];
+        if (!file) return;
+        setLogoFile(file);
+        setLogoPreview(URL.createObjectURL(file));
+    };
+
+    const handleSubirLogo = async () => {
+        if (!logoFile) return;
+
+        setSubiendoLogo(true);
+        const formData = new FormData();
+        formData.append("logo", logoFile);
+
+        try {
+            const res = await apiConfig.post("/sri-config/logo", formData, {
+                headers: { "Content-Type": "multipart/form-data" },
+            });
+            setLogoUrl(res.data.data.logo_url);
+            setLogoFile(null);
+            setLogoPreview(null);
+            if (logoInputRef.current) logoInputRef.current.value = "";
+            dispatch(addToast({ text: "Logo actualizado correctamente." }));
+        } catch (err) {
+            dispatch(addToast({
+                text: err.response?.data?.message || "Error al subir el logo.",
+                type: "error",
+            }));
+        } finally {
+            setSubiendoLogo(false);
+        }
+    };
+
+    const handleCancelarLogo = () => {
+        setLogoFile(null);
+        setLogoPreview(null);
+        if (logoInputRef.current) logoInputRef.current.value = "";
+    };
+
+    const handleEliminarLogo = async () => {
+        setEliminandoLogo(true);
+        try {
+            await apiConfig.delete("/sri-config/logo");
+            setLogoUrl(null);
+            dispatch(addToast({ text: "Logo eliminado." }));
+        } catch (err) {
+            dispatch(addToast({
+                text: err.response?.data?.message || "Error al eliminar el logo.",
+                type: "error",
+            }));
+        } finally {
+            setEliminandoLogo(false);
         }
     };
 
@@ -238,6 +309,63 @@ const SriConfigPage = () => {
                     <h5 className="mb-0">Datos del Emisor</h5>
                 </div>
                 <div className="card-body">
+                    <div className="sri-logo-row">
+                        <div className="sri-logo-thumb">
+                            {logoPreview || logoUrl ? (
+                                <img src={logoPreview || logoUrl} alt="Logo" />
+                            ) : (
+                                <span className="sri-logo-thumb-empty">Sin logo</span>
+                            )}
+                        </div>
+                        <div className="flex-grow-1">
+                            <div className="sri-logo-row-label">Logo del RIDE</div>
+                            <div className="d-flex align-items-center gap-2 flex-wrap">
+                                <label className="btn btn-sm btn-outline-primary mb-0">
+                                    {logoUrl ? "Cambiar" : "Subir logo"}
+                                    <input
+                                        ref={logoInputRef}
+                                        type="file"
+                                        accept=".png,.jpg,.jpeg"
+                                        className="d-none"
+                                        onChange={handleLogoFileChange}
+                                    />
+                                </label>
+                                {logoFile && (
+                                    <>
+                                        <button
+                                            className="btn btn-sm btn-primary"
+                                            onClick={handleSubirLogo}
+                                            disabled={subiendoLogo}
+                                        >
+                                            {subiendoLogo ? (
+                                                <span className="spinner-border spinner-border-sm" />
+                                            ) : "Guardar"}
+                                        </button>
+                                        <button
+                                            className="btn btn-sm btn-link text-secondary text-decoration-none"
+                                            onClick={handleCancelarLogo}
+                                            disabled={subiendoLogo}
+                                        >
+                                            Cancelar
+                                        </button>
+                                    </>
+                                )}
+                                {logoUrl && !logoFile && (
+                                    <button
+                                        className="btn btn-sm btn-link text-danger text-decoration-none"
+                                        onClick={handleEliminarLogo}
+                                        disabled={eliminandoLogo}
+                                    >
+                                        {eliminandoLogo ? "Quitando..." : "Quitar"}
+                                    </button>
+                                )}
+                            </div>
+                            <div className="sri-logo-row-hint">
+                                PNG o JPG, máx. 2 MB -- aparece en el RIDE de tus facturas y notas de crédito.
+                            </div>
+                        </div>
+                    </div>
+
                     <div className="row g-3">
 
                         <div className="col-md-4">

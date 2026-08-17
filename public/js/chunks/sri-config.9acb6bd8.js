@@ -79,18 +79,47 @@ var SriConfigPage = function SriConfigPage() {
     _useState10 = _slicedToArray(_useState1, 2),
     guardando = _useState10[0],
     setGuardando = _useState10[1];
+  var _useState11 = (0,react__WEBPACK_IMPORTED_MODULE_0__.useState)(null),
+    _useState12 = _slicedToArray(_useState11, 2),
+    logoUrl = _useState12[0],
+    setLogoUrl = _useState12[1];
+  var _useState13 = (0,react__WEBPACK_IMPORTED_MODULE_0__.useState)(null),
+    _useState14 = _slicedToArray(_useState13, 2),
+    logoFile = _useState14[0],
+    setLogoFile = _useState14[1];
+  var _useState15 = (0,react__WEBPACK_IMPORTED_MODULE_0__.useState)(null),
+    _useState16 = _slicedToArray(_useState15, 2),
+    logoPreview = _useState16[0],
+    setLogoPreview = _useState16[1];
+  var _useState17 = (0,react__WEBPACK_IMPORTED_MODULE_0__.useState)(false),
+    _useState18 = _slicedToArray(_useState17, 2),
+    subiendoLogo = _useState18[0],
+    setSubiendoLogo = _useState18[1];
+  var _useState19 = (0,react__WEBPACK_IMPORTED_MODULE_0__.useState)(false),
+    _useState20 = _slicedToArray(_useState19, 2),
+    eliminandoLogo = _useState20[0],
+    setEliminandoLogo = _useState20[1];
+  var logoInputRef = (0,react__WEBPACK_IMPORTED_MODULE_0__.useRef)();
   (0,react__WEBPACK_IMPORTED_MODULE_0__.useEffect)(function () {
     _config_apiConfig__WEBPACK_IMPORTED_MODULE_1__["default"].get("/sri-config").then(function (res) {
+      var _data$config;
       var data = res.data.data;
-      console.log({
-        data: data
-      });
       setConfig(function (prev) {
         return _objectSpread(_objectSpread({}, prev), data.config);
       });
       setCertInfo(data.cert_info);
+      setLogoUrl(((_data$config = data.config) === null || _data$config === void 0 ? void 0 : _data$config.sri_logo) || null);
     });
   }, []);
+
+  // Libera el object URL de la previsualización local para no
+  // acumular memoria si el usuario cambia de archivo varias veces
+  // antes de subirlo.
+  (0,react__WEBPACK_IMPORTED_MODULE_0__.useEffect)(function () {
+    return function () {
+      if (logoPreview) URL.revokeObjectURL(logoPreview);
+    };
+  }, [logoPreview]);
   var handleArchivoChange = function handleArchivoChange(e) {
     setArchivo(e.target.files[0] || null);
   };
@@ -175,40 +204,141 @@ var SriConfigPage = function SriConfigPage() {
       return _ref.apply(this, arguments);
     };
   }();
-  var handleGuardar = /*#__PURE__*/function () {
+  var handleLogoFileChange = function handleLogoFileChange(e) {
+    var file = e.target.files[0];
+    if (!file) return;
+    setLogoFile(file);
+    setLogoPreview(URL.createObjectURL(file));
+  };
+  var handleSubirLogo = /*#__PURE__*/function () {
     var _ref2 = _asyncToGenerator(/*#__PURE__*/_regenerator().m(function _callee2() {
-      var _err$response2, _t2;
+      var formData, res, _err$response2, _t2;
       return _regenerator().w(function (_context2) {
         while (1) switch (_context2.p = _context2.n) {
           case 0:
+            if (logoFile) {
+              _context2.n = 1;
+              break;
+            }
+            return _context2.a(2);
+          case 1:
+            setSubiendoLogo(true);
+            formData = new FormData();
+            formData.append("logo", logoFile);
+            _context2.p = 2;
+            _context2.n = 3;
+            return _config_apiConfig__WEBPACK_IMPORTED_MODULE_1__["default"].post("/sri-config/logo", formData, {
+              headers: {
+                "Content-Type": "multipart/form-data"
+              }
+            });
+          case 3:
+            res = _context2.v;
+            setLogoUrl(res.data.data.logo_url);
+            setLogoFile(null);
+            setLogoPreview(null);
+            if (logoInputRef.current) logoInputRef.current.value = "";
+            dispatch((0,_store_action_toastAction__WEBPACK_IMPORTED_MODULE_2__.addToast)({
+              text: "Logo actualizado correctamente."
+            }));
+            _context2.n = 5;
+            break;
+          case 4:
+            _context2.p = 4;
+            _t2 = _context2.v;
+            dispatch((0,_store_action_toastAction__WEBPACK_IMPORTED_MODULE_2__.addToast)({
+              text: ((_err$response2 = _t2.response) === null || _err$response2 === void 0 || (_err$response2 = _err$response2.data) === null || _err$response2 === void 0 ? void 0 : _err$response2.message) || "Error al subir el logo.",
+              type: "error"
+            }));
+          case 5:
+            _context2.p = 5;
+            setSubiendoLogo(false);
+            return _context2.f(5);
+          case 6:
+            return _context2.a(2);
+        }
+      }, _callee2, null, [[2, 4, 5, 6]]);
+    }));
+    return function handleSubirLogo() {
+      return _ref2.apply(this, arguments);
+    };
+  }();
+  var handleCancelarLogo = function handleCancelarLogo() {
+    setLogoFile(null);
+    setLogoPreview(null);
+    if (logoInputRef.current) logoInputRef.current.value = "";
+  };
+  var handleEliminarLogo = /*#__PURE__*/function () {
+    var _ref3 = _asyncToGenerator(/*#__PURE__*/_regenerator().m(function _callee3() {
+      var _err$response3, _t3;
+      return _regenerator().w(function (_context3) {
+        while (1) switch (_context3.p = _context3.n) {
+          case 0:
+            setEliminandoLogo(true);
+            _context3.p = 1;
+            _context3.n = 2;
+            return _config_apiConfig__WEBPACK_IMPORTED_MODULE_1__["default"]["delete"]("/sri-config/logo");
+          case 2:
+            setLogoUrl(null);
+            dispatch((0,_store_action_toastAction__WEBPACK_IMPORTED_MODULE_2__.addToast)({
+              text: "Logo eliminado."
+            }));
+            _context3.n = 4;
+            break;
+          case 3:
+            _context3.p = 3;
+            _t3 = _context3.v;
+            dispatch((0,_store_action_toastAction__WEBPACK_IMPORTED_MODULE_2__.addToast)({
+              text: ((_err$response3 = _t3.response) === null || _err$response3 === void 0 || (_err$response3 = _err$response3.data) === null || _err$response3 === void 0 ? void 0 : _err$response3.message) || "Error al eliminar el logo.",
+              type: "error"
+            }));
+          case 4:
+            _context3.p = 4;
+            setEliminandoLogo(false);
+            return _context3.f(4);
+          case 5:
+            return _context3.a(2);
+        }
+      }, _callee3, null, [[1, 3, 4, 5]]);
+    }));
+    return function handleEliminarLogo() {
+      return _ref3.apply(this, arguments);
+    };
+  }();
+  var handleGuardar = /*#__PURE__*/function () {
+    var _ref4 = _asyncToGenerator(/*#__PURE__*/_regenerator().m(function _callee4() {
+      var _err$response4, _t4;
+      return _regenerator().w(function (_context4) {
+        while (1) switch (_context4.p = _context4.n) {
+          case 0:
             setGuardando(true);
-            _context2.p = 1;
-            _context2.n = 2;
+            _context4.p = 1;
+            _context4.n = 2;
             return _config_apiConfig__WEBPACK_IMPORTED_MODULE_1__["default"].post("/sri-config/guardar", config);
           case 2:
             dispatch((0,_store_action_toastAction__WEBPACK_IMPORTED_MODULE_2__.addToast)({
               text: "Configuración SRI guardada correctamente."
             }));
-            _context2.n = 4;
+            _context4.n = 4;
             break;
           case 3:
-            _context2.p = 3;
-            _t2 = _context2.v;
+            _context4.p = 3;
+            _t4 = _context4.v;
             dispatch((0,_store_action_toastAction__WEBPACK_IMPORTED_MODULE_2__.addToast)({
-              text: ((_err$response2 = _t2.response) === null || _err$response2 === void 0 || (_err$response2 = _err$response2.data) === null || _err$response2 === void 0 ? void 0 : _err$response2.message) || "Error al guardar la configuración.",
+              text: ((_err$response4 = _t4.response) === null || _err$response4 === void 0 || (_err$response4 = _err$response4.data) === null || _err$response4 === void 0 ? void 0 : _err$response4.message) || "Error al guardar la configuración.",
               type: "error"
             }));
           case 4:
-            _context2.p = 4;
+            _context4.p = 4;
             setGuardando(false);
-            return _context2.f(4);
+            return _context4.f(4);
           case 5:
-            return _context2.a(2);
+            return _context4.a(2);
         }
-      }, _callee2, null, [[1, 3, 4, 5]]);
+      }, _callee4, null, [[1, 3, 4, 5]]);
     }));
     return function handleGuardar() {
-      return _ref2.apply(this, arguments);
+      return _ref4.apply(this, arguments);
     };
   }();
   var handleChange = function handleChange(e) {
@@ -353,6 +483,58 @@ var SriConfigPage = function SriConfigPage() {
       }), /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_6__.jsxs)("div", {
         className: "card-body",
         children: [/*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_6__.jsxs)("div", {
+          className: "sri-logo-row",
+          children: [/*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_6__.jsx)("div", {
+            className: "sri-logo-thumb",
+            children: logoPreview || logoUrl ? /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_6__.jsx)("img", {
+              src: logoPreview || logoUrl,
+              alt: "Logo"
+            }) : /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_6__.jsx)("span", {
+              className: "sri-logo-thumb-empty",
+              children: "Sin logo"
+            })
+          }), /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_6__.jsxs)("div", {
+            className: "flex-grow-1",
+            children: [/*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_6__.jsx)("div", {
+              className: "sri-logo-row-label",
+              children: "Logo del RIDE"
+            }), /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_6__.jsxs)("div", {
+              className: "d-flex align-items-center gap-2 flex-wrap",
+              children: [/*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_6__.jsxs)("label", {
+                className: "btn btn-sm btn-outline-primary mb-0",
+                children: [logoUrl ? "Cambiar" : "Subir logo", /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_6__.jsx)("input", {
+                  ref: logoInputRef,
+                  type: "file",
+                  accept: ".png,.jpg,.jpeg",
+                  className: "d-none",
+                  onChange: handleLogoFileChange
+                })]
+              }), logoFile && /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_6__.jsxs)(react_jsx_runtime__WEBPACK_IMPORTED_MODULE_6__.Fragment, {
+                children: [/*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_6__.jsx)("button", {
+                  className: "btn btn-sm btn-primary",
+                  onClick: handleSubirLogo,
+                  disabled: subiendoLogo,
+                  children: subiendoLogo ? /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_6__.jsx)("span", {
+                    className: "spinner-border spinner-border-sm"
+                  }) : "Guardar"
+                }), /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_6__.jsx)("button", {
+                  className: "btn btn-sm btn-link text-secondary text-decoration-none",
+                  onClick: handleCancelarLogo,
+                  disabled: subiendoLogo,
+                  children: "Cancelar"
+                })]
+              }), logoUrl && !logoFile && /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_6__.jsx)("button", {
+                className: "btn btn-sm btn-link text-danger text-decoration-none",
+                onClick: handleEliminarLogo,
+                disabled: eliminandoLogo,
+                children: eliminandoLogo ? "Quitando..." : "Quitar"
+              })]
+            }), /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_6__.jsx)("div", {
+              className: "sri-logo-row-hint",
+              children: "PNG o JPG, m\xE1x. 2 MB -- aparece en el RIDE de tus facturas y notas de cr\xE9dito."
+            })]
+          })]
+        }), /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_6__.jsxs)("div", {
           className: "row g-3",
           children: [/*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_6__.jsxs)("div", {
             className: "col-md-4",

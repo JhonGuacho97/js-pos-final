@@ -601,6 +601,7 @@ export const Tokens = {
     LANGUAGE: "language",
     UPDATED_LANGUAGE: "updated_language",
     CURRENT_STORE_ID: "current_store_id",
+    ROLE_NAME: "role_name",
 };
 
 export const errorMessage = {
