@@ -261,6 +261,7 @@ const AsideTopSubMenuItem = (props) => {
                                         : "d-none"
                                         }`}
                                 >
+                                    <div className="report-nav-scroll d-flex align-items-center">
                                     {mainItems.items
                                         ? mainItems.items.map((item, index) => {
                                             if (index <= 4) {
@@ -355,6 +356,7 @@ const AsideTopSubMenuItem = (props) => {
                                                 ) : null;
                                             }
                                         )}
+                                    </div>
                                     {/* Report Dropdown  */}
                                     {location.pathname.includes("report") && (
                                         <Dropdown className="d-flex align-items-stretch">

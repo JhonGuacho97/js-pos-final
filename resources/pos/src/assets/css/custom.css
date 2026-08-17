@@ -5243,6 +5243,84 @@ div .rdt_Pagination div:first-of-type svg {
     }
 }
 
+/* --- Sub-menú horizontal de reportes (AsideTopSubMenuItem) no se rompe ---
+   Los tabs ("Informe de almacén", "Informe de productos más vendidos", etc.)
+   no tenían white-space/flex-shrink propios, así que al faltar ancho el
+   flexbox los encogía usando el único escape que el texto normal permite:
+   partir cada palabra en su propia línea. El resultado era un renglón
+   gigante de texto apilado empujando todo lo demás (buscador, POS, avatar)
+   a una segunda fila. Se fuerza cada tab a una sola línea con su ancho
+   natural (flex-shrink: 0) y se deja que sea la TIRA de tabs la que se
+   encoja y absorba el desborde con scroll horizontal propio -- así el
+   resto de la barra (buscador, tienda, idioma, avatar) nunca pierde su
+   tamaño.
+
+   El scroll vive en un wrapper NUEVO (.report-nav-scroll, agregado en
+   asideTopSubMenuItem.js) que envuelve SOLO los tabs -- a propósito NO se
+   puso overflow-x/y en .navbar-nav directamente, porque .navbar-nav
+   también contiene el dropdown "Más": por spec de CSS, un elemento con
+   overflow-x distinto de visible fuerza su overflow-y a auto/clip
+   también, así que el menú desplegable de "Más" (que se abre hacia abajo
+   fuera de la caja) quedaba recortado e inutilizable. Con el scroll
+   acotado solo a los tabs, "Más" queda fuera de esa caja y su menú nunca
+   se recorta. */
+.report-nav-scroll {
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    overflow-y: hidden;
+    min-width: 0;
+    flex-shrink: 1;
+    scrollbar-width: none;
+}
+.report-nav-scroll::-webkit-scrollbar {
+    display: none;
+}
+/* min-width:0 en .report-nav-scroll no alcanza solo: por default un flex
+   item mide como mínimo el tamaño de su CONTENIDO (min-width: auto), y
+   eso aplica en cada nivel de la cadena de arriba (.navbar-nav, el div
+   por grupo de mainItems, el propio <nav>). Sin cortar esa herencia en
+   cada eslabón, cualquiera de ellos se niega a encogerse y en su lugar
+   empuja TODO el header (y con :nowrap, la página entera) más ancho que
+   el viewport -- exactamente el desborde horizontal de página completa
+   que apareció al agregar el wrapper de scroll. */
+.top-navbar,
+.top-nav-heding,
+.top-navbar .navbar-collapse,
+.top-nav-heding .navbar-collapse,
+.top-navbar .navbar-nav,
+.top-nav-heding .navbar-nav,
+.top-navbar .navbar-nav > div,
+.top-nav-heding .navbar-nav > div {
+    min-width: 0;
+}
+.top-navbar .nav-item,
+.top-nav-heding .nav-item,
+.top-navbar .navbar-nav .dropdown,
+.top-nav-heding .navbar-nav .dropdown {
+    flex-shrink: 0;
+}
+.top-navbar .nav-link,
+.top-nav-heding .nav-link {
+    white-space: nowrap;
+}
+
+/* El propio style.css (plantilla base) YA trae un .report-nav-item con
+   max-width: 71px/59px (ver style.css ~17658-17759) pensado para que el
+   texto se parta en 2 líneas dentro de esa caja diminuta -- es la causa
+   original del quiebre. Con white-space: nowrap de arriba el texto ya no
+   puede partirse, así que ese max-width heredado solo lograba recortar la
+   caja y dejar el texto asomando por fuera de ella. Se anula por completo:
+   ahora cada tab mide lo que su propio texto necesita y es el contenedor
+   (.navbar-nav de arriba) el que absorbe cualquier desborde con scroll. */
+.report-nav-item {
+    max-width: none !important;
+    min-width: 0 !important;
+    margin-top: 0 !important;
+}
+.report-nav-item a {
+    font-size: inherit !important;
+}
+
 /* --- Crear/Editar rol: layout de dos columnas + acordeones ---
    Columna izquierda fija (nombre/descripción/contador) + columna derecha
    con un acordeón colapsable por sección (mismas 7 secciones que el
