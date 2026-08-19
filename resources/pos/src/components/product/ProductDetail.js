@@ -24,6 +24,8 @@ import CreateSubProductModal from "./CreateSubProductModal";
 import PresentationsDetailsModal from "./PresentationsDetailsModal";
 import WarehousePricesModal from "./WarehousePricesModal";
 import { fetchAllVariations } from "../../store/action/variationAction";
+import ResourceDetailHeader from "../../shared/components/ResourceDetailHeader";
+import "../../assets/scss/custom/pages/resource-detail.scss";
 
 const ProductDetail = (props) => {
     const { products, fetchMainProduct, clearMainProduct, isLoading, frontSetting, allConfigData } = props;
@@ -124,6 +126,29 @@ const ProductDetail = (props) => {
         );
     }
 
+    const productItems = Array.isArray(allProducts) ? allProducts : [];
+    const totalStock = productItems.reduce(
+        (total, item) => total + Number(item?.in_stock || 0),
+        0
+    );
+    const productStats = [
+        {
+            label: "Código",
+            value: product.attributes.code || "—",
+        },
+        {
+            label: product.attributes.product_type == 2 ? "Variantes" : "Presentaciones",
+            value: productItems.length,
+        },
+        {
+            label: "Precio base",
+            value: currencySymbolHandling(
+                allConfigData,
+                frontSetting?.value?.currency_symbol || "",
+                productItems[0]?.product_price || 0
+            ),
+        },
+    ];
 
     return (
         <MasterLayout>
@@ -135,12 +160,22 @@ const ProductDetail = (props) => {
             <TabTitle
                 title={placeholderText("product.product-details.title")}
             />
-            <div className="card card-body">
-                <div className="row">
+            <div className="resource-detail-v2 resource-detail-v2--product">
+                <ResourceDetailHeader
+                    type="product"
+                    eyebrow="Ficha de producto"
+                    title={product.attributes.name}
+                    description="Información comercial, imágenes, variantes y disponibilidad por almacén."
+                    status={totalStock > 0 ? String(totalStock) + " en stock" : "Sin stock"}
+                    statusTone={totalStock > 0 ? "success" : "warning"}
+                    stats={productStats}
+                />
+            <div className="card resource-detail-panel resource-product-overview">
+                <div className="row resource-product-grid">
 
                     <>
 
-                        <div className="col-xxl-7">
+                        <div className="col-xxl-7 resource-product-meta">
                             {
                                 isLoading ? <Spinner /> : (
                                     <table className="table table-responsive gy-7 main-product-details">
@@ -228,7 +263,7 @@ const ProductDetail = (props) => {
 
                         </div>
                         {/* Carousel SIEMPRE renderiza, solo cambia el contenido */}
-                        <div className="col-xxl-5 d-flex justify-content-center m-auto">
+                        <div className="col-xxl-5 d-flex justify-content-center m-auto resource-product-gallery">
                             {!isLoading && (
                                 sliderImage && sliderImage.length !== 0 ? (
                                     <Carousel>
@@ -247,9 +282,17 @@ const ProductDetail = (props) => {
 
                 </div>
             </div>
-            {allProducts && allProducts.length !== 0 && <div className="card card-body mt-2">
-                {product.attributes.product_type == 2 && commonDataForNewProduct.variationTypes.length !== 0 &&
-                    <div className="text-end mb-2 ">
+            {allProducts && allProducts.length !== 0 && <div className="card resource-detail-panel resource-variants-panel">
+                <div className="resource-variants-toolbar">
+                    <div>
+                        <h2>
+                            {product.attributes.product_type == 2
+                                ? getFormattedMessage("variations.title")
+                                : "Presentaciones y precios"}
+                        </h2>
+                        <p>Costos, impuestos, alertas y acciones disponibles para este producto.</p>
+                    </div>
+                    {product.attributes.product_type == 2 && commonDataForNewProduct.variationTypes.length !== 0 &&
                         <Button
                             type="button"
                             variant="primary"
@@ -258,10 +301,10 @@ const ProductDetail = (props) => {
                         >
                             {getFormattedMessage("product.create.title")}
                         </Button>
-                    </div>
-                }
-                <div>
-                    <Table responsive="md">
+                    }
+                </div>
+                <div className="resource-detail-table-wrap">
+                    <Table responsive="md" className="resource-detail-table">
                         <thead>
                             <tr>
                                 {product.attributes.product_type == 2 &&
@@ -337,7 +380,7 @@ const ProductDetail = (props) => {
                                         {data.stock_alert}
                                     </td>
                                     <td className="py-4">
-                                        <div className="text-center">
+                                        <div className="text-center resource-product-actions">
                                             <button title={placeholderText('globally.view.tooltip.label')}
                                                 className='btn text-success px-2 fs-3 ps-0 border-0'
                                                 onClick={(e) => {
@@ -390,6 +433,7 @@ const ProductDetail = (props) => {
                             )}
                         </tbody>
                     </Table>
+                </div>
                     <DeleteProduct
                         onClickDeleteModel={onClickDeleteModel}
                         deleteModel={deleteModel}
@@ -417,8 +461,8 @@ const ProductDetail = (props) => {
                             currencySymbol={frontSetting.value && frontSetting.value.currency_symbol}
                         />
                     }
-                </div>
             </div>}
+            </div>
         </MasterLayout>
     );
 };

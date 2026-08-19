@@ -32,6 +32,8 @@ import CreatePaymentModal from "./CreatePaymentModal";
 import { fetchSalePayments } from "../../store/action/salePaymentAction";
 import TopProgressBar from "../../shared/components/loaders/TopProgressBar";
 import TicketSlipModal from "../../frontend/components/paymentSlipModal/TicketSlipModal";
+import ResourceListHeader from "../../shared/components/ResourceListHeader";
+import "../../assets/scss/custom/pages/resource-list.scss";
 
 const Sales = (props) => {
     const {
@@ -437,28 +439,77 @@ const Sales = (props) => {
         },
     ];
 
+    const visibleSales = Array.isArray(itemsValue) ? itemsValue : [];
+    const visibleGrandTotal = visibleSales.reduce(
+        (total, sale) => total + Number(sale.grand_total || 0),
+        0
+    );
+    const visiblePaidTotal = visibleSales.reduce(
+        (total, sale) => total + Number(sale.paid_amount || 0),
+        0
+    );
+    const formatListCurrency = (value) =>
+        currencySymbolHandling(allConfigData, currencySymbol, value);
+
+    const salesStats = [
+        {
+            label: "Ventas registradas",
+            value: totalRecord || 0,
+            helper: "Coinciden con los filtros",
+            tone: "primary",
+        },
+        {
+            label: "Total visible",
+            value: formatListCurrency(visibleGrandTotal),
+            helper: `${visibleSales.length} registros en esta página`,
+        },
+        {
+            label: "Cobrado visible",
+            value: formatListCurrency(visiblePaidTotal),
+            helper: "Pagos recibidos",
+            tone: "success",
+        },
+        {
+            label: "Pendiente visible",
+            value: formatListCurrency(
+                Math.max(visibleGrandTotal - visiblePaidTotal, 0)
+            ),
+            helper: "Saldo por cobrar",
+            tone: "warning",
+        },
+    ];
+
     return (
         <MasterLayout>
             <TopProgressBar />
             <TabTitle title={placeholderText("sales.title")} />
-            <div className="sale_table">
-                <ReactDataTable
-                    columns={columns}
-                    items={tableArray}
-                    to="#/app/sales/create"
-                    ButtonValue={getFormattedMessage("sale.create.title")}
-                    isShowPaymentModel={isShowPaymentModel}
-                    isCallSaleApi={isCallSaleApi}
-                    isShowDateRangeField
-                    onChange={onChange}
-                    totalRows={totalRecord}
-                    goToEdit={goToEdit}
-                    isLoading={isLoading}
-                    isShowFilterField
-                    isPaymentStatus
-                    isStatus
-                    isPaymentType
+            <div className="resource-list-v2 resource-list-v2--sales">
+                <ResourceListHeader
+                    eyebrow="Operación comercial"
+                    title={placeholderText("sales.title")}
+                    description="Consulta ventas, pagos y comprobantes desde un espacio más claro y fácil de recorrer."
+                    type="sales"
+                    stats={salesStats}
                 />
+                <div className="resource-list-table-shell sale_table">
+                    <ReactDataTable
+                        columns={columns}
+                        items={tableArray}
+                        to="#/app/sales/create"
+                        ButtonValue={getFormattedMessage("sale.create.title")}
+                        isShowPaymentModel={isShowPaymentModel}
+                        isCallSaleApi={isCallSaleApi}
+                        isShowDateRangeField
+                        onChange={onChange}
+                        totalRows={totalRecord}
+                        goToEdit={goToEdit}
+                        isLoading={isLoading}
+                        isShowFilterField
+                        isPaymentStatus
+                        isStatus
+                        isPaymentType
+                    />
+                </div>
             </div>
             <DeleteSale
                 onClickDeleteModel={onClickDeleteModel}

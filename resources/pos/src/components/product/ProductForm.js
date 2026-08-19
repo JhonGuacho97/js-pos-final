@@ -43,6 +43,8 @@ import { fetchAllVariations } from "../../store/action/variationAction";
 import ReactMultiSelect from "../../shared/select/ReactMultiSelect";
 import { toUpper } from "lodash";
 import PresentationsSection from "./sections/PresentationsSection";
+import "../../assets/scss/custom/pages/sales-form.scss";
+import "../../assets/scss/custom/pages/product-form.scss";
 
 const ProductForm = (props) => {
     const {
@@ -950,12 +952,27 @@ const ProductForm = (props) => {
     };
 
     return (
-        <div className="card">
-            <div className="card-body">
-                <Form>
-                    <div className="row">
+        <div className="sale-form-v2 product-form-v2">
+            <div className="product-form-shell">
+                <div className="sale-form-heading">
+                    <div>
+                        <span className="sale-form-eyebrow">Catálogo</span>
+                        <h1>{singleProduct ? "Editar producto" : "Nuevo producto"}</h1>
+                        <p>Configura la información comercial, inventario, precios y presentación del producto.</p>
+                    </div>
+                    <div className="sale-form-heading-status">
+                        <span className="sale-status-dot" />
+                        {singleProduct ? "Edición en curso" : "Borrador"}
+                    </div>
+                </div>
+                <Form className="product-form-content">
+                    <div className="row g-4 product-form-grid">
                         <div className="col-xl-8">
-                            <div className="card">
+                            <section className="sale-panel product-basic-panel">
+                                <div className="sale-panel-heading">
+                                    <div className="sale-panel-icon"><i className="bi bi-box-seam" /></div>
+                                    <div><h2>Información del producto</h2><p>Datos principales utilizados en catálogo, búsquedas y comprobantes.</p></div>
+                                </div>
                                 <div className="row">
                                     <div className="col-md-6 mb-3">
                                         <label className="form-label">
@@ -1191,10 +1208,14 @@ const ProductForm = (props) => {
                                         </span>
                                     </div>
                                 </div>
-                            </div>
+                            </section>
                         </div>
                         <div className="col-xl-4">
-                            <div className="card">
+                            <section className="sale-panel product-images-panel">
+                                <div className="sale-panel-heading">
+                                    <div className="sale-panel-icon"><i className="bi bi-images" /></div>
+                                    <div><h2>Imágenes</h2><p>Agrega fotografías claras para identificar el producto.</p></div>
+                                </div>
                                 <label className="form-label">
                                     {getFormattedMessage(
                                         "product.input.multiple-image.label"
@@ -1206,18 +1227,14 @@ const ProductForm = (props) => {
                                     fetchFiles={onChangeFiles}
                                     transferImage={transferImage}
                                 />
-                            </div>
+                            </section>
                             {singleProduct ? (
                                 ""
                             ) : (
-                                <div>
-                                    <div className="col-md-12 mb-3">
-                                        <h1 className={"text-center"}>
-                                            {getFormattedMessage(
-                                                "add-stock.title"
-                                            )}{" "}
-                                            :{" "}
-                                        </h1>
+                                <section className="sale-panel product-stock-panel">
+                                    <div className="sale-panel-heading">
+                                        <div className="sale-panel-icon"><i className="bi bi-building-add" /></div>
+                                        <div><h2>{getFormattedMessage("add-stock.title")}</h2><p>Define dónde ingresará el inventario inicial.</p></div>
                                     </div>
                                     <div className="col-md-12 mb-3">
                                         <ReactSelect
@@ -1270,11 +1287,15 @@ const ProductForm = (props) => {
                                             )}
                                         />
                                     </div>
-                                </div>
+                                </section>
                             )}
                         </div>
                         {!singleProduct && (
-                            <div className="row border-top pt-4">
+                            <div className="row sale-panel product-options-panel">
+                                <div className="col-12 product-section-heading">
+                                    <div className="sale-panel-icon"><i className="bi bi-diagram-3" /></div>
+                                    <div><h2>Tipo y configuración</h2><p>Indica si es un producto simple o si utiliza variantes.</p></div>
+                                </div>
                                 <div className="col-md-4 mb-3">
                                     {!singleProduct ?
                                         <ReactSelect
@@ -1348,7 +1369,11 @@ const ProductForm = (props) => {
                         )}
                         {typeof productValue.product_type !== "string" && !singleProduct &&
                             productValue.product_type?.value === 1 ? (
-                            <div className="row border-top pt-3">
+                            <div className="row sale-panel product-pricing-panel">
+                                <div className="col-12 product-section-heading">
+                                    <div className="sale-panel-icon"><i className="bi bi-tags" /></div>
+                                    <div><h2>Precio, impuestos e inventario</h2><p>Configura los valores comerciales y la cantidad inicial.</p></div>
+                                </div>
                                 {!managePresentations ? (
                                     <>
                                         <div className="col-md-3 mb-3">
@@ -1583,9 +1608,13 @@ const ProductForm = (props) => {
                             typeof productValue.variation_type !== "string" &&
                             variationTypesData?.map((variation) => (
                                 <div
-                                    className="row border-top pt-3"
+                                    className="row sale-panel product-variant-panel"
                                     key={variation.variation_type_id}
                                 >
+                                    <div className="col-12 product-section-heading">
+                                        <div className="sale-panel-icon"><i className="bi bi-layers" /></div>
+                                        <div><h2>{variation.variation_type}</h2><p>Precio, código, impuestos y stock de esta variante.</p></div>
+                                    </div>
                                     <div className="col-md-3 mb-3">
                                         <label className="form-label">
                                             {getFormattedMessage(
@@ -1899,13 +1928,15 @@ const ProductForm = (props) => {
                                 />
                             )}
 
-                        <ModelFooter
-                            onEditRecord={singleProduct}
-                            onSubmit={onSubmit}
-                            editDisabled={disabled}
-                            link="/app/products"
-                            addDisabled={!productValue.name}
-                        />
+                        <div className="product-form-actions">
+                            <ModelFooter
+                                onEditRecord={singleProduct}
+                                onSubmit={onSubmit}
+                                editDisabled={disabled}
+                                link="/app/products"
+                                addDisabled={!productValue.name}
+                            />
+                        </div>
                     </div>
                 </Form>
             </div>

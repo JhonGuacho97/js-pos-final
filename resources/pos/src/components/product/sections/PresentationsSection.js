@@ -110,7 +110,11 @@ const PresentationsSection = ({
     });
 
     return (
-        <div className="row border-top pt-4">
+        <div className="row sale-panel product-presentations-section">
+            <div className="col-12 product-section-heading">
+                <div className="sale-panel-icon"><FontAwesomeIcon icon={faBoxOpen} /></div>
+                <div><h2>Presentaciones de venta</h2><p>Configura unidades, paquetes o cajas para el mismo inventario base.</p></div>
+            </div>
             <div className="col-12 mb-3">
                 <div className="form-check">
                     <input

@@ -82,6 +82,7 @@ const PosMainPage = (props) => {
     const fetchRequestIdRef = useRef(0);
     // const [play] = useSound('https://s3.amazonaws.com/freecodecamp/drums/Heater-4_1.mp3');
     const [openCalculator, setOpenCalculator] = useState(false);
+    const [mobilePane, setMobilePane] = useState("catalog");
     const [quantity, setQuantity] = useState(1);
     const [updateProducts, setUpdateProducts] = useState([]);
     const [isOpenCartItemUpdateModel, setIsOpenCartItemUpdateModel] =
@@ -688,7 +689,11 @@ const PosMainPage = (props) => {
             {loadRegisterDetailsPrint()}
             <Row className="pos-workspace g-3">
                 <TopProgressBar />
-                <Col lg={8} xxl={8} className="pos-catalog-panel pos-right-scs">
+                <Col
+                    lg={8}
+                    xxl={8}
+                    className={`pos-catalog-panel pos-right-scs ${mobilePane === "catalog" ? "pos-mobile-pane-active" : ""}`}
+                >
                     <div className="pos-catalog-toolbar my-3">
                         <div className="pos-screen-heading">
                             <span className="pos-eyebrow">EcuaPos</span>
@@ -733,7 +738,11 @@ const PosMainPage = (props) => {
                         />
                     </div>
                 </Col>
-                <Col lg={4} xxl={4} className="pos-order-panel pos-left-scs">
+                <Col
+                    lg={4}
+                    xxl={4}
+                    className={`pos-order-panel pos-left-scs ${mobilePane === "cart" ? "pos-mobile-pane-active" : ""}`}
+                >
                     <div className="pos-order-heading my-3">
                         <div>
                             <span className="pos-eyebrow">Nueva venta</span>
@@ -868,6 +877,31 @@ const PosMainPage = (props) => {
                     </div>
                 </Col>
             </Row>
+            <nav className="pos-mobile-bottom-nav" aria-label="Navegación del punto de venta">
+                <button
+                    type="button"
+                    className={mobilePane === "catalog" ? "active" : ""}
+                    onClick={() => setMobilePane("catalog")}
+                    aria-pressed={mobilePane === "catalog"}
+                >
+                    <i className="bi bi-grid" aria-hidden="true" />
+                    <span>Productos</span>
+                </button>
+                <button
+                    type="button"
+                    className={mobilePane === "cart" ? "active" : ""}
+                    onClick={() => setMobilePane("cart")}
+                    aria-pressed={mobilePane === "cart"}
+                >
+                    <span className="pos-mobile-cart-icon">
+                        <i className="bi bi-cart3" aria-hidden="true" />
+                        {updateProducts.length > 0 && (
+                            <span className="pos-mobile-cart-badge">{updateProducts.length}</span>
+                        )}
+                    </span>
+                    <span>Carrito</span>
+                </button>
+            </nav>
             {isOpenCartItemUpdateModel && (
                 <ProductDetailsModel
                     openProductDetailModal={openProductDetailModal}

@@ -15,6 +15,16 @@ const getGreetingKey = (hour) => {
     return 'dashboard.header.greeting.evening';
 };
 
+const getGreetingEmoji = (hour) => {
+    if (hour < 12) {
+        return { symbol: '🌅', label: 'Mañana' };
+    }
+    if (hour < 19) {
+        return { symbol: '🌤️', label: 'Tarde' };
+    }
+    return { symbol: '🌙', label: 'Noche' };
+};
+
 const DashboardHeader = ({ activeCashiersCount }) => {
     const { stores, currentStoreId } = useSelector((state) => state.myStores);
     const currentStoreName = stores.find((s) => String(s.id) === String(currentStoreId))?.name;
@@ -45,12 +55,20 @@ const DashboardHeader = ({ activeCashiersCount }) => {
         hour: '2-digit',
         minute: '2-digit',
     }).format(now);
+    const greetingEmoji = getGreetingEmoji(guayaquilHour);
 
     return (
         <div className="dash-header">
             <div className="dash-header-left">
                 <h2 className="dash-header-greeting">
                     {getFormattedMessage(getGreetingKey(guayaquilHour))}{firstName ? `, ${firstName}` : ''}
+                    <span
+                        className="dash-header-greeting-emoji"
+                        role="img"
+                        aria-label={greetingEmoji.label}
+                    >
+                        {greetingEmoji.symbol}
+                    </span>
                 </h2>
                 <div className="dash-header-meta">
                     <span className="dash-header-chip dash-header-chip-live">

@@ -28,6 +28,8 @@ import { fetchFrontSetting } from "../../store/action/frontSettingAction";
 import TopProgressBar from "../../shared/components/loaders/TopProgressBar";
 import ImportProductModel from "./ImportProductModel";
 import { downloadExcel } from "../../store/action/downloadReportAction";
+import ResourceListHeader from "../../shared/components/ResourceListHeader";
+import "../../assets/scss/custom/pages/resource-list.scss";
 
 const Product = (props) => {
     const {
@@ -121,7 +123,11 @@ const Product = (props) => {
                 product_unit: product?.attributes.product_unit?.name
                     ? product?.attributes.product_unit?.name
                     : "N/A",
-                in_stock: product.attributes.products?.reduce((sum, product) => sum + product?.stock?.quantity ? product.stock.quantity : 0, 0),
+                in_stock: product.attributes.products?.reduce(
+                    (sum, product) =>
+                        sum + Number(product?.stock?.quantity || 0),
+                    0
+                ),
                 images: product?.attributes.images,
                 id: product.id,
                 currency: currencySymbol,
@@ -258,27 +264,72 @@ const Product = (props) => {
         },
     ];
 
+    const visibleProducts = Array.isArray(itemsValue) ? itemsValue : [];
+    const visibleStock = visibleProducts.reduce(
+        (total, product) => total + Number(product.in_stock || 0),
+        0
+    );
+    const lowStockProducts = visibleProducts.filter(
+        (product) => Number(product.in_stock || 0) <= 10
+    ).length;
+    const productStats = [
+        {
+            label: "Productos registrados",
+            value: totalRecord || 0,
+            helper: "Coinciden con los filtros",
+            tone: "primary",
+        },
+        {
+            label: "En esta página",
+            value: visibleProducts.length,
+            helper: "Productos visibles",
+        },
+        {
+            label: "Stock visible",
+            value: visibleStock.toLocaleString(),
+            helper: "Unidades disponibles",
+            tone: "success",
+        },
+        {
+            label: "Stock bajo visible",
+            value: lowStockProducts,
+            helper: "10 unidades o menos",
+            tone: lowStockProducts ? "warning" : "success",
+        },
+    ];
+
     return (
         <MasterLayout>
             <TopProgressBar />
             <TabTitle title={placeholderText("products.title")} />
-            <ReactDataTable
-                columns={columns}
-                items={itemsValue}
-                onChange={onChange}
-                isLoading={isLoading}
-                ButtonValue={getFormattedMessage("product.create.title")}
-                totalRows={totalRecord}
-                to="#/app/products/create"
-                isShowFilterField
-                isUnitFilter
-                title={getFormattedMessage("product.input.product-unit.label")}
-                buttonImport={true}
-                goToImport={handleClose}
-                importBtnTitle={"product.import.title"}
-                isExport
-                onExcelClick={onExcelClick}
-            />
+            <div className="resource-list-v2 resource-list-v2--products">
+                <ResourceListHeader
+                    eyebrow="Catálogo e inventario"
+                    title={placeholderText("products.title")}
+                    description="Administra precios, existencias y datos de producto con una lectura más rápida del inventario."
+                    type="products"
+                    stats={productStats}
+                />
+                <div className="resource-list-table-shell product_table">
+                    <ReactDataTable
+                        columns={columns}
+                        items={itemsValue}
+                        onChange={onChange}
+                        isLoading={isLoading}
+                        ButtonValue={getFormattedMessage("product.create.title")}
+                        totalRows={totalRecord}
+                        to="#/app/products/create"
+                        isShowFilterField
+                        isUnitFilter
+                        title={getFormattedMessage("product.input.product-unit.label")}
+                        buttonImport={true}
+                        goToImport={handleClose}
+                        importBtnTitle={"product.import.title"}
+                        isExport
+                        onExcelClick={onExcelClick}
+                    />
+                </div>
+            </div>
             <DeleteMainProduct
                 onClickDeleteModel={onClickDeleteModel}
                 deleteModel={deleteModel}

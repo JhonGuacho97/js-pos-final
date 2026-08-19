@@ -5,7 +5,12 @@ import {
     MenuItem, Menu, SubMenu,
 } from "react-pro-sidebar";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { faBars, faSearch } from "@fortawesome/free-solid-svg-icons";
+import {
+    faAnglesLeft,
+    faAnglesRight,
+    faSearch,
+    faXmark,
+} from "@fortawesome/free-solid-svg-icons";
 import "react-pro-sidebar/dist/css/styles.css";
 import { getFormattedMessage, placeholderText } from "../../shared/sharedMethod";
 import { useIntl } from "react-intl";
@@ -23,8 +28,30 @@ const AsideMenu = (props) => {
     const { id } = useParams();
     const [searchTerm, setSearchTerm] = useState("");
     const updatedLanguage = localStorage.getItem(Tokens.UPDATED_LANGUAGE);
+    const compactMenu = isMenuCollapse && !isResponsiveMenu;
 
     useEffect(() => { updateMenu(); }, [updatedLanguage]);
+
+    useEffect(() => {
+        if (!isResponsiveMenu) return undefined;
+
+        const previousOverflow = document.body.style.overflow;
+        const closeOnEscape = (event) => {
+            if (event.key === "Escape") menuClick();
+        };
+
+        document.body.style.overflow = "hidden";
+        window.addEventListener("keydown", closeOnEscape);
+
+        return () => {
+            document.body.style.overflow = previousOverflow;
+            window.removeEventListener("keydown", closeOnEscape);
+        };
+    }, [isResponsiveMenu, menuClick]);
+
+    const handleMenuNavigation = () => {
+        if (isResponsiveMenu) menuClick();
+    };
 
     const updateMenu = () => {
         if (updatedLanguage === "ar") {
@@ -137,47 +164,80 @@ const AsideMenu = (props) => {
         <>
             <style>{asideStyles}</style>
             <ProSidebar
-                collapsed={isMenuCollapse}
+                collapsed={compactMenu}
                 className={`${isResponsiveMenu ? "open-menu" : "hide-menu"} aside-menu-container`}
             >
                 {/* ── Logo ── */}
                 <SidebarHeader className="aside-menu-container__aside-logo flex-column-auto pb-2 pt-3">
                     <a href="/" className="text-decoration-none sidebar-logo">
-                        <div className={`${isMenuCollapse ? "d-none" : "image image-mini me-3"}`}>
+                        <div className={`${compactMenu ? "d-none" : "sidebar-brand-mark"}`}>
                             <img
                                 src={frontSetting.value?.logo}
                                 className="img-fluid object-fit-contain"
                                 alt="logo"
                             />
                         </div>
-                        {!isMenuCollapse && frontSetting.value?.show_app_name_in_sidebar === "1"
+                        {!compactMenu && frontSetting.value?.show_app_name_in_sidebar === "1"
                             ? frontSetting.value.company_name
                             : ""}
                     </a>
                     <button
                         type="button"
                         onClick={menuIconClick}
-                        className="btn p-0 aside-menu-container__aside-menubar d-lg-block d-none sidebar-btn border-0"
+                        className="btn p-0 aside-menu-container__aside-menubar d-lg-flex d-none sidebar-btn border-0"
+                        aria-label={isMenuCollapse ? "Expandir menú" : "Contraer menú"}
+                        title={isMenuCollapse ? "Expandir menú" : "Contraer menú"}
                     >
-                        <FontAwesomeIcon icon={faBars} />
+                        <FontAwesomeIcon
+                            icon={
+                                isMenuCollapse
+                                    ? updatedLanguage === "ar"
+                                        ? faAnglesLeft
+                                        : faAnglesRight
+                                    : updatedLanguage === "ar"
+                                        ? faAnglesRight
+                                        : faAnglesLeft
+                            }
+                        />
+                    </button>
+                    <button
+                        type="button"
+                        onClick={menuClick}
+                        className="btn p-0 aside-menu-container__aside-menubar d-lg-none sidebar-btn sidebar-mobile-close border-0"
+                        aria-label="Cerrar menú"
+                        title="Cerrar menú"
+                    >
+                        <FontAwesomeIcon icon={faXmark} />
                     </button>
                 </SidebarHeader>
 
                 <SidebarContent className="sidebar-scrolling">
                     {/* ── Search ── */}
-                    <div className={`d-flex position-relative aside-menu-container__aside-search search-control ${isMenuCollapse ? "d-none" : ""} py-3 mt-1`}>
+                    <div className={`d-flex position-relative aside-menu-container__aside-search search-control ${compactMenu ? "d-none" : ""} py-3 mt-1`}>
                         <div className="position-relative d-flex w-100">
                             <input
-                                className={`form-control ps-8 ${isMenuCollapse ? "d-none" : ""}`}
+                                className={`form-control ps-8 ${compactMenu ? "d-none" : ""}`}
                                 type="search"
                                 id="search"
                                 placeholder={placeholderText("react-data-table.searchbar.placeholder")}
                                 aria-label="Search"
+                                value={searchTerm}
                                 onChange={(e) => setSearchTerm(e.target.value)}
                             />
                             <span className="position-absolute d-flex align-items-center top-0 bottom-0 left-0 text-gray-600 ms-3">
                                 <FontAwesomeIcon icon={faSearch} />
                             </span>
+                            {searchTerm && (
+                                <button
+                                    type="button"
+                                    className="sidebar-search-clear"
+                                    onClick={() => setSearchTerm("")}
+                                    aria-label="Limpiar búsqueda"
+                                    title="Limpiar búsqueda"
+                                >
+                                    <FontAwesomeIcon icon={faXmark} />
+                                </button>
+                            )}
                         </div>
                     </div>
 
@@ -186,8 +246,8 @@ const AsideMenu = (props) => {
                         {filteredMenu.length ? (
                             filteredMenu.map((mainItems, index) => {
                                 if (mainItems.groupHeader) {
-                                    return isMenuCollapse ? null : (
-                                        <div className="aside-group-header" key={index}>
+                                    return compactMenu ? null : (
+                                        <div className="aside-group-header" key={mainItems.title}>
                                             {intl.formatMessage({ id: `${mainItems.title}` })}
                                         </div>
                                     );
@@ -196,6 +256,7 @@ const AsideMenu = (props) => {
                                     <SubMenu
                                         key={index}
                                         title={intl.formatMessage({ id: `${mainItems.title}` })}
+                                        aria-label={intl.formatMessage({ id: `${mainItems.title}` })}
                                         className={isSubActive(mainItems) ? "pro-active-sub myDIV" : "myDIV"}
                                         icon={mainItems.fontIcon}
                                     >
@@ -203,7 +264,12 @@ const AsideMenu = (props) => {
                                             <MenuItem
                                                 key={idx}
                                                 icon={subItem.fontIcon}
-                                                className={`${!isMenuCollapse ? subItem.class : ""} flex-column `}
+                                                title={
+                                                    compactMenu
+                                                        ? intl.formatMessage({ id: `${subItem.title}` })
+                                                        : undefined
+                                                }
+                                                className={`${!compactMenu ? subItem.class : ""} flex-column `}
                                                 active={
                                                     location.pathname === subItem.to ||
                                                     location.pathname === subItem.path ||
@@ -216,7 +282,7 @@ const AsideMenu = (props) => {
                                                     location.pathname === subItem.stockDetailPath + "/" + id
                                                 }
                                             >
-                                                <Link to={subItem.to}>
+                                                <Link to={subItem.to} onClick={handleMenuNavigation}>
                                                     {intl.formatMessage({ id: `${subItem.title}` })}
                                                 </Link>
                                             </MenuItem>
@@ -227,7 +293,12 @@ const AsideMenu = (props) => {
                                         <MenuItem
                                             key={index}
                                             icon={mainItems.fontIcon}
-                                            className={`${!isMenuCollapse ? mainItems.class : ""} flex-column`}
+                                            title={
+                                                compactMenu
+                                                    ? intl.formatMessage({ id: `${mainItems.title}` })
+                                                    : undefined
+                                            }
+                                            className={`${!compactMenu ? mainItems.class : ""} flex-column`}
                                             active={
                                                 location.pathname === mainItems.to ||
                                                 location.pathname === mainItems.path ||
@@ -248,7 +319,7 @@ const AsideMenu = (props) => {
                                                 location.pathname === mainItems.customerReportDetailsPath + "/" + id
                                             }
                                         >
-                                            <Link to={mainItems.to}>
+                                            <Link to={mainItems.to} onClick={handleMenuNavigation}>
                                                 {intl.formatMessage({ id: `${mainItems.title}` })}
                                             </Link>
                                         </MenuItem>
@@ -267,6 +338,7 @@ const AsideMenu = (props) => {
             <div
                 className={`${isResponsiveMenu === true && "bg-overlay d-block"}`}
                 onClick={menuClick}
+                aria-hidden="true"
             />
         </>
     );

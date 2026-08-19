@@ -20,6 +20,8 @@ import {
 } from "../../shared/sharedMethod";
 import { purchaseDetailsAction } from "../../store/action/purchaseDetailsAction";
 import { fetchFrontSetting } from "../../store/action/frontSettingAction";
+import ResourceDetailHeader from "../../shared/components/ResourceDetailHeader";
+import "../../assets/scss/custom/pages/resource-detail.scss";
 
 const PurchaseDetails = (props) => {
     const {
@@ -39,6 +41,34 @@ const PurchaseDetails = (props) => {
         purchaseDetailsAction(id);
     }, []);
 
+    const currencySymbol = frontSetting?.value?.currency_symbol || "";
+    const formatCurrency = (value) =>
+        currencySymbolHandling(allConfigData, currencySymbol, value || 0);
+    const purchaseStatus =
+        purchaseDetails.status === 1
+            ? { label: "Recibida", tone: "success" }
+            : purchaseDetails.status === 2
+                ? { label: "Pendiente", tone: "warning" }
+                : { label: "Ordenada", tone: "primary" };
+    const totalUnits = (purchaseDetails.purchase_items || []).reduce(
+        (total, item) => total + Number(item.quantity || 0),
+        0
+    );
+    const purchaseStats = [
+        {
+            label: "Productos",
+            value: (purchaseDetails.purchase_items || []).length,
+        },
+        {
+            label: "Unidades",
+            value: totalUnits,
+        },
+        {
+            label: "Total de compra",
+            value: formatCurrency(purchaseDetails.grand_total),
+        },
+    ];
+
     return (
         <MasterLayout>
             <HeaderTitle
@@ -46,30 +76,28 @@ const PurchaseDetails = (props) => {
                 to="/app/purchases"
             />
             <TabTitle title={placeholderText("purchases.details.title")} />
-            <div className="card">
+            <div className="resource-detail-v2 resource-detail-v2--purchase">
+                <ResourceDetailHeader
+                    type="purchase"
+                    eyebrow="Documento de compra"
+                    title={purchaseDetails.reference_code || getFormattedMessage("purchases.details.title")}
+                    description="Proveedor, recepción y valores asociados a esta compra."
+                    status={purchaseStatus.label}
+                    statusTone={purchaseStatus.tone}
+                    stats={purchaseStats}
+                />
+            <div className="card resource-detail-document">
                 <div className="card-body">
                     <Form>
-                        <div className="row">
-                            <div className="col-12">
-                                <h4 className="font-weight-bold text-center mb-5">
-                                    {getFormattedMessage(
-                                        "purchases.details.title"
-                                    )}{" "}
-                                    :{" "}
-                                    {purchaseDetails &&
-                                        purchaseDetails.reference_code}
-                                </h4>
-                            </div>
-                        </div>
-                        <Row className="custom-line-height">
-                            <Col md={4}>
-                                <h5 className="text-gray-600 bg-light p-4 mb-0 text-uppercase">
+                        <Row className="custom-line-height resource-info-grid g-3">
+                            <Col md={4} className="resource-info-card">
+                                <h5 className="text-gray-600 bg-light p-4 mb-0 text-uppercase resource-section-kicker">
                                     {getFormattedMessage(
                                         "purchase.detail.supplier.info"
                                     )}
                                 </h5>
-                                <div className="p-4">
-                                    <div className="d-flex align-items-center pb-1">
+                                <div className="p-4 resource-info-list">
+                                    <div className="d-flex align-items-center pb-1 resource-info-line">
                                         <FontAwesomeIcon
                                             icon={faUser}
                                             className="text-primary me-2 fs-5"
@@ -77,7 +105,7 @@ const PurchaseDetails = (props) => {
                                         {purchaseDetails.supplier &&
                                             purchaseDetails.supplier.name}
                                     </div>
-                                    <div className="d-flex align-items-center pb-1">
+                                    <div className="d-flex align-items-center pb-1 resource-info-line">
                                         <FontAwesomeIcon
                                             icon={faEnvelope}
                                             className="text-primary me-2 fs-5"
@@ -85,7 +113,7 @@ const PurchaseDetails = (props) => {
                                         {purchaseDetails.supplier &&
                                             purchaseDetails.supplier.email}
                                     </div>
-                                    <div className="d-flex align-items-center pb-1">
+                                    <div className="d-flex align-items-center pb-1 resource-info-line">
                                         <FontAwesomeIcon
                                             icon={faMobileAlt}
                                             className="text-primary me-2 fs-5"
@@ -93,7 +121,7 @@ const PurchaseDetails = (props) => {
                                         {purchaseDetails.supplier &&
                                             purchaseDetails.supplier.phone}
                                     </div>
-                                    <div className="d-flex align-items-center">
+                                    <div className="d-flex align-items-center resource-info-line">
                                         <FontAwesomeIcon
                                             icon={faLocationDot}
                                             className="text-primary me-2 fs-5"
@@ -103,14 +131,14 @@ const PurchaseDetails = (props) => {
                                     </div>
                                 </div>
                             </Col>
-                            <Col md={4} className="m-md-0 m-4">
-                                <h5 className="text-gray-600 bg-light p-4 mb-0 text-uppercase">
+                            <Col md={4} className="resource-info-card">
+                                <h5 className="text-gray-600 bg-light p-4 mb-0 text-uppercase resource-section-kicker">
                                     {getFormattedMessage(
                                         "globally.detail.company.info"
                                     )}
                                 </h5>
-                                <div className="p-4">
-                                    <div className="d-flex align-items-center pb-1">
+                                <div className="p-4 resource-info-list">
+                                    <div className="d-flex align-items-center pb-1 resource-info-line">
                                         <FontAwesomeIcon
                                             icon={faUser}
                                             className="text-primary me-2 fs-5"
@@ -119,7 +147,7 @@ const PurchaseDetails = (props) => {
                                             purchaseDetails.company_info
                                                 .company_name}
                                     </div>
-                                    <div className="d-flex align-items-center pb-1">
+                                    <div className="d-flex align-items-center pb-1 resource-info-line">
                                         <FontAwesomeIcon
                                             icon={faEnvelope}
                                             className="text-primary me-2 fs-5"
@@ -127,7 +155,7 @@ const PurchaseDetails = (props) => {
                                         {purchaseDetails.company_info &&
                                             purchaseDetails.company_info.email}
                                     </div>
-                                    <div className="d-flex align-items-center pb-1">
+                                    <div className="d-flex align-items-center pb-1 resource-info-line">
                                         <FontAwesomeIcon
                                             icon={faMobileAlt}
                                             className="text-primary me-2 fs-5"
@@ -135,7 +163,7 @@ const PurchaseDetails = (props) => {
                                         {purchaseDetails.company_info &&
                                             purchaseDetails.company_info.phone}
                                     </div>
-                                    <div className="d-flex align-items-center">
+                                    <div className="d-flex align-items-center resource-info-line">
                                         <FontAwesomeIcon
                                             icon={faLocationDot}
                                             className="text-primary me-2 fs-5"
@@ -146,14 +174,14 @@ const PurchaseDetails = (props) => {
                                     </div>
                                 </div>
                             </Col>
-                            <Col md={4}>
-                                <h5 className="text-gray-600 bg-light p-4 mb-0 text-uppercase">
+                            <Col md={4} className="resource-info-card">
+                                <h5 className="text-gray-600 bg-light p-4 mb-0 text-uppercase resource-section-kicker">
                                     {getFormattedMessage(
                                         "purchase.detail.purchase.info"
                                     )}
                                 </h5>
-                                <div className="p-4">
-                                    <div className="pb-1">
+                                <div className="p-4 resource-info-list">
+                                    <div className="pb-1 resource-info-line">
                                         <span className="me-2">
                                             {getFormattedMessage(
                                                 "globally.detail.reference"
@@ -165,7 +193,7 @@ const PurchaseDetails = (props) => {
                                                 purchaseDetails.reference_code}
                                         </span>
                                     </div>
-                                    <div className="pb-1">
+                                    <div className="pb-1 resource-info-line">
                                         <span className="me-2">
                                             {getFormattedMessage(
                                                 "globally.detail.status"
@@ -189,7 +217,7 @@ const PurchaseDetails = (props) => {
                                                 </span>
                                             ))}
                                     </div>
-                                    <div className="pb-1">
+                                    <div className="pb-1 resource-info-line">
                                         <span className="me-2">
                                             {getFormattedMessage(
                                                 "globally.detail.warehouse"
@@ -204,13 +232,14 @@ const PurchaseDetails = (props) => {
                                 </div>
                             </Col>
                         </Row>
-                        <div className="mt-5">
-                            <h5 className="text-gray-600 bg-light p-4 mb-4 text-uppercase">
+                        <div className="mt-5 resource-detail-section">
+                            <h5 className="text-gray-600 bg-light p-4 mb-4 text-uppercase resource-section-kicker">
                                 {getFormattedMessage(
                                     "globally.detail.order.summary"
                                 )}
                             </h5>
-                            <Table responsive>
+                            <div className="resource-detail-table-wrap">
+                            <Table responsive className="resource-detail-table">
                                 <thead>
                                     <tr>
                                         <th className="ps-3">
@@ -334,9 +363,10 @@ const PurchaseDetails = (props) => {
                                         )}
                                 </tbody>
                             </Table>
+                            </div>
                         </div>
                         <div className="col-xxl-5 col-lg-6 col-md-6 col-12 float-end">
-                            <div className="card">
+                            <div className="card resource-summary-card mt-3">
                                 <div className="card-body pt-7 pb-2">
                                     <div className="table-responsive">
                                         <table className="table border">
@@ -430,6 +460,7 @@ const PurchaseDetails = (props) => {
                         </div>
                     </Form>
                 </div>
+            </div>
             </div>
         </MasterLayout>
     );

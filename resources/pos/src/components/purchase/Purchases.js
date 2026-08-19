@@ -27,6 +27,8 @@ import { downloadPdf } from "../../store/action/downloadReportAction";
 import { fetchFrontSetting } from "../../store/action/frontSettingAction";
 import ShowPayment from "../../shared/showPayment/ShowPayment";
 import TopProgressBar from "../../shared/components/loaders/TopProgressBar";
+import ResourceListHeader from "../../shared/components/ResourceListHeader";
+import "../../assets/scss/custom/pages/resource-list.scss";
 
 const Product = (props) => {
     const {
@@ -156,7 +158,9 @@ const Product = (props) => {
                 paid_amount: paidTotalSum(itemsValue),
                 paid: 0,
                 due: 0,
-                id: "",
+                // La tabla usa `id` como key. Un valor estable evita que la
+                // fila de resumen colisione con una compra real.
+                id: "purchases-total-row",
                 payment: "",
                 currency: currencySymbol,
             };
@@ -344,23 +348,73 @@ const Product = (props) => {
         },
     ];
 
+    const visiblePurchases = Array.isArray(itemsValue) ? itemsValue : [];
+    const visiblePurchaseTotal = visiblePurchases.reduce(
+        (total, purchase) => total + Number(purchase.grand_total || 0),
+        0
+    );
+    const receivedPurchases = visiblePurchases.filter(
+        (purchase) => purchase.status === 1
+    ).length;
+    const processingPurchases = visiblePurchases.filter(
+        (purchase) => purchase.status === 2 || purchase.status === 3
+    ).length;
+    const purchaseStats = [
+        {
+            label: "Compras registradas",
+            value: totalRecord || 0,
+            helper: "Coinciden con los filtros",
+            tone: "primary",
+        },
+        {
+            label: "Total visible",
+            value: currencySymbolHandling(
+                allConfigData,
+                currencySymbol,
+                visiblePurchaseTotal
+            ),
+            helper: `${visiblePurchases.length} registros en esta página`,
+        },
+        {
+            label: "Recibidas visibles",
+            value: receivedPurchases,
+            helper: "Compras completadas",
+            tone: "success",
+        },
+        {
+            label: "En proceso visibles",
+            value: processingPurchases,
+            helper: "Pendientes u ordenadas",
+            tone: processingPurchases ? "warning" : "success",
+        },
+    ];
+
     return (
         <MasterLayout>
             <TopProgressBar />
             <TabTitle title={placeholderText("purchases.title")} />
-            <div className="purchases_table">
-                <ReactDataTable
-                    columns={columns}
-                    items={tableArray}
-                    onChange={onChange}
-                    isLoading={isLoading}
-                    isShowDateRangeField
-                    ButtonValue={getFormattedMessage("purchase.create.title")}
-                    totalRows={totalRecord}
-                    to="#/app/purchases/create"
-                    isShowFilterField
-                    isStatus
+            <div className="resource-list-v2 resource-list-v2--purchases">
+                <ResourceListHeader
+                    eyebrow="Abastecimiento"
+                    title={placeholderText("purchases.title")}
+                    description="Revisa proveedores, estados y montos de compra desde una vista enfocada en la operación diaria."
+                    type="purchases"
+                    stats={purchaseStats}
                 />
+                <div className="resource-list-table-shell purchases_table">
+                    <ReactDataTable
+                        columns={columns}
+                        items={tableArray}
+                        onChange={onChange}
+                        isLoading={isLoading}
+                        isShowDateRangeField
+                        ButtonValue={getFormattedMessage("purchase.create.title")}
+                        totalRows={totalRecord}
+                        to="#/app/purchases/create"
+                        isShowFilterField
+                        isStatus
+                    />
+                </div>
             </div>
             <DeletePurchase
                 onClickDeleteModel={onClickDeleteModel}

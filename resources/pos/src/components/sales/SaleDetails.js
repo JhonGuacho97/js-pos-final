@@ -22,7 +22,8 @@ import {
     faUser,
 } from "@fortawesome/free-solid-svg-icons";
 import TopProgressBar from "../../shared/components/loaders/TopProgressBar";
-import { use } from "react";
+import ResourceDetailHeader from "../../shared/components/ResourceDetailHeader";
+import "../../assets/scss/custom/pages/resource-detail.scss";
 
 const SaleDetails = (props) => {
     const {
@@ -42,6 +43,34 @@ const SaleDetails = (props) => {
         saleDetailsAction(id);
     }, []);
 
+    const currencySymbol = frontSetting?.value?.currency_symbol || "";
+    const formatCurrency = (value) =>
+        currencySymbolHandling(allConfigData, currencySymbol, value || 0);
+    const saleStatus =
+        saleDetails.status === 1
+            ? { label: "Completada", tone: "success" }
+            : saleDetails.status === 2
+                ? { label: "Pendiente", tone: "warning" }
+                : { label: "Ordenada", tone: "primary" };
+    const paidTotal = (saleDetails.payments || []).reduce(
+        (total, payment) => total + Number(payment.amount || 0),
+        0
+    );
+    const saleStats = [
+        {
+            label: "Productos",
+            value: (saleDetails.sale_items || []).length,
+        },
+        {
+            label: "Total de la venta",
+            value: formatCurrency(saleDetails.grand_total),
+        },
+        {
+            label: "Pagado",
+            value: formatCurrency(paidTotal),
+        },
+    ];
+
     return (
         <MasterLayout>
             <TopProgressBar />
@@ -50,27 +79,28 @@ const SaleDetails = (props) => {
                 to="/app/sales"
             />
             <TabTitle title={placeholderText("sale.details.title")} />
-            <div className="card">
+            <div className="resource-detail-v2 resource-detail-v2--sale">
+                <ResourceDetailHeader
+                    type="sale"
+                    eyebrow="Documento de venta"
+                    title={saleDetails.reference_code || getFormattedMessage("sale.details.title")}
+                    description="Información comercial, productos y pagos asociados a esta venta."
+                    status={saleStatus.label}
+                    statusTone={saleStatus.tone}
+                    stats={saleStats}
+                />
+            <div className="card resource-detail-document">
                 <div className="card-body">
                     <Form>
-                        <div className="row">
-                            <div className="col-12">
-                                <h4 className="font-weight-bold text-center mb-5">
-                                    {getFormattedMessage("sale.details.title")}{" "}
-                                    :{" "}
-                                    {saleDetails && saleDetails.reference_code}
-                                </h4>
-                            </div>
-                        </div>
-                        <Row className="custom-line-height">
-                            <Col md={4}>
-                                <h5 className="text-gray-600 bg-light p-4 mb-0 text-uppercase">
+                        <Row className="custom-line-height resource-info-grid g-3">
+                            <Col md={4} className="resource-info-card">
+                                <h5 className="text-gray-600 bg-light p-4 mb-0 text-uppercase resource-section-kicker">
                                     {getFormattedMessage(
                                         "sale.detail.customer.info"
                                     )}
                                 </h5>
-                                <div className="p-4">
-                                    <div className="d-flex align-items-center pb-1">
+                                <div className="p-4 resource-info-list">
+                                    <div className="d-flex align-items-center pb-1 resource-info-line">
                                         <FontAwesomeIcon
                                             icon={faUser}
                                             className="text-primary me-2 fs-5"
@@ -78,7 +108,7 @@ const SaleDetails = (props) => {
                                         {saleDetails.customer &&
                                             saleDetails.customer.name}
                                     </div>
-                                    <div className="d-flex align-items-center pb-1">
+                                    <div className="d-flex align-items-center pb-1 resource-info-line">
                                         <FontAwesomeIcon
                                             icon={faEnvelope}
                                             className="text-primary me-2 fs-5"
@@ -86,7 +116,7 @@ const SaleDetails = (props) => {
                                         {saleDetails.customer &&
                                             saleDetails.customer.email}
                                     </div>
-                                    <div className="d-flex align-items-center pb-1">
+                                    <div className="d-flex align-items-center pb-1 resource-info-line">
                                         <FontAwesomeIcon
                                             icon={faMobileAlt}
                                             className="text-primary me-2 fs-5"
@@ -95,7 +125,7 @@ const SaleDetails = (props) => {
                                             saleDetails.customer.phone}
                                     </div>
                                     {saleDetails.customer?.identification && (
-                                        <div className="d-flex align-items-center pb-1">
+                                        <div className="d-flex align-items-center pb-1 resource-info-line">
                                             <FontAwesomeIcon
                                                 icon={faIdCard}
                                                 className="text-primary me-2 fs-5"
@@ -103,7 +133,7 @@ const SaleDetails = (props) => {
                                             {saleDetails.customer.identification}
                                         </div>
                                     )}
-                                    <div className="d-flex align-items-center">
+                                    <div className="d-flex align-items-center resource-info-line">
                                         <FontAwesomeIcon
                                             icon={faLocationDot}
                                             className="text-primary me-2 fs-5"
@@ -113,14 +143,14 @@ const SaleDetails = (props) => {
                                     </div>
                                 </div>
                             </Col>
-                            <Col md={4}>
-                                <h5 className="text-gray-600 bg-light p-4 mb-0 text-uppercase">
+                            <Col md={4} className="resource-info-card">
+                                <h5 className="text-gray-600 bg-light p-4 mb-0 text-uppercase resource-section-kicker">
                                     {getFormattedMessage(
                                         "globally.detail.company.info"
                                     )}
                                 </h5>
-                                <div className="p-4">
-                                    <div className="d-flex align-items-center pb-1">
+                                <div className="p-4 resource-info-list">
+                                    <div className="d-flex align-items-center pb-1 resource-info-line">
                                         <FontAwesomeIcon
                                             icon={faUser}
                                             className="text-primary me-2 fs-5"
@@ -129,7 +159,7 @@ const SaleDetails = (props) => {
                                             saleDetails.company_info
                                                 .company_name}
                                     </div>
-                                    <div className="d-flex align-items-center pb-1">
+                                    <div className="d-flex align-items-center pb-1 resource-info-line">
                                         <FontAwesomeIcon
                                             icon={faEnvelope}
                                             className="text-primary me-2 fs-5"
@@ -137,7 +167,7 @@ const SaleDetails = (props) => {
                                         {saleDetails.company_info &&
                                             saleDetails.company_info.email}
                                     </div>
-                                    <div className="d-flex align-items-center pb-1">
+                                    <div className="d-flex align-items-center pb-1 resource-info-line">
                                         <FontAwesomeIcon
                                             icon={faMobileAlt}
                                             className="text-primary me-2 fs-5"
@@ -145,7 +175,7 @@ const SaleDetails = (props) => {
                                         {saleDetails.company_info &&
                                             saleDetails.company_info.phone}
                                     </div>
-                                    <div className="d-flex align-items-center">
+                                    <div className="d-flex align-items-center resource-info-line">
                                         <FontAwesomeIcon
                                             icon={faLocationDot}
                                             className="text-primary me-2 fs-5"
@@ -155,14 +185,14 @@ const SaleDetails = (props) => {
                                     </div>
                                 </div>
                             </Col>
-                            <Col md={4}>
-                                <h5 className="text-gray-600 bg-light p-4 mb-0 text-uppercase">
+                            <Col md={4} className="resource-info-card">
+                                <h5 className="text-gray-600 bg-light p-4 mb-0 text-uppercase resource-section-kicker">
                                     {getFormattedMessage(
                                         "sale.detail.invoice.info"
                                     )}
                                 </h5>
-                                <div className="p-4">
-                                    <div className="pb-1">
+                                <div className="p-4 resource-info-list">
+                                    <div className="pb-1 resource-info-line">
                                         <span className="me-2">
                                             {getFormattedMessage(
                                                 "globally.detail.reference"
@@ -174,7 +204,7 @@ const SaleDetails = (props) => {
                                                 saleDetails.reference_code}
                                         </span>
                                     </div>
-                                    <div className="pb-1">
+                                    <div className="pb-1 resource-info-line">
                                         <span className="me-2">
                                             {getFormattedMessage(
                                                 "globally.detail.status"
@@ -198,7 +228,7 @@ const SaleDetails = (props) => {
                                                 </span>
                                             ))}
                                     </div>
-                                    <div className="pb-1">
+                                    <div className="pb-1 resource-info-line">
                                         <span className="me-2">
                                             {getFormattedMessage(
                                                 "globally.detail.warehouse"
@@ -210,7 +240,7 @@ const SaleDetails = (props) => {
                                                 saleDetails.warehouse.name}
                                         </span>
                                     </div>
-                                    <div>
+                                    <div className="resource-info-line">
                                         <span className="me-2">
                                             {getFormattedMessage(
                                                 "globally.detail.payment.status"
@@ -234,13 +264,14 @@ const SaleDetails = (props) => {
                                 </div>
                             </Col>
                         </Row>
-                        <div className="mt-5">
-                            <h5 className="text-gray-600 bg-light p-4 mb-5 text-uppercase">
+                        <div className="mt-5 resource-detail-section">
+                            <h5 className="text-gray-600 bg-light p-4 mb-5 text-uppercase resource-section-kicker">
                                 {getFormattedMessage(
                                     "globally.detail.order.summary"
                                 )}
                             </h5>
-                            <Table responsive>
+                            <div className="resource-detail-table-wrap">
+                            <Table responsive className="resource-detail-table">
                                 <thead>
                                     <tr>
                                         <th className="ps-3">
@@ -363,17 +394,18 @@ const SaleDetails = (props) => {
                                         )}
                                 </tbody>
                             </Table>
+                            </div>
                         </div>
-                        <Row>
+                        <Row className="resource-detail-lower">
                             <Col xxl={7} lg={6} md={6} xs={12}>
                                 {saleDetails.payments &&
                                     saleDetails.payments.length > 0 && (
-                                        <div className="card">
-                                            <h5 className="text-gray-600 bg-light p-4 mb-0 text-uppercase">
+                                        <div className="card resource-payment-card">
+                                            <h5 className="text-gray-600 bg-light p-4 mb-0 text-uppercase resource-section-kicker">
                                                 Detalles de pago
                                             </h5>
                                             <div className="card-body">
-                                                <Table responsive>
+                                                <Table responsive className="resource-detail-table">
                                                     <thead>
                                                         <tr>
                                                             <th>
@@ -434,7 +466,7 @@ const SaleDetails = (props) => {
                                     )}
                             </Col>
                             <Col xxl={5} lg={6} md={6} xs={12}>
-                        <div className="card">
+                        <div className="card resource-summary-card">
                             <div className="card-body pt-7 pb-2">
                                 <div className="table-responsive">
                                     <table className="table border">
@@ -529,6 +561,7 @@ const SaleDetails = (props) => {
                         </Row>
                     </Form>
                 </div>
+            </div>
             </div>
         </MasterLayout>
     );

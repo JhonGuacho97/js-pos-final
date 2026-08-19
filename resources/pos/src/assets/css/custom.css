@@ -4103,11 +4103,43 @@ div .rdt_Pagination div:first-of-type svg {
 }
 
 .dash-header-greeting {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 9px;
     font-size: 1.75rem;
     font-weight: 700;
     letter-spacing: -0.01em;
     color: #111827;
     margin: 0 0 12px;
+}
+
+.dash-header-greeting-emoji {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 36px;
+    height: 36px;
+    border: 1px solid #dce6fb;
+    border-radius: 12px;
+    background: #ffffff;
+    box-shadow: 0 5px 16px rgba(23, 32, 51, 0.07);
+    font-size: 1.2rem;
+    line-height: 1;
+}
+
+@media (max-width: 575px) {
+    .dash-header-greeting {
+        gap: 7px;
+        font-size: 1.45rem;
+    }
+
+    .dash-header-greeting-emoji {
+        width: 32px;
+        height: 32px;
+        border-radius: 10px;
+        font-size: 1.05rem;
+    }
 }
 
 .dash-header-meta {

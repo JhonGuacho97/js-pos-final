@@ -1,7 +1,7 @@
 import { faList } from '@fortawesome/free-solid-svg-icons';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import React, { useState } from 'react';
-import { Nav } from 'react-bootstrap-v5';
+import { Modal, Nav } from 'react-bootstrap-v5';
 import { useNavigate } from 'react-router';
 import PosCalculator from './PosCalculator';
 import Dropdown from 'react-bootstrap/Dropdown';
@@ -12,6 +12,7 @@ const HeaderAllButton = ( props ) => {
     const { setOpneCalculator, opneCalculator, goToDetailScreen, goToHoldScreen, holdListData, handleClickCloseRegister } = props
     const [ isFullscreen, setIsFullscreen ] = useState( false );
     const [ showROAlertModel, setShowROAlertModel ] = useState( false )
+    const [ showMoreActions, setShowMoreActions ] = useState( false )
     const navigate = useNavigate();
 
     const fullScreen = () => {
@@ -66,7 +67,7 @@ const HeaderAllButton = ( props ) => {
                     devolución de venta -- antes repartido entre un ícono suelto
                     (dashboard) y un dropdown aparte (bolsa verde, solo
                     registro), ahora consolidado en un solo lugar. */}
-                <Nav.Item className='d-flex align-items-center justify-content-center ms-3 pos-more-menu'>
+                <Nav.Item className='d-none d-sm-flex align-items-center justify-content-center ms-3 pos-more-menu'>
                     <Dropdown align='end'>
                         <Dropdown.Toggle title="Más acciones" as='div' className='pe-0 cursor-pointer hide-arrow' id='pos-more-actions-dropdown'>
                             <i className="bi bi-three-dots-vertical fa-2x" />
@@ -92,7 +93,60 @@ const HeaderAllButton = ( props ) => {
                         </Dropdown.Menu>
                     </Dropdown>
                 </Nav.Item>
+                <Nav.Item className='d-flex d-sm-none align-items-center justify-content-center ms-3 pos-more-menu pos-more-menu-mobile'>
+                    <button
+                        type="button"
+                        className="pos-more-actions-trigger"
+                        title="Más acciones"
+                        aria-label="Más acciones"
+                        onClick={() => setShowMoreActions( true )}
+                    >
+                        <i className="bi bi-three-dots-vertical fa-2x" />
+                    </button>
+                </Nav.Item>
             </Nav>
+            <Modal
+                show={showMoreActions}
+                onHide={() => setShowMoreActions( false )}
+                centered
+                className="pos-more-actions-modal"
+                aria-labelledby="pos-more-actions-title"
+            >
+                <Modal.Header closeButton>
+                    <Modal.Title id="pos-more-actions-title">Más acciones</Modal.Title>
+                </Modal.Header>
+                <Modal.Body>
+                    <button type="button" className="pos-mobile-action" onClick={() => {
+                        setShowMoreActions( false );
+                        setShowROAlertModel( true );
+                    }}>
+                        <i className="bi bi-speedometer2" />
+                        <span>{getFormattedMessage( "pos.more-menu.dashboard.label" )}</span>
+                    </button>
+                    <button type="button" className="pos-mobile-action" onClick={( e ) => {
+                        e.stopPropagation();
+                        setShowMoreActions( false );
+                        goToDetailScreen();
+                    }}>
+                        <i className="bi bi-file-earmark-text" />
+                        <span>{getFormattedMessage( "register.details.title" )}</span>
+                    </button>
+                    <button type="button" className="pos-mobile-action" onClick={() => {
+                        setShowMoreActions( false );
+                        handleClickCloseRegister();
+                    }}>
+                        <i className="bi bi-lock" />
+                        <span>{getFormattedMessage( "globally.close-register.title" )}</span>
+                    </button>
+                    <button type="button" className="pos-mobile-action" onClick={() => {
+                        setShowMoreActions( false );
+                        navigate( '/app/sale-return' );
+                    }}>
+                        <i className="bi bi-arrow-return-left" />
+                        <span>{getFormattedMessage( "sale-return.title" )}</span>
+                    </button>
+                </Modal.Body>
+            </Modal>
             {opneCalculator && <PosCalculator opneCalculatorModel={opneCalculatorModel} />}
             <PosRegisterOpenAlertModel showROAlertModel={showROAlertModel} setShowROAlertModel={setShowROAlertModel} />
         </>

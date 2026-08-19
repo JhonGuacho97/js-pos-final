@@ -25,6 +25,7 @@ import { purchaseStatusOptions, toastType } from '../../constants';
 import ReactDatePicker from '../../shared/datepicker/ReactDatePicker';
 import ProductMainCalculation from '../sales/ProductMainCalculation';
 import ReactSelect from '../../shared/select/reactSelect';
+import '../../assets/scss/custom/pages/sales-form.scss';
 
 const PurchaseForm = ( props ) => {
     const {
@@ -132,7 +133,7 @@ const PurchaseForm = ( props ) => {
         let isValid = false;
         const qtyCart = updateProducts.filter( ( a ) => a.quantity === 0 );
         if ( !purchaseValue.date ) {
-            error[ 'date' ] = getFormattedMessage( 'globally.date.validate.label' );
+            errorss[ 'date' ] = getFormattedMessage( 'globally.date.validate.label' );
         } else if ( !purchaseValue.warehouse_id ) {
             errorss[ 'warehouse_id' ] = getFormattedMessage( 'purchase.select.warehouse.validate.label' )
         } else if ( !purchaseValue.supplier_id ) {
@@ -278,162 +279,146 @@ const PurchaseForm = ( props ) => {
     }
 
     return (
-        <div className='card'>
-            <div className='card-body'>
-                {/*<Form>*/}
-                <div className='row'>
-                    <div className='col-md-4'>
-                        <label className='form-label'>
-                            {getFormattedMessage( 'react-data-table.date.column.label' )}:
-                        </label>
-                        <span className='required' />
-                        <div className='position-relative'>
-                            <ReactDatePicker onChangeDate={handleCallback} newStartDate={purchaseValue.date} />
+        <div className='sale-form-v2 purchase-form-v2'>
+            <div className='sale-form-heading'>
+                <div>
+                    <span className='sale-form-eyebrow'>Compras</span>
+                    <h1>{singlePurchase ? 'Editar compra' : 'Nueva compra'}</h1>
+                    <p>Registra la recepción, agrega productos y verifica el costo total.</p>
+                </div>
+                <div className='sale-form-heading-status'>
+                    <span className='sale-status-dot' />
+                    {singlePurchase ? 'Edición en curso' : 'Borrador'}
+                </div>
+            </div>
+
+            <div className='row g-4 align-items-start'>
+                <div className='col-xl-8'>
+                    <section className='sale-panel'>
+                        <div className='sale-panel-heading'>
+                            <div className='sale-panel-icon'><i className='bi bi-truck' /></div>
+                            <div><h2>Datos de recepción</h2><p>Selecciona la fecha, la bodega de destino y el proveedor.</p></div>
                         </div>
-                        <span className='text-danger d-block fw-400 fs-small mt-2'>{errors[ 'date' ] ? errors[ 'date' ] : null}</span>
-                    </div>
-                    <div className='col-md-4 mb-3'>
-                        <ReactSelect key={warehousePrefilled ? 'warehouse-prefilled' : 'warehouse-default'}
-                            data={warehouses} onChange={onWarehouseChange}
-                            defaultValue={purchaseValue.warehouse_id} addSearchItems={singlePurchase}
-                            isWarehouseDisable={true}
-                            title={getFormattedMessage( 'warehouse.title' )} errors={errors[ 'warehouse_id' ]}
-                            placeholder={placeholderText( 'purchase.select.warehouse.placeholder.label' )} />
-                    </div>
-                    <div className='col-md-4 mb-3'>
-                        <ReactSelect data={suppliers} onChange={onSupplierChange}
-                            defaultValue={purchaseValue.supplier_id}
-                            title={getFormattedMessage( 'supplier.title' )} errors={errors[ 'supplier_id' ]}
-                            placeholder={placeholderText( 'purchase.select.supplier.placeholder.label' )} />
-                    </div>
-                    <div className='col-md-12 mb-3'>
-                        <label className='form-label'>
-                            {getFormattedMessage( 'dashboard.stockAlert.product.label' )}:
-                        </label>
-                        <ProductSearch values={purchaseValue} products={products} isAllProducts={true}
-                            handleValidation={handleValidation} updateProducts={updateProducts}
-                            setUpdateProducts={setUpdateProducts} customProducts={customProducts}
-                            presentationMode="purchase" initialSearchCode={initialSearchCode} />
-                    </div>
-                    <div className='col-12 md-12'>
-                        <label
-                            className='form-label'>
-                            {getFormattedMessage( 'purchase.order-item.table.label' )}:
-                        </label>
-                        <span className='required ' />
-                        <Table responsive>
-                            <thead>
-                                <tr>
+                        <div className='row g-3'>
+                            <div className='col-md-4'>
+                                <label className='form-label'>{getFormattedMessage( 'react-data-table.date.column.label' )}</label>
+                                <div className='position-relative'>
+                                    <ReactDatePicker onChangeDate={handleCallback} newStartDate={purchaseValue.date} />
+                                </div>
+                                {errors.date && <span className='text-danger d-block fw-400 fs-small mt-2'>{errors.date}</span>}
+                            </div>
+                            <div className='col-md-4'>
+                                <ReactSelect key={warehousePrefilled ? 'warehouse-prefilled' : 'warehouse-default'}
+                                    data={warehouses} onChange={onWarehouseChange} defaultValue={purchaseValue.warehouse_id}
+                                    addSearchItems={singlePurchase} isWarehouseDisable={true}
+                                    title={getFormattedMessage( 'warehouse.title' )} errors={errors.warehouse_id}
+                                    placeholder={placeholderText( 'purchase.select.warehouse.placeholder.label' )} />
+                            </div>
+                            <div className='col-md-4'>
+                                <ReactSelect data={suppliers} onChange={onSupplierChange} defaultValue={purchaseValue.supplier_id}
+                                    title={getFormattedMessage( 'supplier.title' )} errors={errors.supplier_id}
+                                    placeholder={placeholderText( 'purchase.select.supplier.placeholder.label' )} />
+                            </div>
+                        </div>
+                    </section>
+
+                    <section className='sale-panel sale-products-panel'>
+                        <div className='sale-panel-heading sale-products-heading'>
+                            <div className='sale-panel-icon'><i className='bi bi-box-arrow-in-down' /></div>
+                            <div><h2>Productos de la compra</h2><p>Busca artículos y registra cantidades y costos de entrada.</p></div>
+                            <span className='sale-product-count'>{updateProducts.length} {updateProducts.length === 1 ? 'producto' : 'productos'}</span>
+                        </div>
+                        <div className='sale-product-search'>
+                            <label className='form-label'>{getFormattedMessage( 'dashboard.stockAlert.product.label' )}</label>
+                            <ProductSearch values={purchaseValue} products={products} isAllProducts={true}
+                                handleValidation={handleValidation} updateProducts={updateProducts}
+                                setUpdateProducts={setUpdateProducts} customProducts={customProducts}
+                                presentationMode='purchase' initialSearchCode={initialSearchCode} />
+                        </div>
+                        <div className='sale-products-table'>
+                            <Table responsive>
+                                <thead><tr>
                                     <th>{getFormattedMessage( 'dashboard.stockAlert.product.label' )}</th>
                                     <th>{getFormattedMessage( 'purchase.order-item.table.net-unit-cost.column.label' )}</th>
                                     <th>{getFormattedMessage( 'purchase.order-item.table.stock.column.label' )}</th>
-                                    <th className='text-lg-start text-center'>{getFormattedMessage( 'purchase.order-item.table.qty.column.label' )}</th>
+                                    <th>{getFormattedMessage( 'purchase.order-item.table.qty.column.label' )}</th>
                                     <th>{getFormattedMessage( 'purchase.order-item.table.discount.column.label' )}</th>
                                     <th>{getFormattedMessage( 'purchase.order-item.table.tax.column.label' )}</th>
                                     <th>{getFormattedMessage( 'purchase.order-item.table.sub-total.column.label' )}</th>
                                     <th>{getFormattedMessage( 'react-data-table.action.column.label' )}</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                {updateProducts && updateProducts.map( ( singleProduct, index ) => {
-                                    return <PurchaseTable singleProduct={singleProduct} index={index}
-                                        updateQty={updatedQty}
-                                        updateCost={updateCost} updateDiscount={updateDiscount}
-                                        updateProducts={updateProducts}
-                                        updateSubTotal={updateSubTotal} frontSetting={frontSetting}
-                                        setUpdateProducts={setUpdateProducts} updateTax={updateTax}
-                                        updatePurchaseUnit={updatePurchaseUnit}
-                                        purchaseItem={singlePurchase && singlePurchase.purchase_items}
-                                        selectedWarehouseId={purchaseValue.warehouse_id?.value}
-                                    />
-                                } )}
-                                {!updateProducts.length && <tr>
-                                    <td colSpan={8} className='fs-5 px-3 py-6 custom-text-center'>
+                                </tr></thead>
+                                <tbody>
+                                    {updateProducts.map( ( singleProduct, index ) => (
+                                        <PurchaseTable key={singleProduct.id ?? index} singleProduct={singleProduct} index={index}
+                                            updateQty={updatedQty} updateCost={updateCost} updateDiscount={updateDiscount}
+                                            updateProducts={updateProducts} updateSubTotal={updateSubTotal} frontSetting={frontSetting}
+                                            setUpdateProducts={setUpdateProducts} updateTax={updateTax}
+                                            updatePurchaseUnit={updatePurchaseUnit}
+                                            purchaseItem={singlePurchase && singlePurchase.purchase_items}
+                                            selectedWarehouseId={purchaseValue.warehouse_id?.value} />
+                                    ) )}
+                                    {!updateProducts.length && <tr><td colSpan={8} className='fs-5 px-3 py-6 custom-text-center'>
                                         {getFormattedMessage( 'sale.product.table.no-data.label' )}
-                                    </td>
-                                </tr>
-                                }
-                            </tbody>
-                        </Table>
-                    </div>
-                    <div className='col-12'>
-                        <ProductMainCalculation inputValues={purchaseValue} updateProducts={updateProducts}
-                            frontSetting={frontSetting} allConfigData={allConfigData} />
-                    </div>
-                    <div className='col-md-4 mb-5'>
-                        <label className='form-label'>
-                            {getFormattedMessage( 'purchase.input.order-tax.label' )}:
-                        </label>
-                        <InputGroup>
-                            <input aria-label='Dollar amount (with dot and two decimal places)'
-                                className='form-control'
-                                onBlur={( event ) => onBlurInput( event )}
-                                onFocus={( event ) => onFocusInput( event )}
-                                value={purchaseValue.tax_rate} type='text' name='tax_rate'
-                                onKeyPress={( event ) => decimalValidate( event )}
-                                onChange={( e ) => {
-                                    onChangeInput( e )
-                                }} />
-                            <InputGroup.Text>%</InputGroup.Text>
-                        </InputGroup>
-                        <span className='text-danger d-block fw-400 fs-small mt-2'>{errors[ 'orderTax' ] ? errors[ 'orderTax' ] : null}</span>
-                    </div>
-                    <div className='col-md-4 mb-5'>
-                        <label className='form-label'>
-                            {getFormattedMessage( 'purchase.order-item.table.discount.column.label' )}:
-                        </label>
-                        <InputGroup>
-                            <input aria-label='Dollar amount (with dot and two decimal places)'
-                                className='form-control'
-                                onBlur={( event ) => onBlurInput( event )}
-                                onFocus={( event ) => onFocusInput( event )}
-                                value={purchaseValue.discount} type='text' name='discount'
-                                onKeyPress={( event ) => decimalValidate( event )}
-                                onChange={( e ) => onChangeInput( e )}
-                            />
-                            <InputGroup.Text>{frontSetting.value && frontSetting.value.currency_symbol}</InputGroup.Text>
-                        </InputGroup>
-                        <span className='text-danger d-block fw-400 fs-small mt-2'>{errors[ 'discount' ] ? errors[ 'discount' ] : null}</span>
-                    </div>
-                    <div className='col-md-4 mb-5'>
-                        <label
-                            className='form-label'>
-                            {getFormattedMessage( 'purchase.input.shipping.label' )}:
-                        </label>
-                        <InputGroup>
-                            <input aria-label='Dollar amount (with dot and two decimal places)'
-                                className='form-control' value={purchaseValue.shipping}
-                                type='text' name='shipping'
-                                onBlur={( event ) => onBlurInput( event )}
-                                onFocus={( event ) => onFocusInput( event )}
-                                onKeyPress={( event ) => decimalValidate( event )}
-                                onChange={( e ) => onChangeInput( e )}
-                            />
-                            <InputGroup.Text>{frontSetting.value && frontSetting.value.currency_symbol}</InputGroup.Text>
-                        </InputGroup>
-                        <span className='text-danger d-block fw-400 fs-small mt-2'>{errors[ 'shipping' ] ? errors[ 'shipping' ] : null}</span>
-                    </div>
-                    <div className='col-md-4 mb-5'>
-                        <ReactSelect multiLanguageOption={statusFilterOptions} onChange={onStatusChange} name='status'
-                            title={getFormattedMessage( 'purchase.select.status.label' )}
-                            value={purchaseValue.status_id} errors={errors[ 'status_id' ]}
-                            defaultValue={statusDefaultValue[ 0 ]}
-                            placeholder={getFormattedMessage( 'purchase.select.status.label' )} />
-                    </div>
-                    <div className='col-md-12 mb-5'>
-                        <label className='form-label'>
-                            {getFormattedMessage( 'globally.input.notes.label' )}:
-                        </label>
-                        <textarea name='notes' className='form-control'
-                            placeholder={placeholderText( 'purchase.placeholder.notes.input' )}
-                            onChange={( e ) => onNotesChangeInput( e )}
-                            value={purchaseValue.notes}
-                        />
-                        <span className='text-danger d-block fw-400 fs-small mt-2'>{errors[ 'notes' ] ? errors[ 'notes' ] : null}</span>
-                    </div>
-                    <ModelFooter onEditRecord={singlePurchase} onSubmit={onSubmit} link='/app/purchases' />
+                                    </td></tr>}
+                                </tbody>
+                            </Table>
+                        </div>
+                    </section>
                 </div>
-                {/*</Form>*/}
+
+                <div className='col-xl-4'>
+                    <aside className='sale-summary-panel'>
+                        <div className='sale-summary-heading'>
+                            <div><span className='sale-form-eyebrow'>Resumen</span><h2>Total de la compra</h2></div>
+                            <i className='bi bi-calculator' />
+                        </div>
+                        <div className='sale-summary-calculation'>
+                            <ProductMainCalculation inputValues={purchaseValue} updateProducts={updateProducts}
+                                frontSetting={frontSetting} allConfigData={allConfigData} />
+                        </div>
+                        <div className='sale-summary-section'>
+                            <div className='sale-summary-section-title'><i className='bi bi-sliders' /> Ajustes del total</div>
+                            <div className='row g-3'>
+                                <div className='col-12'>
+                                    <label className='form-label'>{getFormattedMessage( 'purchase.input.order-tax.label' )}</label>
+                                    <InputGroup><input aria-label='Impuesto de compra' className='form-control' value={purchaseValue.tax_rate}
+                                        type='text' name='tax_rate' onBlur={onBlurInput} onFocus={onFocusInput}
+                                        onKeyPress={decimalValidate} onChange={onChangeInput} /><InputGroup.Text>%</InputGroup.Text></InputGroup>
+                                </div>
+                                <div className='col-sm-6 col-xl-12'>
+                                    <label className='form-label'>{getFormattedMessage( 'purchase.order-item.table.discount.column.label' )}</label>
+                                    <InputGroup><input aria-label='Descuento de compra' className='form-control' value={purchaseValue.discount}
+                                        type='text' name='discount' onBlur={onBlurInput} onFocus={onFocusInput}
+                                        onKeyPress={decimalValidate} onChange={onChangeInput} />
+                                        <InputGroup.Text>{frontSetting.value && frontSetting.value.currency_symbol}</InputGroup.Text></InputGroup>
+                                </div>
+                                <div className='col-sm-6 col-xl-12'>
+                                    <label className='form-label'>{getFormattedMessage( 'purchase.input.shipping.label' )}</label>
+                                    <InputGroup><input aria-label='Envío de compra' className='form-control' value={purchaseValue.shipping}
+                                        type='text' name='shipping' onBlur={onBlurInput} onFocus={onFocusInput}
+                                        onKeyPress={decimalValidate} onChange={onChangeInput} />
+                                        <InputGroup.Text>{frontSetting.value && frontSetting.value.currency_symbol}</InputGroup.Text></InputGroup>
+                                </div>
+                            </div>
+                        </div>
+                        <div className='sale-summary-section'>
+                            <div className='sale-summary-section-title'><i className='bi bi-check2-circle' /> Estado</div>
+                            <ReactSelect multiLanguageOption={statusFilterOptions} onChange={onStatusChange} name='status'
+                                title={getFormattedMessage( 'purchase.select.status.label' )} value={purchaseValue.status_id}
+                                errors={errors.status_id} defaultValue={statusDefaultValue[ 0 ]}
+                                placeholder={getFormattedMessage( 'purchase.select.status.label' )} />
+                        </div>
+                        <div className='sale-summary-section sale-notes-section'>
+                            <label className='sale-summary-section-title' htmlFor='purchase-notes'><i className='bi bi-card-text' /> Información adicional</label>
+                            <textarea id='purchase-notes' name='notes' className='form-control' rows={3}
+                                placeholder={placeholderText( 'purchase.placeholder.notes.input' )}
+                                onChange={onNotesChangeInput} value={purchaseValue.notes || ''} />
+                        </div>
+                        <div className='sale-form-actions'>
+                            <ModelFooter onEditRecord={singlePurchase} onSubmit={onSubmit} link='/app/purchases' />
+                        </div>
+                    </aside>
+                </div>
             </div>
         </div>
     )
