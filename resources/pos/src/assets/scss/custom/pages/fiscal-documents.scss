@@ -1,0 +1,302 @@
+.fiscal-documents-v2 {
+    .fiscal-filter-panel,
+    .fiscal-alert,
+    .fiscal-table-shell {
+        border: 1px solid var(--resource-border);
+        border-radius: 18px;
+        background: #fff;
+        box-shadow: 0 9px 30px rgba(23, 32, 51, .05);
+    }
+
+    .fiscal-filter-panel {
+        margin-bottom: 16px;
+        padding: 18px;
+    }
+
+    .fiscal-panel-heading {
+        display: flex;
+        margin-bottom: 15px;
+        align-items: flex-start;
+        justify-content: space-between;
+        gap: 16px;
+    }
+
+    .fiscal-panel-heading h2 {
+        margin: 0;
+        color: var(--resource-text);
+        font-size: 15px;
+        font-weight: 760;
+    }
+
+    .fiscal-panel-heading p {
+        margin: 3px 0 0;
+        color: var(--resource-muted);
+        font-size: 11px;
+    }
+
+    .fiscal-filter-grid {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(150px, .75fr)) repeat(2, minmax(190px, 1fr)) minmax(120px, .65fr);
+        gap: 12px;
+        align-items: end;
+    }
+
+    .fiscal-filter-field { min-width: 0; }
+    .fiscal-filter-field--search { grid-column: span 3; }
+
+    .fiscal-filter-field label {
+        display: block;
+        margin-bottom: 6px;
+        color: #536075;
+        font-size: 10px;
+        font-weight: 750;
+        letter-spacing: .025em;
+    }
+
+    .fiscal-filter-field .form-control,
+    .fiscal-filter-field .form-select,
+    .fiscal-toolbar .form-select {
+        min-height: 42px;
+        border: 1px solid #dfe5ee;
+        border-radius: 11px;
+        background-color: #f8fafc;
+        box-shadow: none;
+        color: #344054;
+        font-size: 12px;
+    }
+
+    .fiscal-filter-field .form-control:focus,
+    .fiscal-filter-field .form-select:focus {
+        border-color: rgba(21, 94, 239, .5);
+        background-color: #fff;
+        box-shadow: 0 0 0 4px rgba(21, 94, 239, .09);
+    }
+
+    .fiscal-filter-hint {
+        margin-top: 5px;
+        color: #8a94a6;
+        font-size: 9px;
+    }
+
+    .fiscal-filter-action .btn,
+    .fiscal-primary-action {
+        display: inline-flex;
+        min-height: 42px;
+        border-radius: 11px;
+        align-items: center;
+        justify-content: center;
+        font-size: 12px;
+        font-weight: 720;
+        box-shadow: none;
+    }
+
+    .fiscal-alert {
+        display: flex;
+        margin-bottom: 16px;
+        padding: 13px 15px;
+        border-color: #f8d7dc;
+        background: #fff5f6;
+        color: #a82f40;
+        align-items: flex-start;
+        gap: 10px;
+        font-size: 11px;
+        line-height: 1.5;
+    }
+
+    .fiscal-alert svg { margin-top: 2px; }
+
+    .fiscal-table-shell { overflow: hidden; }
+
+    .fiscal-toolbar {
+        display: flex;
+        min-height: 64px;
+        padding: 13px 16px;
+        border-bottom: 1px solid #e8edf4;
+        background: #fff;
+        align-items: center;
+        justify-content: space-between;
+        gap: 14px;
+    }
+
+    .fiscal-toolbar-copy strong {
+        display: block;
+        color: var(--resource-text);
+        font-size: 13px;
+        font-weight: 750;
+    }
+
+    .fiscal-toolbar-copy span {
+        color: var(--resource-muted);
+        font-size: 10px;
+    }
+
+    .fiscal-page-size {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        color: #536075;
+        font-size: 10px;
+        font-weight: 700;
+    }
+
+    .fiscal-page-size .form-select { width: 76px; min-height: 38px; }
+
+    .fiscal-credit-toolbar { min-height: 72px; }
+
+    .fiscal-credit-search {
+        position: relative;
+        display: flex;
+        width: min(100%, 520px);
+        align-items: center;
+        gap: 8px;
+    }
+
+    .fiscal-credit-search > svg {
+        position: absolute;
+        left: 14px;
+        z-index: 1;
+        color: #8a94a6;
+        font-size: 12px;
+    }
+
+    .fiscal-credit-search .form-control {
+        min-height: 42px;
+        padding-left: 37px;
+        border: 1px solid #dfe5ee;
+        border-radius: 11px;
+        background: #f8fafc;
+        box-shadow: none;
+        font-size: 12px;
+    }
+
+    .fiscal-credit-search .btn { min-height: 42px; border-radius: 11px; font-size: 11px; font-weight: 700; }
+
+    .fiscal-table-wrap { overflow-x: auto; }
+
+    .fiscal-table {
+        min-width: 940px;
+        margin: 0;
+    }
+
+    .fiscal-table thead th {
+        padding: 13px 14px;
+        border-bottom: 1px solid #e5eaf1;
+        background: #f7f9fc;
+        color: #758096;
+        font-size: 9px;
+        font-weight: 800;
+        letter-spacing: .055em;
+        text-transform: uppercase;
+        white-space: nowrap;
+    }
+
+    .fiscal-table tbody td {
+        padding: 13px 14px;
+        border-color: #edf0f4;
+        color: #344054;
+        font-size: 11px;
+        vertical-align: middle;
+    }
+
+    .fiscal-table tbody tr:hover { background: #f8faff; }
+
+    .fiscal-document-link {
+        border: 0;
+        background: transparent;
+        color: var(--resource-primary);
+        font-size: 11px;
+        font-weight: 750;
+        text-decoration: none;
+    }
+
+    .fiscal-document-link:hover { color: #0b4dd8; }
+
+    .fiscal-reason {
+        max-width: 220px;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+    }
+
+    .fiscal-type-badge,
+    .fiscal-state-badge,
+    .fiscal-signature-badge {
+        display: inline-flex;
+        padding: 6px 9px;
+        border: 1px solid #dce6fb;
+        border-radius: 999px;
+        background: #f3f7ff;
+        color: #155eef;
+        align-items: center;
+        font-size: 9px;
+        font-weight: 750;
+        white-space: nowrap;
+    }
+
+    .fiscal-state-badge--active,
+    .fiscal-signature-badge--yes { border-color: #d7f0e5; background: #edf9f3; color: #11845b; }
+    .fiscal-state-badge--cancelled,
+    .fiscal-signature-badge--no { border-color: #e4e7ec; background: #f4f5f7; color: #697386; }
+
+    .fiscal-action-button {
+        display: inline-grid;
+        min-width: 36px;
+        min-height: 34px;
+        padding: 7px 10px;
+        border-radius: 9px;
+        place-items: center;
+        font-size: 10px;
+        font-weight: 700;
+    }
+
+    .fiscal-empty-state { padding: 40px 20px !important; color: #8a94a6 !important; text-align: center; }
+
+    .fiscal-pagination {
+        display: flex;
+        min-height: 58px;
+        padding: 11px 16px;
+        border-top: 1px solid #e8edf4;
+        background: #fbfcfe;
+        align-items: center;
+        justify-content: space-between;
+        gap: 12px;
+    }
+
+    .fiscal-pagination .btn {
+        min-height: 36px;
+        padding: 7px 12px;
+        border: 1px solid #e1e7ef;
+        border-radius: 9px;
+        background: #fff;
+        color: #536075;
+        font-size: 10px;
+        font-weight: 700;
+    }
+
+    .fiscal-pagination .btn:disabled { opacity: .48; }
+    .fiscal-pagination-total { color: var(--resource-primary); font-size: 10px; font-weight: 750; }
+}
+
+@media (max-width: 1199px) {
+    .fiscal-documents-v2 {
+        .fiscal-filter-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+        .fiscal-filter-field--search { grid-column: span 2; }
+    }
+}
+
+@media (max-width: 767px) {
+    .fiscal-documents-v2 {
+        .fiscal-filter-panel { padding: 13px; border-radius: 15px; }
+        .fiscal-filter-grid { grid-template-columns: 1fr; }
+        .fiscal-filter-field--search { grid-column: auto; }
+        .fiscal-filter-action .btn { width: 100%; }
+        .fiscal-toolbar { align-items: flex-start; flex-direction: column; }
+        .fiscal-credit-search { width: 100%; }
+        .fiscal-credit-toolbar .fiscal-primary-action { width: 100%; }
+        .fiscal-page-size { width: 100%; justify-content: space-between; }
+        .fiscal-pagination { align-items: stretch; flex-direction: column; }
+        .fiscal-pagination > div { display: grid !important; grid-template-columns: 1fr 1fr; }
+        .fiscal-pagination .btn { width: 100%; }
+        .fiscal-pagination-total { text-align: center; }
+    }
+}

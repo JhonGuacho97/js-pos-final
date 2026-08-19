@@ -3,6 +3,8 @@ import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import {
     faBoxOpen,
     faCartShopping,
+    faFileCircleMinus,
+    faFileInvoice,
     faReceipt,
 } from "@fortawesome/free-solid-svg-icons";
 
@@ -10,6 +12,8 @@ const resourceIcons = {
     products: faBoxOpen,
     purchases: faCartShopping,
     sales: faReceipt,
+    electronic: faFileInvoice,
+    "credit-notes": faFileCircleMinus,
 };
 
 const ResourceListHeader = ({ eyebrow, title, description, type, stats }) => (

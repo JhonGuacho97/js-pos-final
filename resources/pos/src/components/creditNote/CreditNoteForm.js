@@ -2,7 +2,6 @@ import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { connect, useDispatch } from 'react-redux';
 import { InputGroup } from 'react-bootstrap-v5';
-import { Tab, Tabs } from 'react-bootstrap';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'; 
 import { faSearch, faPlus, faEye, faTimes } from '@fortawesome/free-solid-svg-icons';
 import apiConfig from '../../config/apiConfig';
@@ -12,7 +11,7 @@ import ReactSelect from '../../shared/select/reactSelect';
 import { fetchProductsByWarehouse } from '../../store/action/productAction';
 import { fetchAllCustomer } from '../../store/action/customerAction';
 import { prepareSaleProductArray } from '../../shared/prepareArray/prepareSaleArray';
-import { calculateCartTotalAmount, calculateCartTotalTaxAmount } from '../../shared/calculation/calculation';
+import { calculateCartTotalAmount, calculateCartTotalTaxAmount, calculateSubTotal } from '../../shared/calculation/calculation';
 import { addToast } from '../../store/action/toastAction';
 import { toastType } from '../../constants';
 import CreditNoteCategoryModal from './CreditNoteCategoryModal';
@@ -22,6 +21,8 @@ import utc from 'dayjs/plugin/utc';
 import localizedFormat from 'dayjs/plugin/localizedFormat';
 import isoWeek from 'dayjs/plugin/isoWeek';
 import relativeTime from 'dayjs/plugin/relativeTime';
+import '../../assets/scss/custom/pages/sales-form.scss';
+import '../../assets/scss/custom/pages/credit-note-form.scss';
 dayjs.extend(utc);
 dayjs.extend(localizedFormat);
 dayjs.extend(isoWeek);
@@ -230,214 +231,240 @@ const CreditNoteForm = (props) => {
     };
 
     const categoriaOptions = categorias.map((c) => ({ value: c.id, label: c.name }));
+    const customerData = factura?.customer?.attributes || factura?.customer || {};
+    const subtotalNota = Number(calculateSubTotal(updateProducts) || 0);
+    const impuestoNota = Number(calculateCartTotalTaxAmount(updateProducts, creditNoteValue) || 0);
+    const totalNota = Number(calculateCartTotalAmount(updateProducts, creditNoteValue) || 0);
 
     return (
-        <div className="card">
-            <div className="card-body">
-                <div className="row g-3 mb-4">
-                    {/* ── Datos de Factura ─────────────────────────── */}
-                    <div className="col-md-6">
-                        <div className="card border-0 shadow-sm h-100">
-                            <div className="card-header text-white py-2" style={{ background: '#2F6FED' }}>
-                                <strong>Datos de Factura</strong>
-                            </div>
-                            <div className="card-body">
-                                <InputGroup className="flex-nowrap position-relative mb-3">
-                                    <ReactSelect
-                                        name="cliente_credit_note"
-                                        data={customers}
-                                        onChange={onClienteChange}
-                                        title="Seleccionar Cliente"
-                                        defaultValue={clienteSeleccionado}
-                                        value={clienteSeleccionado}
-                                        placeholder="Buscar Cliente"
-                                    />
-
-                                    <button
-                                        variant="danger"
-                                        onClick={onClienteClear}
-                                        className="btn btn-danger clear-btn"
-                                        title="Limpiar cliente"
-                                    >
-                                        <FontAwesomeIcon icon={faTimes} />
-                                    </button>
-                                </InputGroup>
-
-                                <label className="form-label">Número de Factura:</label>
-                                <InputGroup className="mb-2">
-                                    <InputGroup.Text>
-                                        <FontAwesomeIcon icon={faSearch} />
-                                    </InputGroup.Text>
-                                    <input
-                                        type="text"
-                                        className="form-control"
-                                        placeholder="000-000-000000000"
-                                        value={busquedaFactura}
-                                        onChange={(e) => setBusquedaFactura(e.target.value)}
-                                        onKeyDown={(e) => e.key === 'Enter' && buscarFactura()}
-                                    />
-                                    <button className="btn btn-danger" type="button" onClick={limpiarFactura}>
-                                        <FontAwesomeIcon icon={faTimes} />
-                                    </button>
-                                    <button className="btn btn-outline-primary" type="button" onClick={onClickOjo} disabled={buscandoFactura}>
-                                        <FontAwesomeIcon icon={faEye} />
-                                    </button>
-                                </InputGroup>
-                                {errorFactura && <div className="text-danger small mb-2">{errorFactura}</div>}
-
-                                <div className="row g-3">
-                                    <div className="col-md-6">
-                                        <label className="form-label">Saldo Fac.:</label>
-                                        <input type="text" className="form-control" readOnly value={factura ? factura.saldo.toFixed(2) : '0.00'} />
-                                    </div>
-                                    <div className="col-md-6">
-                                        <label className="form-label">Generar como:</label>
-                                        <select className="form-select" name="generar_como" value={creditNoteValue.generar_como} onChange={onChangeInput}>
-                                            <option value="SALDO">Normal (Saldo)</option>
-                                            <option value="ANTICIPO">Anticipo del cliente</option>
-                                        </select>
-                                    </div>
-                                    {/* <div className="col-md-6">
-                                        <label className="form-label">Cliente:</label>
-                                        <input type="text" className="form-control" readOnly value={factura?.customer?.attributes?.name || factura?.customer?.name || ''} />
-                                    </div> */}
-                                    <div className="col-md-6">
-                                        <label className="form-label">Cédula/RUC:</label>
-                                        <input type="text" className="form-control" readOnly value={factura?.customer?.attributes?.identification || factura?.customer?.identification || ''} />
-                                    </div>
-                                    <div className="col-md-6">
-                                        <label className="form-label">Correo:</label>
-                                        <input type="text" className="form-control" readOnly value={factura?.customer?.attributes?.email || factura?.customer?.email || ''} />
-                                    </div>
-                                    <div className="col-md-6">
-                                        <label className="form-label">Dirección:</label>
-                                        <input type="text" className="form-control" readOnly value={factura?.customer?.attributes?.address || factura?.customer?.address || ''} />
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-
-                    {/* ── Datos de Nota de Crédito ──────────────────── */}
-                    <div className="col-md-6">
-                        <div className="card border-0 shadow-sm h-100">
-                            <div className="card-header text-white py-2" style={{ background: '#2F6FED' }}>
-                                <strong>Datos de Nota de Crédito</strong>
-                            </div>
-                            <div className="card-body">
-                                <div className="row g-3">
-                                    <div className="col-md-4">
-                                        <label className="form-label">Tipo Comprobante:</label>
-                                        <input type="text" className="form-control" readOnly value={factura?.tipo_comprobante || ''} />
-                                    </div>
-                                    <div className="col-md-4">
-                                        <label className="form-label">Fecha de Emisión:</label>
-                                        <input type="date" className="form-control" name="date" value={creditNoteValue.date} onChange={onChangeInput} />
-                                    </div>
-                                    <div className="col-md-4">
-                                        <label className="form-label">Nro. Comprobante:</label>
-                                        <input type="text" className="form-control" readOnly value={factura?.numero_comprobante || ''} />
-                                    </div>
-                                    <div className="col-md-6">
-                                        <label className="form-label">Vendedor:</label>
-                                        <input type="text" className="form-control" name="vendedor" value={creditNoteValue.vendedor} onChange={onChangeInput} placeholder="Vendedor" />
-                                    </div>
-                                    <div className="col-md-6">
-                                        <label className="form-label">Concepto:</label>
-                                        <select className="form-select" name="concepto" value={creditNoteValue.concepto} onChange={onChangeInput}>
-                                            {CONCEPTOS.map((c) => (
-                                                <option key={c.value} value={c.value}>{c.label}</option>
-                                            ))}
-                                        </select>
-                                    </div>
-                                    <div className="col-md-11">
-                                        <label className="form-label">Categoría:</label>
-                                        <select
-                                            className="form-select"
-                                            name="credit_note_category_id"
-                                            value={creditNoteValue.credit_note_category_id}
-                                            onChange={onChangeInput}
-                                        >
-                                            <option value="">--Seleccionar--</option>
-                                            {categoriaOptions.map((c) => (
-                                                <option key={c.value} value={c.value}>{c.label}</option>
-                                            ))}
-                                        </select>
-                                    </div>
-                                    <div className="col-md-1 d-flex align-items-end">
-                                        <button type="button" className="btn btn-primary" onClick={() => setShowCategoryModal(true)}>
-                                            <FontAwesomeIcon icon={faPlus} />
-                                        </button>
-                                    </div>
-                                    <div className="col-12">
-                                        <label className="form-label">Motivo: <span className="text-danger">*</span></label>
-                                        <input
-                                            type="text"
-                                            className={`form-control ${errors.motivo ? 'is-invalid' : ''}`}
-                                            name="motivo"
-                                            value={creditNoteValue.motivo}
-                                            onChange={onChangeInput}
-                                            placeholder="Ingrese motivo..."
-                                        />
-                                        {errors.motivo && <span className="text-danger small">{errors.motivo}</span>}
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
+        <div className="sale-form-v2 credit-note-form-v2">
+            <div className="sale-form-heading">
+                <div>
+                    <span className="sale-form-eyebrow">Documentos tributarios</span>
+                    <h1>Nueva nota de crédito</h1>
+                    <p>Selecciona la factura, define el motivo y verifica los valores antes de emitir.</p>
                 </div>
+                <div className={`sale-form-heading-status ${factura ? 'is-ready' : ''}`}>
+                    <span className="sale-status-dot" />
+                    {factura ? 'Factura vinculada' : 'Borrador'}
+                </div>
+            </div>
 
-                {!factura?.warehouse_id && (
-                    <div className="alert alert-light border small">
-                        Buscá una factura arriba para poder agregar productos.
-                    </div>
-                )}
+            <div className="row g-4 align-items-start">
+                <div className="col-xl-8">
+                    <section className="sale-panel credit-invoice-panel">
+                        <div className="sale-panel-heading">
+                            <div className="sale-panel-icon"><i className="bi bi-receipt" /></div>
+                            <div>
+                                <h2>Factura de origen</h2>
+                                <p>Localiza el comprobante y confirma los datos del cliente.</p>
+                            </div>
+                            {factura && <span className="credit-source-badge"><i className="bi bi-check-circle-fill" /> Seleccionada</span>}
+                        </div>
 
-                <div className="card border-0 shadow-sm mb-4">
-                    <div className="card-header text-white py-2" style={{ background: '#2F6FED' }}>
-                        <strong>Detalles</strong>
-                    </div>
-                    <div className="card-body">
-                        {factura?.warehouse_id && (
-                            <div className="row g-3 mb-3">
-                                <div className="col-md-6">
-                                    <label className="form-label">
-                                        Agregar producto adicional (opcional -- los de la factura ya están cargados abajo):
-                                    </label>
-                                    <ProductSearch
-                                        values={{ warehouse_id: { value: factura.warehouse_id } }}
-                                        products={products}
-                                        handleValidation={handleValidation}
-                                        updateProducts={updateProducts}
-                                        setUpdateProducts={setUpdateProducts}
-                                        customProducts={prepareSaleProductArray(products)}
-                                        presentationMode="sale"
-                                    />
+                        <div className="credit-customer-row">
+                            <div className="credit-customer-select">
+                                <ReactSelect
+                                    name="cliente_credit_note"
+                                    data={customers}
+                                    onChange={onClienteChange}
+                                    title="Cliente"
+                                    defaultValue={clienteSeleccionado}
+                                    value={clienteSeleccionado}
+                                    placeholder="Buscar cliente"
+                                />
+                            </div>
+                            <button type="button" onClick={onClienteClear} className="btn credit-icon-button is-danger" title="Limpiar cliente">
+                                <FontAwesomeIcon icon={faTimes} />
+                            </button>
+                        </div>
+
+                        <label className="form-label" htmlFor="credit-invoice-search">Número de factura</label>
+                        <div className="credit-invoice-search">
+                            <InputGroup>
+                                <InputGroup.Text><FontAwesomeIcon icon={faSearch} /></InputGroup.Text>
+                                <input
+                                    id="credit-invoice-search"
+                                    type="text"
+                                    className="form-control"
+                                    placeholder="000-000-000000000"
+                                    value={busquedaFactura}
+                                    onChange={(e) => setBusquedaFactura(e.target.value)}
+                                    onKeyDown={(e) => {
+                                        if (e.key === 'Enter') {
+                                            e.preventDefault();
+                                            buscarFactura();
+                                        }
+                                    }}
+                                />
+                            </InputGroup>
+                            <button className="btn credit-search-button" type="button" onClick={() => buscarFactura()} disabled={buscandoFactura}>
+                                {buscandoFactura ? <span className="spinner-border spinner-border-sm" /> : <FontAwesomeIcon icon={faSearch} />}
+                                <span>Buscar</span>
+                            </button>
+                            <button className="btn credit-icon-button" type="button" onClick={onClickOjo} disabled={buscandoFactura} title="Ver facturas del cliente">
+                                <FontAwesomeIcon icon={faEye} />
+                            </button>
+                            <button className="btn credit-icon-button is-danger" type="button" onClick={limpiarFactura} title="Quitar factura">
+                                <FontAwesomeIcon icon={faTimes} />
+                            </button>
+                        </div>
+                        {errorFactura && <div className="credit-inline-error"><i className="bi bi-exclamation-circle" /> {errorFactura}</div>}
+
+                        <div className="sale-customer-details credit-customer-details">
+                            <div><span>Cliente</span><strong>{customerData.name || 'Sin seleccionar'}</strong></div>
+                            <div><span>Cédula / RUC</span><strong>{customerData.identification || 'Sin información'}</strong></div>
+                            <div><span>Correo</span><strong>{customerData.email || 'Sin información'}</strong></div>
+                            <div><span>Dirección</span><strong>{customerData.address || 'Sin información'}</strong></div>
+                        </div>
+                    </section>
+
+                    <section className="sale-panel credit-document-panel">
+                        <div className="sale-panel-heading">
+                            <div className="sale-panel-icon"><i className="bi bi-file-earmark-minus" /></div>
+                            <div>
+                                <h2>Datos de la nota</h2>
+                                <p>Configura la emisión y explica claramente el motivo del ajuste.</p>
+                            </div>
+                        </div>
+
+                        <div className="row g-3">
+                            <div className="col-md-4">
+                                <label className="form-label">Fecha de emisión</label>
+                                <input type="date" className="form-control" name="date" value={creditNoteValue.date} onChange={onChangeInput} />
+                            </div>
+                            <div className="col-md-4">
+                                <label className="form-label">Generar como</label>
+                                <select className="form-select" name="generar_como" value={creditNoteValue.generar_como} onChange={onChangeInput}>
+                                    <option value="SALDO">Normal (saldo)</option>
+                                    <option value="ANTICIPO">Anticipo del cliente</option>
+                                </select>
+                            </div>
+                            <div className="col-md-4">
+                                <label className="form-label">Vendedor</label>
+                                <input type="text" className="form-control" name="vendedor" value={creditNoteValue.vendedor} onChange={onChangeInput} placeholder="Nombre del vendedor" />
+                            </div>
+                            <div className="col-md-6">
+                                <label className="form-label">Concepto</label>
+                                <select className="form-select" name="concepto" value={creditNoteValue.concepto} onChange={onChangeInput}>
+                                    {CONCEPTOS.map((concepto) => <option key={concepto.value} value={concepto.value}>{concepto.label}</option>)}
+                                </select>
+                            </div>
+                            <div className="col-md-6">
+                                <label className="form-label">Categoría</label>
+                                <div className="credit-category-row">
+                                    <select className="form-select" name="credit_note_category_id" value={creditNoteValue.credit_note_category_id} onChange={onChangeInput}>
+                                        <option value="">Sin categoría</option>
+                                        {categoriaOptions.map((categoria) => <option key={categoria.value} value={categoria.value}>{categoria.label}</option>)}
+                                    </select>
+                                    <button type="button" className="btn credit-icon-button is-primary" onClick={() => setShowCategoryModal(true)} title="Nueva categoría">
+                                        <FontAwesomeIcon icon={faPlus} />
+                                    </button>
                                 </div>
+                            </div>
+                            <div className="col-12">
+                                <label className="form-label" htmlFor="credit-note-reason">Motivo <span className="text-danger">*</span></label>
+                                <textarea
+                                    id="credit-note-reason"
+                                    className={`form-control ${errors.motivo ? 'is-invalid' : ''}`}
+                                    name="motivo"
+                                    rows="3"
+                                    value={creditNoteValue.motivo}
+                                    onChange={(e) => {
+                                        onChangeInput(e);
+                                        if (errors.motivo) setErrors({});
+                                    }}
+                                    placeholder="Describe por qué se emite esta nota de crédito..."
+                                />
+                                {errors.motivo && <span className="credit-field-error">{errors.motivo}</span>}
+                            </div>
+                        </div>
+                    </section>
+
+                    <section className="sale-panel sale-products-panel credit-products-panel">
+                        <div className="sale-panel-heading sale-products-heading">
+                            <div className="sale-panel-icon"><i className="bi bi-box-seam" /></div>
+                            <div>
+                                <h2>Productos afectados</h2>
+                                <p>Ajusta las cantidades de la factura que se acreditarán.</p>
+                            </div>
+                            <span className="sale-product-count">{updateProducts.length} {updateProducts.length === 1 ? 'producto' : 'productos'}</span>
+                        </div>
+
+                        {!factura?.warehouse_id ? (
+                            <div className="credit-empty-state">
+                                <i className="bi bi-receipt-cutoff" />
+                                <div><strong>Primero selecciona una factura</strong><span>Sus productos aparecerán aquí automáticamente.</span></div>
+                            </div>
+                        ) : (
+                            <div className="sale-product-search">
+                                <label className="form-label">Agregar producto adicional <span>(opcional)</span></label>
+                                <ProductSearch
+                                    values={{ warehouse_id: { value: factura.warehouse_id } }}
+                                    products={products}
+                                    handleValidation={handleValidation}
+                                    updateProducts={updateProducts}
+                                    setUpdateProducts={setUpdateProducts}
+                                    customProducts={prepareSaleProductArray(products)}
+                                    presentationMode="sale"
+                                />
                             </div>
                         )}
 
-                        <ProductRowTable
-                            updateProducts={updateProducts}
-                            setUpdateProducts={setUpdateProducts}
-                            updatedQty={setQuantity}
-                            frontSetting={{ value: { currency_symbol: '$' } }}
-                            updateCost={setNewCost}
-                            updateDiscount={setNewDiscount}
-                            updateTax={setNewTax}
-                            updateSubTotal={setSubTotal}
-                            updateSaleUnit={setNewSaleUnit}
-                        />
-                    </div>
+                        <div className="sale-products-table">
+                            <ProductRowTable
+                                updateProducts={updateProducts}
+                                setUpdateProducts={setUpdateProducts}
+                                updatedQty={setQuantity}
+                                frontSetting={{ value: { currency_symbol: '$' } }}
+                                updateCost={setNewCost}
+                                updateDiscount={setNewDiscount}
+                                updateTax={setNewTax}
+                                updateSubTotal={setSubTotal}
+                                updateSaleUnit={setNewSaleUnit}
+                            />
+                        </div>
+                    </section>
                 </div>
 
-                <div className="row">
-                    <div className="col-12 d-flex justify-content-end gap-2">
-                        <button className="btn btn-light" onClick={() => navigate('/app/credit-notes')}>Cancelar</button>
-                        <button className="btn btn-primary" onClick={onSubmit} disabled={enviando}>
-                            {enviando ? 'Guardando...' : 'Guardar Nota de Crédito'}
-                        </button>
-                    </div>
+                <div className="col-xl-4">
+                    <aside className="sale-summary-panel credit-summary-panel">
+                        <div className="sale-summary-heading">
+                            <div>
+                                <span className="sale-form-eyebrow">Resumen</span>
+                                <h2>Nota de crédito</h2>
+                            </div>
+                            <i className="bi bi-calculator" />
+                        </div>
+
+                        <div className="credit-source-summary">
+                            <span>Comprobante de origen</span>
+                            <strong>{factura?.numero_comprobante || 'Pendiente de selección'}</strong>
+                            <div>
+                                <small>{factura?.tipo_comprobante || 'Sin comprobante'}</small>
+                                <small>Saldo: ${Number(factura?.saldo || 0).toFixed(2)}</small>
+                            </div>
+                        </div>
+
+                        <div className="credit-total-list">
+                            <div><span>Subtotal estimado</span><strong>${subtotalNota.toFixed(2)}</strong></div>
+                            <div><span>Impuestos</span><strong>${impuestoNota.toFixed(2)}</strong></div>
+                            <div><span>Productos</span><strong>{updateProducts.length}</strong></div>
+                            <div className="credit-grand-total"><span>Total a acreditar</span><strong>${totalNota.toFixed(2)}</strong></div>
+                        </div>
+
+                        <div className="credit-summary-note">
+                            <i className="bi bi-info-circle" />
+                            <span>Verifica cantidades, concepto y motivo antes de guardar el documento.</span>
+                        </div>
+
+                        <div className="sale-form-actions credit-form-actions">
+                            <button className="btn btn-primary" type="button" onClick={onSubmit} disabled={enviando}>
+                                {enviando ? <><span className="spinner-border spinner-border-sm" /> Guardando...</> : <><i className="bi bi-check2-circle" /> Guardar nota de crédito</>}
+                            </button>
+                            <button className="btn btn-secondary" type="button" onClick={() => navigate('/app/credit-notes')} disabled={enviando}>Cancelar</button>
+                        </div>
+                    </aside>
                 </div>
             </div>
 

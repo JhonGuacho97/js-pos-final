@@ -10,6 +10,9 @@ import { addToast } from "../../store/action/toastAction";
 import { getFormattedMessage } from "../../shared/sharedMethod";
 import { ElectronicInvoiceStatusBadge } from "../sri/ElectronicInvoiceStatus";
 import RutaEmisionPanel from "../sri/RutaEmisionPanel";
+import ResourceListHeader from "../../shared/components/ResourceListHeader";
+import "../../assets/scss/custom/pages/resource-list.scss";
+import "../../assets/scss/custom/pages/fiscal-documents.scss";
 
 const ESTADOS_SRI = [
     { value: "TODOS", label: "Todos" },
@@ -145,14 +148,60 @@ const ElectronicInvoices = () => {
 
     const money = (n) => `$ ${Number(n || 0).toFixed(2)}`;
 
+    const autorizadasVisibles = documentos.filter(
+        (documento) => documento.estado === "AUTORIZADA"
+    ).length;
+    const pendientesVisibles = documentos.filter(
+        (documento) => documento.estado !== "AUTORIZADA"
+    ).length;
+    const documentStats = [
+        {
+            label: "Documentos encontrados",
+            value: meta.total || 0,
+            helper: "Coinciden con los filtros",
+            tone: "primary",
+        },
+        {
+            label: "Autorizados visibles",
+            value: autorizadasVisibles,
+            helper: documentos.length + " en esta página",
+            tone: "success",
+        },
+        {
+            label: "Por revisar",
+            value: resumen.no_autorizados || pendientesVisibles,
+            helper: "Pendientes o con novedad",
+            tone: resumen.no_autorizados ? "warning" : "success",
+        },
+        {
+            label: "Saldo pendiente",
+            value: money(resumen.saldo_total),
+            helper: "Facturas electrónicas",
+        },
+    ];
+
     return (
         <MasterLayout>
             <HeaderTitle title={getFormattedMessage("electronic-invoices.title")} to="/app/dashboard" />
 
-            <form className="card mb-4" onSubmit={onBuscar}>
-                <div className="card-body">
-                    <div className="row g-3 align-items-end">
-                        <div className="col-md-2">
+            <div className="resource-list-v2 fiscal-documents-v2 electronic-invoices-v2">
+                <ResourceListHeader
+                    eyebrow="Control tributario"
+                    title={getFormattedMessage("electronic-invoices.title")}
+                    description="Consulta el ciclo de emisión, autorización y cobro de tus comprobantes enviados al SRI."
+                    type="electronic"
+                    stats={documentStats}
+                />
+
+            <form className="fiscal-filter-panel" onSubmit={onBuscar}>
+                <div className="fiscal-panel-heading">
+                    <div>
+                        <h2>Filtros de documentos</h2>
+                        <p>Delimita el período, tipo y estado tributario que necesitas revisar.</p>
+                    </div>
+                </div>
+                    <div className="fiscal-filter-grid">
+                        <div className="fiscal-filter-field">
                             <label className="form-label">Fecha inicio:</label>
                             <input
                                 type="date"
@@ -162,7 +211,7 @@ const ElectronicInvoices = () => {
                                 onChange={onFiltroChange}
                             />
                         </div>
-                        <div className="col-md-2">
+                        <div className="fiscal-filter-field">
                             <label className="form-label">Fecha fin:</label>
                             <input
                                 type="date"
@@ -172,7 +221,7 @@ const ElectronicInvoices = () => {
                                 onChange={onFiltroChange}
                             />
                         </div>
-                        <div className="col-md-3">
+                        <div className="fiscal-filter-field">
                             <label className="form-label">Tipo comprobante:</label>
                             <select
                                 name="tipo_comprobante"
@@ -185,7 +234,7 @@ const ElectronicInvoices = () => {
                                 ))}
                             </select>
                         </div>
-                        <div className="col-md-3">
+                        <div className="fiscal-filter-field">
                             <label className="form-label">Estado SRI:</label>
                             <select
                                 name="estado"
@@ -198,13 +247,13 @@ const ElectronicInvoices = () => {
                                 ))}
                             </select>
                         </div>
-                        <div className="col-md-2">
+                        <div className="fiscal-filter-field fiscal-filter-action">
                             <button type="submit" className="btn btn-primary w-100">
                                 <FontAwesomeIcon icon={faMagnifyingGlass} className="me-2" />
                                 Buscar
                             </button>
                         </div>
-                        <div className="col-md-6">
+                        <div className="fiscal-filter-field fiscal-filter-field--search">
                             <label className="form-label">Cliente / número de documento / referencia / clave de acceso:</label>
                             <input
                                 type="text"
@@ -214,15 +263,14 @@ const ElectronicInvoices = () => {
                                 value={search}
                                 onChange={(e) => setSearch(e.target.value)}
                             />
-                            <div className="form-text">Este campo filtra automáticamente mientras escribes.</div>
+                            <div className="fiscal-filter-hint">Este campo filtra automáticamente mientras escribes.</div>
                         </div>
                     </div>
-                </div>
             </form>
 
             {resumen.no_autorizados > 0 && (
-                <div className="alert alert-danger d-flex align-items-center">
-                    <FontAwesomeIcon icon={faTriangleExclamation} className="me-2" />
+                <div className="fiscal-alert">
+                    <FontAwesomeIcon icon={faTriangleExclamation} />
                     <span>
                         <strong>Atención:</strong> tienes <strong>{resumen.no_autorizados}</strong> documento
                         {resumen.no_autorizados === 1 ? "" : "s"} sin autorizar por el SRI (pendientes, rechazados
@@ -231,17 +279,16 @@ const ElectronicInvoices = () => {
                 </div>
             )}
 
-            <div className="card mb-4">
-                <div className="card-body d-flex align-items-center justify-content-between">
-                    <div>
-                        <div className="text-muted small">Saldo pendiente de cobro (ventas con factura electrónica)</div>
-                        <div className="fs-3 fw-bold text-success">{money(resumen.saldo_total)}</div>
+            <div className="fiscal-table-shell">
+                <div className="fiscal-toolbar">
+                    <div className="fiscal-toolbar-copy">
+                        <strong>Comprobantes emitidos</strong>
+                        <span>Abre el número del documento para consultar su ruta de emisión.</span>
                     </div>
-                    <div className="d-flex align-items-center gap-2">
-                        <span className="fw-bold">Mostrar:</span>
+                    <label className="fiscal-page-size">
+                        Mostrar
                         <select
                             className="form-select"
-                            style={{ width: 80 }}
                             value={pageSize}
                             onChange={(e) => {
                                 const nuevoTamano = Number(e.target.value);
@@ -253,13 +300,11 @@ const ElectronicInvoices = () => {
                                 <option key={n} value={n}>{n}</option>
                             ))}
                         </select>
-                    </div>
+                        registros
+                    </label>
                 </div>
-            </div>
-
-            <div className="card">
-                <div className="table-responsive">
-                    <table className="table align-middle mb-0">
+                <div className="fiscal-table-wrap">
+                    <table className="table align-middle fiscal-table">
                         <thead>
                             <tr>
                                 <th>Fecha</th>
@@ -295,14 +340,17 @@ const ElectronicInvoices = () => {
                                     <td>
                                         <button
                                             type="button"
-                                            className="btn btn-link p-0"
-                                            style={{ fontSize: "inherit", textDecoration: "none" }}
+                                            className="fiscal-document-link"
                                             onClick={() => setRutaAbiertaId(doc.id)}
                                         >
                                             {doc.numero_comprobante}
                                         </button>
                                     </td>
-                                    <td>{TIPO_COMPROBANTE_LABEL[doc.tipo_comprobante] || "Factura"}</td>
+                                    <td>
+                                        <span className="fiscal-type-badge">
+                                            {TIPO_COMPROBANTE_LABEL[doc.tipo_comprobante] || "Factura"}
+                                        </span>
+                                    </td>
                                     <td>{doc.cliente || "Consumidor Final"}</td>
                                     <td style={{ minWidth: 140 }}>
                                         <ElectronicInvoiceStatusBadge
@@ -311,7 +359,11 @@ const ElectronicInvoices = () => {
                                             onReintentar={() => reintentar(doc.sale_id)}
                                         />
                                     </td>
-                                    <td>{doc.firmado ? "Sí" : "No"}</td>
+                                    <td>
+                                        <span className={"fiscal-signature-badge fiscal-signature-badge--" + (doc.firmado ? "yes" : "no")}>
+                                            {doc.firmado ? "Firmado" : "Sin firma"}
+                                        </span>
+                                    </td>
                                     <td className="text-end">{money(doc.total)}</td>
                                     <td className="text-end">{money(doc.saldo)}</td>
                                     <td>
@@ -320,7 +372,7 @@ const ElectronicInvoices = () => {
                                                 href={`/api/electronic-invoices/${doc.id}/ride`}
                                                 target="_blank"
                                                 rel="noopener noreferrer"
-                                                className="btn btn-sm btn-outline-success"
+                                                className="btn btn-sm btn-outline-success fiscal-action-button"
                                                 title="Descargar RIDE"
                                             >
                                                 <FontAwesomeIcon icon={faFileInvoice} />
@@ -333,24 +385,24 @@ const ElectronicInvoices = () => {
                     </table>
                 </div>
 
-                <div className="card-footer d-flex justify-content-between align-items-center">
-                    <div>
+                <div className="fiscal-pagination">
+                    <div className="d-flex gap-2">
                         <button
-                            className="btn btn-light me-2"
+                            className="btn"
                             disabled={meta.current_page <= 1}
                             onClick={() => cargar(meta.current_page - 1)}
                         >
                             ‹ Anterior
                         </button>
                         <button
-                            className="btn btn-light"
+                            className="btn"
                             disabled={meta.current_page >= meta.last_page}
                             onClick={() => cargar(meta.current_page + 1)}
                         >
                             Siguiente ›
                         </button>
                     </div>
-                    <span className="text-primary fw-bold">
+                    <span className="fiscal-pagination-total">
                         Total registros: {meta.total}
                     </span>
                 </div>
@@ -365,6 +417,7 @@ const ElectronicInvoices = () => {
                     if (doc) reintentar(doc.sale_id);
                 }}
             />
+            </div>
         </MasterLayout>
     );
 };
