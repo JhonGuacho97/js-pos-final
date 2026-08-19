@@ -27,13 +27,30 @@ class DatabaseSeeder extends Seeder
             setPermissionsTeamId($store->id);
         }
 
-        // \App\Models\User::factory(10)->create();
+        // Algunos seeders historicos esperan que el rol admin ya exista.
+        // Al final se sincroniza nuevamente para incluir todos los permisos.
         $this->call(DefaultPermissionsSeeder::class);
         $this->call(DefaultRoleSeeder::class);
-        $this->call(DefaultUserSeeder::class);
-        $this->call(SettingTableSeeder::class);
+        $this->call(DefaultLanguageTableSeeder::class);
         $this->call(AddDashboardAndSettingPermissionsSeeder::class);
         $this->call(AddPurchaseAndSalePermissionsSeeder::class);
         $this->call(AddPurchaseReturnAndSaleReturnPermissionsSeeder::class);
+        $this->call(AddAdjustmentAndTransferPermissionsSeeder::class);
+        $this->call(DefaultPermissionEmailReportQuotationSeeder::class);
+        $this->call(AddSmsPermissionsSeeder::class);
+        $this->call(AddElectronicInvoicesPermissionSeeder::class);
+        $this->call(AddKardexPermissionSeeder::class);
+        $this->call(AddSellerDashboardPermissionSeeder::class);
+        $this->call(AddSriConfigPermissionSeeder::class);
+
+        $this->call(DefaultUserSeeder::class);
+        $this->call(SettingTableSeeder::class);
+        $this->call(DefaultSettingsCountryStatePostcodeSeeder::class);
+        $this->call(AddDefaultSettingPostcodeSeeder::class);
+        $this->call(DefaultSettingCurrencyRightSeeder::class);
+
+        // Tambien repara instalaciones existentes: cualquier permiso que se
+        // agregue antes de este punto queda sincronizado con el admin.
+        $this->call(EnsureAllPermissionsSyncedSeeder::class);
     }
 }

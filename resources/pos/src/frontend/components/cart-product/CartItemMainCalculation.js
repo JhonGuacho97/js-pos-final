@@ -1,6 +1,5 @@
-import React from "react";
+import React, { useState } from "react";
 import { Form, InputGroup, FormControl } from "react-bootstrap-v5";
-import { Row } from "react-bootstrap";
 import {
     currencySymbolHandling,
     decimalValidate,
@@ -20,12 +19,39 @@ const CartItemMainCalculation = (props) => {
         allConfigData,
         onChangeTaxCart,
     } = props;
+    const [showAdjustments, setShowAdjustments] = useState(false);
 
     return (
-        <div className="calculation mt-5">
-            <Row className="total-price">
-                <div className="col-6 mb-2">
-                    <Form.Group className="calculation__filed-grp mb-2">
+        <div className="calculation pos-order-summary">
+            <div className="pos-summary-line">
+                <span>{getFormattedMessage("pos-total-qty.title")}</span>
+                <strong>{totalQty || 0}</strong>
+            </div>
+            <div className="pos-summary-line">
+                <span>{getFormattedMessage("pos.subtotal.small.title")}</span>
+                <strong>
+                    {currencySymbolHandling(
+                        allConfigData,
+                        frontSetting.value && frontSetting.value.currency_symbol,
+                        subTotal || "0.00"
+                    )}
+                </strong>
+            </div>
+
+            <button
+                type="button"
+                className="pos-adjustments-toggle"
+                onClick={() => setShowAdjustments((visible) => !visible)}
+                aria-expanded={showAdjustments}
+            >
+                <span><i className="bi bi-sliders me-2" />Agregar ajustes</span>
+                <i className={`bi bi-chevron-${showAdjustments ? "up" : "down"}`} />
+            </button>
+
+            {showAdjustments && (
+                <div className="pos-adjustments-panel">
+                    <Form.Group className="calculation__filed-grp">
+                        <Form.Label>Impuesto</Form.Label>
                         <InputGroup>
                             <FormControl
                                 type="text"
@@ -50,7 +76,8 @@ const CartItemMainCalculation = (props) => {
                             </InputGroup.Text>
                         </InputGroup>
                     </Form.Group>
-                    <Form.Group className="calculation__filed-grp mb-2">
+                    <Form.Group className="calculation__filed-grp">
+                        <Form.Label>Descuento</Form.Label>
                         <InputGroup>
                             <FormControl
                                 type="text"
@@ -76,7 +103,8 @@ const CartItemMainCalculation = (props) => {
                             </InputGroup.Text>
                         </InputGroup>
                     </Form.Group>
-                    <Form.Group className="calculation__filed-grp mb-2">
+                    <Form.Group className="calculation__filed-grp">
+                        <Form.Label>Envío</Form.Label>
                         <InputGroup>
                             <FormControl
                                 type="text"
@@ -103,31 +131,18 @@ const CartItemMainCalculation = (props) => {
                         </InputGroup>
                     </Form.Group>
                 </div>
-                <div className="col-6 d-flex flex-column justify-content-center text-end align-items-end mb-2">
-                    <h4 className="fs-3 mb-2 custom-big-content text-gray-600">
-                        {getFormattedMessage("pos-total-qty.title")} :{" "}
-                        {totalQty ? totalQty : "0"}
-                    </h4>
-                    <h4 className="fs-3 mb-2 text-gray-600">
-                        {getFormattedMessage("pos.subtotal.small.title")} :{" "}
-                        {currencySymbolHandling(
-                            allConfigData,
-                            frontSetting.value &&
-                                frontSetting.value.currency_symbol,
-                            subTotal ? subTotal : "0.00"
-                        )}
-                    </h4>
-                    <h2 className="fs-1 mb-2 text-gray-800">
-                        {getFormattedMessage("pos-total.title")} :{" "}
-                        {currencySymbolHandling(
-                            allConfigData,
-                            frontSetting.value &&
-                                frontSetting.value.currency_symbol,
-                            grandTotal ? grandTotal : "0.00"
-                        )}
-                    </h2>
-                </div>
-            </Row>
+            )}
+
+            <div className="pos-grand-total">
+                <span>{getFormattedMessage("pos-total.title")}</span>
+                <strong>
+                    {currencySymbolHandling(
+                        allConfigData,
+                        frontSetting.value && frontSetting.value.currency_symbol,
+                        grandTotal || "0.00"
+                    )}
+                </strong>
+            </div>
         </div>
     );
 };

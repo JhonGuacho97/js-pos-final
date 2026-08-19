@@ -38,7 +38,7 @@ const HeaderAllButton = ( props ) => {
         <>
             <Nav className='align-items-center header-btn-grp justify-xxl-content-end justify-lg-content-center justify-content-start flex-nowrap pb-xxl-0 pb-lg-2 pb-2 '>
                 <Nav.Item className='d-flex align-items-center position-relative justify-content-center ms-3 nav-pink'>
-                    <Nav.Link className='pe-0 ps-1 text-white' onClick={( e ) => {
+                    <Nav.Link title="Ventas en espera" aria-label="Ventas en espera" className='pe-0 ps-1' onClick={( e ) => {
                         e.stopPropagation();
                         goToHoldScreen()
                     }}>
@@ -50,16 +50,16 @@ const HeaderAllButton = ( props ) => {
                 {/*full screen icon*/}
                 <Nav.Item className='ms-3 d-flex align-items-center justify-content-center'>
                     {isFullscreen === true ?
-                        <i className="bi bi-fullscreen-exit cursor-pointer text-white fs-1"
+                        <i title="Salir de pantalla completa" className="bi bi-fullscreen-exit cursor-pointer fs-1"
                             onClick={() => fullScreen()} />
                         :
-                        <i className="bi bi-arrows-fullscreen cursor-pointer text-white con fs-1"
+                        <i title="Pantalla completa" className="bi bi-arrows-fullscreen cursor-pointer con fs-1"
                             onClick={() => fullScreen()} />
                     }
                 </Nav.Item>
                 {/* {Calculator} */}
                 <Nav.Item className='d-flex align-items-center justify-content-center ms-3'>
-                    <i className="bi bi-calculator cursor-pointer text-white fa-2x"
+                    <i title="Calculadora" className="bi bi-calculator cursor-pointer fa-2x"
                         onClick={opneCalculatorModel} />
                 </Nav.Item>
                 {/* Menú de más acciones: dashboard, detalles/cierre de registro,
@@ -68,7 +68,7 @@ const HeaderAllButton = ( props ) => {
                     registro), ahora consolidado en un solo lugar. */}
                 <Nav.Item className='d-flex align-items-center justify-content-center ms-3 pos-more-menu'>
                     <Dropdown align='end'>
-                        <Dropdown.Toggle as='div' className='pe-0 text-white cursor-pointer hide-arrow' id='pos-more-actions-dropdown'>
+                        <Dropdown.Toggle title="Más acciones" as='div' className='pe-0 cursor-pointer hide-arrow' id='pos-more-actions-dropdown'>
                             <i className="bi bi-three-dots-vertical fa-2x" />
                         </Dropdown.Toggle>
 

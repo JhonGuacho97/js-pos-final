@@ -21,7 +21,7 @@ const ActionButton = (props) => {
         isViewIcon = false
     } = props;
 
-    const isAdmin = item.name === 'admin' || item.email === 'admin@infy-pos.com';
+    const isAdmin = item.name === 'admin' || item.email === 'admin@ecua-pos.com';
 
     return (
         <>

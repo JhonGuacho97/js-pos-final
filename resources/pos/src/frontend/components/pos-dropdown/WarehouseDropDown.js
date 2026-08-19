@@ -27,7 +27,7 @@ const WarehouseDropDown = (props) => {
                     <i className="bi bi-house fs-3 text-gray-900" />
                 </InputGroup.Text>
                 <Select
-                    placeholder='Choose Warehouse'
+                    placeholder='Seleccionar bodega'
                     defaultValue={selectedOption}
                     value={selectedOption}
                     onChange={onChangeWarehouse}

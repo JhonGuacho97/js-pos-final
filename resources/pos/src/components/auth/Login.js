@@ -100,7 +100,7 @@ const Login = () => {
                     {/* <div className="lp-aside-top">
                         {logoSrc
                             ? <Image src={logoSrc} className="lp-aside-logo" alt="logo" />
-                            : <span className="lp-brand-name">JhonSport</span>
+                            : <span className="lp-brand-name">EcuaPos</span>
                         }
                     </div> */}
 

@@ -10,9 +10,7 @@ class AddKardexPermissionSeeder extends Seeder
     /**
      * Run the database seeds.
      *
-     * Corre con: php artisan db:seed --class=AddKardexPermissionSeeder
-     * Después, asigna el permiso desde Roles/Permisos al rol que
-     * corresponda.
+     * Se ejecuta automaticamente desde DatabaseSeeder.
      */
     public function run(): void
     {

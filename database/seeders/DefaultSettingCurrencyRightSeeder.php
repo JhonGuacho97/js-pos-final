@@ -12,9 +12,9 @@ class DefaultSettingCurrencyRightSeeder extends Seeder
      */
     public function run(): void
     {
-        $keyExist = Setting::where('key', 'is_currency_right')->exists();
-        if (! $keyExist) {
-            Setting::create(['key' => 'is_currency_right', 'value' => false]);
-        }
+        Setting::firstOrCreate(
+            ['store_id' => null, 'key' => 'is_currency_right'],
+            ['value' => false]
+        );
     }
 }

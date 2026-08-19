@@ -225,7 +225,10 @@ const Sales = (props) => {
                 payment_type: "",
                 grand_total: grandTotalSum(itemsValue),
                 paid_amount: paidTotalSum(itemsValue),
-                id: "",
+                // react-data-table-component usa `id` como key de la fila.
+                // Si queda vacio, cae al indice (por ejemplo 1) y puede
+                // colisionar con el id real de una venta.
+                id: "sales-total-row",
                 currency: currencySymbol,
             };
             const newItemValue =

@@ -64,7 +64,7 @@ class MigrateToInitialStoreSeeder extends Seeder
         }
 
         $companyName = Setting::whereNull('store_id')->where('key', 'company_name')->value('value');
-        $companyName = $companyName ?: 'Mi Negocio';
+        $companyName = $companyName ?: 'EcuaPos';
 
         $slug = Str::slug($companyName) ?: 'tienda-principal';
         $original = $slug;

@@ -1,4 +1,4 @@
-# 🧾 POS System (Laravel + React)
+# 🧾 EcuaPos (Laravel + React)
 
 Sistema de Punto de Venta (POS) desarrollado con **Laravel (backend)** y **React (frontend)**.
 
@@ -34,7 +34,7 @@ Configura la conexión a la base de datos en el archivo .env:
 e importa el archivo `pos.sql`.
 
 ⚠️ **No importes `pos.sql` en producción.** Es un dump de datos de
-demostración/desarrollo e incluye un usuario `admin@infy-pos.com` con una
+demostración/desarrollo e incluye un usuario `admin@ecua-pos.com` con una
 contraseña de ejemplo conocida. En producción usa en su lugar:
 
 ```bash
@@ -77,5 +77,5 @@ Node.js
 
 
 ### DESARROLLADOR
-JHON DAVID GUACHO BASTIDAS
+EcuaPosSoft
 LICENCIA PATENTADA

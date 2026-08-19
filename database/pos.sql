@@ -408,7 +408,7 @@ CREATE TABLE `currencies` (
 --
 
 INSERT INTO `currencies` (`id`, `name`, `code`, `symbol`, `created_at`, `updated_at`) VALUES
-(1, 'India', 'INR', '₹', '2023-11-03 23:52:46', '2023-11-03 23:52:46');
+(1, 'US Dollar', 'USD', '$', '2023-11-03 23:52:46', '2023-11-03 23:52:46');
 
 -- --------------------------------------------------------
 
@@ -434,7 +434,7 @@ CREATE TABLE `customers` (
 --
 
 INSERT INTO `customers` (`id`, `name`, `email`, `phone`, `dob`, `country`, `city`, `address`, `created_at`, `updated_at`) VALUES
-(1, 'walk-in-customer', 'customer@infypos.com', '123456789', NULL, 'india', 'mumbai', 'Dr Deshmukh Marg , mumbai', '2023-11-03 23:52:46', '2023-11-03 23:52:46');
+(1, 'Consumidor final', 'customer@ecua-pos.com', '0999999999', NULL, 'Ecuador', 'Manta', 'Manabi, Ecuador', '2023-11-03 23:52:46', '2023-11-03 23:52:46');
 
 -- --------------------------------------------------------
 
@@ -1271,10 +1271,10 @@ CREATE TABLE `settings` (
 
 INSERT INTO `settings` (`id`, `key`, `value`, `created_at`, `updated_at`) VALUES
 (1, 'show_version_on_footer', '1', '2023-11-03 23:52:45', '2023-11-03 23:52:45'),
-(2, 'country', 'India', '2023-11-03 23:52:45', '2023-11-03 23:52:45'),
-(3, 'state', 'Gujarat', '2023-11-03 23:52:45', '2023-11-03 23:52:45'),
-(4, 'city', 'Surat', '2023-11-03 23:52:45', '2023-11-03 23:52:45'),
-(5, 'postcode', '395007', '2023-11-03 23:52:45', '2023-11-03 23:52:45'),
+(2, 'country', 'Ecuador', '2023-11-03 23:52:45', '2023-11-03 23:52:45'),
+(3, 'state', 'Manabi', '2023-11-03 23:52:45', '2023-11-03 23:52:45'),
+(4, 'city', 'Manta', '2023-11-03 23:52:45', '2023-11-03 23:52:45'),
+(5, 'postcode', '130802', '2023-11-03 23:52:45', '2023-11-03 23:52:45'),
 (6, 'date_format', 'y-m-d', '2023-11-03 23:52:45', '2023-11-03 23:52:45'),
 (7, 'purchase_code', 'PU', '2023-11-03 23:52:45', '2023-11-03 23:52:45'),
 (8, 'purchase_return_code', 'PR', '2023-11-03 23:52:45', '2023-11-03 23:52:45'),
@@ -1283,15 +1283,15 @@ INSERT INTO `settings` (`id`, `key`, `value`, `created_at`, `updated_at`) VALUES
 (11, 'expense_code', 'EX', '2023-11-03 23:52:45', '2023-11-03 23:52:45'),
 (12, 'is_currency_right', '0', '2023-11-03 23:52:45', '2023-11-03 23:52:45'),
 (13, 'currency', '1', '2023-11-03 23:52:46', '2023-11-03 23:52:46'),
-(14, 'email', 'support@infypos.com', '2023-11-03 23:52:46', '2023-11-03 23:52:46'),
-(15, 'company_name', 'infy-pos', '2023-11-03 23:52:46', '2023-11-03 23:52:46'),
-(16, 'phone', '1234567890', '2023-11-03 23:52:46', '2023-11-03 23:52:46'),
-(17, 'developed', 'infyom', '2023-11-03 23:52:46', '2023-11-03 23:52:46'),
-(18, 'footer', '2022 Developed by Infy-pos All rights reserved - v1.1.0', '2023-11-03 23:52:46', '2023-11-03 23:52:46'),
+(14, 'email', 'support@ecua-pos.com', '2023-11-03 23:52:46', '2023-11-03 23:52:46'),
+(15, 'company_name', 'EcuaPos', '2023-11-03 23:52:46', '2023-11-03 23:52:46'),
+(16, 'phone', '0999999999', '2023-11-03 23:52:46', '2023-11-03 23:52:46'),
+(17, 'developed', 'EcuaPosSoft', '2023-11-03 23:52:46', '2023-11-03 23:52:46'),
+(18, 'footer', 'Desarrollado por EcuaPosSoft. Todos los derechos reservados.', '2023-11-03 23:52:46', '2023-11-03 23:52:46'),
 (19, 'default_language', '1', '2023-11-03 23:52:46', '2023-11-03 23:52:46'),
 (20, 'default_customer', '1', '2023-11-03 23:52:46', '2023-11-03 23:52:46'),
 (21, 'default_warehouse', '1', '2023-11-03 23:52:46', '2023-11-03 23:52:46'),
-(22, 'address', 'C-303, Atlanta Shopping Mall, Nr. Sudama Chowk, Mota Varachha, Surat, Gujarat, India.', '2023-11-03 23:52:46', '2023-11-03 23:52:46'),
+(22, 'address', 'Manabi, Ecuador', '2023-11-03 23:52:46', '2023-11-03 23:52:46'),
 (23, 'stripe_key', 'pu_test_yBzA1qI1PcfRBAVn1vJG2VuS00HcyhQX9LASERTFDDS', '2023-11-03 23:52:46', '2023-11-03 23:52:46'),
 (24, 'stripe_secret', 'pu_test_yBzA1qI1PcfRBAVn1vJG2VuS00HcyhQX9LASERTFDDS', '2023-11-03 23:52:46', '2023-11-03 23:52:46'),
 (25, 'sms_gateway', '1', '2023-11-03 23:52:46', '2023-11-03 23:52:46'),
@@ -1303,7 +1303,7 @@ INSERT INTO `settings` (`id`, `key`, `value`, `created_at`, `updated_at`) VALUES
 (31, 'smtp_username', 'test', '2023-11-03 23:52:46', '2023-11-03 23:52:46'),
 (32, 'smtp_password', 'test', '2023-11-03 23:52:46', '2023-11-03 23:52:46'),
 (33, 'smtp_Encryption', 'tls', '2023-11-03 23:52:46', '2023-11-03 23:52:46'),
-(34, 'logo', 'images/infycare-logo.png', '2023-11-03 23:52:46', '2023-11-03 23:52:46');
+(34, 'logo', 'images/ecua-pos-logo.png', '2023-11-03 23:52:46', '2023-11-03 23:52:46');
 
 -- --------------------------------------------------------
 
@@ -5589,7 +5589,7 @@ CREATE TABLE `users` (
 --
 
 INSERT INTO `users` (`id`, `first_name`, `last_name`, `email`, `phone`, `email_verified_at`, `password`, `remember_token`, `created_at`, `updated_at`, `status`, `language`) VALUES
-(1, 'admin', NULL, 'admin@infy-pos.com', NULL, '2023-11-03 23:52:45', '$2y$10$7wFp3nL4Uml7s8OIEfYQjOcxfsr7fJe2Rzl9cwg6X8EI1C3e/MbCG', NULL, '2023-11-03 23:52:45', '2023-11-03 23:52:45', 1, 'en');
+(1, 'admin', NULL, 'admin@ecua-pos.com', NULL, '2023-11-03 23:52:45', '$2y$10$7wFp3nL4Uml7s8OIEfYQjOcxfsr7fJe2Rzl9cwg6X8EI1C3e/MbCG', NULL, '2023-11-03 23:52:45', '2023-11-03 23:52:45', 1, 'en');
 
 -- --------------------------------------------------------
 
@@ -5614,7 +5614,7 @@ CREATE TABLE `warehouses` (
 --
 
 INSERT INTO `warehouses` (`id`, `name`, `phone`, `country`, `city`, `email`, `zip_code`, `created_at`, `updated_at`) VALUES
-(1, 'warehouse', '123456789', 'india', 'mumbai', 'warehouse1@infypos.com', '12345', '2023-11-03 23:52:46', '2023-11-03 23:52:46');
+(1, 'Bodega principal', '0999999999', 'Ecuador', 'Manta', 'warehouse@ecua-pos.com', '130802', '2023-11-03 23:52:46', '2023-11-03 23:52:46');
 
 --
 -- Indexes for dumped tables

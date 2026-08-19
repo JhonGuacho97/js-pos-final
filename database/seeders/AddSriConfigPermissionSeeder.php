@@ -10,9 +10,7 @@ class AddSriConfigPermissionSeeder extends Seeder
     /**
      * Run the database seeds.
      *
-     * Corre con: php artisan db:seed --class=AddSriConfigPermissionSeeder
-     * Después, asigna el permiso desde Roles/Permisos al rol que
-     * corresponda (por ejemplo, Admin).
+     * Se ejecuta automaticamente desde DatabaseSeeder.
      */
     public function run(): void
     {

@@ -1,9 +1,9 @@
-// JhonSport POS — Service Worker
+// EcuaPos — Service Worker
 // Estrategia: "Install only" — la app es instalable pero siempre
 // va a la red. No se cachean respuestas de API para evitar datos
 // desactualizados en un sistema POS.
 
-const CACHE_NAME = "jhonsport-pos-v1";
+const CACHE_NAME = "ecuapos-v1";
 
 // Solo cacheamos el shell estático de la app (HTML, JS, CSS)
 // para que el ícono y la pantalla de carga aparezcan rápido.

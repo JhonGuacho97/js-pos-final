@@ -1,7 +1,7 @@
 {
-  "name": "JhonSport POS",
-  "short_name": "JhonSport",
-  "description": "Sistema de punto de venta JhonSport",
+  "name": "EcuaPos",
+  "short_name": "EcuaPos",
+  "description": "Sistema de punto de venta EcuaPos",
   "start_url": "/",
   "scope": "/",
   "display": "standalone",

@@ -123,7 +123,7 @@ const TicketSlipModal = (props) => {
             if (navigator.canShare && navigator.canShare({ files: [file] })) {
                 await navigator.share({
                     title: 'Comprobante de venta',
-                    text: `COMPROBANTE ENVIADO DESDE MY-POS-SYSTEM`,
+                    text: `COMPROBANTE ENVIADO DESDE ECUAPOS`,
                     files: [file],
                 });
             } else {

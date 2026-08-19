@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import { Card, Badge } from "react-bootstrap-v5";
+import { Card } from "react-bootstrap-v5";
 import { connect, useDispatch } from "react-redux";
 import useSound from "use-sound";
 import { posFetchProduct } from "../../../store/action/pos/posfetchProductAction";
@@ -385,7 +385,7 @@ const Product = (props) => {
         return product.attributes.stock.quantity >= !0.0 ? (
             <div
                 className="product-custom-card"
-                key={index}
+                key={product.id}
                 onClick={() => addToCart(product)}
             >
                 <Card
@@ -404,7 +404,7 @@ const Product = (props) => {
                                     ? product.attributes.images.imageUrls[0]
                                     : productImage
                             }
-                            alt="product"
+                            alt={product.attributes?.name || "Producto"}
                             className="product-img"
                         />
 
@@ -474,92 +474,6 @@ const Product = (props) => {
                     </Card.Body>
                 </Card>
 
-                <style>
-                    {`
-/* 🔥 CONTENEDOR */
-.product-img-wrapper {
-    position: relative;
-    width: 100%;
-    height: 180px; /* puedes subir a 200 si quieres más grande */
-    overflow: hidden;
-    border-radius: 12px 12px 0 0; /* solo arriba */
-}
-
-/* 🖼️ IMAGEN FULL */
-.product-img {
-    width: 100%;
-    height: 100%;
-    object-fit: cover; /* 🔥 clave */
-    display: block;
-}
-
-/* 💰 PRECIO */
-.price-badge {
-    position: absolute;
-    bottom: 8px;
-    right: 8px;
-    background: rgba(17, 24, 39, 0.9);
-    color: white;
-    font-size: 12px;
-    padding: 4px 8px;
-    border-radius: 6px;
-    font-weight: 600;
-}
-
-/* ❌ QUITA ESPACIOS DE CARD */
-.product-card .card-img-top {
-    margin: 0 !important;
-    border-radius: 0 !important;
-}
-
-/* 📦 BODY MÁS COMPACTO */
-.product-card .card-body {
-    padding: 6px 8px !important;
-}
-
-/* 🧾 TEXTO MÁS LIMPIO */
-.product-title {
-    font-size: 12px;
-    font-weight: 600;
-    margin-bottom: 2px;
-}
-
-.product-code {
-    font-size: 10px;
-}
-
-.product-code-variant {
-    color: #2F6FED;
-    font-weight: 600;
-}
-
-/* 🔖 INSIGNIA DE VARIANTES/PRESENTACIONES */
-.variant-badge {
-    position: absolute;
-    top: 6px;
-    left: 6px;
-    width: 22px;
-    height: 22px;
-    border-radius: 6px;
-    background: #2F6FED;
-    color: #fff;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 11px;
-}
-
-/* 📊 STOCK */
-.stock-badge {
-    font-size: 10px;
-}
-
-.stock-badge-low {
-    color: #dc2626;
-    font-weight: 700;
-}
-                `}
-                </style>
             </div>
         ) : (
             ""
@@ -574,10 +488,7 @@ const Product = (props) => {
                 } product-list-block pt-1`}
         >
             {isLoading ? (
-                <div
-                    className="d-flex flex-wrap product-list-block__product-block"
-                    style={{ width: '100%', padding: '0 8px' }}  // ← agrega esto
-                >
+                <div className="d-flex flex-wrap product-list-block__product-block w-100 px-2">
                     {[...Array(24)].map((_, index) => (
                         <SkeletonCard key={index} />
                     ))}

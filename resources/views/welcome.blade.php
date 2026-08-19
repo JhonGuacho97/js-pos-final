@@ -4,7 +4,7 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
 
-    <title>JhonSport POS</title>
+    <title>EcuaPos</title>
 
     <!-- PWA -->
     <link rel="manifest" href="/manifest.json">

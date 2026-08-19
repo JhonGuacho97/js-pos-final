@@ -35,13 +35,25 @@ class DefaultLanguageTableSeeder extends Seeder
         $permission = Permission::where('name', 'manage_language')->pluck('name', 'id');
         $adminRole->givePermissionTo($permission);
 
-        Language::create(['name' => 'Arabic', 'iso_code' => 'ar', 'is_default' => false]);
-        Language::create(['name' => 'Chinese', 'iso_code' => 'cn', 'is_default' => false]);
-        Language::create(['name' => 'English', 'iso_code' => 'en', 'is_default' => true]);
-        Language::create(['name' => 'French', 'iso_code' => 'fr', 'is_default' => false]);
-        Language::create(['name' => 'German', 'iso_code' => 'gr', 'is_default' => false]);
-        Language::create(['name' => 'Spanish', 'iso_code' => 'sp', 'is_default' => false]);
-        Language::create(['name' => 'Turkish', 'iso_code' => 'tr', 'is_default' => false]);
-        Language::create(['name' => 'vietnamese', 'iso_code' => 'vi', 'is_default' => false]);
+        $languages = [
+            'ar' => 'Arabic',
+            'cn' => 'Chinese',
+            'en' => 'English',
+            'fr' => 'French',
+            'gr' => 'German',
+            'sp' => 'Spanish',
+            'tr' => 'Turkish',
+            'vi' => 'Vietnamese',
+        ];
+
+        foreach ($languages as $isoCode => $name) {
+            Language::firstOrCreate(
+                ['iso_code' => $isoCode],
+                ['name' => $name]
+            );
+        }
+
+        Language::query()->update(['is_default' => false]);
+        Language::where('iso_code', 'sp')->update(['is_default' => true]);
     }
 }

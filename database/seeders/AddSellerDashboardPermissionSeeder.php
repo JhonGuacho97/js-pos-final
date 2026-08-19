@@ -10,9 +10,7 @@ class AddSellerDashboardPermissionSeeder extends Seeder
     /**
      * Run the database seeds.
      *
-     * Corre con: php artisan db:seed --class=AddSellerDashboardPermissionSeeder
-     * Después, el permiso aparece en Roles/Permisos para asignarlo al rol
-     * que quieras (ej. "Vendedor").
+     * Se ejecuta automaticamente desde DatabaseSeeder.
      */
     public function run(): void
     {

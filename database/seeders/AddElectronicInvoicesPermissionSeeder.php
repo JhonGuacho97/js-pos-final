@@ -10,9 +10,7 @@ class AddElectronicInvoicesPermissionSeeder extends Seeder
     /**
      * Run the database seeds.
      *
-     * Corre con: php artisan db:seed --class=AddElectronicInvoicesPermissionSeeder
-     * Después, asigna el permiso desde Roles/Permisos al rol que
-     * corresponda (por ejemplo, Admin o Contador).
+     * Se ejecuta automaticamente desde DatabaseSeeder.
      */
     public function run(): void
     {

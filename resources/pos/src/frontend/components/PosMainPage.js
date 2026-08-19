@@ -681,23 +681,79 @@ const PosMainPage = (props) => {
     };
 
     return (
-        <Container className="pos-screen px-3" fluid>
+        <Container className="pos-screen pos-v2 px-3" fluid>
             <TabTitle title="POS" />
             {/* {loadPrintBlock()} */}
             {loadPaymentSlip()}
             {loadRegisterDetailsPrint()}
-            <Row>
+            <Row className="pos-workspace g-3">
                 <TopProgressBar />
-                <Col lg={5} xxl={4} xs={6} className="pos-left-scs">
-                    <PosHeader
-                        setSelectedCustomerOption={setSelectedCustomerOption}
-                        selectedCustomerOption={selectedCustomerOption}
-                        setSelectedOption={setSelectedOption}
-                        selectedOption={selectedOption}
-                        customerModel={customerModel}
-                        updateCustomer={modalShowCustomer}
-                    />
-                    <div className="left-content custom-card mb-3 p-3">
+                <Col lg={8} xxl={8} className="pos-catalog-panel pos-right-scs">
+                    <div className="pos-catalog-toolbar my-3">
+                        <div className="pos-screen-heading">
+                            <span className="pos-eyebrow">EcuaPos</span>
+                            <h1>Catálogo</h1>
+                        </div>
+                        <div className="pos-catalog-actions d-sm-flex align-items-center">
+                            <ProductSearchbar
+                                customCart={customCart}
+                                setUpdateProducts={setUpdateProducts}
+                                updateProducts={updateProducts}
+                            />
+                            <HeaderAllButton
+                                holdListData={holdListData}
+                                goToHoldScreen={onClickHoldModel}
+                                goToDetailScreen={onClickDetailsModel}
+                                onClickFullScreen={onClickFullScreen}
+                                opneCalculator={openCalculator}
+                                setOpneCalculator={setOpenCalculator}
+                                handleClickCloseRegister={handleClickCloseRegister}
+                            />
+                        </div>
+                    </div>
+                    <div className="right-content custom-card pos-catalog-card mb-3">
+                        <div className="pos-category-strip px-3 pt-3">
+                            <Category
+                                setCategory={setCategory}
+                                brandId={brandId}
+                                selectedOption={selectedOption}
+                            />
+                        </div>
+                        <Product
+                            cartProducts={updateProducts}
+                            updateCart={addToCarts}
+                            customCart={customCart}
+                            setCartProductIds={setCartProductIds}
+                            cartProductIds={cartProductIds}
+                            settings={settings}
+                            productMsg={productMsg}
+                            selectedOption={selectedOption}
+                            brandId={brandId}
+                            categoryId={categoryId}
+                        />
+                    </div>
+                </Col>
+                <Col lg={4} xxl={4} className="pos-order-panel pos-left-scs">
+                    <div className="pos-order-heading my-3">
+                        <div>
+                            <span className="pos-eyebrow">Nueva venta</span>
+                            <h2>Pedido actual</h2>
+                        </div>
+                        <span className="pos-item-count">
+                            {updateProducts.length} {updateProducts.length === 1 ? "producto" : "productos"}
+                        </span>
+                    </div>
+                    <div className="pos-context-card">
+                        <PosHeader
+                            setSelectedCustomerOption={setSelectedCustomerOption}
+                            selectedCustomerOption={selectedCustomerOption}
+                            setSelectedOption={setSelectedOption}
+                            selectedOption={selectedOption}
+                            customerModel={customerModel}
+                            updateCustomer={modalShowCustomer}
+                        />
+                    </div>
+                    <div className="left-content custom-card pos-order-card mb-3 p-3">
                         <div className="main-table overflow-auto">
                             <Table className="mb-0">
                                 <thead className="position-sticky top-0">
@@ -740,7 +796,7 @@ const PosMainPage = (props) => {
                                                         singleProduct={
                                                             updateProduct
                                                         }
-                                                        key={index + 1}
+                                                        key={updateProduct.id}
                                                         index={index}
                                                         posAllProducts={
                                                             posAllProducts
@@ -809,51 +865,6 @@ const PosMainPage = (props) => {
                             selectedCustomerOption={selectedCustomerOption}
                             setUpdateHoldList={setUpdateHoldList}
                         />
-                    </div>
-                </Col>
-                <Col lg={7} xxl={8} xs={6} className="ps-lg-0 pos-right-scs">
-                    <div className="right-content mb-3">
-                        <div className="d-sm-flex align-items-center flex-xxl-nowrap flex-wrap">
-                            <ProductSearchbar
-                                customCart={customCart}
-                                setUpdateProducts={setUpdateProducts}
-                                updateProducts={updateProducts}
-                            // handleOnSelect={handleOnSelect} handleOnSearch={handleOnSearch}
-                            // searchString={searchString}
-                            />
-                            <HeaderAllButton
-                                holdListData={holdListData}
-                                goToHoldScreen={onClickHoldModel}
-                                goToDetailScreen={onClickDetailsModel}
-                                onClickFullScreen={onClickFullScreen}
-                                opneCalculator={openCalculator}
-                                setOpneCalculator={setOpenCalculator}
-                                handleClickCloseRegister={
-                                    handleClickCloseRegister
-                                }
-                            />
-                        </div>
-                        <div className="custom-card h-100">
-                            <div className="p-3">
-                                <Category
-                                    setCategory={setCategory}
-                                    brandId={brandId}
-                                    selectedOption={selectedOption}
-                                />
-                            </div>
-                            <Product
-                                cartProducts={updateProducts}
-                                updateCart={addToCarts}
-                                customCart={customCart}
-                                setCartProductIds={setCartProductIds}
-                                cartProductIds={cartProductIds}
-                                settings={settings}
-                                productMsg={productMsg}
-                                selectedOption={selectedOption}
-                                brandId={brandId}
-                                categoryId={categoryId}
-                            />
-                        </div>
                     </div>
                 </Col>
             </Row>

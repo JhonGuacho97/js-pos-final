@@ -12,9 +12,13 @@ class AddDefaultSettingPostcodeSeeder extends Seeder
      */
     public function run(): void
     {
-        $exists = Setting::where('key', 'postcode')->exists();
-        if (! $exists) {
-            Setting::create(['key' => 'postcode', 'value' => '395007']);
-        }
+        Setting::where('key', 'postcode')
+            ->where('value', '395007')
+            ->update(['value' => '130802']);
+
+        Setting::firstOrCreate(
+            ['store_id' => null, 'key' => 'postcode'],
+            ['value' => '130802']
+        );
     }
 }

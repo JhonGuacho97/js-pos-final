@@ -235,11 +235,11 @@ const PaymentButton = (props) => {
     return (
         // <div className='d-xl-flex align-items-center justify-content-between'>
         //      <h5 className='mb-0'>Payment Method</h5>
-        <div className="d-flex align-items-center justify-content-between">
+        <div className="pos-order-actions">
             <Button
                 type="button"
                 variant="anger"
-                className="text-white bg-btn-pink btn-rounded btn-block me-2 w-100 py-3 rounded-10 px-3"
+                className="pos-secondary-action pos-action-hold"
                 onClick={holdPaymentModel}
                 title="Atajo: Alt + H"
             >
@@ -249,7 +249,7 @@ const PaymentButton = (props) => {
             <Button
                 type="button"
                 variant="anger"
-                className="text-white btn-danger btn-rounded btn-block me-2 w-100 py-3 rounded-10 px-3"
+                className="pos-secondary-action pos-action-reset"
                 onClick={resetPaymentModel}
                 title="Atajo: Alt + R"
             >
@@ -262,7 +262,7 @@ const PaymentButton = (props) => {
             <Button
                 type="button"
                 variant="success"
-                className="text-white w-100 py-3 rounded-10 px-3 pos-pay-btn"
+                className="pos-checkout-button pos-pay-btn"
                 onClick={openPaymentModel}
                 title="Atajo: Alt + S"
             >

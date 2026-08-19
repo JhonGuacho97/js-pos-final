@@ -1,4 +1,16 @@
 const mix = require('laravel-mix');
+const del = require('del');
+
+class CleanBuildChunksPlugin {
+    apply(compiler) {
+        const cleanChunks = () => {
+            del.sync(['public/js/chunks/**/*']);
+        };
+
+        compiler.hooks.beforeRun.tap('CleanBuildChunksPlugin', cleanChunks);
+        compiler.hooks.watchRun.tap('CleanBuildChunksPlugin', cleanChunks);
+    }
+}
 
 /*
  |--------------------------------------------------------------------------
@@ -19,6 +31,7 @@ mix.options({
 
 mix.setPublicPath('public');
 mix.webpackConfig({
+    plugins: [new CleanBuildChunksPlugin()],
     resolve: {
         extensions: ['.js', '.jsx'],
         alias: {

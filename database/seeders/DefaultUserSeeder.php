@@ -15,50 +15,56 @@ class DefaultUserSeeder extends Seeder
     /**
      * Run the database seeds.
      *
-     * Antes esto creaba admin@infy-pos.com con la contraseña fija '123456'
-     * -- una credencial pública del template que, combinada con el dump
-     * database/pos.sql que el propio README indica importar en producción,
-     * daba acceso admin completo a cualquiera que la conociera. Ahora se
-     * genera una contraseña aleatoria y se imprime UNA sola vez en
-     * consola al correr el seeder -- quien lo ejecuta debe capturarla ahí.
+     * El administrador inicial usa la marca EcuaPos y una contraseña
+     * aleatoria que solo se muestra al crearlo. Las instalaciones antiguas
+     * conservan su contraseña al migrar el correo del administrador.
      */
     public function run(): void
     {
-        $email = 'admin@infy-pos.com';
+        $email = 'admin@ecua-pos.com';
+        $legacyEmail = 'admin@infy-pos.com';
+        $password = null;
 
-        if (User::whereEmail($email)->exists()) {
-            return;
-        }
+        $user = User::whereEmail($email)->first();
 
-        $password = Str::password(16);
-
-        $input = [
-            'first_name' => 'admin',
-            'email' => $email,
-            'email_verified_at' => Carbon::now(),
-            'password' => Hash::make($password),
-        ];
-        $user = User::create($input);
-        /** @var Role $adminRole */
-        $adminRole = Role::whereName('admin')->first();
-        if ($user) {
-            $user->assignRole($adminRole);
-
-            // Sin esto, ResolveActiveStore nunca resuelve una tienda activa
-            // para este usuario (0 filas en user_store) y llama a
-            // setPermissionsTeamId(null) en cada request -- hasRole()/can()
-            // dejan de encontrar la asignación de rol que se acaba de crear
-            // (quedó con store_id = la tienda inicial), y el admin recién
-            // sembrado no puede hacer nada pese a tener el rol en la BD.
-            // Mismo criterio que ya usa UserRepository::storeUser() para
-            // usuarios nuevos creados desde la app.
-            $store = Store::first();
-            if ($store) {
-                $user->stores()->syncWithoutDetaching([$store->id]);
+        // Conserva la contraseña y el historial de una instalación antigua,
+        // pero migra la cuenta principal al nuevo correo.
+        if (! $user) {
+            $user = User::whereEmail($legacyEmail)->first();
+            if ($user) {
+                $user->update(['email' => $email]);
             }
         }
 
-        if ($this->command) {
+        if (! $user) {
+            $password = Str::password(16);
+            $user = User::create([
+                'first_name' => 'admin',
+                'email' => $email,
+                'language' => 'sp',
+                'password' => Hash::make($password),
+            ]);
+            $user->forceFill(['email_verified_at' => Carbon::now()])->save();
+        }
+
+        if (in_array($user->language, [null, '', 'en'], true)) {
+            $user->update(['language' => 'sp']);
+        }
+
+        /** @var Role $adminRole */
+        $adminRole = Role::whereName('admin')->first();
+        if ($user && ! $user->hasRole($adminRole)) {
+            $user->assignRole($adminRole);
+        }
+
+        // El administrador debe quedar asociado a la tienda inicial incluso
+        // cuando el usuario ya existía antes de volver a ejecutar db:seed.
+        $store = Store::first();
+        if ($store) {
+            $user->stores()->syncWithoutDetaching([$store->id]);
+        }
+
+        if ($password !== null && $this->command) {
             $this->command->warn("Usuario admin creado: {$email} / contraseña: {$password}");
             $this->command->warn('Guarde esta contraseña ahora -- no se volverá a mostrar. Cámbiela después del primer login.');
         }

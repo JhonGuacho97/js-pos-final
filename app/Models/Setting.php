@@ -55,7 +55,7 @@ class Setting extends Model implements HasMedia
             return $media->getFullUrl();
         }
 
-        return asset('images/infyom.png');
+        return asset($this->value ?: 'images/ecua-pos-logo.png');
     }
 
     /**

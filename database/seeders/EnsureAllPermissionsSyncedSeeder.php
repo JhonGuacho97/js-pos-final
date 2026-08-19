@@ -42,6 +42,15 @@ class EnsureAllPermissionsSyncedSeeder extends Seeder
             'manage_login_logs' => 'Manage Login Logs',
             'manage_language' => 'Manage Language',
             'manage_stores' => 'Manage Stores',
+            'manage_email_templates' => 'Manage Email Templates',
+            'manage_reports' => 'Manage Reports',
+            'manage_quotations' => 'Manage Quotations',
+            'manage_sms_templates' => 'Manage Sms Templates',
+            'manage_sms_apis' => 'Manage Sms Apis',
+            'manage_electronic_invoices' => 'Manage Electronic Invoices',
+            'manage_kardex' => 'Manage Kardex',
+            'manage_my-sales' => 'Manage Seller Dashboard',
+            'manage_sri_config' => 'Manage SRI Configuration',
         ];
 
         foreach ($permissions as $name => $displayName) {

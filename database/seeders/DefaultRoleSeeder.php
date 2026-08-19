@@ -30,6 +30,6 @@ class DefaultRoleSeeder extends Seeder
         $adminRole = Role::whereName('admin')->first();
 
         $allPermissions = Permission::pluck('name', 'id');
-        $adminRole->givePermissionTo($allPermissions);
+        $adminRole->syncPermissions($allPermissions);
     }
 }

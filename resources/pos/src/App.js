@@ -33,7 +33,9 @@ function App() {
         } else {
             require("./assets/css/custom.css");
             require("./assets/css/style.css");
-            require("./assets/css/frontend.css");
+            // El POS se mantiene en SCSS fuente; cargar el CSS precompilado
+            // antiguo dejaba fuera los estilos del rediseño EcuaPos.
+            require("./assets/scss/frontend/frontend.scss");
         }
     }, [location.pathname]);
 

@@ -82,7 +82,7 @@ class BackupController extends AppBaseController
         $pdo    = DB::connection()->getPdo();
         $tables = $pdo->query('SHOW TABLES')->fetchAll(\PDO::FETCH_COLUMN);
 
-        $sql  = "-- JhonSport POS — Backup generado el " . now()->toDateTimeString() . "\n";
+        $sql  = "-- EcuaPos — Backup generado el " . now()->toDateTimeString() . "\n";
         $sql .= "-- Base de datos: {$database}\n\n";
         $sql .= "SET FOREIGN_KEY_CHECKS=0;\n\n";
 

@@ -2,6 +2,7 @@
 
 use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
 
 /**
@@ -34,9 +35,7 @@ return new class extends Migration
             'brands', 'variations', 'variation_types', 'customers',
             'suppliers', 'expense_categories',
         ] as $table) {
-            Schema::table($table, function (Blueprint $t) {
-                $t->unsignedBigInteger('store_id')->nullable(false)->change();
-            });
+            $this->changeStoreIdNullability($table, false);
         }
 
         // 2. Uniques compuestos por tienda.
@@ -152,9 +151,34 @@ return new class extends Migration
             'brands', 'variations', 'variation_types', 'customers',
             'suppliers', 'expense_categories',
         ] as $table) {
-            Schema::table($table, function (Blueprint $t) {
-                $t->unsignedBigInteger('store_id')->nullable()->change();
-            });
+            $this->changeStoreIdNullability($table, true);
         }
+    }
+
+    /**
+     * MySQL 8.4 no permite cambiar la nulabilidad de una columna mientras
+     * participa en una clave foranea. Ejecutar DROP/MODIFY/ADD dentro del
+     * mismo ALTER TABLE mantiene la operacion atomica y conserva exactamente
+     * las reglas originales de la relacion con stores.
+     */
+    private function changeStoreIdNullability(string $table, bool $nullable): void
+    {
+        $originalForeignKey = $table.'_store_id_foreign';
+        $hardenedForeignKey = $table.'_store_id_foreign_hardened';
+        $foreignKeyToDrop = $nullable ? $hardenedForeignKey : $originalForeignKey;
+        $foreignKeyToAdd = $nullable ? $originalForeignKey : $hardenedForeignKey;
+        $nullability = $nullable ? 'NULL' : 'NOT NULL';
+
+        DB::statement(sprintf(
+            'ALTER TABLE `%s` '
+            .'DROP FOREIGN KEY `%s`, '
+            .'MODIFY `store_id` BIGINT UNSIGNED %s, '
+            .'ADD CONSTRAINT `%s` FOREIGN KEY (`store_id`) REFERENCES `stores` (`id`) '
+            .'ON UPDATE CASCADE ON DELETE RESTRICT',
+            $table,
+            $foreignKeyToDrop,
+            $nullability,
+            $foreignKeyToAdd
+        ));
     }
 };

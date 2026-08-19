@@ -29,14 +29,14 @@ const CustomerDropDown = (props) => {
                     <i className="bi bi-person fs-2 text-gray-900" />
                 </InputGroup.Text>
                 <Select
-                    placeholder='Choose Customer'
+                    placeholder='Seleccionar cliente'
                     defaultValue={selectedCustomerOption}
                     value={selectedCustomerOption}
                     onChange={onChangeWarehouse}
                     options={customerOption}
                     noOptionsMessage={() => getFormattedMessage('no-option.label')}
                 />
-                <Button onClick={() => customerModel(true)} className='position-absolute'><FontAwesomeIcon icon={faUserPlus} /></Button>
+                <Button title="Crear cliente" aria-label="Crear cliente" onClick={() => customerModel(true)} className='position-absolute'><FontAwesomeIcon icon={faUserPlus} /></Button>
             </InputGroup>
         </div>
     )
