@@ -153,13 +153,14 @@ class CashControlAPIController extends AppBaseController
     {
         $storeId = (int) $this->currentStoreId();
         $status = $request->input('status', 'all');
+        $perPage = min(max((int) $request->input('per_page', 10), 1), 100);
         $sessions = POSRegister::with([
             'cashRegister:id,name,code', 'warehouse:id,name,store_id', 'user:id,first_name,last_name',
             'reviewedBy:id,first_name,last_name',
-        ])->whereHas('warehouse', fn ($query) => $query->where('store_id', $storeId))
+            ])->whereHas('warehouse', fn ($query) => $query->where('store_id', $storeId))
             ->when($status === 'open', fn ($query) => $query->whereNull('closed_at'))
             ->when($status === 'closed', fn ($query) => $query->whereNotNull('closed_at'))
-            ->latest()->paginate(min((int) $request->input('page.size', 20), 100));
+            ->latest()->paginate($perPage);
 
         return response()->json($sessions);
     }

@@ -1,4 +1,5 @@
 import React, { useCallback, useEffect, useState } from 'react';
+import { createPortal } from 'react-dom';
 import MasterLayout from '../MasterLayout';
 import TabTitle from '../../shared/tab-title/TabTitle';
 import TopProgressBar from '../../shared/components/loaders/TopProgressBar';
@@ -31,6 +32,9 @@ const CashControl = () => {
     const [registerForm, setRegisterForm] = useState({ name: '', code: '', warehouse_id: '' });
     const [showRegisterForm, setShowRegisterForm] = useState(false);
     const [sessions, setSessions] = useState([]);
+    const [historyLoading, setHistoryLoading] = useState(false);
+    const [historyPage, setHistoryPage] = useState(1);
+    const [historyMeta, setHistoryMeta] = useState({ currentPage: 1, lastPage: 1, from: 0, to: 0, total: 0 });
     const [reviewing, setReviewing] = useState(null);
     const [reviewNote, setReviewNote] = useState('');
     // El endpoint calcula estas capacidades con la misma tienda activa y el
@@ -62,10 +66,40 @@ const CashControl = () => {
 
     useEffect(() => {
         if (activeTab !== 'history') return;
-        apiConfig.get('cash-control/sessions?status=closed&page[size]=50')
-            .then((response) => setSessions(response.data.data || []))
-            .catch((error) => dispatch(addToast({ text: error?.response?.data?.message || 'No se pudo cargar el historial de cierres.', type: toastType.ERROR })));
-    }, [activeTab, dispatch]);
+        setHistoryLoading(true);
+        setSessions([]);
+        apiConfig.get(`cash-control/sessions?status=closed&per_page=10&page=${historyPage}`)
+            .then((response) => {
+                const result = response.data;
+                setSessions(result.data || []);
+                setHistoryMeta({
+                    currentPage: result.current_page || 1,
+                    lastPage: result.last_page || 1,
+                    from: result.from || 0,
+                    to: result.to || 0,
+                    total: result.total || 0,
+                });
+            })
+            .catch((error) => dispatch(addToast({ text: error?.response?.data?.message || 'No se pudo cargar el historial de cierres.', type: toastType.ERROR })))
+            .finally(() => setHistoryLoading(false));
+    }, [activeTab, dispatch, historyPage]);
+
+    useEffect(() => {
+        if (!reviewing) return undefined;
+        const previousOverflow = document.body.style.overflow;
+        const closeOnEscape = (event) => {
+            if (event.key === 'Escape' && !saving) {
+                setReviewing(null);
+                setReviewNote('');
+            }
+        };
+        document.body.style.overflow = 'hidden';
+        document.addEventListener('keydown', closeOnEscape);
+        return () => {
+            document.body.style.overflow = previousOverflow;
+            document.removeEventListener('keydown', closeOnEscape);
+        };
+    }, [reviewing, saving]);
 
     const apiError = (error, fallback) => {
         const errors = error?.response?.data?.errors;
@@ -153,11 +187,18 @@ const CashControl = () => {
         } finally { setSaving(false); }
     };
 
+    const closeReviewModal = () => {
+        if (saving) return;
+        setReviewing(null);
+        setReviewNote('');
+    };
+
     const session = overview?.session;
     const totalIn = movements.filter((item) => item.type === 'MANUAL_INCOME').reduce((sum, item) => sum + Number(item.amount), 0);
     const totalOut = movements.filter((item) => item.direction === 'OUT').reduce((sum, item) => sum + Number(item.amount), 0);
 
     return (
+        <>
         <MasterLayout>
             <TabTitle title="Control de cajas" />
             {loading && <TopProgressBar />}
@@ -260,18 +301,55 @@ const CashControl = () => {
 
                 {activeTab === 'history' && <section className="cash-workspace">
                     <div className="cash-workspace-heading"><div><span>AUDITORÍA</span><h2>Cierres recientes</h2><p>Revisa diferencias y deja constancia de la aprobación.</p></div><a className="btn btn-light" href="#/app/report/register">Ver reporte completo</a></div>
-                    {reviewing && <div className="cash-review-panel"><div><strong>Revisar cierre de {reviewing.user?.first_name}</strong><small>Diferencia: {Number(reviewing.cash_difference) >= 0 ? '+' : '-'}{currency}{Math.abs(Number(reviewing.cash_difference)).toFixed(2)} · {reviewing.discrepancy_reason}</small></div><textarea value={reviewNote} onChange={(e) => setReviewNote(e.target.value)} placeholder="Observación de supervisión (obligatoria para rechazar)" /><div><button className="btn btn-light" onClick={() => setReviewing(null)}>Cancelar</button><button className="btn btn-danger" disabled={saving || !reviewNote.trim()} onClick={() => reviewClosure('REJECTED')}>Rechazar</button><button className="btn btn-success" disabled={saving} onClick={() => reviewClosure('APPROVED')}>Aprobar</button></div></div>}
                     <div className="cash-history-list">
+                        {historyLoading && <div className="cash-inline-empty">Cargando cierres...</div>}
                         {sessions.map((item) => <article key={item.id}>
                             <div><span className={`cash-close-status is-${(item.reconciliation_status || 'pending').toLowerCase()}`}>{item.reconciliation_status === 'BALANCED' ? 'Cuadrada' : item.reconciliation_status === 'APPROVED' ? 'Aprobada' : item.reconciliation_status === 'REJECTED' ? 'Rechazada' : 'Pendiente'}</span><h3>{item.cash_register?.name || 'Caja'} · {item.warehouse?.name}</h3><p>{item.user?.first_name} {item.user?.last_name} · {new Date(item.created_at).toLocaleString('es-EC')}</p></div>
                             <div className="cash-history-values"><span>Esperado <b>{currency}{Number(item.expected_cash || 0).toFixed(2)}</b></span><span>Contado <b>{currency}{Number(item.cash_in_hand_while_closing || 0).toFixed(2)}</b></span><strong className={Number(item.cash_difference) === 0 ? '' : Number(item.cash_difference) > 0 ? 'is-positive' : 'is-negative'}>{Number(item.cash_difference) > 0 ? '+' : ''}{currency}{Number(item.cash_difference || 0).toFixed(2)}</strong></div>
                             {canReview && item.reconciliation_status === 'PENDING' && <button className="cash-review-button" onClick={() => { setReviewing(item); setReviewNote(''); }}>Revisar cierre</button>}
                         </article>)}
-                        {!sessions.length && <div className="cash-inline-empty">No hay cierres registrados.</div>}
+                        {!historyLoading && !sessions.length && <div className="cash-inline-empty">No hay cierres registrados.</div>}
                     </div>
+                    {!historyLoading && historyMeta.total > 0 && <nav className="cash-pagination" aria-label="Paginación de cierres">
+                        <span>Mostrando {historyMeta.from}-{historyMeta.to} de {historyMeta.total} cierres</span>
+                        <div>
+                            <button disabled={historyMeta.currentPage <= 1} onClick={() => setHistoryPage((page) => Math.max(1, page - 1))}><i className="bi bi-chevron-left" /> Anterior</button>
+                            <strong>Página {historyMeta.currentPage} de {historyMeta.lastPage}</strong>
+                            <button disabled={historyMeta.currentPage >= historyMeta.lastPage} onClick={() => setHistoryPage((page) => Math.min(historyMeta.lastPage, page + 1))}>Siguiente <i className="bi bi-chevron-right" /></button>
+                        </div>
+                    </nav>}
                 </section>}
             </div>
         </MasterLayout>
+        {reviewing && createPortal(
+            <div className="cash-review-backdrop" onMouseDown={(event) => event.target === event.currentTarget && closeReviewModal()}>
+                <section className="cash-review-modal" role="dialog" aria-modal="true" aria-labelledby="cash-review-title">
+                    <header>
+                        <div className="cash-review-modal-icon"><i className="bi bi-clipboard-check" /></div>
+                        <div><span>CUADRE DE CAJA</span><h2 id="cash-review-title">Revisar cierre</h2><p>{reviewing.cash_register?.name || 'Caja'} · {reviewing.warehouse?.name}</p></div>
+                        <button className="cash-review-close" type="button" aria-label="Cerrar revisión" disabled={saving} onClick={closeReviewModal}><i className="bi bi-x-lg" /></button>
+                    </header>
+                    <div className="cash-review-person">
+                        <div><i className="bi bi-person" /></div>
+                        <span><small>Responsable</small><strong>{reviewing.user?.first_name} {reviewing.user?.last_name}</strong><em>{new Date(reviewing.created_at).toLocaleString('es-EC')}</em></span>
+                    </div>
+                    <div className="cash-review-summary">
+                        <div><span>Efectivo esperado</span><strong>{currency}{Number(reviewing.expected_cash || 0).toFixed(2)}</strong></div>
+                        <div><span>Efectivo contado</span><strong>{currency}{Number(reviewing.cash_in_hand_while_closing || 0).toFixed(2)}</strong></div>
+                        <div className={Number(reviewing.cash_difference) >= 0 ? 'is-positive' : 'is-negative'}><span>Diferencia</span><strong>{Number(reviewing.cash_difference) > 0 ? '+' : ''}{currency}{Number(reviewing.cash_difference || 0).toFixed(2)}</strong></div>
+                    </div>
+                    <div className="cash-review-reason"><i className="bi bi-info-circle" /><span><small>Motivo declarado</small><strong>{reviewing.discrepancy_reason || 'Sin motivo registrado'}</strong></span></div>
+                    <label className="cash-review-note">Observación de supervisión <small>Obligatoria para rechazar el cierre.</small><textarea autoFocus value={reviewNote} onChange={(e) => setReviewNote(e.target.value)} maxLength="1000" placeholder="Escribe una observación sobre el cuadre..." /></label>
+                    <footer>
+                        <button type="button" className="btn btn-light" disabled={saving} onClick={closeReviewModal}>Cancelar</button>
+                        <button type="button" className="btn btn-danger" disabled={saving || !reviewNote.trim()} onClick={() => reviewClosure('REJECTED')}><i className="bi bi-x-circle" /> {saving ? 'Procesando...' : 'Rechazar'}</button>
+                        <button type="button" className="btn btn-success" disabled={saving} onClick={() => reviewClosure('APPROVED')}><i className="bi bi-check-circle" /> {saving ? 'Procesando...' : 'Aprobar cierre'}</button>
+                    </footer>
+                </section>
+            </div>,
+            document.body
+        )}
+        </>
     );
 };
 
