@@ -41,6 +41,7 @@ const SLUG_TO_GROUP = {
     manage_sale_return: 'sales',
     manage_quotations: 'sales',
     manage_electronic_invoices: 'sales',
+    manage_catalog_orders: 'sales',
 
     manage_purchase: 'purchases',
     manage_purchase_return: 'purchases',

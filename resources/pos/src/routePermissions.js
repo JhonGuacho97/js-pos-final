@@ -87,6 +87,8 @@ export const routePermissions = [
     { path: "roles", permission: Permissions.MANAGE_ROLES },
     { path: "roles/create", permission: Permissions.MANAGE_ROLES },
     { path: "roles/edit/:id", permission: Permissions.MANAGE_ROLES },
+    { path: "catalog-settings", permission: Permissions.MANAGE_STORES },
+    { path: "catalog-orders", permission: Permissions.MANAGE_CATALOG_ORDERS },
     { path: "transfers", permission: Permissions.MANAGE_TRANSFERS },
     { path: "transfers/create", permission: Permissions.MANAGE_TRANSFERS },
     { path: "transfers/:id", permission: Permissions.MANAGE_TRANSFERS },

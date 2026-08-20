@@ -49,5 +49,6 @@ mix.webpackConfig({
 mix.js('resources/js/app.js', 'public/js');
 
 mix.js('resources/pos/src/index.js', 'public/js/app.js').version();
+mix.js('resources/catalog/src/index.js', 'public/js/catalog.js').version();
 mix.copyDirectory('resources/images',
     'public/images')

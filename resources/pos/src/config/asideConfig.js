@@ -38,6 +38,8 @@ import {
     faGift,
     faStore,
     faCashRegister,
+    faGlobe,
+    faBagShopping,
 } from "@fortawesome/free-solid-svg-icons";
 import { getFormattedMessage } from "../shared/sharedMethod";
 
@@ -88,6 +90,14 @@ export default [
     },
 
     { groupHeader: true, title: "sidebar.group.sales" },
+    {
+        title: "catalog.orders.title",
+        name: "catalog orders",
+        fontIcon: <FontAwesomeIcon icon={faBagShopping} />,
+        to: "/app/catalog-orders",
+        class: "d-flex",
+        permission: Permissions.MANAGE_CATALOG_ORDERS,
+    },
     {
         title: "sales.title",
         name: "sales",
@@ -412,6 +422,7 @@ export default [
             mailSettingsSubPath: "/app/mail-settings",
             rolesSubPath: "/app/roles",
             storesSubPath: "/app/stores",
+            catalogSettingsSubPath: "/app/catalog-settings",
             currenciesSubPath: "/app/currencies",
             languagesSubPath: "/app/languages",
             emailTemplateSubPath: "/app/email-templates",
@@ -457,6 +468,14 @@ export default [
                 name: "stores",
                 fontIcon: <FontAwesomeIcon icon={faStore} />,
                 to: "/app/stores",
+                class: "d-flex",
+                permission: Permissions.MANAGE_STORES,
+            },
+            {
+                title: "catalog.virtual.title",
+                name: "catalog settings",
+                fontIcon: <FontAwesomeIcon icon={faGlobe} />,
+                to: "/app/catalog-settings",
                 class: "d-flex",
                 permission: Permissions.MANAGE_STORES,
             },

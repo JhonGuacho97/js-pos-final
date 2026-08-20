@@ -48,6 +48,7 @@ const SLUG_TO_LABEL_KEY = {
 
     manage_roles: 'role.permission.manage_roles',
     manage_stores: 'role.permission.manage_stores',
+    manage_catalog_orders: 'role.permission.manage_catalog_orders',
     manage_setting: 'role.permission.manage_setting',
     manage_currency: 'role.permission.manage_currency',
     manage_language: 'role.permission.manage_language',

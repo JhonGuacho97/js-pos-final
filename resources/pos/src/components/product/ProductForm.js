@@ -84,6 +84,9 @@ const ProductForm = (props) => {
         purchase_unit: "",
         sale_quantity_limit: "",
         notes: "",
+        catalog_visible: true,
+        catalog_featured: false,
+        catalog_description: "",
         images: [],
         warehouse_id: "",
         supplier_id: "",
@@ -114,6 +117,13 @@ const ProductForm = (props) => {
     const [isDropdown, setIsDropdown] = useState(true);
     const [multipleFiles, setMultipleFiles] = useState([]);
     const [errors, setErrors] = useState({});
+    const [catalogDetailsOpen, setCatalogDetailsOpen] = useState(false);
+
+    const scrollToFormSection = (sectionIds) => {
+        const ids = Array.isArray(sectionIds) ? sectionIds : [sectionIds];
+        const section = ids.map((sectionId) => document.getElementById(sectionId)).find(Boolean);
+        section?.scrollIntoView({ behavior: "smooth", block: "start" });
+    };
 
     useEffect(() => {
         fetchAllBrands();
@@ -285,6 +295,9 @@ const ProductForm = (props) => {
                         : ""
                     : "",
                 notes: singleProduct ? singleProduct[0].notes : "",
+                catalog_visible: singleProduct ? singleProduct[0].catalog_visible !== false : true,
+                catalog_featured: singleProduct ? Boolean(singleProduct[0].catalog_featured) : false,
+                catalog_description: singleProduct ? singleProduct[0].catalog_description || "" : "",
                 images: singleProduct ? singleProduct[0].images : "",
                 isEdit: singleProduct ? singleProduct[0].is_Edit : false,
             });
@@ -815,6 +828,9 @@ const ProductForm = (props) => {
         );
 
         formData.append("notes", productValue.notes);
+        formData.append("catalog_visible", productValue.catalog_visible ? "1" : "0");
+        formData.append("catalog_featured", productValue.catalog_featured ? "1" : "0");
+        formData.append("catalog_description", productValue.catalog_description || "");
         if (productValue.isEdit === false) {
             formData.append(
                 "purchase_supplier_id",
@@ -965,10 +981,28 @@ const ProductForm = (props) => {
                         {singleProduct ? "Edición en curso" : "Borrador"}
                     </div>
                 </div>
+                <nav className="product-form-index" aria-label="Secciones del producto">
+                    <button type="button" onClick={() => scrollToFormSection("product-section-basic")}>
+                        <span><i className="bi bi-box-seam" /></span>
+                        <div><small>01</small><strong>Información</strong></div>
+                    </button>
+                    <button type="button" onClick={() => scrollToFormSection("product-section-media")}>
+                        <span><i className="bi bi-images" /></span>
+                        <div><small>02</small><strong>Imágenes</strong></div>
+                    </button>
+                    <button type="button" onClick={() => scrollToFormSection(["product-section-commerce", "product-section-stock"])}>
+                        <span><i className="bi bi-tags" /></span>
+                        <div><small>03</small><strong>Venta e inventario</strong></div>
+                    </button>
+                    <button type="button" onClick={() => scrollToFormSection("product-section-catalog")}>
+                        <span><i className="bi bi-globe2" /></span>
+                        <div><small>04</small><strong>Catálogo virtual</strong></div>
+                    </button>
+                </nav>
                 <Form className="product-form-content">
                     <div className="row g-4 product-form-grid">
                         <div className="col-xl-8">
-                            <section className="sale-panel product-basic-panel">
+                            <section className="sale-panel product-basic-panel" id="product-section-basic">
                                 <div className="sale-panel-heading">
                                     <div className="sale-panel-icon"><i className="bi bi-box-seam" /></div>
                                     <div><h2>Información del producto</h2><p>Datos principales utilizados en catálogo, búsquedas y comprobantes.</p></div>
@@ -1148,70 +1182,56 @@ const ProductForm = (props) => {
                                             onChange={handlePurchaseUnitChange}
                                         />
                                     </div>
-                                    <div className="col-md-6 mb-3">
-                                        <label className="form-label">
-                                            {getFormattedMessage(
-                                                "product.input.quantity-limitation.label"
-                                            )}
-                                            :{" "}
-                                        </label>
-                                        <input
-                                            type="number"
-                                            name="sale_quantity_limit"
-                                            className="form-control"
-                                            placeholder={placeholderText(
-                                                "product.input.quantity-limitation.placeholder"
-                                            )}
-                                            onKeyPress={(event) =>
-                                                decimalValidate(event)
-                                            }
-                                            onChange={(e) => onChangeInput(e)}
-                                            value={
-                                                productValue.sale_quantity_limit
-                                            }
-                                            min={1}
-                                        />
-                                        <span className="text-danger d-block fw-400 fs-small mt-2">
-                                            {errors["stock_alert"]
-                                                ? errors["stock_alert"]
-                                                : null}
-                                        </span>
-                                    </div>
-                                    <div className="col-md-6 mb-3">
-                                        <label className="form-label">
-                                            {getFormattedMessage(
-                                                "globally.input.notes.label"
-                                            )}
-                                            :{" "}
-                                        </label>
-                                        <textarea
-                                            className="form-control"
-                                            name="notes"
-                                            rows={3}
-                                            placeholder={placeholderText(
-                                                "globally.input.notes.placeholder.label"
-                                            )}
-                                            onChange={(e) => onChangeInput(e)}
-                                            value={
-                                                productValue.notes
-                                                    ? productValue.notes ===
-                                                        "null"
-                                                        ? ""
-                                                        : productValue.notes
-                                                    : ""
-                                            }
-                                        />
-                                        <span className="text-danger d-block fw-400 fs-small mt-2">
-                                            {errors["notes"]
-                                                ? errors["notes"]
-                                                : null}
-                                        </span>
+                                    <div className="col-12">
+                                        <details className="product-advanced-details">
+                                            <summary>
+                                                <span className="product-advanced-details__icon"><i className="bi bi-sliders" /></span>
+                                                <span><strong>Opciones adicionales</strong><small>Límite por venta y notas internas del producto.</small></span>
+                                                <i className="bi bi-chevron-down product-advanced-details__chevron" />
+                                            </summary>
+                                            <div className="row product-advanced-details__body">
+                                                <div className="col-md-5 mb-3">
+                                                    <label className="form-label">
+                                                        {getFormattedMessage("product.input.quantity-limitation.label")}: {" "}
+                                                    </label>
+                                                    <input
+                                                        type="number"
+                                                        name="sale_quantity_limit"
+                                                        className="form-control"
+                                                        placeholder={placeholderText("product.input.quantity-limitation.placeholder")}
+                                                        onKeyPress={(event) => decimalValidate(event)}
+                                                        onChange={(e) => onChangeInput(e)}
+                                                        value={productValue.sale_quantity_limit}
+                                                        min={1}
+                                                    />
+                                                    <span className="text-danger d-block fw-400 fs-small mt-2">
+                                                        {errors["stock_alert"] ? errors["stock_alert"] : null}
+                                                    </span>
+                                                </div>
+                                                <div className="col-md-7 mb-3">
+                                                    <label className="form-label">
+                                                        {getFormattedMessage("globally.input.notes.label")}: {" "}
+                                                    </label>
+                                                    <textarea
+                                                        className="form-control"
+                                                        name="notes"
+                                                        rows={2}
+                                                        placeholder={placeholderText("globally.input.notes.placeholder.label")}
+                                                        onChange={(e) => onChangeInput(e)}
+                                                        value={productValue.notes ? productValue.notes === "null" ? "" : productValue.notes : ""}
+                                                    />
+                                                    <span className="text-danger d-block fw-400 fs-small mt-2">
+                                                        {errors["notes"] ? errors["notes"] : null}
+                                                    </span>
+                                                </div>
+                                            </div>
+                                        </details>
                                     </div>
                                 </div>
                             </section>
                         </div>
                         <div className="col-xl-4">
-                            <section className="sale-panel product-images-panel">
+                            <section className="sale-panel product-images-panel" id="product-section-media">
                                 <div className="sale-panel-heading">
                                     <div className="sale-panel-icon"><i className="bi bi-images" /></div>
                                     <div><h2>Imágenes</h2><p>Agrega fotografías claras para identificar el producto.</p></div>
@@ -1228,10 +1248,58 @@ const ProductForm = (props) => {
                                     transferImage={transferImage}
                                 />
                             </section>
+                            <section className={`sale-panel product-catalog-panel ${catalogDetailsOpen ? "is-expanded" : ""}`} id="product-section-catalog">
+                                <div className="sale-panel-heading product-catalog-heading">
+                                    <div className="sale-panel-icon"><i className="bi bi-globe2" /></div>
+                                    <div><h2>Catálogo virtual</h2><p>{productValue.catalog_visible ? "Visible para tus clientes" : "Oculto del catálogo público"}</p></div>
+                                    <span className={`product-catalog-status ${productValue.catalog_visible ? "is-live" : ""}`}>
+                                        <i className="bi bi-circle-fill" /> {productValue.catalog_visible ? "Publicado" : "Oculto"}
+                                    </span>
+                                </div>
+                                <label className={`product-catalog-publish ${productValue.catalog_visible ? "is-active" : ""}`}>
+                                    <input
+                                        type="checkbox"
+                                        checked={Boolean(productValue.catalog_visible)}
+                                        onChange={(event) => setProductValue((current) => ({ ...current, catalog_visible: event.target.checked }))}
+                                    />
+                                    <span><strong>Mostrar en el catálogo</strong><small>Permite encontrarlo y agregarlo al carrito.</small></span>
+                                    <span className="product-catalog-switch" aria-hidden="true"><i /></span>
+                                </label>
+                                <button className="product-catalog-expand" type="button" onClick={() => setCatalogDetailsOpen((open) => !open)} aria-expanded={catalogDetailsOpen}>
+                                    <span><i className="bi bi-magic" /> Personalizar cómo se presenta</span>
+                                    <i className={`bi bi-chevron-${catalogDetailsOpen ? "up" : "down"}`} />
+                                </button>
+                                {catalogDetailsOpen && (
+                                    <div className="product-catalog-details">
+                                        <label className={`product-catalog-toggle ${productValue.catalog_featured ? "is-featured" : ""}`}>
+                                            <input
+                                                type="checkbox"
+                                                checked={Boolean(productValue.catalog_featured)}
+                                                onChange={(event) => setProductValue((current) => ({ ...current, catalog_featured: event.target.checked }))}
+                                            />
+                                            <span className="product-catalog-toggle__icon"><i className="bi bi-star" /></span>
+                                            <span><strong>Producto destacado</strong><small>Aparecerá primero y tendrá una insignia especial.</small></span>
+                                        </label>
+                                        <label className="form-label mt-3">Descripción para el catálogo</label>
+                                        <textarea
+                                            className="form-control"
+                                            rows={3}
+                                            maxLength={1000}
+                                            value={productValue.catalog_description || ""}
+                                            onChange={(event) => setProductValue((current) => ({ ...current, catalog_description: event.target.value }))}
+                                            placeholder="Texto comercial breve para tus clientes..."
+                                        />
+                                        <div className="product-catalog-description-meta">
+                                            <small>Vacío: se utilizarán las notas generales.</small>
+                                            <small>{(productValue.catalog_description || "").length}/1000</small>
+                                        </div>
+                                    </div>
+                                )}
+                            </section>
                             {singleProduct ? (
                                 ""
                             ) : (
-                                <section className="sale-panel product-stock-panel">
+                                <section className="sale-panel product-stock-panel" id="product-section-stock">
                                     <div className="sale-panel-heading">
                                         <div className="sale-panel-icon"><i className="bi bi-building-add" /></div>
                                         <div><h2>{getFormattedMessage("add-stock.title")}</h2><p>Define dónde ingresará el inventario inicial.</p></div>
@@ -1291,7 +1359,7 @@ const ProductForm = (props) => {
                             )}
                         </div>
                         {!singleProduct && (
-                            <div className="row sale-panel product-options-panel">
+                            <div className="row sale-panel product-options-panel" id="product-section-commerce">
                                 <div className="col-12 product-section-heading">
                                     <div className="sale-panel-icon"><i className="bi bi-diagram-3" /></div>
                                     <div><h2>Tipo y configuración</h2><p>Indica si es un producto simple o si utiliza variantes.</p></div>
@@ -1559,15 +1627,14 @@ const ProductForm = (props) => {
                                             "product.input.tax-type.placeholder.label"
                                         )}
                                     />
-                                    <div className="form-text">
-                                        <strong>Exclusivo</strong>: el precio que cargás abajo NO incluye IVA, se suma aparte al cobrar
-                                        (precio $6.00 + 15% = $6.90 al cliente).
-                                        <br />
-                                        <strong>Inclusivo</strong>: el precio que cargás abajo YA incluye el IVA adentro
-                                        (cargás $6.90, el sistema calcula el IVA hacia atrás).
-                                        <br />
-                                        ⚠️ Elegir mal esta opción hace que la factura electrónica salga con el cálculo incorrecto.
-                                    </div>
+                                    <details className="product-tax-help">
+                                        <summary><i className="bi bi-info-circle" /> ¿Cómo elegir el tipo de IVA?</summary>
+                                        <div>
+                                            <p><strong>Exclusivo:</strong> el precio no incluye IVA; se suma al cobrar.</p>
+                                            <p><strong>Inclusivo:</strong> el precio ya contiene el IVA.</p>
+                                            <small>Esta elección afecta el cálculo de la factura electrónica.</small>
+                                        </div>
+                                    </details>
                                 </div>
                                 {!singleProduct &&
                                     <div className="col-md-3 mb-3">

@@ -122,6 +122,8 @@ const EditRole = lazyWithRetry(() => import(/* webpackChunkName: "roles" */ "./c
 
 // Administración de tiendas (multitienda).
 const Stores = lazyWithRetry(() => import(/* webpackChunkName: "stores" */ "./components/stores/Stores"), "Stores");
+const CatalogSettings = lazyWithRetry(() => import(/* webpackChunkName: "catalog-settings" */ "./components/catalog/CatalogSettings"), "CatalogSettings");
+const CatalogOrders = lazyWithRetry(() => import(/* webpackChunkName: "catalog-orders" */ "./components/catalogOrders/CatalogOrders"), "CatalogOrders");
 
 // Ajustes de inventario.
 const Adjustments = lazyWithRetry(() => import(/* webpackChunkName: "adjustments" */ "./components/adjustments/Adjustments"), "Adjustments");
@@ -579,6 +581,16 @@ export const route = [
     {
         path: "stores",
         ele: <Stores />,
+        permission: Permissions.MANAGE_STORES,
+    },
+    {
+        path: "catalog-orders",
+        ele: <CatalogOrders />,
+        permission: Permissions.MANAGE_CATALOG_ORDERS,
+    },
+    {
+        path: "catalog-settings",
+        ele: <CatalogSettings />,
         permission: Permissions.MANAGE_STORES,
     },
     {

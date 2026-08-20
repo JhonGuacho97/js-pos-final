@@ -616,6 +616,7 @@ export const Permissions = {
     MANAGE_DASHBOARD: "manage_dashboard",
     MANAGE_ROLES: "manage_roles",
     MANAGE_STORES: "manage_stores",
+    MANAGE_CATALOG_ORDERS: "manage_catalog_orders",
     MANAGE_BRANDS: "manage_brands",
     MANAGE_CURRENCY: "manage_currency",
     MANAGE_WAREHOUSES: "manage_warehouses",

@@ -43,6 +43,7 @@ class DatabaseSeeder extends Seeder
         $this->call(AddSellerDashboardPermissionSeeder::class);
         $this->call(AddSriConfigPermissionSeeder::class);
         $this->call(AddCashControlPermissionSeeder::class);
+        $this->call(AddCatalogOrdersPermissionSeeder::class);
 
         $this->call(DefaultUserSeeder::class);
         $this->call(SettingTableSeeder::class);

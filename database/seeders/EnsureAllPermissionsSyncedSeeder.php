@@ -62,6 +62,7 @@ class EnsureAllPermissionsSyncedSeeder extends Seeder
             'reverse_cash_movement' => 'Revertir movimiento de caja',
             'transfer_cash' => 'Transferir efectivo entre cajas',
             'review_cash_closure' => 'Revisar cierres de caja',
+            'manage_catalog_orders' => 'Manage Catalog Orders',
         ];
 
         foreach ($permissions as $name => $displayName) {

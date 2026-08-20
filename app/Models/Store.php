@@ -6,6 +6,7 @@ use App\Traits\HasJsonResourcefulData;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 
 /**
  * Entidad raíz del modelo multitienda -- un negocio independiente
@@ -100,6 +101,16 @@ class Store extends BaseModel
     public function settings(): HasMany
     {
         return $this->hasMany(Setting::class, 'store_id', 'id');
+    }
+
+    public function catalogSetting(): HasOne
+    {
+        return $this->hasOne(CatalogSetting::class);
+    }
+
+    public function catalogOrders(): HasMany
+    {
+        return $this->hasMany(CatalogOrder::class);
     }
 
     /**

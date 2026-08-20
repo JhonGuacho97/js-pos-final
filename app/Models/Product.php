@@ -125,6 +125,9 @@ class Product extends BaseModel implements HasMedia, JsonResourceful
         'barcode_symbol',
         'manage_presentations',
         'is_kit',
+        'catalog_visible',
+        'catalog_featured',
+        'catalog_description',
     ];
 
     public static $rules = [
@@ -145,6 +148,9 @@ class Product extends BaseModel implements HasMedia, JsonResourceful
         'notes' => 'nullable',
         'barcode_symbol' => 'required',
         'images.*' => 'image|mimes:jpg,jpeg,png',
+        'catalog_visible' => 'nullable|boolean',
+        'catalog_featured' => 'nullable|boolean',
+        'catalog_description' => 'nullable|string|max:1000',
     ];
 
     public static $availableRelations = [
@@ -159,6 +165,8 @@ class Product extends BaseModel implements HasMedia, JsonResourceful
         'order_tax' => 'float',
         'manage_presentations' => 'boolean',
         'is_kit' => 'boolean',
+        'catalog_visible' => 'boolean',
+        'catalog_featured' => 'boolean',
     ];
 
     /**
@@ -243,6 +251,9 @@ class Product extends BaseModel implements HasMedia, JsonResourceful
             'order_tax' => $this->order_tax,
             'tax_type' => $this->tax_type,
             'notes' => $this->notes,
+            'catalog_visible' => $this->catalog_visible,
+            'catalog_featured' => $this->catalog_featured,
+            'catalog_description' => $this->catalog_description,
             // Un kit no tiene main_product_id (no participa del sistema
             // de variaciones) -- antes esto asumía que todo producto
             // tenía un MainProduct y tiraba un error fatal al intentar
