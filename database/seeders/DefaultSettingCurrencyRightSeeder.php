@@ -4,6 +4,7 @@ namespace Database\Seeders;
 
 use App\Models\Setting;
 use Illuminate\Database\Seeder;
+use Illuminate\Support\Facades\Schema;
 
 class DefaultSettingCurrencyRightSeeder extends Seeder
 {
@@ -12,9 +13,12 @@ class DefaultSettingCurrencyRightSeeder extends Seeder
      */
     public function run(): void
     {
-        Setting::firstOrCreate(
-            ['store_id' => null, 'key' => 'is_currency_right'],
-            ['value' => false]
-        );
+        $attributes = ['key' => 'is_currency_right'];
+
+        if (Schema::hasColumn('settings', 'store_id')) {
+            $attributes = ['store_id' => null] + $attributes;
+        }
+
+        Setting::firstOrCreate($attributes, ['value' => false]);
     }
 }

@@ -4,6 +4,7 @@ namespace Database\Seeders;
 
 use App\Models\Setting;
 use Illuminate\Database\Seeder;
+use Illuminate\Support\Facades\Schema;
 
 class AddDefaultSettingPostcodeSeeder extends Seeder
 {
@@ -16,9 +17,12 @@ class AddDefaultSettingPostcodeSeeder extends Seeder
             ->where('value', '395007')
             ->update(['value' => '130802']);
 
-        Setting::firstOrCreate(
-            ['store_id' => null, 'key' => 'postcode'],
-            ['value' => '130802']
-        );
+        $attributes = ['key' => 'postcode'];
+
+        if (Schema::hasColumn('settings', 'store_id')) {
+            $attributes = ['store_id' => null] + $attributes;
+        }
+
+        Setting::firstOrCreate($attributes, ['value' => '130802']);
     }
 }
