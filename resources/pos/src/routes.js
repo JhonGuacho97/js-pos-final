@@ -110,6 +110,7 @@ const ProfitLossReport = lazyWithRetry(() => import(/* webpackChunkName: "report
 const CustomerReportDetails = lazyWithRetry(() => import(/* webpackChunkName: "reports" */ "./components/report/customer-report/CustomerReportDetails"), "CustomerReportDetails");
 const CustomersReport = lazyWithRetry(() => import(/* webpackChunkName: "reports" */ "./components/report/customer-report/CustomersReport"), "CustomersReport");
 const RegisterReport = lazyWithRetry(() => import(/* webpackChunkName: "reports" */ "./components/report/registerReport/RegisterReport"), "RegisterReport");
+const CashControl = lazyWithRetry(() => import(/* webpackChunkName: "cash-control" */ "./components/cashControl/CashControl"), "CashControl");
 
 // Impresión de códigos de barra: chunk propio, poco uso.
 const PrintBarcode = lazyWithRetry(() => import(/* webpackChunkName: "print-barcode" */ "./components/printBarcode/PrintBarcode"), "PrintBarcode");
@@ -634,6 +635,11 @@ export const route = [
         path: "report/register",
         ele: <RegisterReport />,
         permission: "",
+    },
+    {
+        path: "cash-control",
+        ele: <CashControl />,
+        permission: Permissions.MANAGE_CASH_CONTROL,
     },
     {
         path: "sms-api",

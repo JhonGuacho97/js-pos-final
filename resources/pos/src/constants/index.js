@@ -649,6 +649,10 @@ export const Permissions = {
     MANAGE_KARDEX: "manage_kardex",
     MANAGE_ELECTRONIC_INVOICES: "manage_electronic_invoices",
     MANAGE_SRI_CONFIG: "manage_sri_config",
+    MANAGE_CASH_CONTROL: "manage_cash_control",
+    REVERSE_CASH_MOVEMENT: "reverse_cash_movement",
+    TRANSFER_CASH: "transfer_cash",
+    REVIEW_CASH_CLOSURE: "review_cash_closure",
 };
 
 //POS Screen Constants

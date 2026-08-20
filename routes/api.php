@@ -17,6 +17,7 @@ use App\Http\Controllers\API\MainProductAPIController;
 use App\Http\Controllers\API\ManageStockAPIController;
 use App\Http\Controllers\API\PermissionController;
 use App\Http\Controllers\API\POSRegisterAPIController;
+use App\Http\Controllers\API\CashControlAPIController;
 use App\Http\Controllers\API\ProductAPIController;
 use App\Http\Controllers\API\ProductCategoryAPIController;
 use App\Http\Controllers\API\PurchaseAPIController;
@@ -574,8 +575,23 @@ Route::middleware(['auth:sanctum', 'store.context'])->group(function () {
     // POS Register routes
     Route::get('get-register-details', [POSRegisterAPIController::class, 'getRegisterDetails']);
     Route::post('register-entry', [POSRegisterAPIController::class, 'entry']);
+    Route::get('available-cash-registers', [POSRegisterAPIController::class, 'availableCashRegisters']);
     Route::post('register-close', [POSRegisterAPIController::class, 'closeRegister']);
     Route::get('register-report', [POSRegisterAPIController::class, 'registerReport']);
+    Route::middleware('permission:manage_cash_control')->prefix('cash-control')->group(function () {
+        Route::get('overview', [CashControlAPIController::class, 'overview']);
+        Route::get('movements', [CashControlAPIController::class, 'movements']);
+        Route::post('movements', [CashControlAPIController::class, 'storeMovement']);
+        Route::post('movements/{cashMovement}/reverse', [CashControlAPIController::class, 'reverse'])
+            ->middleware('permission:reverse_cash_movement');
+        Route::post('transfers', [CashControlAPIController::class, 'transfer'])
+            ->middleware('permission:transfer_cash');
+        Route::post('registers', [CashControlAPIController::class, 'storeRegister']);
+        Route::patch('registers/{cashRegister}', [CashControlAPIController::class, 'updateRegister']);
+        Route::get('sessions', [CashControlAPIController::class, 'sessions']);
+        Route::post('sessions/{session}/review', [CashControlAPIController::class, 'reviewClosure'])
+            ->middleware('permission:review_cash_closure');
+    });
 
     // Coupon Code Routes
     Route::resource('coupon-codes', CouponCodeAPIController::class);

@@ -10,9 +10,13 @@ use App\Http\Resources\ExpenseResource;
 use App\Models\Expense;
 use App\Models\Warehouse;
 use App\Repositories\ExpenseRepository;
+use App\Services\CashControlService;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Validation\ValidationException;
 use Prettus\Validator\Exceptions\ValidatorException;
 
 /**
@@ -23,7 +27,7 @@ class ExpenseAPIController extends AppBaseController
     /** @var ExpenseRepository */
     private $expenseRepository;
 
-    public function __construct(ExpenseRepository $expenseRepository)
+    public function __construct(ExpenseRepository $expenseRepository, private readonly CashControlService $cashControl)
     {
         $this->expenseRepository = $expenseRepository;
     }
@@ -62,7 +66,13 @@ class ExpenseAPIController extends AppBaseController
     {
         $this->authorizeWarehouseAccess($request->input('warehouse_id'));
         $input = $request->all();
-        $expense = $this->expenseRepository->storeExpense($input);
+        $expense = DB::transaction(function () use ($input) {
+            $expense = $this->expenseRepository->storeExpense($input);
+            if (! empty($input['paid_from_cash'])) {
+                $this->cashControl->recordExpense($expense, Auth::id(), (int) $this->currentStoreId());
+            }
+            return $expense;
+        });
 
         return new ExpenseResource($expense);
     }
@@ -80,7 +90,11 @@ class ExpenseAPIController extends AppBaseController
      */
     public function update(UpdateExpenseRequest $request, $id): ExpenseResource
     {
-        $this->authorizeWarehouseAccess(Expense::findOrFail($id)->warehouse_id);
+        $existingExpense = Expense::findOrFail($id);
+        $this->authorizeWarehouseAccess($existingExpense->warehouse_id);
+        if ($existingExpense->cash_movement_id) {
+            throw ValidationException::withMessages(['expense' => 'Un gasto pagado desde caja no puede editarse; debe registrarse una reversión.']);
+        }
         $input = $request->all();
         $expense = $this->expenseRepository->update($input, $id);
 
@@ -89,7 +103,11 @@ class ExpenseAPIController extends AppBaseController
 
     public function destroy($id): JsonResponse
     {
-        $this->authorizeWarehouseAccess(Expense::findOrFail($id)->warehouse_id);
+        $expense = Expense::findOrFail($id);
+        $this->authorizeWarehouseAccess($expense->warehouse_id);
+        if ($expense->cash_movement_id) {
+            throw ValidationException::withMessages(['expense' => 'Un gasto pagado desde caja no puede eliminarse; debe registrarse una reversión.']);
+        }
         $this->expenseRepository->delete($id);
 
         return $this->sendSuccess('Expense deleted successfully');

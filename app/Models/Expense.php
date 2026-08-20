@@ -49,6 +49,8 @@ class Expense extends BaseModel
         'warehouse_id',
         'expense_category_id',
         'amount',
+        'paid_from_cash',
+        'cash_movement_id',
         'reference_code',
         'details',
         'title',
@@ -60,10 +62,12 @@ class Expense extends BaseModel
         'expense_category_id' => 'required|exists:expense_categories,id',
         'amount' => 'required|numeric',
         'title' => 'required',
+        'paid_from_cash' => 'sometimes|boolean',
     ];
 
     public $casts = [
         'date' => 'date',
+        'paid_from_cash' => 'boolean',
     ];
 
     public function prepareLinks(): array
@@ -80,6 +84,8 @@ class Expense extends BaseModel
             'warehouse_id' => $this->warehouse_id,
             'expense_category_id' => $this->expense_category_id,
             'amount' => $this->amount,
+            'paid_from_cash' => $this->paid_from_cash,
+            'cash_movement_id' => $this->cash_movement_id,
             'details' => $this->details,
             'reference_code' => $this->reference_code,
             'warehouse_name' => $this->warehouse->name,

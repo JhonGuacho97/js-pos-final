@@ -186,6 +186,19 @@ const RegisterDenominationsModal = ({
                     </div>
                 )}
 
+                {register.reconciliation_status && register.reconciliation_status !== "BALANCED" && (
+                    <div className="rounded mb-3 p-3" style={{ background: "#f8fafc", border: "1px solid #e2e8f0" }}>
+                        <div className="text-uppercase mb-1" style={{ fontSize: 11, letterSpacing: 0.4, color: "#64748b" }}>
+                            Revisión de supervisión
+                        </div>
+                        <div style={{ fontWeight: 600 }}>
+                            {register.reconciliation_status === "APPROVED" ? "Cierre aprobado" : register.reconciliation_status === "REJECTED" ? "Cierre rechazado" : "Pendiente de revisión"}
+                        </div>
+                        {register.reviewed_by && <div className="text-muted fs-small mt-1">Revisado por {register.reviewed_by.first_name} {register.reviewed_by.last_name}</div>}
+                        {register.review_note && <div className="text-muted fs-small mt-1">{register.review_note}</div>}
+                    </div>
+                )}
+
                 <div className="d-flex align-items-center gap-2 mb-3">
                     <FontAwesomeIcon icon={faCashRegister} className="text-muted" />
                     <span style={{ fontWeight: 700 }}>Desglose de efectivo</span>

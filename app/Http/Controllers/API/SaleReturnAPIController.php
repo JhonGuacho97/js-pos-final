@@ -127,7 +127,11 @@ class SaleReturnAPIController extends AppBaseController
 
     public function update(UpdateSaleReturnRequest $request, $id): SaleReturnResource
     {
-        $this->authorizeWarehouseAccess(SaleReturn::findOrFail($id)->warehouse_id);
+        $existingReturn = SaleReturn::findOrFail($id);
+        $this->authorizeWarehouseAccess($existingReturn->warehouse_id);
+        if ($existingReturn->cash_movement_id) {
+            throw new UnprocessableEntityHttpException('Una devolución vinculada a caja no puede editarse. Revierte primero su movimiento de efectivo.');
+        }
         $this->authorizeWarehouseAccess($request->input('warehouse_id'));
         $input = $request->all();
         $saleReturn = $this->saleReturnRepository->updateSaleReturn($input, $id);
@@ -144,6 +148,9 @@ class SaleReturnAPIController extends AppBaseController
             DB::beginTransaction();
             $saleReturn = $this->saleReturnRepository->with('saleReturnItems')->where('id', $id)->first();
             $this->authorizeWarehouseAccess($saleReturn->warehouse_id);
+            if ($saleReturn->cash_movement_id) {
+                throw new UnprocessableEntityHttpException('Una devolución vinculada a caja no puede eliminarse. Revierte primero su movimiento de efectivo.');
+            }
             $sale = Sale::whereId($saleReturn->sale_id)->first();
             if ($sale) {
                 $sale->update(['is_return' => 0]);

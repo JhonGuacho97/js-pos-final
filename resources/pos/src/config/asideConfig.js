@@ -37,6 +37,7 @@ import {
     faFileInvoiceDollar,
     faGift,
     faStore,
+    faCashRegister,
 } from "@fortawesome/free-solid-svg-icons";
 import { getFormattedMessage } from "../shared/sharedMethod";
 
@@ -263,6 +264,14 @@ export default [
         class: "d-flex",
         permission: Permissions.MANAGE_EXPENSES_CATEGORIES,
         to: "/app/expense-categories",
+    },
+    {
+        title: "cash-control.title",
+        name: "cash control",
+        fontIcon: <FontAwesomeIcon icon={faCashRegister} />,
+        to: "/app/cash-control",
+        class: "d-flex",
+        permission: Permissions.MANAGE_CASH_CONTROL,
     },
 
     { groupHeader: true, title: "sidebar.group.people" },

@@ -136,6 +136,7 @@ const SaleReturnForm = (props) => {
                     : "",
                 sale_id: singleSale ? singleSale.sale_id : "",
                 sale_reference: singleSale ? singleSale.sale_reference : "",
+                payment_type: singleSale?.payment_type ?? 1,
             });
         }
     }, [singleSale]);
@@ -273,7 +274,7 @@ const SaleReturnForm = (props) => {
                 calculateCartTotalAmount(updateProducts, saleReturnValue)
             ),
             received_amount: 0,
-            payment_type: 0,
+            payment_type: Number(prepareData.payment_type),
             paid_amount: 0,
             status: prepareData.status.value,
             note: prepareData.notes,
@@ -367,6 +368,19 @@ const SaleReturnForm = (props) => {
                         <span className="text-danger d-block fw-400 fs-small mt-2">
                             {errors["title"] ? errors["title"] : null}
                         </span>
+                    </div>
+                    <div className="col-md-4 mb-5">
+                        <label className="form-label">Forma de reembolso:</label>
+                        <span className="required" />
+                        <select
+                            className="form-select"
+                            value={saleReturnValue.payment_type ?? 1}
+                            onChange={(event) => setSaleReturnValue((value) => ({ ...value, payment_type: Number(event.target.value) }))}
+                        >
+                            <option value={1}>Efectivo (descuenta de caja)</option>
+                            <option value={0}>Otro medio (no afecta caja)</option>
+                        </select>
+                        <small className="text-muted d-block mt-2">El efectivo requiere una sesión de caja abierta.</small>
                     </div>
                     <div className="col-md-4 mb-5">
                         <label className="form-label">

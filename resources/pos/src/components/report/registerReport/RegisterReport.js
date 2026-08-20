@@ -126,7 +126,7 @@ const RegisterReport = () => {
                 "LT"
             ),
             user_first_name: registerReport?.attributes?.user?.first_name,
-            user_last_name: registerReport?.attributes?.user?.last_namez,
+            user_last_name: registerReport?.attributes?.user?.last_name,
             user_email: registerReport?.attributes?.user?.email,
             user_image: registerReport?.attributes?.user?.image_url,
             cash_in_hand: registerReport?.attributes?.cash_in_hand,
@@ -141,6 +141,10 @@ const RegisterReport = () => {
             notes: registerReport?.attributes?.notes,
             discrepancy_reason: registerReport?.attributes?.discrepancy_reason,
             discrepancy_note: registerReport?.attributes?.discrepancy_note,
+            cash_difference: registerReport?.attributes?.cash_difference,
+            reconciliation_status: registerReport?.attributes?.reconciliation_status,
+            review_note: registerReport?.attributes?.review_note,
+            reviewed_by: registerReport?.attributes?.reviewed_by,
         }));
 
     const checkForDifferences = (filter) => {
@@ -297,9 +301,9 @@ const RegisterReport = () => {
                 if (row.expected_cash === null || row.expected_cash === undefined) {
                     return <span className="text-muted">—</span>;
                 }
-                const difference =
-                    Number(row.cash_in_hand_while_closing) -
-                    Number(row.expected_cash);
+                const difference = row.cash_difference !== null && row.cash_difference !== undefined
+                    ? Number(row.cash_difference)
+                    : Number(row.cash_in_hand_while_closing) - Number(row.expected_cash);
                 const rounded = Math.round(difference * 100) / 100;
                 const badgeClass =
                     rounded === 0
@@ -307,12 +311,11 @@ const RegisterReport = () => {
                         : rounded > 0
                         ? "bg-light-warning"
                         : "bg-light-danger";
-                const badgeLabel =
-                    rounded === 0
-                        ? "Cuadrada"
-                        : rounded > 0
-                        ? "Sobrante"
-                        : "Faltante";
+                const badgeLabel = row.reconciliation_status === "APPROVED"
+                    ? "Aprobada"
+                    : row.reconciliation_status === "REJECTED"
+                    ? "Rechazada"
+                    : rounded === 0 ? "Cuadrada" : rounded > 0 ? "Sobrante" : "Faltante";
                 return (
                     <span className={`badge ${badgeClass}`}>
                         {badgeLabel}

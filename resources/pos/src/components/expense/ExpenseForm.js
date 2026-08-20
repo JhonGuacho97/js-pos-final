@@ -26,6 +26,7 @@ const ExpenseForm = ( props ) => {
         warehouse_id: singleExpense ? singleExpense[ 0 ].warehouse_id : '',
         expense_category_id: singleExpense ? singleExpense[ 0 ].expense_category_id : '',
         amount: singleExpense ? singleExpense[ 0 ].amount : '',
+        paid_from_cash: singleExpense ? Boolean(singleExpense[ 0 ].paid_from_cash) : false,
         details: singleExpense ? singleExpense[ 0 ].details : '',
         title: singleExpense ? singleExpense[ 0 ].title : '',
     } );
@@ -89,6 +90,7 @@ const ExpenseForm = ( props ) => {
             warehouse_id: prepareData.warehouse_id.value,
             expense_category_id: prepareData.expense_category_id.value,
             amount: prepareData.amount,
+            paid_from_cash: Boolean(prepareData.paid_from_cash),
             details: prepareData.details,
         }
         return formValue
@@ -168,6 +170,19 @@ const ExpenseForm = ( props ) => {
                             <span
                                 className='text-danger d-block fw-400 fs-small mt-2'>{errors[ 'amount' ] ? errors[ 'amount' ] : null}</span>
                         </div>
+                        {!singleExpense && <div className='col-md-6 mb-3 d-flex align-items-center'>
+                            <div className='w-100 rounded border p-3 bg-light'>
+                                <Form.Check
+                                    type='switch'
+                                    id='expense-paid-from-cash'
+                                    name='paid_from_cash'
+                                    checked={expenseValue.paid_from_cash}
+                                    onChange={(e) => setExpenseValue(inputs => ({ ...inputs, paid_from_cash: e.target.checked }))}
+                                    label='Pagar desde la caja abierta'
+                                />
+                                <small className='text-muted d-block mt-1'>Descontará el monto del efectivo esperado y quedará registrado en el libro de caja.</small>
+                            </div>
+                        </div>}
                         <div className='col-md-6 mb-3'>
                             <label
                                 className='form-label'>{getFormattedMessage( 'expense.input.details.label' )}: </label>

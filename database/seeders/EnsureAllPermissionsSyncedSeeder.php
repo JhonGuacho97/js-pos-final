@@ -51,6 +51,10 @@ class EnsureAllPermissionsSyncedSeeder extends Seeder
             'manage_kardex' => 'Manage Kardex',
             'manage_my-sales' => 'Manage Seller Dashboard',
             'manage_sri_config' => 'Manage SRI Configuration',
+            'manage_cash_control' => 'Manage Cash Control',
+            'reverse_cash_movement' => 'Reverse Cash Movement',
+            'transfer_cash' => 'Transfer Cash',
+            'review_cash_closure' => 'Review Cash Closure',
         ];
 
         foreach ($permissions as $name => $displayName) {

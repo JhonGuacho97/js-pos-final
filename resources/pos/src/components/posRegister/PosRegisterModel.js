@@ -14,6 +14,9 @@ const PosRegisterModel = ({ showPosRegisterModel, onClickshowPosRegisterModel })
 
     const [rows, setRows] = useState(buildEmptyDenominationRows());
     const [cashInHand, setCashInHand] = useState(0);
+    const [cashRegisters, setCashRegisters] = useState([]);
+    const [selectedRegister, setSelectedRegister] = useState('');
+    const [loadingRegisters, setLoadingRegisters] = useState(false);
     const dispatch = useDispatch();
     const navigate = useNavigate();
     const { frontSetting, allConfigData, settings } = useSelector((state) => state);
@@ -49,6 +52,20 @@ const PosRegisterModel = ({ showPosRegisterModel, onClickshowPosRegisterModel })
             .catch(() => {});
     }, [showPosRegisterModel]);
 
+    useEffect(() => {
+        if (!showPosRegisterModel) return;
+        setLoadingRegisters(true);
+        apiConfig.get('available-cash-registers')
+            .then((response) => {
+                const registers = response.data?.data || [];
+                setCashRegisters(registers);
+                const firstAvailable = registers.find((register) => register.available);
+                setSelectedRegister(firstAvailable ? String(firstAvailable.id) : '');
+            })
+            .catch(() => setCashRegisters([]))
+            .finally(() => setLoadingRegisters(false));
+    }, [showPosRegisterModel]);
+
     const useLastClose = () => {
         if (!lastClose) {
             return;
@@ -78,6 +95,7 @@ const PosRegisterModel = ({ showPosRegisterModel, onClickshowPosRegisterModel })
                             quantity: Number(row.quantity),
                             subtotal: Number(row.quantity) * row.value,
                         })),
+                    cash_register_id: selectedRegister || undefined,
                 },
                 navigate
             )
@@ -99,7 +117,7 @@ const PosRegisterModel = ({ showPosRegisterModel, onClickshowPosRegisterModel })
                 <Modal.Header closeButton className='py-4 pt-5'>
                     <div>
                         <Modal.Title id="contained-modal-title-vcenter">
-                            <h4 className='mb-1'>POS Register</h4>
+                            <h4 className='mb-1'>Abrir caja</h4>
                         </Modal.Title>
                         {warehouseName && (
                             <div className='text-muted small'>
@@ -110,6 +128,23 @@ const PosRegisterModel = ({ showPosRegisterModel, onClickshowPosRegisterModel })
                     </div>
                 </Modal.Header>
                 <Modal.Body className='py-4'>
+                    <div className='mb-4'>
+                        <label className='form-label'>Caja física</label>
+                        {loadingRegisters ? (
+                            <div className='form-control text-muted'>Cargando cajas disponibles...</div>
+                        ) : cashRegisters.length ? (
+                            <select className='form-select' value={selectedRegister} onChange={(event) => setSelectedRegister(event.target.value)}>
+                                <option value=''>Selecciona una caja disponible</option>
+                                {cashRegisters.map((register) => (
+                                    <option key={register.id} value={register.id} disabled={!register.available}>
+                                        {register.name} · {register.code}{register.available ? '' : ` · En uso por ${register.current_user?.first_name || 'otro cajero'}`}
+                                    </option>
+                                ))}
+                            </select>
+                        ) : (
+                            <div className='rounded-3 bg-light p-3 small text-muted'>Se creará automáticamente la caja principal de esta sucursal.</div>
+                        )}
+                    </div>
                     <div className='d-flex align-items-center justify-content-between flex-wrap gap-2 mb-2'>
                         <label className='form-label mb-0'>
                             {getFormattedMessage('globally.input.cash-in-hand.label')}:
@@ -132,7 +167,7 @@ const PosRegisterModel = ({ showPosRegisterModel, onClickshowPosRegisterModel })
                     />
                 </Modal.Body>
                 <Modal.Footer className='py-4 pb-5'>
-                    <Button onClick={onSubmit}>Submit</Button>
+                    <Button onClick={onSubmit} disabled={loadingRegisters || (cashRegisters.length > 0 && !selectedRegister)}>Abrir caja</Button>
                 </Modal.Footer>
             </Modal>
         </>

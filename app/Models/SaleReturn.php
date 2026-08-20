@@ -85,6 +85,7 @@ class SaleReturn extends BaseModel implements HasMedia, JsonResourceful
         'grand_total',
         'paid_amount',
         'payment_type',
+        'cash_movement_id',
         'note',
         'status',
         'reference_code',
@@ -121,6 +122,7 @@ class SaleReturn extends BaseModel implements HasMedia, JsonResourceful
         'shipping' => 'double',
         'grand_total' => 'double',
         'paid_amount' => 'double',
+        'payment_type' => 'integer',
     ];
 
     //tax type  const

@@ -54,11 +54,17 @@ class POSRegister extends BaseModel implements JsonResourceful
         'cash_in_hand',
         'opening_denominations',
         'closed_at',
+        'closed_by',
         'cash_in_hand_while_closing',
         'expected_cash',
+        'cash_difference',
         'closing_denominations',
         'discrepancy_reason',
         'discrepancy_note',
+        'reconciliation_status',
+        'reviewed_by',
+        'reviewed_at',
+        'review_note',
         'bank_transfer',
         'cheque',
         'other',
@@ -68,14 +74,17 @@ class POSRegister extends BaseModel implements JsonResourceful
         'notes',
         'user_id',
         'warehouse_id',
+        'cash_register_id',
     ];
 
     public $casts = [
         'closed_at' => 'datetime',
         'cash_in_hand_while_closing' => 'double',
         'expected_cash' => 'double',
+        'cash_difference' => 'double',
         'opening_denominations' => 'array',
         'closing_denominations' => 'array',
+        'reviewed_at' => 'datetime',
         'bank_transfer' => 'double',
         'cheque' => 'double',
         'other' => 'double',
@@ -111,16 +120,22 @@ class POSRegister extends BaseModel implements JsonResourceful
         $fields = [
             'cash_in_hand_while_closing' => $this->cash_in_hand_while_closing,
             'expected_cash' => $this->expected_cash,
+            'cash_difference' => $this->cash_difference,
             'cash_in_hand' => $this->cash_in_hand,
             'opening_denominations' => $this->opening_denominations,
             'closing_denominations' => $this->closing_denominations,
             'discrepancy_reason' => $this->discrepancy_reason,
             'discrepancy_note' => $this->discrepancy_note,
+            'reconciliation_status' => $this->reconciliation_status,
+            'reviewed_by' => $this->reviewedBy,
+            'reviewed_at' => $this->reviewed_at,
+            'review_note' => $this->review_note,
             'notes' => $this->notes,
             'closed_at' => $this->closed_at,
             'created_at' => $this->created_at,
             'user' => $this->user,
             'warehouse_id' => $this->warehouse_id,
+            'cash_register' => $this->cashRegister,
         ];
 
         return $fields;
@@ -144,5 +159,25 @@ class POSRegister extends BaseModel implements JsonResourceful
     public function warehouse(): BelongsTo
     {
         return $this->belongsTo(Warehouse::class, 'warehouse_id', 'id');
+    }
+
+    public function closedBy(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'closed_by');
+    }
+
+    public function reviewedBy(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'reviewed_by');
+    }
+
+    public function cashRegister(): BelongsTo
+    {
+        return $this->belongsTo(CashRegister::class);
+    }
+
+    public function movements()
+    {
+        return $this->hasMany(CashMovement::class, 'pos_register_id');
     }
 }
