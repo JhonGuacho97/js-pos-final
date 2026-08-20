@@ -228,7 +228,18 @@ export const getDefaultRouteForPermissions = (config, excludePaths = []) => {
         return "/app/dashboard";
     }
     const match = routePermissions.find(
-        (r) => config.includes(r.permission) && !excludePaths.includes(r.path)
+        (r) => hasAnyPermission(config, r.permission) && !excludePaths.includes(r.path)
     );
     return match ? `/app/${match.path}` : "/app/dashboard";
+};
+
+// Permite declarar alternativas con `|`, igual que el middleware del
+// backend, sin conceder un permiso administrativo único.
+export const hasAnyPermission = (permissions, requiredPermission) => {
+    if (requiredPermission === "") return true;
+    if (!permissions || !requiredPermission) return false;
+
+    return String(requiredPermission)
+        .split("|")
+        .some((permission) => permissions.includes(permission));
 };

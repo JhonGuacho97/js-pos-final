@@ -639,7 +639,7 @@ export const route = [
     {
         path: "cash-control",
         ele: <CashControl />,
-        permission: Permissions.MANAGE_CASH_CONTROL,
+        permission: Permissions.CASH_CONTROL_ACCESS,
     },
     {
         path: "sms-api",

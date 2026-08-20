@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { createPortal } from 'react-dom';
 import MasterLayout from '../MasterLayout';
 import TabTitle from '../../shared/tab-title/TabTitle';
@@ -42,6 +42,24 @@ const CashControl = () => {
     const canTransfer = overview?.capabilities?.transfer_cash === true;
     const canReverse = overview?.capabilities?.reverse_cash_movement === true;
     const canReview = overview?.capabilities?.review_cash_closure === true;
+    const canViewOwn = overview?.capabilities?.view_own_cash_session === true;
+    const canIncome = overview?.capabilities?.create_cash_income === true;
+    const canExpense = overview?.capabilities?.create_cash_expense === true;
+    const canWithdraw = overview?.capabilities?.withdraw_cash === true;
+    const canSupervise = overview?.capabilities?.view_cash_supervision === true;
+    const canViewClosures = overview?.capabilities?.view_cash_closures === true;
+    const canManageRegisters = overview?.capabilities?.manage_cash_registers === true;
+    const movementOptions = useMemo(() => [
+        canIncome && { value: 'MANUAL_INCOME', label: 'Ingreso manual' },
+        canExpense && { value: 'MANUAL_EXPENSE', label: 'Egreso manual' },
+        canWithdraw && { value: 'WITHDRAWAL', label: 'Retiro de efectivo' },
+    ].filter(Boolean), [canIncome, canExpense, canWithdraw]);
+    const availableTabs = useMemo(() => [
+        canViewOwn && ['turn', 'bi-wallet2', 'Mi turno'],
+        canSupervise && ['supervision', 'bi-activity', 'Supervisión'],
+        canManageRegisters && ['registers', 'bi-hdd-stack', 'Cajas físicas'],
+        canViewClosures && ['history', 'bi-clock-history', 'Cierres'],
+    ].filter(Boolean), [canViewOwn, canSupervise, canManageRegisters, canViewClosures]);
 
     const loadData = useCallback(async () => {
         setLoading(true);
@@ -63,6 +81,16 @@ const CashControl = () => {
     }, [dispatch]);
 
     useEffect(() => { loadData(); }, [loadData]);
+
+    useEffect(() => {
+        if (!overview || !availableTabs.length) return;
+        if (!availableTabs.some(([key]) => key === activeTab)) {
+            setActiveTab(availableTabs[0][0]);
+        }
+        if (movementOptions.length && !movementOptions.some(({ value }) => value === form.type)) {
+            setForm((current) => ({ ...current, type: movementOptions[0].value }));
+        }
+    }, [overview, activeTab, availableTabs, movementOptions, form.type]);
 
     useEffect(() => {
         if (activeTab !== 'history') return;
@@ -112,7 +140,7 @@ const CashControl = () => {
         try {
             await apiConfig.post('cash-control/movements', form);
             dispatch(addToast({ text: 'Movimiento de caja registrado correctamente.' }));
-            setForm({ type: 'MANUAL_INCOME', amount: '', description: '', reference: '' });
+            setForm({ type: movementOptions[0]?.value || 'MANUAL_INCOME', amount: '', description: '', reference: '' });
             setShowForm(false);
             await loadData();
         } catch (error) {
@@ -205,11 +233,11 @@ const CashControl = () => {
             <div className="cash-control-v2">
                 <header className="cash-control-heading">
                     <div><span>TESORERÍA OPERATIVA</span><h1>Control de cajas</h1><p>Supervisa el efectivo y registra cada entrada o salida del turno.</p></div>
-                    {activeTab === 'turn' && session && <div className="cash-heading-actions">{canTransfer && <button className="btn btn-light" disabled={!overview?.active_sessions?.length} onClick={() => { setShowTransfer(!showTransfer); setShowForm(false); }}><i className="bi bi-arrow-left-right" /> Transferir</button>}<button className="btn btn-primary" onClick={() => { setShowForm(!showForm); setShowTransfer(false); }}><i className="bi bi-plus-lg" /> Nuevo movimiento</button></div>}
+                    {activeTab === 'turn' && session && <div className="cash-heading-actions">{canTransfer && <button className="btn btn-light" disabled={!overview?.active_sessions?.length} onClick={() => { setShowTransfer(!showTransfer); setShowForm(false); }}><i className="bi bi-arrow-left-right" /> Transferir</button>}{movementOptions.length > 0 && <button className="btn btn-primary" onClick={() => { setShowForm(!showForm); setShowTransfer(false); }}><i className="bi bi-plus-lg" /> Nuevo movimiento</button>}</div>}
                 </header>
 
                 <nav className="cash-tabs">
-                    {[['turn', 'bi-wallet2', 'Mi turno'], ['supervision', 'bi-activity', 'Supervisión'], ['registers', 'bi-hdd-stack', 'Cajas físicas'], ['history', 'bi-clock-history', 'Cierres']].map(([key, icon, label]) => (
+                    {availableTabs.map(([key, icon, label]) => (
                         <button key={key} className={activeTab === key ? 'is-active' : ''} onClick={() => setActiveTab(key)}><i className={`bi ${icon}`} /> {label}</button>
                     ))}
                 </nav>
@@ -231,7 +259,7 @@ const CashControl = () => {
                         {showForm && <form className="cash-movement-form" onSubmit={submitMovement}>
                             <div className="cash-section-title"><div><i className="bi bi-arrow-left-right" /></div><span><strong>Registrar movimiento</strong><small>El movimiento quedará asociado a tu sesión activa.</small></span></div>
                             <div className="cash-form-grid">
-                                <label>Tipo<select value={form.type} onChange={(e) => setForm({ ...form, type: e.target.value })}><option value="MANUAL_INCOME">Ingreso manual</option><option value="MANUAL_EXPENSE">Egreso manual</option><option value="WITHDRAWAL">Retiro de efectivo</option></select></label>
+                                <label>Tipo<select value={form.type} onChange={(e) => setForm({ ...form, type: e.target.value })}>{movementOptions.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}</select></label>
                                 <label>Monto<div className="cash-amount-input"><span>{currency}</span><input required min="0.01" step="0.01" type="number" value={form.amount} onChange={(e) => setForm({ ...form, amount: e.target.value })} /></div></label>
                                 <label>Referencia<input maxLength="100" value={form.reference} onChange={(e) => setForm({ ...form, reference: e.target.value })} placeholder="Opcional" /></label>
                                 <label className="cash-description">Descripción<textarea required maxLength="1000" value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} placeholder="Explica el motivo del movimiento" /></label>

@@ -14,14 +14,14 @@ import { getFiles } from "../locales/index";
  *   1. Mensajes editados manualmente por el usuario (userEditedMessage)
  *   2. Mensajes del idioma actualizado que coincide con el localStorage
  *   3. Mensajes del locale cargado desde los archivos
- *   4. Inglés como fallback
+ *   4. Español como fallback de EcuaPos
  */
 const useLanguage = () => {
     const { updateLanguage, selectedLanguage, language } = useSelector((state) => state);
     const updatedLanguage = localStorage.getItem(Tokens.UPDATED_LANGUAGE);
 
     const [allLocales, setAllLocales]           = useState({});
-    const [messages, setMessages]               = useState(() => getFiles()["en"]);
+    const [messages, setMessages]               = useState(() => getFiles()["sp"]);
     const [userEditedMessage, setUserEditedMessage] = useState({});
 
     // El locale activo según localStorage o el selector del store
@@ -51,8 +51,9 @@ const useLanguage = () => {
             // Prioridad 3: locale cargado desde archivos
             setMessages(activeLocale);
         } else {
-            // Prioridad 4: fallback inglés
-            const fallback = allLocales["en"];
+            // Prioridad 4: fallback español (inglés solo como último recurso
+            // si el archivo de español no estuviera disponible).
+            const fallback = allLocales["sp"] || allLocales["en"];
             if (fallback) setMessages(fallback);
         }
     }, [allLocales, userEditedMessage, updateLanguage?.lang_json_array, activeLocale]);

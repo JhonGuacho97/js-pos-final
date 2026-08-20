@@ -23,6 +23,10 @@ function App() {
 
     // ─── Idioma ───────────────────────────────────────────────────────────────
     const { messages, updatedLanguage, selectedLanguage } = useLanguage();
+    const activeLanguage = updatedLanguage ?? selectedLanguage;
+    const intlLocale = { sp: 'es', cn: 'zh-CN', gr: 'de' }[activeLanguage]
+        ?? activeLanguage
+        ?? settingsKey.DEFAULT_LOCALE;
 
     // ─── CSS según dirección del idioma ──────────────────────────────────────
     useEffect(() => {
@@ -64,7 +68,7 @@ function App() {
     return (
         <div className="d-flex flex-column flex-root">
             <IntlProvider
-                locale={settingsKey.DEFAULT_LOCALE}
+                locale={intlLocale}
                 messages={messages}
             >
                 <Routes>

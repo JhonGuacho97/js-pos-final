@@ -578,17 +578,22 @@ Route::middleware(['auth:sanctum', 'store.context'])->group(function () {
     Route::get('available-cash-registers', [POSRegisterAPIController::class, 'availableCashRegisters']);
     Route::post('register-close', [POSRegisterAPIController::class, 'closeRegister']);
     Route::get('register-report', [POSRegisterAPIController::class, 'registerReport']);
-    Route::middleware('permission:manage_cash_control')->prefix('cash-control')->group(function () {
+    Route::middleware('permission:manage_cash_control|view_own_cash_session|create_cash_income|create_cash_expense|withdraw_cash|view_cash_supervision|view_cash_closures|manage_cash_registers|reverse_cash_movement|transfer_cash|review_cash_closure')
+        ->prefix('cash-control')->group(function () {
         Route::get('overview', [CashControlAPIController::class, 'overview']);
-        Route::get('movements', [CashControlAPIController::class, 'movements']);
+        Route::get('movements', [CashControlAPIController::class, 'movements'])
+            ->middleware('permission:manage_cash_control|view_own_cash_session|create_cash_income|create_cash_expense|withdraw_cash|reverse_cash_movement|transfer_cash');
         Route::post('movements', [CashControlAPIController::class, 'storeMovement']);
         Route::post('movements/{cashMovement}/reverse', [CashControlAPIController::class, 'reverse'])
             ->middleware('permission:reverse_cash_movement');
         Route::post('transfers', [CashControlAPIController::class, 'transfer'])
             ->middleware('permission:transfer_cash');
-        Route::post('registers', [CashControlAPIController::class, 'storeRegister']);
-        Route::patch('registers/{cashRegister}', [CashControlAPIController::class, 'updateRegister']);
-        Route::get('sessions', [CashControlAPIController::class, 'sessions']);
+        Route::post('registers', [CashControlAPIController::class, 'storeRegister'])
+            ->middleware('permission:manage_cash_control|manage_cash_registers');
+        Route::patch('registers/{cashRegister}', [CashControlAPIController::class, 'updateRegister'])
+            ->middleware('permission:manage_cash_control|manage_cash_registers');
+        Route::get('sessions', [CashControlAPIController::class, 'sessions'])
+            ->middleware('permission:manage_cash_control|view_cash_closures|review_cash_closure');
         Route::post('sessions/{session}/review', [CashControlAPIController::class, 'reviewClosure'])
             ->middleware('permission:review_cash_closure');
     });

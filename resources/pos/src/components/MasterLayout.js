@@ -10,6 +10,7 @@ import asideConfig from "../config/asideConfig";
 import { environment } from "../config/environment";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faBars } from "@fortawesome/free-solid-svg-icons";
+import { hasAnyPermission } from "../shared/sharedMethod";
 
 const MasterLayout = (props) => {
     const {
@@ -91,7 +92,7 @@ const getRouteWithSubMenu = (route, permissions) => {
     const subRoutes = route.subMenu
         ? route.subMenu.filter(
               (item) =>
-                  permissions.indexOf(item.permission) !== -1 ||
+                  hasAnyPermission(permissions, item.permission) ||
                   item.permission === ""
           )
         : null;
@@ -111,7 +112,7 @@ const prepareRoutes = (config) => {
         }
         const permissionsRoute = getRouteWithSubMenu(route, permissions);
         if (
-            (permissions && permissions.indexOf(route.permission) !== -1) ||
+            hasAnyPermission(permissions, route.permission) ||
             route.permission === "" ||
             permissionsRoute.newRoute?.length
         ) {

@@ -75,6 +75,13 @@ class User extends Authenticatable implements HasMedia, JsonResourceful, CanRese
 
     protected $appends = ['image_url'];
 
+    // Respaldo para altas realizadas fuera de UserRepository (comandos,
+    // integraciones o futuros flujos). UserRepository usa primero la
+    // configuración específica de la tienda.
+    protected $attributes = [
+        'language' => 'sp',
+    ];
+
     /**
      * The attributes that are mass assignable.
      *

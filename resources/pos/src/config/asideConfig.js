@@ -271,7 +271,7 @@ export default [
         fontIcon: <FontAwesomeIcon icon={faCashRegister} />,
         to: "/app/cash-control",
         class: "d-flex",
-        permission: Permissions.MANAGE_CASH_CONTROL,
+        permission: Permissions.CASH_CONTROL_ACCESS,
     },
 
     { groupHeader: true, title: "sidebar.group.people" },

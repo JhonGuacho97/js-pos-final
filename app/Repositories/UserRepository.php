@@ -4,6 +4,7 @@ namespace App\Repositories;
 
 use App\Models\Role;
 use App\Models\User;
+use App\Models\Language;
 use Exception;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
@@ -56,6 +57,13 @@ class UserRepository extends BaseRepository
             // como texto vacío.
             if (isset($input['default_warehouse_id']) && $input['default_warehouse_id'] === '') {
                 $input['default_warehouse_id'] = null;
+            }
+            // El formulario de usuarios no solicita idioma. Antes se omitía
+            // este campo y MySQL aplicaba el antiguo DEFAULT 'en', aunque la
+            // tienda tuviera Español como idioma predeterminado.
+            if (empty($input['language'])) {
+                $input['language'] = Language::whereKey(getSettingValue('default_language'))
+                    ->value('iso_code') ?: 'sp';
             }
             $storeIds = $this->resolveGrantableStoreIds($input['store_ids'] ?? []);
             $user = $this->create($input);

@@ -2,7 +2,7 @@ import React, { Suspense } from "react";
 import { Route, Navigate, Routes } from "react-router-dom";
 import "../../pos/src/assets/sass/style.react.scss";
 import { Tokens } from "./constants";
-import { ProtectedRoute } from "./shared/sharedMethod";
+import { hasAnyPermission, ProtectedRoute } from "./shared/sharedMethod";
 import { route } from "./routes";
 import TopProgressBar from "./shared/components/loaders/TopProgressBar";
 import { useSelector } from "react-redux";
@@ -17,7 +17,7 @@ function AdminApp(props) {
         let filterRoutes = [];
         route.forEach((route) => {
             if (
-                (permissions && permissions.indexOf(route.permission) !== -1) ||
+                hasAnyPermission(permissions, route.permission) ||
                 route.permission === ""
             ) {
                 filterRoutes.push(route);

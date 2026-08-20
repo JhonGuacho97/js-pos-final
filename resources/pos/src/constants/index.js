@@ -650,9 +650,17 @@ export const Permissions = {
     MANAGE_ELECTRONIC_INVOICES: "manage_electronic_invoices",
     MANAGE_SRI_CONFIG: "manage_sri_config",
     MANAGE_CASH_CONTROL: "manage_cash_control",
+    VIEW_OWN_CASH_SESSION: "view_own_cash_session",
+    CREATE_CASH_INCOME: "create_cash_income",
+    CREATE_CASH_EXPENSE: "create_cash_expense",
+    WITHDRAW_CASH: "withdraw_cash",
+    VIEW_CASH_SUPERVISION: "view_cash_supervision",
+    VIEW_CASH_CLOSURES: "view_cash_closures",
+    MANAGE_CASH_REGISTERS: "manage_cash_registers",
     REVERSE_CASH_MOVEMENT: "reverse_cash_movement",
     TRANSFER_CASH: "transfer_cash",
     REVIEW_CASH_CLOSURE: "review_cash_closure",
+    CASH_CONTROL_ACCESS: "manage_cash_control|view_own_cash_session|create_cash_income|create_cash_expense|withdraw_cash|view_cash_supervision|view_cash_closures|manage_cash_registers|reverse_cash_movement|transfer_cash|review_cash_closure",
 };
 
 //POS Screen Constants
@@ -698,7 +706,7 @@ export const posCashPaymentActionType = {
 
 export const settingsKey = {
     LANGUAGE: "language",
-    DEFAULT_LOCALE: "en",
+    DEFAULT_LOCALE: "es",
     LOCALE_ARABIC: "ar",
     LOCALE_PERSIAN: "pe",
     LOCAL_GERMAN: "gr",

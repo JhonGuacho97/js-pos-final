@@ -21,35 +21,56 @@ class CashControlAPIController extends AppBaseController
     public function overview()
     {
         $storeId = (int) $this->currentStoreId();
-        $session = POSRegister::with(['cashRegister', 'warehouse'])
-            ->where('user_id', Auth::id())->whereNull('closed_at')
-            ->whereHas('warehouse', fn ($query) => $query->where('store_id', $storeId))
-            ->latest()->first();
+        $user = Auth::user();
+        $legacyManagement = $user->can('manage_cash_control');
+        $canIncome = $legacyManagement || $user->can('create_cash_income');
+        $canExpense = $legacyManagement || $user->can('create_cash_expense');
+        $canWithdraw = $legacyManagement || $user->can('withdraw_cash');
+        $canTransfer = $user->can('transfer_cash');
+        $canReverse = $user->can('reverse_cash_movement');
+        $canViewOwn = $legacyManagement || $user->can('view_own_cash_session')
+            || $canIncome || $canExpense || $canWithdraw || $canTransfer || $canReverse;
+        $canSupervise = $legacyManagement || $user->can('view_cash_supervision');
+        $canManageRegisters = $legacyManagement || $user->can('manage_cash_registers');
+        $canReview = $user->can('review_cash_closure');
+        $canViewClosures = $legacyManagement || $user->can('view_cash_closures') || $canReview;
 
-        $registers = CashRegister::with(['warehouse:id,name', 'activeSession.user:id,first_name,last_name'])
-            ->withCount('sessions')
-            ->where('store_id', $storeId)->orderBy('name')->get();
-        $activeSessions = POSRegister::with(['cashRegister:id,name', 'warehouse:id,name,store_id', 'user:id,first_name,last_name'])
-            ->whereNull('closed_at')
-            ->whereHas('warehouse', fn ($query) => $query->where('store_id', $storeId))
-            ->when($session, fn ($query) => $query->whereKeyNot($session->id))
-            ->latest()->get()->map(fn (POSRegister $item) => [
-                'id' => $item->id,
-                'cash_register' => $item->cashRegister,
-                'warehouse' => $item->warehouse,
-                'user' => $item->user,
-            ]);
-        $supervisionSessions = POSRegister::with(['cashRegister:id,name', 'warehouse:id,name,store_id', 'user:id,first_name,last_name'])
-            ->whereNull('closed_at')->whereHas('warehouse', fn ($query) => $query->where('store_id', $storeId))
-            ->oldest()->get()->map(fn (POSRegister $item) => [
-                'id' => $item->id,
-                'opened_at' => $item->created_at,
-                'opening_cash' => (float) $item->cash_in_hand,
-                'expected_cash' => $this->cashControl->currentBalance($item),
-                'cash_register' => $item->cashRegister,
-                'warehouse' => $item->warehouse,
-                'user' => $item->user,
-            ]);
+        $session = $canViewOwn
+            ? POSRegister::with(['cashRegister', 'warehouse'])
+                ->where('user_id', Auth::id())->whereNull('closed_at')
+                ->whereHas('warehouse', fn ($query) => $query->where('store_id', $storeId))
+                ->latest()->first()
+            : null;
+
+        $registers = $canManageRegisters
+            ? CashRegister::with(['warehouse:id,name', 'activeSession.user:id,first_name,last_name'])
+                ->withCount('sessions')->where('store_id', $storeId)->orderBy('name')->get()
+            : collect();
+        $activeSessions = $canTransfer
+            ? POSRegister::with(['cashRegister:id,name', 'warehouse:id,name,store_id', 'user:id,first_name,last_name'])
+                ->whereNull('closed_at')
+                ->whereHas('warehouse', fn ($query) => $query->where('store_id', $storeId))
+                ->when($session, fn ($query) => $query->whereKeyNot($session->id))
+                ->latest()->get()->map(fn (POSRegister $item) => [
+                    'id' => $item->id,
+                    'cash_register' => $item->cashRegister,
+                    'warehouse' => $item->warehouse,
+                    'user' => $item->user,
+                ])
+            : collect();
+        $supervisionSessions = $canSupervise
+            ? POSRegister::with(['cashRegister:id,name', 'warehouse:id,name,store_id', 'user:id,first_name,last_name'])
+                ->whereNull('closed_at')->whereHas('warehouse', fn ($query) => $query->where('store_id', $storeId))
+                ->oldest()->get()->map(fn (POSRegister $item) => [
+                    'id' => $item->id,
+                    'opened_at' => $item->created_at,
+                    'opening_cash' => (float) $item->cash_in_hand,
+                    'expected_cash' => $this->cashControl->currentBalance($item),
+                    'cash_register' => $item->cashRegister,
+                    'warehouse' => $item->warehouse,
+                    'user' => $item->user,
+                ])
+            : collect();
 
         return $this->sendResponse([
             // Estas capacidades se calculan en el mismo request y con la
@@ -57,9 +78,16 @@ class CashControlAPIController extends AppBaseController
             // Así el frontend no muestra botones a partir de la unión global
             // de permisos de otras tiendas del usuario.
             'capabilities' => [
-                'transfer_cash' => Auth::user()->can('transfer_cash'),
-                'reverse_cash_movement' => Auth::user()->can('reverse_cash_movement'),
-                'review_cash_closure' => Auth::user()->can('review_cash_closure'),
+                'view_own_cash_session' => $canViewOwn,
+                'create_cash_income' => $canIncome,
+                'create_cash_expense' => $canExpense,
+                'withdraw_cash' => $canWithdraw,
+                'view_cash_supervision' => $canSupervise,
+                'view_cash_closures' => $canViewClosures,
+                'manage_cash_registers' => $canManageRegisters,
+                'transfer_cash' => $canTransfer,
+                'reverse_cash_movement' => $canReverse,
+                'review_cash_closure' => $canReview,
             ],
             'session' => $session ? [
                 'id' => $session->id,
@@ -72,7 +100,9 @@ class CashControlAPIController extends AppBaseController
             'registers' => $registers,
             'active_sessions' => $activeSessions,
             'supervision_sessions' => $supervisionSessions,
-            'warehouses' => Warehouse::where('store_id', $storeId)->orderBy('name')->get(['id', 'name']),
+            'warehouses' => $canManageRegisters
+                ? Warehouse::where('store_id', $storeId)->orderBy('name')->get(['id', 'name'])
+                : [],
         ], 'Cash control retrieved successfully.');
     }
 
@@ -202,6 +232,16 @@ class CashControlAPIController extends AppBaseController
             'description' => ['required', 'string', 'max:1000'],
             'reference' => ['nullable', 'string', 'max:100'],
         ]);
+
+        $permissionByType = [
+            CashMovement::MANUAL_INCOME => 'create_cash_income',
+            CashMovement::MANUAL_EXPENSE => 'create_cash_expense',
+            CashMovement::WITHDRAWAL => 'withdraw_cash',
+        ];
+        $user = Auth::user();
+        if (! $user->can('manage_cash_control') && ! $user->can($permissionByType[$data['type']])) {
+            abort(403, 'No tienes permiso para registrar este tipo de movimiento de caja.');
+        }
 
         $movement = $this->cashControl->createMovement(
             $this->currentSession(), $data, Auth::id(), (int) $this->currentStoreId()
