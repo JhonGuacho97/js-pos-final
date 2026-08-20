@@ -1,213 +1,110 @@
-import React, { useState } from "react";
-import { Button, Modal, Row, InputGroup } from "react-bootstrap-v5";
+import React, { useEffect, useState } from "react";
+import { Button, Modal } from "react-bootstrap-v5";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { faCheckCircle } from "@fortawesome/free-solid-svg-icons";
-import {
-    currencySymbolHandling,
-    decimalValidate,
-    getFormattedMessage,
-} from "../../../shared/sharedMethod";
+import { faBoxOpen, faBoxesStacked, faCheck, faCube, faMinus, faPlus } from "@fortawesome/free-solid-svg-icons";
+import { decimalValidate, getFormattedMessage } from "../../../shared/sharedMethod";
 
-/**
- * Se abre al hacer click en un producto con manage_presentations = true.
- * El cajero elige la presentación (Unidad / Six Pack / Caja...) y la
- * cantidad de esa presentación. Devuelve al padre la presentación
- * elegida + cantidad; el padre arma la línea del carrito.
- */
-const PresentationSelectModal = ({
-    show,
-    onHide,
-    product,
-    onConfirm,
-    settings,
-    allConfigData,
-}) => {
+const PresentationSelectModal = ({ show, onHide, product, onConfirm }) => {
     const presentations = product?.attributes?.presentations || [];
-    const defaultPresentation =
-        presentations.find((p) => p.is_default) || presentations[0];
-
-    const [selectedPresentationId, setSelectedPresentationId] = useState(
-        defaultPresentation?.id
-    );
+    const defaultPresentation = presentations.find((item) => item.is_default) || presentations[0];
+    const [selectedPresentationId, setSelectedPresentationId] = useState(defaultPresentation?.id);
     const [qty, setQty] = useState(1);
 
-    const selectedPresentation = presentations.find(
-        (p) => p.id === selectedPresentationId
-    );
+    useEffect(() => {
+        if (!show) return;
+        const nextDefault = presentations.find((item) => item.is_default) || presentations[0];
+        setSelectedPresentationId(nextDefault?.id);
+        setQty(1);
+    }, [show, product?.id]);
 
+    const selectedPresentation = presentations.find((item) => item.id === selectedPresentationId);
     const availableUnits = product?.attributes?.stock?.quantity || 0;
     const maxQtyForPresentation = selectedPresentation
         ? Math.floor(availableUnits / selectedPresentation.equivalence)
         : 0;
 
     const handleConfirm = () => {
-        if (!selectedPresentation || qty <= 0) return;
-        if (qty > maxQtyForPresentation) return;
+        if (!selectedPresentation || qty <= 0 || qty > maxQtyForPresentation) return;
         onConfirm(product, selectedPresentation, qty);
-        setQty(1);
         onHide();
     };
 
-    if (!presentations.length) {
-        return null;
-    }
+    if (!presentations.length) return null;
+
+    const selectedPrice = selectedPresentation?.effective_price ?? selectedPresentation?.price;
+    const baseUnitName = product?.attributes?.product_unit_name?.name || "unidades";
 
     return (
-        <Modal show={show} onHide={onHide} keyboard centered>
-            <Modal.Header closeButton>
-                <Modal.Title>{product?.attributes?.name}</Modal.Title>
+        <Modal show={show} onHide={onHide} keyboard centered
+            size={presentations.length > 3 ? "lg" : undefined} dialogClassName="pos-option-modal">
+            <Modal.Header closeButton className="pos-option-modal__header">
+                <div className="pos-option-modal__heading">
+                    <span className="pos-option-modal__icon"><FontAwesomeIcon icon={faBoxesStacked} /></span>
+                    <div>
+                        <span className="pos-option-modal__eyebrow">Elige cómo venderlo</span>
+                        <Modal.Title>{product?.attributes?.name}</Modal.Title>
+                        <p>Selecciona una presentación y define la cantidad.</p>
+                    </div>
+                </div>
             </Modal.Header>
-            <Modal.Body>
-                <Row>
-                    <div className="col-md-12 mb-4">
-                        <label className="form-label">
-                            {getFormattedMessage(
-                                "product.input.sale-unit.label"
-                            )}
-                            :
-                        </label>
-                        <div className="d-flex flex-wrap gap-2">
-                            {presentations.map((presentation) => {
-                                const isSelected =
-                                    selectedPresentationId === presentation.id;
-                                return (
-                                    <div
-                                        key={presentation.id}
-                                        role="button"
-                                        tabIndex={0}
-                                        onClick={() => {
-                                            setSelectedPresentationId(
-                                                presentation.id
-                                            );
-                                            setQty(1);
-                                        }}
-                                        style={{
-                                            position: "relative",
-                                            minWidth: 120,
-                                            padding: "12px 16px",
-                                            borderRadius: 10,
-                                            cursor: "pointer",
-                                            textAlign: "center",
-                                            border: isSelected
-                                                ? "2px solid #2563eb"
-                                                : "2px solid #d1d5db",
-                                            backgroundColor: isSelected
-                                                ? "#eff6ff"
-                                                : "#ffffff",
-                                            boxShadow: isSelected
-                                                ? "0 0 0 3px rgba(37, 99, 235, 0.15)"
-                                                : "none",
-                                            transition: "all 0.12s ease-in-out",
-                                        }}
-                                    >
-                                        {isSelected && (
-                                            <FontAwesomeIcon
-                                                icon={faCheckCircle}
-                                                style={{
-                                                    position: "absolute",
-                                                    top: -8,
-                                                    right: -8,
-                                                    color: "#2563eb",
-                                                    backgroundColor: "#fff",
-                                                    borderRadius: "50%",
-                                                }}
-                                                size="lg"
-                                            />
-                                        )}
-                                        <div
-                                            style={{
-                                                fontWeight: isSelected
-                                                    ? 700
-                                                    : 500,
-                                                color: isSelected
-                                                    ? "#1e3a8a"
-                                                    : "#111827",
-                                            }}
-                                        >
-                                            {presentation.name}
-                                        </div>
-                                        <small
-                                            style={{
-                                                color: isSelected
-                                                    ? "#1e40af"
-                                                    : "#6b7280",
-                                            }}
-                                        >
-                                        $ {presentation.effective_price ?? presentation.price}
-                                            
-                                        </small>
-                                    </div>
-                                );
-                            })}
+
+            <Modal.Body className="pos-option-modal__body">
+                <div className="pos-option-section-heading">
+                    <div><h3>Presentaciones disponibles</h3><p>El inventario se descontará en su unidad base.</p></div>
+                    <span className="pos-option-stock-pill">{availableUnits} {baseUnitName} en stock</span>
+                </div>
+
+                <div className="pos-option-grid pos-option-grid--presentations">
+                    {presentations.map((presentation, index) => {
+                        const isSelected = selectedPresentationId === presentation.id;
+                        const price = presentation.effective_price ?? presentation.price;
+                        const availablePresentations = Math.floor(availableUnits / presentation.equivalence);
+                        return (
+                            <button type="button" key={presentation.id}
+                                className={`pos-option-card pos-presentation-card${isSelected ? " is-selected" : ""}${availablePresentations <= 0 ? " is-disabled" : ""}`}
+                                onClick={() => {
+                                    if (availablePresentations <= 0) return;
+                                    setSelectedPresentationId(presentation.id);
+                                    setQty(1);
+                                }}
+                                disabled={availablePresentations <= 0} aria-pressed={isSelected}>
+                                <span className="pos-option-card__check"><FontAwesomeIcon icon={faCheck} /></span>
+                                <span className="pos-presentation-card__icon"><FontAwesomeIcon icon={index === 0 ? faCube : faBoxOpen} /></span>
+                                <span className="pos-option-card__label">{presentation.name}</span>
+                                <span className="pos-presentation-card__equivalence">1 {presentation.name} = {presentation.equivalence} {baseUnitName}</span>
+                                <span className="pos-presentation-card__footer">
+                                    <strong>$ {Number(price || 0).toFixed(2)}</strong>
+                                    <small>{availablePresentations <= 0 ? "Sin stock" : `${availablePresentations} disponibles`}</small>
+                                </span>
+                            </button>
+                        );
+                    })}
+                </div>
+
+                <div className="pos-option-selection">
+                    <div className="pos-option-selection__summary">
+                        <span>Conversión de la selección</span>
+                        <strong>{selectedPresentation ? `${qty} ${selectedPresentation.name}` : "Selecciona una presentación"}</strong>
+                        {selectedPresentation && <small>Equivale a {qty * selectedPresentation.equivalence} {baseUnitName}</small>}
+                    </div>
+                    <div className="pos-option-quantity">
+                        <span className="pos-option-quantity__label">Cantidad</span>
+                        <div className="pos-option-stepper">
+                            <button type="button" onClick={() => setQty((value) => Math.max(1, value - 1))} aria-label="Disminuir cantidad"><FontAwesomeIcon icon={faMinus} /></button>
+                            <input type="number" min={1} value={qty} onKeyPress={(event) => decimalValidate(event)}
+                                onChange={(event) => setQty(Number(event.target.value) || 1)} aria-label="Cantidad" />
+                            <button type="button" onClick={() => setQty((value) => value + 1)} aria-label="Aumentar cantidad"><FontAwesomeIcon icon={faPlus} /></button>
                         </div>
                     </div>
-
-                    <div className="col-md-12 mb-2">
-                        <label className="form-label">
-                            {getFormattedMessage(
-                                "purchase.order-item.table.quantity.column.label"
-                            )}
-                            :
-                        </label>
-                        <InputGroup>
-                            <Button
-                                variant="light"
-                                onClick={() =>
-                                    setQty((q) => Math.max(1, q - 1))
-                                }
-                            >
-                                -
-                            </Button>
-                            <input
-                                type="number"
-                                className="form-control text-center"
-                                min={1}
-                                value={qty}
-                                onKeyPress={(event) =>
-                                    decimalValidate(event)
-                                }
-                                onChange={(e) =>
-                                    setQty(Number(e.target.value) || 1)
-                                }
-                            />
-                            <Button
-                                variant="light"
-                                onClick={() => setQty((q) => q + 1)}
-                            >
-                                +
-                            </Button>
-                        </InputGroup>
-                        {selectedPresentation && (
-                            <small className="text-muted d-block mt-1">
-                                {qty} {selectedPresentation.name} ={" "}
-                                {qty * selectedPresentation.equivalence}{" "}
-                                {product?.attributes?.product_unit_name?.name}
-                            </small>
-                        )}
-                        {qty > maxQtyForPresentation && (
-                            <span className="text-danger d-block fw-400 fs-small mt-2">
-                                {getFormattedMessage(
-                                    "pos.quantity.exceeds.quantity.available.in.stock.message"
-                                )}
-                            </span>
-                        )}
-                    </div>
-                </Row>
+                </div>
+                {qty > maxQtyForPresentation && <div className="pos-option-alert">{getFormattedMessage("pos.quantity.exceeds.quantity.available.in.stock.message")}</div>}
             </Modal.Body>
-            <Modal.Footer>
-                <Button
-                    className="btn btn-primary"
-                    disabled={
-                        !selectedPresentation ||
-                        qty <= 0 ||
-                        qty > maxQtyForPresentation
-                    }
-                    onClick={handleConfirm}
-                >
+
+            <Modal.Footer className="pos-option-modal__footer">
+                <Button variant="light" onClick={onHide}>{getFormattedMessage("globally.cancel-btn")}</Button>
+                <Button variant="primary" disabled={!selectedPresentation || qty <= 0 || qty > maxQtyForPresentation} onClick={handleConfirm}>
                     {getFormattedMessage("globally.add-cart-btn")}
-                </Button>
-                <Button variant="light" onClick={onHide}>
-                    {getFormattedMessage("globally.cancel-btn")}
+                    <span className="pos-option-modal__button-total">$ {Number((selectedPrice || 0) * qty).toFixed(2)}</span>
                 </Button>
             </Modal.Footer>
         </Modal>
