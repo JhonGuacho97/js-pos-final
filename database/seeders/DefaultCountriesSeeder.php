@@ -15,10 +15,18 @@ class DefaultCountriesSeeder extends Seeder
     {
         $countries = file_get_contents(storage_path('countries/countries.json'));
         $countries = json_decode($countries, true)['countries'];
-        Country::insert($countries);
+        Country::upsert(
+            $countries,
+            ['id'],
+            ['name', 'phone_code', 'short_code']
+        );
 
         $states = file_get_contents(storage_path('countries/states.json'));
         $states = json_decode($states, true)['states'];
-        State::insert($states);
+        State::upsert(
+            $states,
+            ['id'],
+            ['name', 'country_id']
+        );
     }
 }
