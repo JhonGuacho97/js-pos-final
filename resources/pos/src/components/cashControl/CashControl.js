@@ -20,6 +20,10 @@ const CashControl = () => {
     const currency = useSelector((state) => state.frontSetting?.value?.currency_symbol || '$');
     const [overview, setOverview] = useState(null);
     const [movements, setMovements] = useState([]);
+    const [movementLoading, setMovementLoading] = useState(false);
+    const [movementPage, setMovementPage] = useState(1);
+    const [movementMeta, setMovementMeta] = useState({ currentPage: 1, lastPage: 1, from: 0, to: 0, total: 0 });
+    const [movementSummary, setMovementSummary] = useState({ manualIncome: 0, totalOut: 0 });
     const [loading, setLoading] = useState(true);
     const [saving, setSaving] = useState(false);
     const [showForm, setShowForm] = useState(false);
@@ -61,6 +65,31 @@ const CashControl = () => {
         canViewClosures && ['history', 'bi-clock-history', 'Cierres'],
     ].filter(Boolean), [canViewOwn, canSupervise, canManageRegisters, canViewClosures]);
 
+    const loadMovements = useCallback(async (page = 1, showProgress = false) => {
+        if (showProgress) setMovementLoading(true);
+        try {
+            const response = await apiConfig.get(`cash-control/movements?page[size]=10&page=${page}`);
+            const result = response.data;
+            setMovements(result.data || []);
+            setMovementMeta({
+                currentPage: result.current_page || 1,
+                lastPage: result.last_page || 1,
+                from: result.from || 0,
+                to: result.to || 0,
+                total: result.total || 0,
+            });
+            setMovementSummary({
+                manualIncome: Number(result.summary?.manual_income || 0),
+                totalOut: Number(result.summary?.total_out || 0),
+            });
+            setMovementPage(result.current_page || 1);
+        } catch (error) {
+            dispatch(addToast({ text: error?.response?.data?.message || 'No se pudieron cargar los movimientos del turno.', type: toastType.ERROR }));
+        } finally {
+            if (showProgress) setMovementLoading(false);
+        }
+    }, [dispatch]);
+
     const loadData = useCallback(async () => {
         setLoading(true);
         try {
@@ -68,17 +97,19 @@ const CashControl = () => {
             const nextOverview = overviewResponse.data.data;
             setOverview(nextOverview);
             if (nextOverview.session) {
-                const movementResponse = await apiConfig.get('cash-control/movements?page[size]=50');
-                setMovements(movementResponse.data.data || []);
+                await loadMovements(1);
             } else {
                 setMovements([]);
+                setMovementPage(1);
+                setMovementMeta({ currentPage: 1, lastPage: 1, from: 0, to: 0, total: 0 });
+                setMovementSummary({ manualIncome: 0, totalOut: 0 });
             }
         } catch (error) {
             dispatch(addToast({ text: error?.response?.data?.message || 'No se pudo cargar el control de caja.', type: toastType.ERROR }));
         } finally {
             setLoading(false);
         }
-    }, [dispatch]);
+    }, [dispatch, loadMovements]);
 
     useEffect(() => { loadData(); }, [loadData]);
 
@@ -222,14 +253,14 @@ const CashControl = () => {
     };
 
     const session = overview?.session;
-    const totalIn = movements.filter((item) => item.type === 'MANUAL_INCOME').reduce((sum, item) => sum + Number(item.amount), 0);
-    const totalOut = movements.filter((item) => item.direction === 'OUT').reduce((sum, item) => sum + Number(item.amount), 0);
+    const totalIn = movementSummary.manualIncome;
+    const totalOut = movementSummary.totalOut;
 
     return (
         <>
         <MasterLayout>
             <TabTitle title="Control de cajas" />
-            {loading && <TopProgressBar />}
+            {(loading || movementLoading) && <TopProgressBar />}
             <div className="cash-control-v2">
                 <header className="cash-control-heading">
                     <div><span>TESORERÍA OPERATIVA</span><h1>Control de cajas</h1><p>Supervisa el efectivo y registra cada entrada o salida del turno.</p></div>
@@ -287,9 +318,18 @@ const CashControl = () => {
                         <section className="cash-ledger">
                             <div className="cash-section-title"><div><i className="bi bi-clock-history" /></div><span><strong>Movimientos del turno</strong><small>Historial ordenado desde el más reciente.</small></span></div>
                             <div className="table-responsive"><table><thead><tr><th>Fecha</th><th>Movimiento</th><th>Detalle</th><th>Referencia</th><th className="text-end">Monto</th><th /></tr></thead><tbody>
-                                {movements.map((item) => <tr key={item.id}><td>{new Date(item.created_at).toLocaleString('es-EC')}</td><td><span className={`cash-type is-${item.direction.toLowerCase()}`}>{movementLabels[item.type] || item.type}</span></td><td>{item.description || '—'}{item.reversal_reason && <small className="cash-reason">Motivo: {item.reversal_reason}</small>}</td><td>{item.reference || '—'}</td><td className={`text-end cash-value is-${item.direction.toLowerCase()}`}>{item.direction === 'IN' ? '+' : '-'}{currency}{Number(item.amount).toFixed(2)}</td><td className="text-end">{canReverse && !['OPENING', 'REVERSAL', 'TRANSFER_IN', 'TRANSFER_OUT'].includes(item.type) && !item.reversal_exists && <button className="cash-reverse-button" title="Revertir movimiento" onClick={() => { setReversing(item); setReversalReason(''); }}><i className="bi bi-arrow-counterclockwise" /></button>}</td></tr>)}
-                                {!movements.length && <tr><td colSpan="6" className="cash-no-data">No hay movimientos registrados.</td></tr>}
+                                {!movementLoading && movements.map((item) => <tr key={item.id}><td>{new Date(item.created_at).toLocaleString('es-EC')}</td><td><span className={`cash-type is-${item.direction.toLowerCase()}`}>{movementLabels[item.type] || item.type}</span></td><td>{item.description || '—'}{item.reversal_reason && <small className="cash-reason">Motivo: {item.reversal_reason}</small>}</td><td>{item.reference || '—'}</td><td className={`text-end cash-value is-${item.direction.toLowerCase()}`}>{item.direction === 'IN' ? '+' : '-'}{currency}{Number(item.amount).toFixed(2)}</td><td className="text-end">{canReverse && !['OPENING', 'REVERSAL', 'TRANSFER_IN', 'TRANSFER_OUT'].includes(item.type) && !item.reversal_exists && <button className="cash-reverse-button" title="Revertir movimiento" onClick={() => { setReversing(item); setReversalReason(''); }}><i className="bi bi-arrow-counterclockwise" /></button>}</td></tr>)}
+                                {!movementLoading && !movements.length && <tr><td colSpan="6" className="cash-no-data">No hay movimientos registrados.</td></tr>}
+                                {movementLoading && <tr><td colSpan="6" className="cash-no-data">Cargando movimientos...</td></tr>}
                             </tbody></table></div>
+                            {!movementLoading && movementMeta.total > 0 && <nav className="cash-pagination cash-ledger-pagination" aria-label="Paginación de movimientos del turno">
+                                <span>Mostrando {movementMeta.from}-{movementMeta.to} de {movementMeta.total} movimientos</span>
+                                <div>
+                                    <button disabled={movementMeta.currentPage <= 1} onClick={() => loadMovements(Math.max(1, movementPage - 1), true)}><i className="bi bi-chevron-left" /> Anterior</button>
+                                    <strong>Página {movementMeta.currentPage} de {movementMeta.lastPage}</strong>
+                                    <button disabled={movementMeta.currentPage >= movementMeta.lastPage} onClick={() => loadMovements(Math.min(movementMeta.lastPage, movementPage + 1), true)}>Siguiente <i className="bi bi-chevron-right" /></button>
+                                </div>
+                            </nav>}
                         </section>
                     </>
                 ))}

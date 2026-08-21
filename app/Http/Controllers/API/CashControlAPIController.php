@@ -109,11 +109,19 @@ class CashControlAPIController extends AppBaseController
     public function movements(Request $request)
     {
         $session = $this->currentSession();
-        $movements = $session->movements()->with(['user:id,first_name,last_name', 'approvedBy:id,first_name,last_name'])
+        $query = $session->movements();
+        $summary = [
+            'manual_income' => (float) (clone $query)->where('type', 'MANUAL_INCOME')->sum('amount'),
+            'total_out' => (float) (clone $query)->where('direction', 'OUT')->sum('amount'),
+        ];
+        $movements = $query->with(['user:id,first_name,last_name', 'approvedBy:id,first_name,last_name'])
             ->withExists('reversal')
             ->latest()->paginate(min((int) $request->input('page.size', 20), 100));
 
-        return response()->json($movements);
+        $payload = $movements->toArray();
+        $payload['summary'] = $summary;
+
+        return response()->json($payload);
     }
 
     public function reverse(Request $request, CashMovement $cashMovement)
