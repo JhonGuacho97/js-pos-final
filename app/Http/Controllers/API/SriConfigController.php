@@ -5,6 +5,7 @@ namespace App\Http\Controllers\API;
 use App\Http\Controllers\AppBaseController;
 use App\Models\Setting;
 use App\Services\SriService;
+use App\Services\SriSequenceService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
@@ -13,9 +14,10 @@ use Illuminate\Support\Facades\Crypt;
 
 class SriConfigController extends AppBaseController
 {
-    public function __construct(protected SriService $sriService)
-    {
-    }
+    public function __construct(
+        protected SriService $sriService,
+        protected SriSequenceService $sequenceService
+    ) {}
 
     /**
      * Mismo criterio que SettingAPIController::scopedSettingsQuery() --
@@ -427,6 +429,79 @@ class SriConfigController extends AppBaseController
         \Illuminate\Support\Facades\Artisan::call('config:clear');
 
         return $this->sendResponse([], 'Configuración SRI guardada correctamente.');
+    }
+
+    public function sequences(Request $request): JsonResponse
+    {
+        $validator = Validator::make($request->all(), [
+            'ambiente' => 'required|integer|in:1,2',
+            'estab' => 'required|digits:3',
+            'pto_emi' => 'required|digits:3',
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json([
+                'success' => false,
+                'message' => $validator->errors()->first(),
+            ], 422);
+        }
+
+        $sequences = $this->sequenceService->listForSeries(
+            $this->requireCurrentStoreId(),
+            (int) $request->input('ambiente'),
+            (string) $request->input('estab'),
+            (string) $request->input('pto_emi')
+        );
+
+        return $this->sendResponse($sequences, 'Numeración SRI obtenida correctamente.');
+    }
+
+    public function updateSequence(Request $request, string $documentType): JsonResponse
+    {
+        $validator = Validator::make($request->all(), [
+            'ambiente' => 'required|integer|in:1,2',
+            'estab' => 'required|digits:3',
+            'pto_emi' => 'required|digits:3',
+            'ultimo_secuencial' => 'required|integer|min:0|max:999999998',
+            'motivo' => 'required|string|min:10|max:500',
+            'confirmado' => 'accepted',
+        ], [
+            'motivo.min' => 'Explica brevemente por qué necesitas ajustar la numeración.',
+            'confirmado.accepted' => 'Debes confirmar que verificaste el último secuencial utilizado.',
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json([
+                'success' => false,
+                'message' => $validator->errors()->first(),
+                'errors' => $validator->errors(),
+            ], 422);
+        }
+
+        if (! array_key_exists($documentType, SriSequenceService::DOCUMENT_TYPES)) {
+            return response()->json([
+                'success' => false,
+                'message' => 'El tipo de comprobante no admite control de numeración.',
+            ], 422);
+        }
+
+        $sequence = $this->sequenceService->adjustLastUsed(
+            $this->requireCurrentStoreId(),
+            (int) $request->input('ambiente'),
+            (string) $request->input('estab'),
+            (string) $request->input('pto_emi'),
+            $documentType,
+            (int) $request->input('ultimo_secuencial'),
+            trim((string) $request->input('motivo')),
+            auth()->id(),
+            $request->ip(),
+            $request->userAgent()
+        );
+
+        return $this->sendResponse(
+            $sequence,
+            'Numeración SRI actualizada. El próximo comprobante utilizará ' . $sequence['proximo_formateado'] . '.'
+        );
     }
 
     // ── Verificar estado del certificado actual ───────────────────────────

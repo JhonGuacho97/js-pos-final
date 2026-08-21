@@ -82,13 +82,15 @@ Route::middleware(['auth:sanctum', 'store.context'])->group(function () {
         // Route::get('/{electronicInvoice}/xml', [ElectronicInvoiceController::class, 'descargarXml']);
     });
 
-    Route::prefix('sri-config')->group(function () {
+    Route::prefix('sri-config')->middleware('permission:manage_sri_config')->group(function () {
         Route::get('/', [SriConfigController::class, 'index']);
         Route::post('/certificado', [SriConfigController::class, 'subirCertificado']);
         Route::post('/guardar', [SriConfigController::class, 'guardarConfig']);
         Route::get('/verificar-certificado', [SriConfigController::class, 'verificarCertificado']);
         Route::post('/logo', [SriConfigController::class, 'subirLogo']);
         Route::delete('/logo', [SriConfigController::class, 'eliminarLogo']);
+        Route::get('/sequences', [SriConfigController::class, 'sequences']);
+        Route::put('/sequences/{documentType}', [SriConfigController::class, 'updateSequence']);
     });
 
     Route::prefix('sales/{sale}/electronic-invoice')->group(function () {

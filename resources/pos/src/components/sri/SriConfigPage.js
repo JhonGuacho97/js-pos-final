@@ -4,10 +4,13 @@ import { addToast } from "../../store/action/toastAction";
 import { useDispatch } from "react-redux";
 import MasterLayout from "../MasterLayout";
 import HeaderTitle from "../header/HeaderTitle";
-import { Card } from "react-bootstrap-v5";
+import { Modal } from "react-bootstrap-v5";
+import { useLocation } from "react-router-dom";
+import "../../assets/scss/custom/pages/sri-config.scss";
 
 const SriConfigPage = () => {
     const dispatch = useDispatch();
+    const location = useLocation();
     const fileRef = useRef();
 
     const [config, setConfig] = useState({
@@ -27,6 +30,17 @@ const SriConfigPage = () => {
     const [archivo, setArchivo] = useState(null);
     const [subiendoCert, setSubiendoCert] = useState(false);
     const [guardando, setGuardando] = useState(false);
+    const [configLoaded, setConfigLoaded] = useState(false);
+    const [sequenceScope, setSequenceScope] = useState(null);
+    const [sequences, setSequences] = useState([]);
+    const [sequenceLoading, setSequenceLoading] = useState(false);
+    const [selectedSequence, setSelectedSequence] = useState(null);
+    const [sequenceForm, setSequenceForm] = useState({
+        ultimo_secuencial: 0,
+        motivo: "",
+        confirmado: false,
+    });
+    const [savingSequence, setSavingSequence] = useState(false);
 
     const [logoUrl, setLogoUrl] = useState(null);
     const [logoFile, setLogoFile] = useState(null);
@@ -36,13 +50,64 @@ const SriConfigPage = () => {
     const logoInputRef = useRef();
 
     useEffect(() => {
-        apiConfig.get("/sri-config").then((res) => {
-            const data = res.data.data;
-            setConfig((prev) => ({ ...prev, ...data.config }));
-            setCertInfo(data.cert_info);
-            setLogoUrl(data.config?.sri_logo || null);
-        });
+        apiConfig.get("/sri-config")
+            .then((res) => {
+                const data = res.data.data;
+                const loadedConfig = { ...config, ...data.config };
+                const params = new URLSearchParams(location.search);
+                const queryScope = {
+                    ambiente: params.get("ambiente"),
+                    estab: params.get("estab"),
+                    pto_emi: params.get("pto_emi"),
+                };
+                const hasValidQueryScope = ["1", "2"].includes(queryScope.ambiente)
+                    && /^\d{3}$/.test(queryScope.estab || "")
+                    && /^\d{3}$/.test(queryScope.pto_emi || "");
+
+                setConfig(loadedConfig);
+                setSequenceScope(hasValidQueryScope ? queryScope : {
+                    ambiente: String(loadedConfig.sri_ambiente || "1"),
+                    estab: loadedConfig.sri_estab || "001",
+                    pto_emi: loadedConfig.sri_pto_emi || "001",
+                });
+                setCertInfo(data.cert_info);
+                setLogoUrl(data.config?.sri_logo || null);
+            })
+            .catch((err) => {
+                dispatch(addToast({
+                    text: err.response?.data?.message || "No se pudo cargar la configuración SRI.",
+                    type: "error",
+                }));
+            })
+            .finally(() => setConfigLoaded(true));
+        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, []);
+
+    const loadSequences = async (scope = sequenceScope) => {
+        if (!scope || !["1", "2"].includes(String(scope.ambiente))
+            || !/^\d{3}$/.test(scope.estab || "")
+            || !/^\d{3}$/.test(scope.pto_emi || "")) return;
+
+        setSequenceLoading(true);
+        try {
+            const res = await apiConfig.get("/sri-config/sequences", { params: scope });
+            setSequences(res.data.data || []);
+        } catch (err) {
+            dispatch(addToast({
+                text: err.response?.data?.message || "No se pudo cargar la numeración SRI.",
+                type: "error",
+            }));
+        } finally {
+            setSequenceLoading(false);
+        }
+    };
+
+    useEffect(() => {
+        if (!configLoaded || !sequenceScope) return;
+        const timer = setTimeout(() => loadSequences(sequenceScope), 250);
+        return () => clearTimeout(timer);
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [configLoaded, sequenceScope?.ambiente, sequenceScope?.estab, sequenceScope?.pto_emi]);
 
     // Libera el object URL de la previsualización local para no
     // acumular memoria si el usuario cambia de archivo varias veces
@@ -166,6 +231,11 @@ const SriConfigPage = () => {
         setGuardando(true);
         try {
             await apiConfig.post("/sri-config/guardar", config);
+            setSequenceScope({
+                ambiente: String(config.sri_ambiente),
+                estab: config.sri_estab,
+                pto_emi: config.sri_pto_emi,
+            });
             dispatch(addToast({ text: "Configuración SRI guardada correctamente." }));
         } catch (err) {
             dispatch(addToast({
@@ -180,7 +250,60 @@ const SriConfigPage = () => {
     const handleChange = (e) => {
         const { name, value } = e.target;
         setConfig((prev) => ({ ...prev, [name]: value }));
+        if (["sri_ambiente", "sri_estab", "sri_pto_emi"].includes(name)) {
+            setSequenceScope((prev) => ({
+                ambiente: name === "sri_ambiente" ? value : String(prev?.ambiente || config.sri_ambiente),
+                estab: name === "sri_estab" ? value : (prev?.estab || config.sri_estab),
+                pto_emi: name === "sri_pto_emi" ? value : (prev?.pto_emi || config.sri_pto_emi),
+            }));
+        }
     };
+
+    const openSequenceModal = (sequence) => {
+        const params = new URLSearchParams(location.search);
+        setSelectedSequence(sequence);
+        setSequenceForm({
+            ultimo_secuencial: sequence.ultimo_secuencial,
+            motivo: params.get("sequence_error") === "1"
+                ? "Ajuste por secuencial previamente registrado en el SRI"
+                : "",
+            confirmado: false,
+        });
+    };
+
+    const closeSequenceModal = () => {
+        if (savingSequence) return;
+        setSelectedSequence(null);
+    };
+
+    const saveSequence = async () => {
+        if (!selectedSequence || !sequenceScope) return;
+        setSavingSequence(true);
+        try {
+            const res = await apiConfig.put(
+                `/sri-config/sequences/${selectedSequence.tipo_comprobante}`,
+                {
+                    ...sequenceScope,
+                    ultimo_secuencial: Number(sequenceForm.ultimo_secuencial),
+                    motivo: sequenceForm.motivo,
+                    confirmado: sequenceForm.confirmado,
+                }
+            );
+            dispatch(addToast({ text: res.data.message || "Numeración SRI actualizada." }));
+            setSelectedSequence(null);
+            await loadSequences(sequenceScope);
+        } catch (err) {
+            dispatch(addToast({
+                text: err.response?.data?.message || "No se pudo actualizar la numeración.",
+                type: "error",
+            }));
+        } finally {
+            setSavingSequence(false);
+        }
+    };
+
+    const formatSequence = (value) => String(Math.max(0, Number(value) || 0)).padStart(9, "0");
+    const sequenceError = new URLSearchParams(location.search).get("sequence_error") === "1";
 
     return (
         <MasterLayout>
@@ -200,6 +323,95 @@ const SriConfigPage = () => {
                     </div>
                 </div>
             )}
+
+            {sequenceError && (
+                <div className="sri-sequence-conflict-alert">
+                    <span className="sri-sequence-conflict-alert__icon">
+                        <i className="fas fa-triangle-exclamation" />
+                    </span>
+                    <div>
+                        <strong>El SRI informó que el secuencial ya estaba registrado</strong>
+                        <p>Consulta el último número utilizado en tu facturador anterior y ajusta el tipo de comprobante correspondiente. No necesitas ingresar a cPanel.</p>
+                    </div>
+                    <a href="#sri-sequence-control">Ir al control de numeración</a>
+                </div>
+            )}
+
+            <section id="sri-sequence-control" className="sri-sequence-panel">
+                <div className="sri-sequence-panel__header">
+                    <div className="sri-sequence-panel__title">
+                        <span className="sri-sequence-panel__icon"><i className="fas fa-arrow-down-1-9" /></span>
+                        <div>
+                            <span className="sri-sequence-panel__eyebrow">CONTROL TRIBUTARIO</span>
+                            <h2>Numeración de comprobantes</h2>
+                            <p>EcuaPos reservará el siguiente número de forma segura antes de generar cada XML.</p>
+                        </div>
+                    </div>
+                    {sequenceScope && (
+                        <div className="sri-sequence-scope">
+                            <span className={String(sequenceScope.ambiente) === "2" ? "is-production" : "is-test"}>
+                                {String(sequenceScope.ambiente) === "2" ? "Producción" : "Pruebas"}
+                            </span>
+                            <strong>{sequenceScope.estab}-{sequenceScope.pto_emi}</strong>
+                        </div>
+                    )}
+                </div>
+
+                <div className="sri-sequence-panel__notice">
+                    <i className="fas fa-circle-info" />
+                    <span>Ingresa el <strong>último número que ya utilizaste</strong>. EcuaPos calculará y mostrará el próximo automáticamente.</span>
+                </div>
+
+                <div className="sri-sequence-grid">
+                    {sequenceLoading && [1, 2, 3].map((item) => (
+                        <div className="sri-sequence-card is-loading" key={item}>
+                            <span /><span /><span />
+                        </div>
+                    ))}
+
+                    {!sequenceLoading && sequences.map((sequence) => {
+                        const params = new URLSearchParams(location.search);
+                        const highlighted = sequenceError && params.get("type") === sequence.tipo_comprobante;
+                        return (
+                            <article className={`sri-sequence-card ${highlighted ? "has-conflict" : ""}`} key={sequence.tipo_comprobante}>
+                                <div className="sri-sequence-card__top">
+                                    <span className="sri-sequence-card__document-icon">
+                                        <i className={sequence.tipo_comprobante === "01" ? "fas fa-receipt" : sequence.tipo_comprobante === "04" ? "fas fa-file-circle-minus" : "fas fa-file-circle-plus"} />
+                                    </span>
+                                    <div>
+                                        <span>TIPO {sequence.tipo_comprobante}</span>
+                                        <h3>{sequence.label}</h3>
+                                    </div>
+                                    {highlighted && <em>Requiere ajuste</em>}
+                                </div>
+                                <div className="sri-sequence-card__numbers">
+                                    <div>
+                                        <span>Último protegido</span>
+                                        <strong>{sequence.ultimo_formateado}</strong>
+                                    </div>
+                                    <i className="fas fa-arrow-right" />
+                                    <div className="is-next">
+                                        <span>Próximo a emitir</span>
+                                        <strong>{sequence.proximo_formateado || "Serie agotada"}</strong>
+                                    </div>
+                                </div>
+                                <div className="sri-sequence-card__footer">
+                                    <span>
+                                        {sequence.ultima_modificacion
+                                            ? `Ajustado por ${sequence.ultima_modificacion.usuario}`
+                                            : sequence.maximo_local > 0
+                                                ? "Sincronizado con el historial local"
+                                                : "Serie lista para configurar"}
+                                    </span>
+                                    <button type="button" onClick={() => openSequenceModal(sequence)}>
+                                        <i className="fas fa-sliders" /> Ajustar
+                                    </button>
+                                </div>
+                            </article>
+                        );
+                    })}
+                </div>
+            </section>
 
             <div className="card mb-4">
                 <div className="card-header">
@@ -501,6 +713,98 @@ const SriConfigPage = () => {
                     </div>
                 </div>
             </div>
+
+            <Modal
+                show={Boolean(selectedSequence)}
+                onHide={closeSequenceModal}
+                centered
+                dialogClassName="sri-sequence-modal"
+                backdrop={savingSequence ? "static" : true}
+            >
+                {selectedSequence && (
+                    <>
+                        <Modal.Header closeButton={!savingSequence}>
+                            <div className="sri-sequence-modal__heading">
+                                <span><i className="fas fa-shield-halved" /></span>
+                                <div>
+                                    <small>AJUSTE PROTEGIDO</small>
+                                    <h2>{selectedSequence.label}</h2>
+                                    <p>Serie {sequenceScope?.estab}-{sequenceScope?.pto_emi} · {String(sequenceScope?.ambiente) === "2" ? "Producción" : "Pruebas"}</p>
+                                </div>
+                            </div>
+                        </Modal.Header>
+                        <Modal.Body>
+                            <div className="sri-sequence-modal__current">
+                                <div>
+                                    <span>Último protegido actualmente</span>
+                                    <strong>{selectedSequence.ultimo_formateado}</strong>
+                                </div>
+                                <i className="fas fa-arrow-right" />
+                                <div>
+                                    <span>Próximo actual</span>
+                                    <strong>{selectedSequence.proximo_formateado}</strong>
+                                </div>
+                            </div>
+
+                            <label className="sri-sequence-modal__field">
+                                <span>Último secuencial utilizado anteriormente</span>
+                                <input
+                                    type="number"
+                                    min={selectedSequence.ultimo_secuencial}
+                                    max="999999998"
+                                    value={sequenceForm.ultimo_secuencial}
+                                    onChange={(event) => setSequenceForm((prev) => ({ ...prev, ultimo_secuencial: event.target.value }))}
+                                />
+                                <small>No ingreses el próximo número; escribe el último que ya fue utilizado o registrado.</small>
+                            </label>
+
+                            <div className="sri-sequence-modal__preview">
+                                <span>Después de guardar, EcuaPos emitirá:</span>
+                                <strong>
+                                    {sequenceScope?.estab}-{sequenceScope?.pto_emi}-{formatSequence(Number(sequenceForm.ultimo_secuencial) + 1)}
+                                </strong>
+                            </div>
+
+                            <label className="sri-sequence-modal__field">
+                                <span>Motivo del ajuste</span>
+                                <textarea
+                                    rows="3"
+                                    maxLength="500"
+                                    value={sequenceForm.motivo}
+                                    onChange={(event) => setSequenceForm((prev) => ({ ...prev, motivo: event.target.value }))}
+                                    placeholder="Ej. Migración desde el facturador anterior"
+                                />
+                            </label>
+
+                            <label className="sri-sequence-modal__confirmation">
+                                <input
+                                    type="checkbox"
+                                    checked={sequenceForm.confirmado}
+                                    onChange={(event) => setSequenceForm((prev) => ({ ...prev, confirmado: event.target.checked }))}
+                                />
+                                <span>Confirmo que verifiqué el último secuencial utilizado y entiendo que esta numeración no podrá disminuirse.</span>
+                            </label>
+                        </Modal.Body>
+                        <Modal.Footer>
+                            <button type="button" className="btn btn-light" onClick={closeSequenceModal} disabled={savingSequence}>Cancelar</button>
+                            <button
+                                type="button"
+                                className="btn btn-primary"
+                                onClick={saveSequence}
+                                disabled={savingSequence
+                                    || !sequenceForm.confirmado
+                                    || sequenceForm.motivo.trim().length < 10
+                                    || Number(sequenceForm.ultimo_secuencial) <= selectedSequence.ultimo_secuencial
+                                    || Number(sequenceForm.ultimo_secuencial) > 999999998}
+                            >
+                                {savingSequence
+                                    ? <><span className="spinner-border spinner-border-sm me-2" />Guardando...</>
+                                    : <><i className="fas fa-shield-check me-2" />Guardar numeración</>}
+                            </button>
+                        </Modal.Footer>
+                    </>
+                )}
+            </Modal>
         </MasterLayout>
     );
 };

@@ -75,6 +75,7 @@ class ElectronicInvoice extends BaseModel
         'warehouse_id',
         'estab',
         'pto_emi',
+        'ambiente',
         'tipo_comprobante',
         'clave_acceso',
         'numero_autorizacion',
@@ -97,6 +98,7 @@ class ElectronicInvoice extends BaseModel
         'enviado_sri_at' => 'datetime',
         'correo_enviado_at' => 'datetime',
         'intentos' => 'integer',
+        'ambiente' => 'integer',
     ];
 
     // ── Relaciones ────────────────────────────────
@@ -146,6 +148,23 @@ class ElectronicInvoice extends BaseModel
     public function estaRechazada(): bool
     {
         return in_array($this->estado, [self::NO_AUTORIZADA, self::DEVUELTA]);
+    }
+
+    public function tieneConflictoSecuencial(): bool
+    {
+        foreach ((array) $this->mensajes_sri as $message) {
+            $identifier = (string) ($message['identificador'] ?? '');
+            $text = mb_strtolower(implode(' ', [
+                (string) ($message['mensaje'] ?? ''),
+                (string) ($message['informacionAdicional'] ?? ''),
+            ]));
+
+            if ($identifier === '45' || str_contains($text, 'secuencial registrado')) {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     /**

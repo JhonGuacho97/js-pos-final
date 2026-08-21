@@ -2,7 +2,8 @@ import React, { useEffect, useState, useCallback } from "react";
 import { useDispatch } from "react-redux";
 import dayjs from "dayjs";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { faMagnifyingGlass, faTriangleExclamation, faFileInvoice } from "@fortawesome/free-solid-svg-icons";
+import { faMagnifyingGlass, faTriangleExclamation, faFileInvoice, faSliders } from "@fortawesome/free-solid-svg-icons";
+import { useNavigate } from "react-router-dom";
 import MasterLayout from "../MasterLayout";
 import HeaderTitle from "../header/HeaderTitle";
 import apiConfig from "../../config/apiConfig";
@@ -46,6 +47,7 @@ const inicioDeMes = () => dayjs().startOf('month').format('YYYY-MM-DD');
 
 const ElectronicInvoices = () => {
     const dispatch = useDispatch();
+    const navigate = useNavigate();
 
     const filtrosPorDefecto = {
         fecha_desde: inicioDeMes(),
@@ -154,6 +156,18 @@ const ElectronicInvoices = () => {
     const pendientesVisibles = documentos.filter(
         (documento) => documento.estado !== "AUTORIZADA"
     ).length;
+    const conflictosSecuencial = documentos.filter((documento) => documento.conflicto_secuencial);
+
+    const abrirAjusteSecuencial = (documento) => {
+        const params = new URLSearchParams({
+            sequence_error: "1",
+            type: documento.tipo_comprobante,
+            ambiente: String(documento.ambiente || ""),
+            estab: documento.estab || "",
+            pto_emi: documento.pto_emi || "",
+        });
+        navigate(`/app/sri-config?${params.toString()}`);
+    };
     const documentStats = [
         {
             label: "Documentos encontrados",
@@ -279,6 +293,23 @@ const ElectronicInvoices = () => {
                 </div>
             )}
 
+            {conflictosSecuencial.length > 0 && (
+                <div className="fiscal-alert fiscal-alert--sequence">
+                    <FontAwesomeIcon icon={faTriangleExclamation} />
+                    <span>
+                        <strong>Numeración duplicada:</strong> el SRI ya registró el secuencial de {conflictosSecuencial.length === 1 ? "un comprobante" : `${conflictosSecuencial.length} comprobantes`} de esta página.
+                    </span>
+                    <button
+                        type="button"
+                        className="btn btn-sm btn-primary ms-auto"
+                        onClick={() => abrirAjusteSecuencial(conflictosSecuencial[0])}
+                    >
+                        <FontAwesomeIcon icon={faSliders} className="me-2" />
+                        Corregir numeración
+                    </button>
+                </div>
+            )}
+
             <div className="fiscal-table-shell">
                 <div className="fiscal-toolbar">
                     <div className="fiscal-toolbar-copy">
@@ -367,6 +398,16 @@ const ElectronicInvoices = () => {
                                     <td className="text-end">{money(doc.total)}</td>
                                     <td className="text-end">{money(doc.saldo)}</td>
                                     <td>
+                                        {doc.conflicto_secuencial && (
+                                            <button
+                                                type="button"
+                                                className="btn btn-sm btn-outline-warning fiscal-action-button me-1"
+                                                title="Ajustar numeración SRI"
+                                                onClick={() => abrirAjusteSecuencial(doc)}
+                                            >
+                                                <FontAwesomeIcon icon={faSliders} />
+                                            </button>
+                                        )}
                                         {doc.estado === "AUTORIZADA" && (
                                             <a
                                                 href={`/api/electronic-invoices/${doc.id}/ride`}

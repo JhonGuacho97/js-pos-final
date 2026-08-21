@@ -66,7 +66,8 @@ class EmitirFacturaJob implements ShouldQueue
             // nunca se envían al SRI. El secuencial placeholder no puede
             // ser fijo ('000000000') -- dos fallos del mismo tipo de
             // comprobante violarían el índice único al crear el segundo.
-            $sriCfg = SriConfigService::get();
+            $storeId = $sale->warehouse?->store_id;
+            $sriCfg = SriConfigService::get($storeId);
             ElectronicInvoice::create([
                 'sale_id'          => $sale->id,
                 'credit_note_id'   => $this->creditNoteId,
@@ -74,10 +75,11 @@ class EmitirFacturaJob implements ShouldQueue
                 'clave_acceso'     => 'ERR' . str_pad((string) $sale->id, 10, '0', STR_PAD_LEFT) . strtoupper(\Illuminate\Support\Str::random(20)),
                 'secuencial'       => 'E' . strtoupper(\Illuminate\Support\Str::random(8)),
                 'estado'           => ElectronicInvoice::NO_AUTORIZADA,
-                'store_id'         => $sale->warehouse?->store_id,
+                'store_id'         => $storeId,
                 'warehouse_id'     => $sale->warehouse_id,
                 'estab'            => $sriCfg['estab'] ?? null,
                 'pto_emi'          => $sriCfg['pto_emi'] ?? null,
+                'ambiente'         => $sriCfg['ambiente'] ?? null,
                 'mensajes_sri'     => [[
                     'identificador'        => 'GENERACION_XML_ERROR',
                     'mensaje'              => 'Error al generar el comprobante electrónico',
@@ -95,7 +97,6 @@ class EmitirFacturaJob implements ShouldQueue
         // directamente, porque para nota de crédito/débito la tienda
         // correcta puede no coincidir 1:1 con la del $sale cargado acá.
         $storeId = $result['store_id'] ?? $sale->warehouse?->store_id;
-        $sriCfg = SriConfigService::get($storeId);
         $factura = ElectronicInvoice::create([
             'sale_id'          => $sale->id,
             'credit_note_id'   => $this->creditNoteId,
@@ -105,8 +106,9 @@ class EmitirFacturaJob implements ShouldQueue
             'estado'           => ElectronicInvoice::PENDIENTE,
             'store_id'         => $storeId,
             'warehouse_id'     => $sale->warehouse_id,
-            'estab'            => $sriCfg['estab'] ?? null,
-            'pto_emi'          => $sriCfg['pto_emi'] ?? null,
+            'estab'            => $result['estab'],
+            'pto_emi'          => $result['pto_emi'],
+            'ambiente'         => $result['ambiente'],
         ]);
 
         // Firmar

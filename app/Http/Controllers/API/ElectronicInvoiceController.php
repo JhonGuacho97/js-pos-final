@@ -217,6 +217,10 @@ class ElectronicInvoiceController extends AppBaseController
                 'saldo' => (float) (($sale?->grand_total ?? 0) - ($sale?->paid_amount ?? 0)),
                 'puede_reintentar' => $item->puedeReintentarse(),
                 'mensajes' => $item->mensajes_sri,
+                'conflicto_secuencial' => $item->tieneConflictoSecuencial(),
+                'ambiente' => $item->ambiente,
+                'estab' => $item->estab,
+                'pto_emi' => $item->pto_emi,
             ];
         });
 
