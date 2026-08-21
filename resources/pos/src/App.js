@@ -41,6 +41,11 @@ function App() {
             // antiguo dejaba fuera los estilos del rediseño EcuaPos.
             require("./assets/scss/frontend/frontend.scss");
         }
+
+        // Las hojas CSS históricas incluyen estilos antiguos para avisos.
+        // Cargamos el lenguaje visual actual al final para que Toastify,
+        // SweetAlert y las alertas inline mantengan la misma apariencia.
+        require("./assets/scss/custom/alerts-modern.scss");
     }, [location.pathname]);
 
     // ─── Soporte RTL ─────────────────────────────────────────────────────────

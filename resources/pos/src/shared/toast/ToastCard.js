@@ -1,15 +1,15 @@
 import React from 'react';
 import PropTypes from 'prop-types';
 import {toastType} from '../../constants/index';
-import {faCheck, faClose, faXmark, faTriangleExclamation} from '@fortawesome/free-solid-svg-icons';
+import {faCheck, faXmark, faTriangleExclamation} from '@fortawesome/free-solid-svg-icons';
 import {FontAwesomeIcon} from '@fortawesome/react-fontawesome';
 import {placeholderText} from "../sharedMethod";
 
 const ToastCard = (props) => {
     const {type, text, closeToast} = props;
-    const iconColor = type === toastType.ERROR
-        ? 'toast-card__icon--error'
-        : (type === toastType.WARNING ? 'toast-card__icon--warning' : 'toast-card__icon--success');
+    const variant = type === toastType.ERROR
+        ? 'error'
+        : (type === toastType.WARNING ? 'warning' : 'success');
 
     const renderCard = () => {
         const icon = type === toastType.ERROR
@@ -20,12 +20,11 @@ const ToastCard = (props) => {
             : (type === toastType.WARNING ? placeholderText("toast.warning.title") : placeholderText("toast.successful.title"));
 
         return (
-            <div className='d-flex align-items-center'>
-                <div className={`${iconColor}`} style={type === toastType.WARNING ? { color: '#fd7e14' } : undefined}>
-                    <FontAwesomeIcon icon={icon}
-                                     className='fs-1'/>
+            <div className='toast-card__layout'>
+                <div className={`toast-card__icon toast-card__icon--${variant}`} aria-hidden='true'>
+                    <FontAwesomeIcon icon={icon}/>
                 </div>
-                <div className='mx-3'>
+                <div className='toast-card__content'>
                     <h2 className='toast-card__toast-title'>
                         {titulo}
                     </h2>
@@ -36,8 +35,16 @@ const ToastCard = (props) => {
     };
 
     return (
-        <div className='toast-card'>
-            <FontAwesomeIcon icon={faClose} className='fs-3 toast-card__close-btn' onClick={closeToast}/>
+        <div className={`toast-card toast-card--${variant}`}>
+            <span className='toast-card__accent' aria-hidden='true'/>
+            <button
+                type='button'
+                className='toast-card__close-btn'
+                onClick={closeToast}
+                aria-label='Cerrar notificación'
+            >
+                <FontAwesomeIcon icon={faXmark}/>
+            </button>
             {renderCard()}
         </div>
     )

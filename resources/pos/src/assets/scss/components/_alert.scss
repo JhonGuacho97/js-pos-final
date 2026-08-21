@@ -1,9 +1,38 @@
 @import "variables";
 
 .alert {
-    padding: 0.75rem 0.938rem;
+    padding: 0.875rem 1rem;
+    border-width: 1px;
+    border-radius: 0.875rem;
+    box-shadow: 0 6px 18px rgba(15, 23, 42, 0.045);
+    font-size: 0.875rem;
+    line-height: 1.5;
 
     .svg-inline--fa {
-        font-size: 1.563rem;
+        font-size: 1.125rem;
+    }
+
+    &-success {
+        border-color: #bdebd7;
+        background-color: #effbf5;
+        color: #126b49;
+    }
+
+    &-danger {
+        border-color: #ffd0d3;
+        background-color: #fff3f4;
+        color: #aa2630;
+    }
+
+    &-warning {
+        border-color: #f8dda1;
+        background-color: #fff9e9;
+        color: #8a5b00;
+    }
+
+    &-info {
+        border-color: #cbdcff;
+        background-color: #f2f6ff;
+        color: #2455ae;
     }
 }

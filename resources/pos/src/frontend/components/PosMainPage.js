@@ -78,6 +78,34 @@ import {
     supportsOfflineBackgroundSync,
 } from "../../offline/backgroundSync";
 
+const getSaleAttributes = (saleDetails) =>
+    saleDetails?.attributes || saleDetails?.data?.attributes || {};
+
+const getCustomerAttributes = (customer) =>
+    customer?.attributes || customer || {};
+
+const mergeReceiptWithSale = (receipt, saleDetails) => {
+    const attributes = getSaleAttributes(saleDetails);
+    const receiptCustomer = getCustomerAttributes(receipt?.customer);
+    const serverCustomer = getCustomerAttributes(attributes.customer);
+
+    return {
+        ...receipt,
+        barcode_url: attributes.barcode_url ?? receipt?.barcode_url,
+        reference_code: attributes.reference_code ?? receipt?.reference_code,
+        customer: {
+            ...receiptCustomer,
+            ...serverCustomer,
+            name: serverCustomer.name || receiptCustomer.name || "",
+            identification: serverCustomer.identification || receiptCustomer.identification || "",
+            address: serverCustomer.address || receiptCustomer.address || "",
+        },
+        user_name: attributes.user_name ?? receipt?.user_name,
+        numero_comprobante: attributes.numero_comprobante ?? receipt?.numero_comprobante,
+        tipo_comprobante: attributes.tipo_comprobante ?? receipt?.tipo_comprobante,
+    };
+};
+
 const PosMainPage = (props) => {
     const {
         onClickFullScreen,
@@ -197,26 +225,9 @@ const PosMainPage = (props) => {
     useEffect(() => {
         if (!paymentDetails?.attributes) return;
 
-        const attributes = paymentDetails.attributes;
-
-        setPaymentPrint((currentPaymentPrint) => ({
-            ...currentPaymentPrint,
-            barcode_url:
-                attributes.barcode_url ?? currentPaymentPrint.barcode_url,
-            reference_code:
-                attributes.reference_code ?? currentPaymentPrint.reference_code,
-            // Estos ya venían en la respuesta del backend, pero nunca se
-            // copiaban acá -- por eso no aparecían en el ticket aunque
-            // el backend sí los mandara.
-            customer:
-                attributes.customer ?? currentPaymentPrint.customer,
-            user_name:
-                attributes.user_name ?? currentPaymentPrint.user_name,
-            numero_comprobante:
-                attributes.numero_comprobante ?? currentPaymentPrint.numero_comprobante,
-            tipo_comprobante:
-                attributes.tipo_comprobante ?? currentPaymentPrint.tipo_comprobante,
-        }));
+        setPaymentPrint((currentPaymentPrint) =>
+            mergeReceiptWithSale(currentPaymentPrint, paymentDetails)
+        );
     }, [paymentDetails]);
 
     useEffect(() => {
@@ -985,7 +996,6 @@ const PosMainPage = (props) => {
         const result = await posCashPaymentAction(
                 payload,
                 setUpdateProducts,
-                setModalShowPaymentSlip,
                 posAllProduct,
                 {
                     brandId,
@@ -1001,7 +1011,11 @@ const PosMainPage = (props) => {
         }
 
         if (!result?.success) return;
-        setPaymentPrint(receipt);
+        // El modal se abre únicamente después de unir los datos locales del
+        // ticket con la venta confirmada por el servidor. Antes se abría desde
+        // el thunk y este set reemplazaba cliente, referencia y vendedor.
+        setPaymentPrint(mergeReceiptWithSale(receipt, result.sale));
+        setModalShowPaymentSlip(true);
         finishCheckout();
     };
 

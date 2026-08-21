@@ -8,7 +8,7 @@ import { fetchHoldLists } from "./HoldListAction";
 import { isNetworkError } from "../../../offline/catalogStorage";
 
 
-export const posCashPaymentAction = ( detailsCash, setUpdateProducts, setModalShowPaymentSlip, posAllProduct, filterData, onSuccess = null, isLoading = true ) => async ( dispatch ) => {
+export const posCashPaymentAction = ( detailsCash, setUpdateProducts, posAllProduct, filterData, onSuccess = null, isLoading = true ) => async ( dispatch ) => {
     if ( isLoading ) {
         dispatch( setLoading( true ) )
     }
@@ -19,7 +19,6 @@ export const posCashPaymentAction = ( detailsCash, setUpdateProducts, setModalSh
             dispatch( addToast(
                 { text: getFormattedMessage( "pos.payment.success.message" ) } ) );
             setUpdateProducts( [] )
-            setModalShowPaymentSlip( true )
             dispatch( fetchBrandClickable( filterData.brandId, filterData.categoryId, filterData.selectedOption.value ) )
             // Callback opcional con la venta creada (usado para disparar la
             // emisión de factura electrónica cuando el usuario la activó).

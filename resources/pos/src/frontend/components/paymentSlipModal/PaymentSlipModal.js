@@ -60,6 +60,21 @@ const PaymentSlipModal = (props) => {
         updateProducts.settings.attributes &&
         updateProducts.settings.attributes.currency_symbol;
 
+    const saleAttributes = paymentDetails?.attributes || paymentDetails?.data?.attributes || {};
+    const localCustomer = updateProducts?.customer?.attributes || updateProducts?.customer || {};
+    const serverCustomer = saleAttributes?.customer?.attributes || saleAttributes?.customer || {};
+    const customer = {
+        ...serverCustomer,
+        ...localCustomer,
+        name: localCustomer.name || serverCustomer.name || updateProducts?.customer_name?.label || "",
+        identification: localCustomer.identification || serverCustomer.identification || "9999999999999",
+        address: localCustomer.address || serverCustomer.address || "-",
+    };
+    const receiptReference = updateProducts?.reference_code || saleAttributes.reference_code || "-";
+    const receiptNumber = updateProducts?.numero_comprobante || saleAttributes.numero_comprobante;
+    const receiptUser = updateProducts?.user_name || saleAttributes.user_name || "-";
+    const receiptBarcode = updateProducts?.barcode_url || saleAttributes.barcode_url;
+
     // ✅ 3. Estilos del ticket (alineados a TicketSlipModal)
     const ticketStyle = {
         width: '72mm',
@@ -180,9 +195,9 @@ const PaymentSlipModal = (props) => {
                             {subtitulo}
                         </div>
                         <div>
-                            No: {tipoComprobanteSri === "01" && updateProducts?.numero_comprobante
-                                ? `FACTURA ${updateProducts.numero_comprobante}`
-                                : updateProducts?.reference_code}
+                            No: {tipoComprobanteSri === "01" && receiptNumber
+                                ? `FACTURA ${receiptNumber}`
+                                : receiptReference}
                         </div>
                         <div>
                             {getFormattedMessage("react-data-table.date.column.label")}:{' '}
@@ -196,16 +211,16 @@ const PaymentSlipModal = (props) => {
                     <div style={{ fontSize: '11px' }}>
                         <div>
                             <strong>{getFormattedMessage("dashboard.recentSales.customer.label")}:</strong>{' '}
-                            {updateProducts?.customer?.name ?? ''}
+                            {customer.name}
                         </div>
                         <div>
-                            <strong>CI/RUC:</strong> {updateProducts?.customer?.identification ?? '9999999999'}
+                            <strong>CI/RUC:</strong> {customer.identification}
                         </div>
                         <div>
-                            <strong>Dirección:</strong> {updateProducts?.customer?.address ?? '-'}
+                            <strong>Dirección:</strong> {customer.address}
                         </div>
                         <div>
-                            <strong>Atendido por:</strong> {updateProducts?.user_name ?? '-'}
+                            <strong>Atendido por:</strong> {receiptUser}
                         </div>
                     </div>
 
@@ -382,13 +397,13 @@ const PaymentSlipModal = (props) => {
                         </p>
                         {!updateProducts?.offline_pending && (
                             <Image
-                                src={paymentDetails?.attributes?.barcode_url}
+                                src={receiptBarcode}
                                 height={25}
                                 width={100}
                             />
                         )}
                         <span style={{ display: 'block', fontSize: '10px', marginTop: '2px' }}>
-                            {paymentDetails?.attributes?.reference_code}
+                            {receiptReference}
                         </span>
                     </div>
 

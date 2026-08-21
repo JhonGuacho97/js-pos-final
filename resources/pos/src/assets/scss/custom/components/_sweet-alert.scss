@@ -1,24 +1,82 @@
 @import "../../components/variables";
 
+.sweet-overlay {
+    background: rgba(15, 23, 42, 0.58) !important;
+    backdrop-filter: blur(4px);
+    -webkit-backdrop-filter: blur(4px);
+}
+
 .sweet-alert {
     will-change: unset !important;
-    border-radius: 0.625rem !important;
+    width: min(440px, calc(100vw - 30px)) !important;
+    padding: 30px 28px 24px !important;
+    border: 1px solid #e7edf6 !important;
+    border-radius: 24px !important;
     background-color: $white !important;
-    width: 375px !important;
+    box-shadow: 0 28px 80px rgba(15, 23, 42, 0.24) !important;
 
     h2 {
-        color: #212529 !important;
-        font-size: 1.125rem !important;
-        font-weight: 500 !important;
-        margin-bottom: 13px !important;
+        margin: 8px 0 10px !important;
+        color: #172033 !important;
+        font-size: 1.25rem !important;
+        font-weight: 700 !important;
+        line-height: 1.35 !important;
+        letter-spacing: -0.02em;
     }
 
     .sweet-text {
+        color: #69758a !important;
         font-size: 0.875rem !important;
-        color: #6C757D !important;
+        line-height: 1.6;
     }
 
     p {
+        margin-bottom: 20px;
         flex-direction: row-reverse;
+    }
+
+    .sa-icon {
+        margin-top: 0 !important;
+        transform: scale(0.86);
+    }
+
+    .btn {
+        min-width: 112px;
+        min-height: 44px;
+        margin: 4px 5px 0 !important;
+        padding: 10px 18px !important;
+        border-radius: 12px !important;
+        font-size: 0.875rem !important;
+        font-weight: 600 !important;
+        box-shadow: none !important;
+    }
+
+    .btn-danger {
+        border-color: #df3d48 !important;
+        background: #df3d48 !important;
+    }
+
+    .btn-primary {
+        border-color: #2161f2 !important;
+        background: #2161f2 !important;
+    }
+
+    .btn-secondary {
+        border-color: #e7edf6 !important;
+        background: #f2f5fa !important;
+        color: #4f5d73 !important;
+    }
+}
+
+@media (max-width: 575.98px) {
+    .sweet-alert {
+        padding: 24px 18px 18px !important;
+        border-radius: 20px !important;
+
+        .btn {
+            width: calc(50% - 12px);
+            min-width: 0;
+            padding-inline: 10px !important;
+        }
     }
 }
