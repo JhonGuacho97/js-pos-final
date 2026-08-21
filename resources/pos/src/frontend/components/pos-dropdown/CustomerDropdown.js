@@ -6,37 +6,79 @@ import {fetchAllCustomer} from '../../../store/action/customerAction';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faUserPlus } from '@fortawesome/free-solid-svg-icons';
 import { getFormattedMessage } from '../../../shared/sharedMethod';
+import { getOfflineCustomer, OFFLINE_CUSTOMERS_EVENT } from '../../../offline/catalogStorage';
 
 const CustomerDropDown = (props) => {
-    const {setSelectedCustomerOption, selectedCustomerOption, fetchAllCustomer, customers, customerModel, updateCustomer} = props;
+    const {setSelectedCustomerOption, selectedCustomerOption, fetchAllCustomer, customers, customerModel, updateCustomer, offlineMode} = props;
 
     const customerOption = customers && customers.map((customer) => {
-        return {value: customer.id, label: customer.attributes.name}
+        const status = customer.attributes?.offline_status;
+        const suffix = ["pending", "syncing"].includes(status)
+            ? " · pendiente"
+            : status === "requires_review" ? " · revisar" : "";
+        return {
+            value: customer.id,
+            label: `${customer.attributes.name}${suffix}`,
+            offlineCustomerUuid: customer.attributes?.offline_client_uuid || null,
+            offlineStatus: status || null,
+        }
     });
 
     useEffect(() => {
-        fetchAllCustomer();
-    },[]);
+        const loadCustomers = async () => {
+            await fetchAllCustomer();
+            if (!selectedCustomerOption?.offlineCustomerUuid) return;
+            const localCustomer = await getOfflineCustomer(selectedCustomerOption.offlineCustomerUuid).catch(() => null);
+            if (localCustomer?.status === "synced" && localCustomer.serverCustomerId) {
+                setSelectedCustomerOption({
+                    value: localCustomer.serverCustomerId,
+                    label: localCustomer.payload?.name || selectedCustomerOption.label,
+                });
+            }
+        };
+        const handleWorkerMessage = (event) => {
+            if (event.data?.type === "OFFLINE_CUSTOMERS_STATUS_CHANGED") loadCustomers();
+        };
+        loadCustomers();
+        window.addEventListener('online', loadCustomers);
+        window.addEventListener(OFFLINE_CUSTOMERS_EVENT, loadCustomers);
+        navigator.serviceWorker?.addEventListener('message', handleWorkerMessage);
+        return () => {
+            window.removeEventListener('online', loadCustomers);
+            window.removeEventListener(OFFLINE_CUSTOMERS_EVENT, loadCustomers);
+            navigator.serviceWorker?.removeEventListener('message', handleWorkerMessage);
+        };
+    },[selectedCustomerOption?.offlineCustomerUuid]);
 
     const onChangeWarehouse = (obj) => {
         setSelectedCustomerOption(obj);
     };
 
     return (
-        <div className='select-box col-6 pe-sm-1 position-relative'>
-            <InputGroup className='flex-nowrap '>
-                <InputGroup.Text id='basic-addon1' className='bg-transparent position-absolute border-0 z-index-1 input-group-text py-4 px-3'>
-                    <i className="bi bi-person fs-2 text-gray-900" />
+        <div className={`select-box pos-customer-select col-6 pe-sm-1 position-relative ${offlineMode ? 'is-offline' : ''}`}>
+            <InputGroup className='pos-customer-select__group flex-nowrap'>
+                <InputGroup.Text id='basic-addon1' className='pos-customer-select__icon bg-transparent position-absolute border-0 z-index-1'>
+                    <i className="bi bi-person" />
                 </InputGroup.Text>
                 <Select
+                    className='pos-customer-select__select'
+                    classNamePrefix='pos-customer-react'
                     placeholder='Seleccionar cliente'
                     defaultValue={selectedCustomerOption}
                     value={selectedCustomerOption}
                     onChange={onChangeWarehouse}
                     options={customerOption}
+                    isOptionDisabled={(option) => option.offlineStatus === "requires_review"}
                     noOptionsMessage={() => getFormattedMessage('no-option.label')}
                 />
-                <Button title="Crear cliente" aria-label="Crear cliente" onClick={() => customerModel(true)} className='position-absolute'><FontAwesomeIcon icon={faUserPlus} /></Button>
+                <Button
+                    title={offlineMode ? "Crear cliente sin conexión" : "Crear cliente"}
+                    aria-label="Crear cliente"
+                    onClick={() => customerModel(true)}
+                    className='pos-customer-select__button position-absolute'
+                >
+                    <FontAwesomeIcon icon={faUserPlus} />
+                </Button>
             </InputGroup>
         </div>
     )

@@ -54,8 +54,11 @@ const Product = (props) => {
     }, [cartProducts]);
 
     useEffect(() => {
-        if (posAllProducts && posAllProducts.length > 0) {
-            setIsLoading(false);  // ← cuando llegan productos, quita el skeleton
+        if (Array.isArray(posAllProducts)) {
+            // Una respuesta vacía también es una respuesta válida (categoría
+            // sin stock o catálogo local todavía vacío); no debe dejar el
+            // skeleton girando indefinidamente.
+            setIsLoading(false);
         }
     }, [posAllProducts]);
 

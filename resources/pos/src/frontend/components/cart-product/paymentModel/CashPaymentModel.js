@@ -42,6 +42,7 @@ const CashPaymentModel = (props) => {
         onPaymentRowTypeChange,
         tipoComprobanteSri,
         onTipoComprobanteChange,
+        offlineMode,
     } = props;
 
     const currencySymbol = settings.attributes && settings.attributes.currency_symbol;
@@ -107,6 +108,7 @@ const CashPaymentModel = (props) => {
                             <SriComprobanteSelect
                                 value={tipoComprobanteSri}
                                 onChange={onTipoComprobanteChange}
+                                offlineMode={offlineMode}
                             />
                         </div>
 
@@ -299,7 +301,9 @@ const CashPaymentModel = (props) => {
                         </div>
 
                         <div className="pos-payment-summary__hint">
-                            El cobro se registrará al confirmar la venta.
+                            {offlineMode
+                                ? "La venta quedará guardada en este dispositivo y se enviará automáticamente al recuperar conexión."
+                                : "El cobro se registrará al confirmar la venta."}
                         </div>
                     </aside>
                 </div>
@@ -315,7 +319,7 @@ const CashPaymentModel = (props) => {
                     onClick={(event) => onCashPayment(event)}
                 >
                     <FontAwesomeIcon icon={faWallet} />
-                    Confirmar cobro
+                    {offlineMode ? "Guardar cobro offline" : "Confirmar cobro"}
                 </button>
             </Modal.Footer>
         </Modal>

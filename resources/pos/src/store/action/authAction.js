@@ -7,6 +7,7 @@ import { setLanguage } from './changeLanguageAction';
 import { getFormattedMessage } from '../../shared/sharedMethod';
 import { fetchConfig } from "./configAction";
 import { fetchMyStores } from "./storeAction";
+import { revokeOfflineSyncCredential } from "../../offline/backgroundSync";
 
 const mapPermissionToRoute = (permission) => {
     const entity = permission.split('_')[1];
@@ -79,6 +80,7 @@ export const loginAction = (user, navigate, setLoading) => async (dispatch) => {
         });
 };
 export const logoutAction = (token, navigate) => async (dispatch) => {
+    await revokeOfflineSyncCredential().catch(() => null);
     await apiConfig.post('logout', token)
         .then(() => {
             localStorage.removeItem(Tokens.ADMIN);

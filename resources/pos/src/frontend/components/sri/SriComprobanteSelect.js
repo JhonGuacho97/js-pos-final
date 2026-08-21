@@ -6,7 +6,7 @@ const TIPOS_COMPROBANTE_POS = [
     { value: "01", label: "Factura (01)" },
 ];
 
-const SriComprobanteSelect = ({ value, onChange }) => (
+const SriComprobanteSelect = ({ value, onChange, offlineMode = false }) => (
     <Form.Group className="mb-3 col-12">
         <Form.Label>
             Comprobante electrónico SRI:
@@ -24,7 +24,9 @@ const SriComprobanteSelect = ({ value, onChange }) => (
         </Form.Select>
         {value && (
             <Form.Text className="text-muted" style={{ fontSize: "0.8rem" }}>
-                ✅ Se emitirá automáticamente al confirmar el pago.
+                {offlineMode
+                    ? "Se emitirá automáticamente cuando la venta se sincronice."
+                    : "✅ Se emitirá automáticamente al confirmar el pago."}
             </Form.Text>
         )}
     </Form.Group>

@@ -47,7 +47,7 @@ import {
     getFormattedMessage,
     getFormattedOptions,
 } from "../../shared/sharedMethod";
-import { paymentMethodOptions, toastType } from "../../constants";
+import { paymentMethodOptions, posCashPaymentActionType, toastType } from "../../constants";
 import TopProgressBar from "../../shared/components/loaders/TopProgressBar";
 import CustomerForm from "./customerModel/CustomerForm";
 import HoldListModal from "./holdListModal/HoldListModal";
@@ -56,7 +56,27 @@ import { useNavigate } from "react-router";
 import PosCloseRegisterDetailsModel from "../../components/posRegister/PosCloseRegisterDetailsModel.js";
 import DeleteModel from "../../shared/action-buttons/DeleteModel";
 import { addToast } from "../../store/action/toastAction";
-import { useElectronicInvoice } from "../../hooks/facturacion/useElectronicInvoice.js";
+import OfflineCatalogStatus from "./offline/OfflineCatalogStatus";
+import OfflineSalesModal from "./offline/OfflineSalesModal";
+import {
+    enqueueOfflineSale,
+    getOfflineCustomers,
+    getOfflineSales,
+    getOfflineSnapshot,
+    getOfflineSyncCredential,
+    OFFLINE_CATALOG_EVENT,
+    OFFLINE_CUSTOMERS_EVENT,
+    OFFLINE_SALES_EVENT,
+    reserveOfflineCatalogStock,
+    resetOfflineCsrfFailures,
+} from "../../offline/catalogStorage";
+import { syncOfflineSales } from "../../offline/offlineSalesSync";
+import { syncOfflineCustomers } from "../../offline/offlineCustomersSync";
+import {
+    ensureOfflineSyncCredential,
+    requestOfflineSaleBackgroundSync,
+    supportsOfflineBackgroundSync,
+} from "../../offline/backgroundSync";
 
 const PosMainPage = (props) => {
     const {
@@ -80,6 +100,8 @@ const PosMainPage = (props) => {
     const categoryIdRef = useRef();
     const registerDetailsRef = useRef();
     const fetchRequestIdRef = useRef(0);
+    const syncedWarehouseRef = useRef(null);
+    const serverReachableRef = useRef(navigator.onLine);
     // const [play] = useSound('https://s3.amazonaws.com/freecodecamp/drums/Heater-4_1.mp3');
     const [openCalculator, setOpenCalculator] = useState(false);
     const [mobilePane, setMobilePane] = useState("catalog");
@@ -116,7 +138,23 @@ const PosMainPage = (props) => {
     });
     const [errors, setErrors] = useState({ notes: "" });
     const [tipoComprobanteSri, setTipoComprobanteSri] = useState("");
-    const { emitir: emitirFactura } = useElectronicInvoice();
+    const [catalogStatus, setCatalogStatus] = useState({
+        status: navigator.onLine ? "idle" : "checking",
+        online: navigator.onLine,
+        canRetry: navigator.onLine,
+        hasCache: false,
+        updatedAt: null,
+        itemCount: null,
+        pendingSales: 0,
+        salesReview: 0,
+        salesSyncing: 0,
+        syncedSales: 0,
+        pendingCustomers: 0,
+        customerReview: 0,
+        backgroundSyncReady: false,
+        backgroundSyncSupported: supportsOfflineBackgroundSync(),
+    });
+    const [showOfflineSales, setShowOfflineSales] = useState(false);
     // const [searchString, setSearchString] = useState('');
     const [showCloseDetailsModal, setShowCloseDetailsModal] = useState(false);
     const { closeRegisterDetails } = useSelector((state) => state);
@@ -157,30 +195,28 @@ const PosMainPage = (props) => {
     ).toFixed(2);
 
     useEffect(() => {
-        setPaymentPrint({
-            ...paymentPrint,
+        if (!paymentDetails?.attributes) return;
+
+        const attributes = paymentDetails.attributes;
+
+        setPaymentPrint((currentPaymentPrint) => ({
+            ...currentPaymentPrint,
             barcode_url:
-                paymentDetails.attributes &&
-                paymentDetails.attributes.barcode_url,
+                attributes.barcode_url ?? currentPaymentPrint.barcode_url,
             reference_code:
-                paymentDetails.attributes &&
-                paymentDetails.attributes.reference_code,
+                attributes.reference_code ?? currentPaymentPrint.reference_code,
             // Estos ya venían en la respuesta del backend, pero nunca se
             // copiaban acá -- por eso no aparecían en el ticket aunque
             // el backend sí los mandara.
             customer:
-                paymentDetails.attributes &&
-                paymentDetails.attributes.customer,
+                attributes.customer ?? currentPaymentPrint.customer,
             user_name:
-                paymentDetails.attributes &&
-                paymentDetails.attributes.user_name,
+                attributes.user_name ?? currentPaymentPrint.user_name,
             numero_comprobante:
-                paymentDetails.attributes &&
-                paymentDetails.attributes.numero_comprobante,
+                attributes.numero_comprobante ?? currentPaymentPrint.numero_comprobante,
             tipo_comprobante:
-                paymentDetails.attributes &&
-                paymentDetails.attributes.tipo_comprobante,
-        });
+                attributes.tipo_comprobante ?? currentPaymentPrint.tipo_comprobante,
+        }));
     }, [paymentDetails]);
 
     useEffect(() => {
@@ -213,8 +249,10 @@ const PosMainPage = (props) => {
     useEffect(() => {
         fetchSetting();
         fetchFrontSetting();
-        fetchTodaySaleOverAllReport();
-        fetchHoldLists();
+        if (navigator.onLine) {
+            fetchTodaySaleOverAllReport();
+            fetchHoldLists();
+        }
     }, []);
 
     useEffect(() => {
@@ -260,19 +298,347 @@ const PosMainPage = (props) => {
 
         const requestId = ++fetchRequestIdRef.current;
 
-        const timer = setTimeout(() => {
+        const timer = setTimeout(async () => {
             // Solo ejecuta si esta sigue siendo la última petición solicitada
             if (requestId === fetchRequestIdRef.current) {
-                fetchBrandClickable(
-                    brandIdRef.current,
-                    categoryIdRef.current,
-                    selectedOption.value
-                );
+                const warehouseId = selectedOption.value;
+                const warehouseChanged = String(syncedWarehouseRef.current) !== String(warehouseId);
+
+                // Al entrar o cambiar de bodega descargamos primero la copia
+                // completa. Así el modo offline no queda limitado a la
+                // categoría que el cajero estaba mirando en ese momento.
+                if (warehouseChanged && navigator.onLine) {
+                    syncedWarehouseRef.current = warehouseId;
+                    await fetchBrandClickable(undefined, undefined, warehouseId);
+                }
+
+                if (requestId === fetchRequestIdRef.current
+                    && (brandIdRef.current || categoryIdRef.current || !warehouseChanged || !navigator.onLine)) {
+                    fetchBrandClickable(
+                        brandIdRef.current,
+                        categoryIdRef.current,
+                        warehouseId
+                    );
+                }
             }
         }, 300);
 
         return () => clearTimeout(timer);
     }, [selectedOption, brandId, categoryId]);
+
+    const syncOfflineCatalog = async () => {
+        const warehouseId = selectedOption?.value;
+        if (!warehouseId || !navigator.onLine) return;
+
+        await fetchBrandClickable(undefined, undefined, warehouseId);
+
+        // Si el cajero estaba viendo una categoría o marca concreta,
+        // restauramos ese filtro después de renovar la copia completa.
+        if (brandIdRef.current || categoryIdRef.current) {
+            await fetchBrandClickable(
+                brandIdRef.current,
+                categoryIdRef.current,
+                warehouseId
+            );
+        }
+    };
+
+    const syncQueuedSales = async (force = false) => {
+        if (!navigator.onLine) return;
+
+        await resetOfflineCsrfFailures().catch(() => null);
+
+        let credential = await getOfflineSyncCredential().catch(() => null);
+        const pendingSales = (await getOfflineSales().catch(() => []))
+            .filter((sale) => ["pending", "syncing"].includes(sale.status));
+        const queuedCustomers = await getOfflineCustomers().catch(() => []);
+        const customersNeedingSync = queuedCustomers.filter((customer) =>
+            ["pending", "syncing"].includes(customer.status)
+            || (customer.status === "requires_review" && customer.errorCode === "AUTH")
+        );
+        if (customersNeedingSync.length || pendingSales.length) {
+            credential = await ensureOfflineSyncCredential().catch(() => credential);
+        }
+        if (customersNeedingSync.length) {
+            const customerResult = await syncOfflineCustomers({
+                force,
+                credential,
+                onReview: (_queuedCustomer, message) => {
+                    dispatch(addToast({
+                        text: `Un cliente offline requiere revisión: ${message}`,
+                        type: toastType.WARNING,
+                    }));
+                },
+            }).catch(() => null);
+
+            if (customerResult?.credentialMissing) {
+                dispatch(addToast({
+                    text: "No se pudo preparar la credencial segura para sincronizar clientes.",
+                    type: toastType.ERROR,
+                }));
+                return;
+            }
+            if (customerResult?.synced) {
+                dispatch(addToast({
+                    text: `${customerResult.synced} cliente${customerResult.synced === 1 ? "" : "s"} offline sincronizado${customerResult.synced === 1 ? "" : "s"}.`,
+                }));
+            }
+        }
+
+        const result = await syncOfflineSales({
+            force,
+            credential,
+            onReview: (_queuedSale, message) => {
+                dispatch(addToast({
+                    text: `Una venta offline requiere revisión: ${message}`,
+                    type: toastType.WARNING,
+                }));
+            },
+        }).catch(() => null);
+
+        if (result?.credentialMissing) {
+            dispatch(addToast({
+                text: "No se pudo preparar la credencial segura para sincronizar las ventas.",
+                type: toastType.ERROR,
+            }));
+            return;
+        }
+
+        if (result?.synced) {
+            dispatch(addToast({
+                text: `${result.synced} venta${result.synced === 1 ? "" : "s"} offline sincronizada${result.synced === 1 ? "" : "s"}.`,
+            }));
+            await syncOfflineCatalog();
+        }
+    };
+
+    useEffect(() => {
+        let mounted = true;
+        let connectivityRequest = null;
+        let connectivityTimer = null;
+
+        const getConnectivityDelay = () => {
+            // En estado normal reducimos el consumo del hosting compartido.
+            // Durante una caída consultamos más seguido para recuperar el POS.
+            const minimum = serverReachableRef.current ? 45000 : 8000;
+            const jitter = serverReachableRef.current ? 15000 : 4000;
+            return minimum + Math.floor(Math.random() * jitter);
+        };
+
+        const inspectLocalCatalog = async (online = navigator.onLine) => {
+            const warehouseId = selectedOption?.value;
+            if (!warehouseId) {
+                if (mounted) setCatalogStatus((current) => ({ ...current, online }));
+                return;
+            }
+
+            const snapshot = await getOfflineSnapshot("catalog", { warehouseId }).catch(() => null);
+            if (!mounted) return;
+
+            setCatalogStatus((current) => ({
+                ...current,
+                status: online ? (snapshot ? "ready" : "idle") : (snapshot ? "offline" : "unavailable"),
+                online,
+                canRetry: online,
+                hasCache: Boolean(snapshot),
+                updatedAt: snapshot?.updatedAt || null,
+                itemCount: snapshot?.itemCount ?? null,
+                warehouseId,
+            }));
+        };
+
+        const handleCatalogStatus = (event) => {
+            if (!mounted) return;
+            const detail = event.detail || {};
+            if (detail.warehouseId && selectedOption?.value
+                && String(detail.warehouseId) !== String(selectedOption.value)) return;
+            setCatalogStatus((current) => ({ ...current, ...detail }));
+        };
+
+        const handleOfflineSalesStatus = (event) => {
+            const detail = event.detail || {};
+            setCatalogStatus((current) => ({
+                ...current,
+                pendingSales: detail.pending ?? current.pendingSales,
+                salesReview: detail.review ?? current.salesReview,
+                salesSyncing: detail.syncing ?? current.salesSyncing,
+                syncedSales: detail.synced ?? current.syncedSales,
+            }));
+        };
+
+        const handleOfflineCustomersStatus = (event) => {
+            const detail = event.detail || {};
+            setCatalogStatus((current) => ({
+                ...current,
+                pendingCustomers: detail.pending ?? current.pendingCustomers,
+                customerReview: detail.review ?? current.customerReview,
+            }));
+        };
+
+        const refreshOfflineSalesStatus = () => {
+            getOfflineSales().then((sales) => {
+                if (!mounted) return;
+                setCatalogStatus((current) => ({
+                    ...current,
+                    pendingSales: sales.filter((sale) => ["pending", "syncing"].includes(sale.status)).length,
+                    salesReview: sales.filter((sale) => sale.status === "requires_review").length,
+                    salesSyncing: sales.filter((sale) => sale.status === "syncing").length,
+                    syncedSales: sales.filter((sale) => sale.status === "synced").length,
+                }));
+            }).catch(() => null);
+        };
+
+        const refreshOfflineCustomersStatus = () => {
+            getOfflineCustomers().then((customers) => {
+                if (!mounted) return;
+                setCatalogStatus((current) => ({
+                    ...current,
+                    pendingCustomers: customers.filter((customer) => ["pending", "syncing"].includes(customer.status)).length,
+                    customerReview: customers.filter((customer) => customer.status === "requires_review").length,
+                }));
+            }).catch(() => null);
+        };
+
+        const handleServiceWorkerMessage = (event) => {
+            if (event.data?.type === "OFFLINE_SALES_STATUS_CHANGED") {
+                refreshOfflineSalesStatus();
+            }
+            if (event.data?.type === "OFFLINE_CUSTOMERS_STATUS_CHANGED") {
+                refreshOfflineCustomersStatus();
+            }
+        };
+
+        const restoreOnlineMode = () => {
+            if (serverReachableRef.current) return;
+            serverReachableRef.current = true;
+            setCatalogStatus((current) => ({ ...current, online: true, status: "syncing" }));
+            syncOfflineCatalog();
+            fetchTodaySaleOverAllReport();
+            fetchHoldLists();
+        };
+
+        const markOffline = () => {
+            serverReachableRef.current = false;
+            inspectLocalCatalog(false);
+        };
+
+        const checkServerConnectivity = async () => {
+            if (!navigator.onLine) {
+                markOffline();
+                return;
+            }
+
+            connectivityRequest?.abort();
+            const request = new AbortController();
+            connectivityRequest = request;
+            const timeout = window.setTimeout(() => request.abort(), 5000);
+
+            try {
+                const response = await fetch("/api/health", {
+                    cache: "no-store",
+                    credentials: "same-origin",
+                    signal: request.signal,
+                });
+
+                if (!response.ok) throw new Error("EcuaPos no está disponible");
+
+                if (!serverReachableRef.current) {
+                    restoreOnlineMode();
+                } else if (mounted) {
+                    setCatalogStatus((current) => ({ ...current, online: true, canRetry: true }));
+                }
+                syncQueuedSales();
+            } catch (_) {
+                if (mounted && connectivityRequest === request) markOffline();
+            } finally {
+                window.clearTimeout(timeout);
+            }
+        };
+
+        const scheduleConnectivityCheck = () => {
+            window.clearTimeout(connectivityTimer);
+            if (!mounted) return;
+
+            connectivityTimer = window.setTimeout(async () => {
+                if (document.visibilityState === "visible") {
+                    await checkServerConnectivity();
+                }
+                scheduleConnectivityCheck();
+            }, getConnectivityDelay());
+        };
+
+        const triggerConnectivityCheck = async () => {
+            window.clearTimeout(connectivityTimer);
+            await checkServerConnectivity();
+            scheduleConnectivityCheck();
+        };
+
+        const handleOnline = () => triggerConnectivityCheck();
+        const handleOffline = () => {
+            markOffline();
+            scheduleConnectivityCheck();
+        };
+        const handleVisibility = () => {
+            if (document.visibilityState === "visible") triggerConnectivityCheck();
+        };
+
+        window.addEventListener(OFFLINE_CATALOG_EVENT, handleCatalogStatus);
+        window.addEventListener(OFFLINE_SALES_EVENT, handleOfflineSalesStatus);
+        window.addEventListener(OFFLINE_CUSTOMERS_EVENT, handleOfflineCustomersStatus);
+        window.addEventListener("offline", handleOffline);
+        window.addEventListener("online", handleOnline);
+        document.addEventListener("visibilitychange", handleVisibility);
+        navigator.serviceWorker?.addEventListener("message", handleServiceWorkerMessage);
+        inspectLocalCatalog();
+        refreshOfflineSalesStatus();
+        refreshOfflineCustomersStatus();
+        triggerConnectivityCheck();
+
+        return () => {
+            mounted = false;
+            connectivityRequest?.abort();
+            window.clearTimeout(connectivityTimer);
+            window.removeEventListener(OFFLINE_CATALOG_EVENT, handleCatalogStatus);
+            window.removeEventListener(OFFLINE_SALES_EVENT, handleOfflineSalesStatus);
+            window.removeEventListener(OFFLINE_CUSTOMERS_EVENT, handleOfflineCustomersStatus);
+            window.removeEventListener("offline", handleOffline);
+            window.removeEventListener("online", handleOnline);
+            document.removeEventListener("visibilitychange", handleVisibility);
+            navigator.serviceWorker?.removeEventListener("message", handleServiceWorkerMessage);
+        };
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [selectedOption?.value]);
+
+    useEffect(() => {
+        if (!selectedOption?.value) return;
+        let active = true;
+
+        const prepareBackgroundSync = async () => {
+            const storedCredential = await getOfflineSyncCredential().catch(() => null);
+            if (!catalogStatus.online) return storedCredential;
+            return ensureOfflineSyncCredential();
+        };
+
+        prepareBackgroundSync()
+            .then(async (credential) => {
+                if (!active) return;
+                const validCredential = credential?.token
+                    && Number(credential.version || 0) >= 2
+                    && new Date(credential.expires_at).getTime() > Date.now();
+                setCatalogStatus((current) => ({
+                    ...current,
+                    backgroundSyncReady: Boolean(validCredential && supportsOfflineBackgroundSync()),
+                }));
+                if (validCredential) await requestOfflineSaleBackgroundSync().catch(() => null);
+            })
+            .catch(() => {
+                if (active) {
+                    setCatalogStatus((current) => ({ ...current, backgroundSyncReady: false }));
+                }
+            });
+
+        return () => { active = false; };
+    }, [catalogStatus.online, selectedOption?.value]);
 
     useEffect(() => {
         setUpdateProducts([]);
@@ -491,12 +857,14 @@ const PosMainPage = (props) => {
 
     //prepare data for payment api
     const prepareData = (updateProducts) => {
+        const customerOption = Array.isArray(selectedCustomerOption)
+            ? selectedCustomerOption[0]
+            : selectedCustomerOption;
+        const offlineCustomerUuid = customerOption?.offlineCustomerUuid || null;
         const formValue = {
             date: dayjs(new Date()).format("YYYY-MM-DD"),
-            customer_id:
-                selectedCustomerOption && selectedCustomerOption[0]
-                    ? selectedCustomerOption[0].value
-                    : selectedCustomerOption && selectedCustomerOption.value,
+            customer_id: offlineCustomerUuid ? null : customerOption?.value,
+            offline_customer_uuid: offlineCustomerUuid,
             warehouse_id:
                 selectedOption && selectedOption[0]
                     ? selectedOption[0].value
@@ -538,13 +906,84 @@ const PosMainPage = (props) => {
         return 3; // Pago parcial
     };
 
+    const finishCheckout = () => {
+        setCashPayment(false);
+        setTipoComprobanteSri("");
+        setCartItemValue({ discount: 0, tax: 0, shipping: 0 });
+        setCashPaymentValue({
+            notes: "",
+            payment_status: {
+                label: getFormattedMessage("dashboard.recentSales.paid.label"),
+                value: 1,
+            },
+        });
+        resetPaymentRows();
+        setCartProductIds("");
+    };
+
+    const saveOfflineCheckout = async (payload, receipt, sriType) => {
+        try {
+            const queuedSale = await enqueueOfflineSale(payload, receipt, sriType);
+            await requestOfflineSaleBackgroundSync().catch(() => null);
+            await reserveOfflineCatalogStock(payload.warehouse_id, payload.sale_items).catch(() => null);
+            await fetchBrandClickable(brandId, categoryId, payload.warehouse_id);
+            const localReference = `OFF-${queuedSale.clientUuid.slice(0, 8).toUpperCase()}`;
+            const customer = { name: selectedCustomerOption?.label || "Consumidor final" };
+            const provisionalReceipt = {
+                ...receipt,
+                reference_code: localReference,
+                offline_pending: true,
+                customer,
+                user_name: "Pendiente de sincronización",
+                tipoComprobanteSri: "",
+            };
+
+            dispatch({
+                type: posCashPaymentActionType.POS_CASH_PAYMENT,
+                payload: {
+                    attributes: {
+                        reference_code: localReference,
+                        customer,
+                        payments: payload.payments,
+                        created_offline: true,
+                    },
+                },
+            });
+            setPaymentPrint(provisionalReceipt);
+            setUpdateProducts([]);
+            setModalShowPaymentSlip(true);
+            dispatch(addToast({
+                text: "Venta guardada en el dispositivo. Se sincronizará al recuperar conexión.",
+            }));
+            return true;
+        } catch (_) {
+            dispatch(addToast({
+                text: "No se pudo guardar la venta offline. El carrito se conservó.",
+                type: toastType.ERROR,
+            }));
+            return false;
+        }
+    };
+
     //cash payment method
-    const onCashPayment = (event) => {
+    const onCashPayment = async (event) => {
         event.preventDefault();
-        const valid = handleValidation();
-        if (valid) {
-            posCashPaymentAction(
-                prepareData(updateProducts),
+        if (!handleValidation()) return;
+
+        const payload = prepareData(updateProducts);
+        const receipt = preparePrintData();
+        const requestedSriType = tipoComprobanteSri;
+        payload.requested_electronic_document = requestedSriType || null;
+
+        // Un cliente temporal necesita pasar primero por la cola de clientes,
+        // incluso si la conexión regresó justo antes de cobrar.
+        if (!catalogStatus.online || payload.offline_customer_uuid) {
+            if (await saveOfflineCheckout(payload, receipt, requestedSriType)) finishCheckout();
+            return;
+        }
+
+        const result = await posCashPaymentAction(
+                payload,
                 setUpdateProducts,
                 setModalShowPaymentSlip,
                 posAllProduct,
@@ -552,36 +991,18 @@ const PosMainPage = (props) => {
                     brandId,
                     categoryId,
                     selectedOption,
-                },
-                // Si se eligió un tipo de comprobante SRI, emitimos la
-                // factura electrónica en cuanto la venta quede creada.
-                (ventaCreada) => {
-                    if (tipoComprobanteSri && ventaCreada?.id) {
-                        emitirFactura(ventaCreada.id);
-                    }
                 }
             );
-            // setModalShowPaymentSlip(true);
-            setCashPayment(false);
-            setPaymentPrint(preparePrintData);
-            setTipoComprobanteSri("");
-            setCartItemValue({
-                discount: 0,
-                tax: 0,
-                shipping: 0,
-            });
-            setCashPaymentValue({
-                notes: "",
-                payment_status: {
-                    label: getFormattedMessage(
-                        "dashboard.recentSales.paid.label"
-                    ),
-                    value: 1,
-                },
-            });
-            resetPaymentRows();
-            setCartProductIds("");
+
+        if (result?.networkError) {
+            setCatalogStatus((current) => ({ ...current, online: false, status: "offline" }));
+            if (await saveOfflineCheckout(payload, receipt, requestedSriType)) finishCheckout();
+            return;
         }
+
+        if (!result?.success) return;
+        setPaymentPrint(receipt);
+        finishCheckout();
     };
 
     const printPaymentReceiptPdf = () => {
@@ -661,6 +1082,18 @@ const PosMainPage = (props) => {
     };
 
     const handleClickCloseRegister = () => {
+        if (!catalogStatus.online || catalogStatus.pendingSales > 0 || catalogStatus.salesReview > 0) {
+            dispatch(addToast({
+                text: !catalogStatus.online
+                    ? "Conecta y sincroniza las ventas pendientes antes de cerrar la caja."
+                    : "Revisa las ventas offline pendientes antes de cerrar la caja.",
+                type: toastType.WARNING,
+            }));
+            if (catalogStatus.pendingSales > 0 || catalogStatus.salesReview > 0) {
+                setShowOfflineSales(true);
+            }
+            return;
+        }
         dispatch(getAllRegisterDetailsAction());
         setShowCloseDetailsModal(true);
     };
@@ -716,6 +1149,15 @@ const PosMainPage = (props) => {
                             />
                         </div>
                     </div>
+                    <OfflineCatalogStatus
+                        status={catalogStatus}
+                        onSync={async () => {
+                            await syncQueuedSales(true);
+                            await requestOfflineSaleBackgroundSync().catch(() => null);
+                            await syncOfflineCatalog();
+                        }}
+                        onOpenSales={() => setShowOfflineSales(true)}
+                    />
                     <div className="right-content custom-card pos-catalog-card mb-3">
                         <div className="pos-category-strip px-3 pt-3">
                             <Category
@@ -760,6 +1202,7 @@ const PosMainPage = (props) => {
                             selectedOption={selectedOption}
                             customerModel={customerModel}
                             updateCustomer={modalShowCustomer}
+                            offlineMode={!catalogStatus.online}
                         />
                     </div>
                     <div className="left-content custom-card pos-order-card mb-3 p-3">
@@ -873,6 +1316,7 @@ const PosMainPage = (props) => {
                             setHoldListValue={setHoldListValue}
                             selectedCustomerOption={selectedCustomerOption}
                             setUpdateHoldList={setUpdateHoldList}
+                            offlineMode={!catalogStatus.online}
                         />
                     </div>
                 </Col>
@@ -936,6 +1380,7 @@ const PosMainPage = (props) => {
                     onPaymentRowTypeChange={onPaymentRowTypeChange}
                     tipoComprobanteSri={tipoComprobanteSri}
                     onTipoComprobanteChange={setTipoComprobanteSri}
+                    offlineMode={!catalogStatus.online}
                 />
             )}
             {lgShow && (
@@ -968,12 +1413,20 @@ const PosMainPage = (props) => {
                 <CustomerForm
                     show={modalShowCustomer}
                     hide={setModalShowCustomer}
+                    offlineMode={!catalogStatus.online}
+                    onCustomerCreated={setSelectedCustomerOption}
                 />
             )}
             <PosCloseRegisterDetailsModel
                 showCloseDetailsModal={showCloseDetailsModal}
                 handleCloseRegisterDetails={handleCloseRegisterDetails}
                 setShowCloseDetailsModal={setShowCloseDetailsModal}
+            />
+            <OfflineSalesModal
+                show={showOfflineSales}
+                onHide={() => setShowOfflineSales(false)}
+                onRetry={syncQueuedSales}
+                online={catalogStatus.online}
             />
             {deleteCartItem && (
                 <DeleteModel

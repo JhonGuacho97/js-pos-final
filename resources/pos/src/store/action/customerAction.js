@@ -16,6 +16,11 @@ import utc from 'dayjs/plugin/utc';
 import localizedFormat from 'dayjs/plugin/localizedFormat';
 import isoWeek from 'dayjs/plugin/isoWeek';
 import relativeTime from 'dayjs/plugin/relativeTime';
+import {
+    getOfflineSnapshot,
+    mergeOfflineCustomers,
+    saveOfflineSnapshot,
+} from '../../offline/catalogStorage';
 dayjs.extend(utc);
 dayjs.extend(localizedFormat);
 dayjs.extend(isoWeek);
@@ -198,19 +203,28 @@ export const deleteCustomer = (customerId) => async (dispatch) => {
 };
 
 export const fetchAllCustomer = () => async (dispatch) => {
-    apiConfig
-        .get(`customers?page[size]=0`)
-        .then((response) => {
-            dispatch({
-                type: customerActionType.FETCH_ALL_CUSTOMER,
-                payload: response.data.data,
-            });
-        })
-        .catch(({ response }) => {
-            dispatch(
-                addToast({ text: response.data.message, type: toastType.ERROR })
-            );
+    try {
+        const response = await apiConfig.get(`customers?page[size]=0`);
+        const serverCustomers = response.data.data || [];
+        await saveOfflineSnapshot('customers', serverCustomers).catch(() => null);
+        dispatch({
+            type: customerActionType.FETCH_ALL_CUSTOMER,
+            payload: await mergeOfflineCustomers(serverCustomers),
         });
+    } catch (error) {
+        const snapshot = await getOfflineSnapshot('customers').catch(() => null);
+        const localCustomers = await mergeOfflineCustomers(snapshot?.payload || []);
+        dispatch({
+            type: customerActionType.FETCH_ALL_CUSTOMER,
+            payload: localCustomers,
+        });
+        if (!localCustomers.length && error?.response) {
+            dispatch(addToast({
+                text: error.response.data?.message || 'No se pudieron cargar los clientes.',
+                type: toastType.ERROR,
+            }));
+        }
+    }
 };
 
 export const addImportCustomers = (importData) => async (dispatch) => {

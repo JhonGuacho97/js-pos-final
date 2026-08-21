@@ -69,6 +69,20 @@ class SaleRepository extends BaseRepository
 
     public function storeSale($input): Sale
     {
+        $clientUuid = $input['client_uuid'] ?? null;
+        $input['created_offline'] = (bool) ($clientUuid && ! empty($input['offline_created_at']));
+        $offlineExpectedTotal = $input['created_offline']
+            ? round((float) ($input['grand_total'] ?? 0), 2)
+            : null;
+        if ($clientUuid) {
+            $existingSale = Sale::where('client_uuid', $clientUuid)
+                ->where('user_id', Auth::id())
+                ->first();
+            if ($existingSale) {
+                return $existingSale;
+            }
+        }
+
         try {
             DB::beginTransaction();
 
@@ -76,6 +90,7 @@ class SaleRepository extends BaseRepository
             $input['is_sale_created'] = $input['is_sale_created'] ?? false;
             $QuotationId = $input['quotation_id'] ?? false;
             $saleInputArray = Arr::only($input, [
+                'client_uuid',
                 'customer_id',
                 'warehouse_id',
                 'tax_rate',
@@ -88,6 +103,8 @@ class SaleRepository extends BaseRepository
                 'payment_type',
                 'note',
                 'date',
+                'offline_created_at',
+                'created_offline',
                 'status',
                 'payment_status',
             ]);
@@ -102,6 +119,17 @@ class SaleRepository extends BaseRepository
                 ]);
             }
             $sale = $this->storeSaleItems($sale, $input);
+
+            // El precio del catálogo local es una fotografía. Si cambió en
+            // el servidor durante el corte, no registramos silenciosamente
+            // un cobro distinto al que vio el cliente: la cola lo mostrará
+            // como "Requiere revisión" para decisión del cajero.
+            if ($offlineExpectedTotal !== null
+                && abs(round((float) $sale->grand_total, 2) - $offlineExpectedTotal) > 0.01) {
+                throw new UnprocessableEntityHttpException(
+                    'Los precios o impuestos cambiaron desde que se registró la venta offline.'
+                );
+            }
             $reference_code = getSettingValue('sale_code') . '_111' . $sale->id;
             $this->generateBarcode($reference_code);
             $sale['barcode_image_url'] = Storage::url('sales/barcode-' . $reference_code . '.png');
@@ -148,6 +176,18 @@ class SaleRepository extends BaseRepository
             DB::commit();
         } catch (Exception $e) {
             DB::rollBack();
+
+            // Dos reintentos pueden llegar casi al mismo tiempo. El índice
+            // único resuelve la carrera y este lookup convierte el segundo
+            // intento en una respuesta idempotente, no en otra venta.
+            if ($clientUuid) {
+                $existingSale = Sale::where('client_uuid', $clientUuid)
+                    ->where('user_id', Auth::id())
+                    ->first();
+                if ($existingSale) {
+                    return $existingSale;
+                }
+            }
             throw new UnprocessableEntityHttpException($e->getMessage());
         }
 

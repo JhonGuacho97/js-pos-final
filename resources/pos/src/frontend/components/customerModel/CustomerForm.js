@@ -12,7 +12,18 @@ import IdentificacionField from '../../../components/customer/identificacionFiel
 import { useCustomerForm } from '../../../hooks/useCustomerFom';
 
 const CustomerForm = (props) => {
-    const { show, hide, singleCustomer } = props;
+    const { show, hide, singleCustomer, offlineMode, onCustomerCreated } = props;
+
+    const createCustomer = async (values) => {
+        const customer = await props.addCustomer(values, hide, { offlineMode });
+        if (!customer) return;
+        onCustomerCreated?.({
+            value: customer.id,
+            label: customer.attributes?.name || values.name,
+            offlineCustomerUuid: customer.attributes?.offline_client_uuid || null,
+            offlineStatus: customer.attributes?.offline_status || null,
+        });
+    };
 
     const {
         customerData,
@@ -21,18 +32,14 @@ const CustomerForm = (props) => {
         sriLoading,
         isDisabled,
         onChangeInput,
+        onSubmit,
         handleSriLookup,
     } = useCustomerForm({
         singleCustomer,
-        addCustomerData: (values) => props.addCustomer(values, hide),
+        addCustomerData: createCustomer,
         editCustomer: props.editCustomer,
         id: singleCustomer?.[0]?.id,
     });
-
-    const onSubmit = (event) => {
-        event.preventDefault();
-        props.addCustomer(customerValue, hide);
-    };
 
     return (
         <Modal show={show} onHide={() => hide(false)} keyboard={true} size="lg">
@@ -44,6 +51,12 @@ const CustomerForm = (props) => {
             <Modal.Body className="p-0">
                 <div className="card">
                     <div className="card-body">
+                        {offlineMode && (
+                            <div className="alert alert-warning d-flex align-items-center gap-2 mb-4" role="status">
+                                <i className="bi bi-cloud-slash" />
+                                <span>Se guardará en este dispositivo y se sincronizará automáticamente.</span>
+                            </div>
+                        )}
                         <Form onSubmit={onSubmit}>
                             <div className="row">
 
@@ -74,6 +87,7 @@ const CustomerForm = (props) => {
                                     isEdit={Boolean(singleCustomer)}
                                     sriLoading={sriLoading}
                                     onSriLookup={handleSriLookup}
+                                    sriDisabled={offlineMode}
                                 />
 
                                 {/* Nombre */}

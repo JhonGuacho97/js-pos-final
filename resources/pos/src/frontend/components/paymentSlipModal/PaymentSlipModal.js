@@ -94,6 +94,12 @@ const PaymentSlipModal = (props) => {
     // no se emitió factura electrónica, se imprime como nota de venta
     // normal, igual que antes).
     const getTituloDocumento = () => {
+        if (updateProducts?.offline_pending) {
+            return {
+                titulo: "COMPROBANTE PROVISIONAL",
+                subtitulo: "Venta pendiente de sincronización · No es comprobante tributario",
+            };
+        }
         switch (tipoComprobanteSri) {
             case "01": return { titulo: "FACTURA ELECTRÓNICA", subtitulo: "Comprobante autorizado por el SRI" };
             case "04": return { titulo: "NOTA DE CRÉDITO ELECTRÓNICA", subtitulo: "Comprobante autorizado por el SRI" };
@@ -374,11 +380,13 @@ const PaymentSlipModal = (props) => {
                         <p style={{ margin: '0 0 6px', fontWeight: 'bold', fontSize: '11px' }}>
                             {getFormattedMessage("pos-thank.you-slip.invoice")}.
                         </p>
-                        <Image
-                            src={paymentDetails?.attributes?.barcode_url}
-                            height={25}
-                            width={100}
-                        />
+                        {!updateProducts?.offline_pending && (
+                            <Image
+                                src={paymentDetails?.attributes?.barcode_url}
+                                height={25}
+                                width={100}
+                            />
+                        )}
                         <span style={{ display: 'block', fontSize: '10px', marginTop: '2px' }}>
                             {paymentDetails?.attributes?.reference_code}
                         </span>

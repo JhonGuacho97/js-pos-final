@@ -99,7 +99,12 @@ class Sale extends BaseModel implements HasMedia, JsonResourceful
     public const EAN13 = 5;
 
     protected $fillable = [
+        'client_uuid',
         'date',
+        'offline_created_at',
+        'created_offline',
+        'electronic_invoice_requested_type',
+        'electronic_invoice_requested_at',
         'customer_id',
         'warehouse_id',
         'tax_rate',
@@ -120,7 +125,10 @@ class Sale extends BaseModel implements HasMedia, JsonResourceful
     ];
 
     public static $rules = [
+        'client_uuid' => 'nullable|uuid|max:36',
         'date' => 'date|required',
+        'offline_created_at' => 'nullable|date',
+        'created_offline' => 'nullable|boolean',
         'customer_id' => 'required|exists:customers,id',
         'warehouse_id' => 'required|exists:warehouses,id',
         'tax_rate' => 'nullable|numeric|min:0',
@@ -139,6 +147,9 @@ class Sale extends BaseModel implements HasMedia, JsonResourceful
 
     public $casts = [
         'date' => 'date',
+        'offline_created_at' => 'datetime',
+        'created_offline' => 'boolean',
+        'electronic_invoice_requested_at' => 'datetime',
         'tax_rate' => 'double',
         'tax_amount' => 'double',
         'discount' => 'double',
@@ -205,7 +216,12 @@ class Sale extends BaseModel implements HasMedia, JsonResourceful
     public function prepareAttributes(): array
     {
         $fields = [
+            'client_uuid' => $this->client_uuid,
             'date' => $this->date,
+            'offline_created_at' => $this->offline_created_at,
+            'created_offline' => $this->created_offline,
+            'electronic_invoice_requested_type' => $this->electronic_invoice_requested_type,
+            'electronic_invoice_requested_at' => $this->electronic_invoice_requested_at,
             'is_return' => $this->is_return,
             'customer_id' => $this->customer_id,
             'customer_name' => $this->customer->name,

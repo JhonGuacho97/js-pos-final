@@ -19,5 +19,10 @@ class VerifyCsrfToken extends Middleware
         // Precios, stock, tienda y presentaciones se validan nuevamente en
         // PublicCatalogController antes de registrar el pedido.
         'api/catalog/*/orders',
+        // Estas rutas no usan autenticación de sesión: exigen un token
+        // Sanctum Bearer limitado por dispositivo, capacidad y tienda.
+        // El service worker no puede leer la cookie XSRF-TOKEN del documento.
+        'api/offline-sync/customers',
+        'api/offline-sync/sales',
     ];
 }

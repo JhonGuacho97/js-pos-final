@@ -46,7 +46,11 @@ return [
     |
     */
 
-    'expiration' => env('SANCTUM_TTL', 120),
+    // Cada token define ahora su propio expires_at. Esto permite mantener
+    // sesiones normales cortas y credenciales offline limitadas de 30 días
+    // sin convertir ninguna de las dos en un token permanente.
+    'expiration' => null,
+    'session_token_expiration' => env('SANCTUM_TTL', 120),
 
     /*
     |--------------------------------------------------------------------------

@@ -28,7 +28,7 @@ export default {
                 // usarse (ver ResolveActiveStore::handle()) -- acá solo se
                 // adjunta, nunca se confía en él para nada del lado cliente.
                 const storeId = localStorage.getItem(Tokens.CURRENT_STORE_ID);
-                if (storeId) {
+                if (storeId && !config.headers['X-Store-Id']) {
                     config.headers['X-Store-Id'] = storeId;
                 }
                 if (isFormData) {
@@ -45,6 +45,14 @@ export default {
             error => errorHandler(error)
         );
         const errorHandler = (error) => {
+            // Cuando no hay internet Axios no recibe una respuesta HTTP.
+            // Antes se intentaba leer error.response.status igualmente y
+            // el POS terminaba lanzando otro TypeError, ocultando la causa
+            // real e impidiendo que el catálogo local pudiera recuperarse.
+            if (!error.response) {
+                return Promise.reject(error);
+            }
+
             if (error.response.status === 401
                 || error.response.data.message === errorMessage.TOKEN_NOT_PROVIDED
                 || error.response.data.message === errorMessage.TOKEN_INVALID
@@ -54,6 +62,7 @@ export default {
                 localStorage.removeItem(Tokens.USER);
                 localStorage.removeItem(Tokens.GET_PERMISSIONS);
                 window.location.href = environment.URL + '#' + '/login';
+                return Promise.reject({...error});
             }else if(error.response.status === 403 || error.response.status === 404) {
                 // Sin el reject, esta rama devolvía `undefined` (la
                 // ausencia de return se interpreta como RESOLUCIÓN, no

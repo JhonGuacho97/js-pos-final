@@ -65,7 +65,11 @@ class AuthController extends AppBaseController
             'logged_at' => now(),
         ]);
 
-        $token = $user->createToken('token')->plainTextToken;
+        $token = $user->createToken(
+            'token',
+            ['*'],
+            now()->addMinutes((int) config('sanctum.session_token_expiration', 120))
+        )->plainTextToken;
         $user->last_name = $user->last_name ?? '';
 
         return response()->json([

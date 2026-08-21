@@ -38,6 +38,7 @@ const PaymentButton = (props) => {
         selectedOption,
         cashPaymentValue,
         setUpdateHoldList,
+        offlineMode,
     } = props;
     const dispatch = useDispatch();
     const qtyCart = updateProducts.filter((a) => a.quantity === 0);
@@ -119,6 +120,14 @@ const PaymentButton = (props) => {
     };
 
     const holdPaymentModel = () => {
+        if (offlineMode) {
+            dispatch(addToast({
+                text: "No es posible guardar ventas retenidas sin conexión en esta fase.",
+                type: toastType.WARNING,
+            }));
+            return;
+        }
+
         if (
             updateProducts.length > 0 ||
             qtyCart.length < 0 ||
@@ -241,7 +250,8 @@ const PaymentButton = (props) => {
                 variant="anger"
                 className="pos-secondary-action pos-action-hold"
                 onClick={holdPaymentModel}
-                title="Atajo: Alt + H"
+                title={offlineMode ? "Disponible con conexión" : "Atajo: Alt + H"}
+                aria-disabled={offlineMode}
             >
                 {getFormattedMessage("pos.hold-list-btn.title")}{" "}
                 <FontAwesomeIcon icon={faHand} className="ms-2 fa" />{" "}
@@ -264,9 +274,9 @@ const PaymentButton = (props) => {
                 variant="success"
                 className="pos-checkout-button pos-pay-btn"
                 onClick={openPaymentModel}
-                title="Atajo: Alt + S"
+                title={offlineMode ? "Registrar cobro pendiente de sincronización" : "Atajo: Alt + S"}
             >
-                {getFormattedMessage("pos-pay-now.btn")}
+                {offlineMode ? "Cobrar sin conexión" : getFormattedMessage("pos-pay-now.btn")}
                 <i className="ms-2 fa fa-money-bill" />
             </Button>
             {/*<Button type='button' className='text-white me-xl-3 me-2 mb-2 custom-btn-size'>*/}

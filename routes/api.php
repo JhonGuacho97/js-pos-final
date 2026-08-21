@@ -12,6 +12,10 @@ use App\Http\Controllers\API\DashboardAPIController;
 use App\Http\Controllers\API\ExpenseAPIController;
 use App\Http\Controllers\API\ExpenseCategoryAPIController;
 use App\Http\Controllers\API\HoldAPIController;
+use App\Http\Controllers\API\HealthController;
+use App\Http\Controllers\API\OfflineCustomerSyncController;
+use App\Http\Controllers\API\OfflineSaleSyncController;
+use App\Http\Controllers\API\OfflineSyncTokenController;
 use App\Http\Controllers\API\LanguageAPIController;
 use App\Http\Controllers\API\MainProductAPIController;
 use App\Http\Controllers\API\ManageStockAPIController;
@@ -66,6 +70,11 @@ use Illuminate\Support\Facades\Route;
 //    return $request->user();
 //});
 
+// Comprobación mínima usada por el POS para distinguir entre una tarjeta
+// de red activa y una conexión que realmente alcanza EcuaPos. No consulta
+// base de datos ni expone información de la instalación.
+Route::get('/health', HealthController::class);
+
 Route::get('/sri/lookup', [SriController::class, 'lookup']);
 Route::prefix('catalog/{store:slug}')->middleware('throttle:60,1')->group(function () {
     Route::get('/', [PublicCatalogController::class, 'show']);
@@ -74,6 +83,11 @@ Route::prefix('catalog/{store:slug}')->middleware('throttle:60,1')->group(functi
 Route::get('electronic-invoices/{electronicInvoice}/ride', [ElectronicInvoiceController::class, 'ride']);
 Route::get('electronic-invoices/{electronicInvoice}/xml', [ElectronicInvoiceController::class, 'descargarXml']);
 Route::middleware(['auth:sanctum', 'store.context'])->group(function () {
+    Route::middleware(['abilities:*', 'permission:manage_sale|manage_pos_screen'])->prefix('offline-sync')->group(function () {
+        Route::post('device-token', [OfflineSyncTokenController::class, 'store']);
+        Route::delete('device-token', [OfflineSyncTokenController::class, 'destroy']);
+    });
+
     // ── Facturación electrónica (SRI) ──────────────────────────────
     Route::prefix('electronic-invoices')->group(function () {
         Route::get('/', [ElectronicInvoiceController::class, 'index']);
@@ -620,6 +634,22 @@ Route::middleware(['auth:sanctum', 'store.context'])->group(function () {
     // Coupon Code Routes
     Route::resource('coupon-codes', CouponCodeAPIController::class);
 });
+
+Route::middleware([
+    'auth:sanctum',
+    'abilities:offline-sales:sync',
+    'store.context',
+    'permission:manage_sale|manage_pos_screen',
+    'throttle:30,1',
+])->post('offline-sync/sales', [OfflineSaleSyncController::class, 'store']);
+
+Route::middleware([
+    'auth:sanctum',
+    'abilities:offline-customers:sync',
+    'store.context',
+    'permission:manage_customers|manage_pos_screen',
+    'throttle:30,1',
+])->post('offline-sync/customers', [OfflineCustomerSyncController::class, 'store']);
 
 Route::post('login', [AuthController::class, 'login'])->middleware('throttle:5,1')->name('login');
 

@@ -1487,6 +1487,86 @@
         padding: 0 !important;
     }
 
+    .pos-context-card .pos-customer-select {
+        &__group {
+            display: flex;
+            height: 46px !important;
+            position: relative;
+            width: 100%;
+        }
+
+        &__select {
+            flex: 1 1 auto;
+            min-width: 0;
+            width: 100% !important;
+        }
+
+        &__icon {
+            align-items: center;
+            bottom: 0;
+            color: #334155;
+            display: flex;
+            font-size: 18px;
+            justify-content: center;
+            left: 0;
+            padding: 0 !important;
+            top: 0;
+            width: 42px;
+        }
+
+        &__button {
+            align-items: center;
+            display: flex;
+            justify-content: center;
+            left: auto !important;
+            right: 0;
+            top: 0;
+            width: 72px;
+            z-index: 3;
+        }
+
+        .pos-customer-react__control {
+            box-shadow: none !important;
+            padding-right: 72px;
+            width: 100%;
+        }
+
+        .pos-customer-react__value-container {
+            min-width: 0;
+            padding-left: 42px !important;
+        }
+
+        .pos-customer-react__single-value {
+            color: #1e293b !important;
+            margin: 0;
+        }
+
+        .pos-customer-react__indicators {
+            display: none;
+        }
+
+        &.is-offline {
+            .pos-customer-react__control {
+                background: #fffdf7 !important;
+                border-color: #f6d792 !important;
+                cursor: pointer;
+                opacity: 1;
+            }
+
+            .pos-customer-react__single-value {
+                color: #1e293b !important;
+                opacity: 1;
+            }
+
+            .pos-customer-select__button {
+                background: #fff5d9 !important;
+                border-color: #f6d792 !important;
+                color: #b76a00 !important;
+                opacity: 1;
+            }
+        }
+    }
+
     .pos-context-card .top-nav .grp-select .select-box .css-1s2u09g-control,
     .pos-context-card .top-nav .grp-select .select-box .css-1pahdxg-control,
     .pos-context-card .top-nav .grp-select .select-box .css-t3ipsp-control,

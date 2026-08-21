@@ -13,6 +13,11 @@ import {
 import requestParam from "../../shared/requestParam";
 import { setLoading } from "./loadingAction";
 import { getFormattedMessage } from "../../shared/sharedMethod";
+import {
+    isNetworkError,
+    loadCachedResource,
+    saveOfflineSnapshot,
+} from "../../offline/catalogStorage";
 
 export const fetchProductCategories =
     (filter = {}, isLoading = true) =>
@@ -155,17 +160,34 @@ export const deleteProductCategory = (productId) => async (dispatch) => {
 };
 
 export const fetchAllProductCategories = () => async (dispatch) => {
-    apiConfig
-        .get(`product-categories?page[size]=0`)
-        .then((response) => {
+    const useCachedCategories = async () => {
+        const snapshot = await loadCachedResource("product-categories");
+        if (snapshot) {
             dispatch({
                 type: productCategoriesActionType.FETCH_ALL_PRODUCTS_CATEGORIES,
-                payload: response.data.data,
+                payload: snapshot.payload,
             });
-        })
-        .catch(({ response }) => {
-            dispatch(
-                addToast({ text: response.data.message, type: toastType.ERROR })
-            );
+        }
+        return snapshot;
+    };
+
+    if (!navigator.onLine) return useCachedCategories();
+
+    try {
+        const response = await apiConfig.get("product-categories?page[size]=0");
+        const categories = response.data.data || [];
+        dispatch({
+            type: productCategoriesActionType.FETCH_ALL_PRODUCTS_CATEGORIES,
+            payload: categories,
         });
+        await saveOfflineSnapshot("product-categories", categories).catch(() => null);
+        return categories;
+    } catch (error) {
+        if (isNetworkError(error)) return useCachedCategories();
+        dispatch(addToast({
+            text: error?.response?.data?.message || "No se pudieron cargar las categorías.",
+            type: toastType.ERROR,
+        }));
+        return null;
+    }
 };

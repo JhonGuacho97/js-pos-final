@@ -17,6 +17,7 @@ use App\Models\SaleReturnItem;
 use App\Models\Setting;
 use App\Models\Warehouse;
 use App\Repositories\SaleRepository;
+use App\Services\ElectronicInvoiceRequestService;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Exception;
 use Illuminate\Database\Eloquent\Builder;
@@ -36,7 +37,10 @@ class SaleAPIController extends AppBaseController
     /** @var saleRepository */
     private $saleRepository;
 
-    public function __construct(SaleRepository $saleRepository)
+    public function __construct(
+        SaleRepository $saleRepository,
+        private readonly ElectronicInvoiceRequestService $invoiceRequests
+    )
     {
         $this->saleRepository = $saleRepository;
     }
@@ -259,6 +263,7 @@ class SaleAPIController extends AppBaseController
         }
         $input = $request->all();
         $sale = $this->saleRepository->storeSale($input);
+        $this->invoiceRequests->request($sale, $request->input('requested_electronic_document'));
 
         return new SaleResource($sale);
     }

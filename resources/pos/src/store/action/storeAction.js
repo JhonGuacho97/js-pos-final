@@ -1,6 +1,11 @@
 import { apiBaseURL, storeActionType, Tokens, toastType } from '../../constants';
 import apiConfig from '../../config/apiConfig';
 import { addToast } from './toastAction';
+import {
+    isNetworkError,
+    loadCachedResource,
+    saveOfflineSnapshot,
+} from '../../offline/catalogStorage';
 
 /**
  * Trae las tiendas a las que el usuario autenticado tiene acceso (ver
@@ -24,34 +29,51 @@ import { addToast } from './toastAction';
  *    Header se encarga de pedírsela al usuario.
  */
 export const fetchMyStores = () => async (dispatch) => {
-    return await apiConfig.get(apiBaseURL.MY_STORES)
-        .then((response) => {
-            const stores = response.data.data || [];
-            dispatch({ type: storeActionType.FETCH_MY_STORES, payload: stores });
+    const applyStores = (stores) => {
+        dispatch({ type: storeActionType.FETCH_MY_STORES, payload: stores });
 
-            const savedId = localStorage.getItem(Tokens.CURRENT_STORE_ID);
-            const savedStore = savedId && stores.find((s) => String(s.id) === savedId);
+        const savedId = localStorage.getItem(Tokens.CURRENT_STORE_ID);
+        const savedStore = savedId && stores.find((store) => String(store.id) === savedId);
 
-            if (savedStore && savedStore.is_active) {
-                dispatch({ type: storeActionType.SET_CURRENT_STORE_ID, payload: savedId });
-                return;
-            }
+        if (savedStore && savedStore.is_active) {
+            dispatch({ type: storeActionType.SET_CURRENT_STORE_ID, payload: savedId });
+            return;
+        }
 
-            const activeStores = stores.filter((s) => s.is_active);
-            const defaultStore = activeStores.find((s) => s.is_default);
+        const activeStores = stores.filter((store) => store.is_active);
+        const defaultStore = activeStores.find((store) => store.is_default);
 
-            if (defaultStore) {
-                dispatch(setCurrentStore(defaultStore.id));
-            } else if (activeStores.length === 1) {
-                dispatch(setCurrentStore(activeStores[0].id));
-            } else {
-                localStorage.removeItem(Tokens.CURRENT_STORE_ID);
-            }
-        })
-        .catch((response) => {
-            dispatch(addToast(
-                { text: response.response?.data?.message, type: toastType.ERROR }));
-        });
+        if (defaultStore) {
+            dispatch(setCurrentStore(defaultStore.id));
+        } else if (activeStores.length === 1) {
+            dispatch(setCurrentStore(activeStores[0].id));
+        } else if (navigator.onLine) {
+            localStorage.removeItem(Tokens.CURRENT_STORE_ID);
+        }
+    };
+
+    const useCachedStores = async () => {
+        const snapshot = await loadCachedResource('my-stores', { scope: 'user' });
+        if (snapshot) applyStores(snapshot.payload || []);
+        return snapshot;
+    };
+
+    if (!navigator.onLine) return useCachedStores();
+
+    try {
+        const response = await apiConfig.get(apiBaseURL.MY_STORES);
+        const stores = response.data.data || [];
+        applyStores(stores);
+        await saveOfflineSnapshot('my-stores', stores, { scope: 'user' }).catch(() => null);
+        return stores;
+    } catch (error) {
+        if (isNetworkError(error)) return useCachedStores();
+        dispatch(addToast({
+            text: error?.response?.data?.message || 'No se pudieron cargar las tiendas.',
+            type: toastType.ERROR,
+        }));
+        return null;
+    }
 };
 
 /**

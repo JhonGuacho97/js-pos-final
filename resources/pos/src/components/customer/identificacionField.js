@@ -7,7 +7,7 @@ import {
 
 const longitudRequeridaPorTipo = (tipo) => (tipo === "04" ? 13 : 10);
 
-const IdentificacionField = ({ tipo, value, onChange, error, isEdit, sriLoading, onSriLookup }) => (
+const IdentificacionField = ({ tipo, value, onChange, error, isEdit, sriLoading, onSriLookup, sriDisabled = false }) => (
     <div className="col-md-6 mb-3">
         <label className="form-label">{labelPorTipo(tipo)}</label>
         <div className="input-group">
@@ -25,7 +25,8 @@ const IdentificacionField = ({ tipo, value, onChange, error, isEdit, sriLoading,
                 <button
                     type="button"
                     className="btn btn-primary"
-                    disabled={sriLoading || (value || "").length !== longitudRequeridaPorTipo(tipo)}
+                    disabled={sriDisabled || sriLoading || (value || "").length !== longitudRequeridaPorTipo(tipo)}
+                    title={sriDisabled ? "Consulta SRI disponible con conexión" : "Consultar en el SRI"}
                     onClick={onSriLookup}
                 >
                     {sriLoading ? "..." : "SRI"}

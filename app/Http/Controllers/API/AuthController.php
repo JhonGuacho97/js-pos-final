@@ -128,7 +128,11 @@ class AuthController extends AppBaseController
         unset($user->roles);
         unset($user->permissions);
 
-        $token = $user->createToken('token')->plainTextToken;
+        $token = $user->createToken(
+            'token',
+            ['*'],
+            now()->addMinutes((int) config('sanctum.session_token_expiration', 120))
+        )->plainTextToken;
 
         $user->last_name = $user->last_name ?? '';
 
@@ -225,7 +229,7 @@ class AuthController extends AppBaseController
         }
 
         $isValid =
-            (!$this->expiration || $accessToken->created_at->gt(now()->subMinutes($this->expiration)))
+            (! $accessToken->expires_at || $accessToken->expires_at->isFuture())
             && $this->hasValidProvider($accessToken->tokenable);
 
         if (is_callable(Sanctum::$accessTokenAuthenticationCallback)) {

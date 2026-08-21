@@ -8,6 +8,7 @@ use App\Jobs\ReenviarComprobanteJob;
 use App\Models\ElectronicInvoice;
 use App\Models\Sale;
 use App\Services\SriRideService;
+use App\Services\ElectronicInvoiceRequestService;
 use Carbon\Carbon;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -19,7 +20,7 @@ class ElectronicInvoiceController extends AppBaseController
      * Dispara la emisión de la factura electrónica para una venta.
      * No bloquea — encola el job y responde inmediatamente.
      */
-    public function emitir(Sale $sale): JsonResponse
+    public function emitir(Sale $sale, ElectronicInvoiceRequestService $invoiceRequests): JsonResponse
     {
         if ($sale->electronicInvoice) {
             return response()->json([
@@ -29,7 +30,14 @@ class ElectronicInvoiceController extends AppBaseController
             ], 409);
         }
 
-        EmitirFacturaJob::dispatch($sale->id);
+        if ($sale->electronic_invoice_requested_at) {
+            return response()->json([
+                'success' => true,
+                'message' => 'La factura electrónica ya está en la cola de procesamiento.',
+            ], 202);
+        }
+
+        $invoiceRequests->request($sale, ElectronicInvoice::FACTURA);
 
         return response()->json([
             'success' => true,

@@ -5,6 +5,7 @@ import { fetchBrandClickable } from "./posAllProductAction";
 import { getFormattedMessage } from '../../../shared/sharedMethod';
 import { setLoading } from '../loadingAction';
 import { fetchHoldLists } from "./HoldListAction";
+import { isNetworkError } from "../../../offline/catalogStorage";
 
 
 export const posCashPaymentAction = ( detailsCash, setUpdateProducts, setModalShowPaymentSlip, posAllProduct, filterData, onSuccess = null, isLoading = true ) => async ( dispatch ) => {
@@ -12,8 +13,8 @@ export const posCashPaymentAction = ( detailsCash, setUpdateProducts, setModalSh
         dispatch( setLoading( true ) )
     }
     let url = apiBaseURL.CASH_PAYMENT;
-    apiConfig.post( url, detailsCash )
-        .then( ( response ) => {
+    try {
+        const response = await apiConfig.post( url, detailsCash );
             dispatch( { type: posCashPaymentActionType.POS_CASH_PAYMENT, payload: response.data.data } );
             dispatch( addToast(
                 { text: getFormattedMessage( "pos.payment.success.message" ) } ) );
@@ -25,13 +26,18 @@ export const posCashPaymentAction = ( detailsCash, setUpdateProducts, setModalSh
             if ( onSuccess && response.data.data?.id ) {
                 onSuccess( response.data.data )
             }
-            if ( isLoading ) {
-                dispatch( setLoading( false ) )
-                dispatch( fetchHoldLists() )
-            }
-        } )
-        .catch( ( response ) => {
-            dispatch( addToast(
-                { text: response.response.data.message, type: toastType.ERROR } ) );
-        } );
+            if ( isLoading ) dispatch( fetchHoldLists() );
+            return { success: true, sale: response.data.data };
+    } catch ( error ) {
+        if ( isNetworkError(error) ) {
+            return { success: false, networkError: true };
+        }
+        dispatch( addToast({
+            text: error?.response?.data?.message || "No se pudo registrar la venta.",
+            type: toastType.ERROR,
+        }) );
+        return { success: false, networkError: false };
+    } finally {
+        if ( isLoading ) dispatch( setLoading( false ) );
+    }
 };

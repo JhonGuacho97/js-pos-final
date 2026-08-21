@@ -10,6 +10,11 @@ import {
 import { setLoading } from "./loadingAction";
 import { getFormattedMessage } from "../../shared/sharedMethod";
 import { setSavingButton } from "./saveButtonAction";
+import {
+    isNetworkError,
+    loadCachedResource,
+    saveOfflineSnapshot,
+} from "../../offline/catalogStorage";
 
 export const fetchWarehouses =
     (filter = {}, isLoading = true) =>
@@ -168,19 +173,36 @@ export const deleteWarehouse = (warehouseId) => async (dispatch) => {
 };
 
 export const fetchAllWarehouses = () => async (dispatch) => {
-    apiConfig
-        .get(`warehouses?page[size]=0`)
-        .then((response) => {
+    const useCachedWarehouses = async () => {
+        const snapshot = await loadCachedResource("warehouses");
+        if (snapshot) {
             dispatch({
                 type: warehouseActionType.FETCH_ALL_WAREHOUSES,
-                payload: response.data.data,
+                payload: snapshot.payload,
             });
-        })
-        .catch(({ response }) => {
-            dispatch(
-                addToast({ text: response.data.message, type: toastType.ERROR })
-            );
+        }
+        return snapshot;
+    };
+
+    if (!navigator.onLine) return useCachedWarehouses();
+
+    try {
+        const response = await apiConfig.get("warehouses?page[size]=0");
+        const warehouses = response.data.data || [];
+        dispatch({
+            type: warehouseActionType.FETCH_ALL_WAREHOUSES,
+            payload: warehouses,
         });
+        await saveOfflineSnapshot("warehouses", warehouses).catch(() => null);
+        return warehouses;
+    } catch (error) {
+        if (isNetworkError(error)) return useCachedWarehouses();
+        dispatch(addToast({
+            text: error?.response?.data?.message || "No se pudieron cargar las bodegas.",
+            type: toastType.ERROR,
+        }));
+        return null;
+    }
 };
 
 export const fetchWarehouseDetails =

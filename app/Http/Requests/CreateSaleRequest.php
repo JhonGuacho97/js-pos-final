@@ -23,6 +23,8 @@ class CreateSaleRequest extends FormRequest
      */
     public function rules(): array
     {
-        return Sale::$rules;
+        return array_merge(Sale::$rules, [
+            'requested_electronic_document' => ['nullable', 'in:01'],
+        ]);
     }
 }
