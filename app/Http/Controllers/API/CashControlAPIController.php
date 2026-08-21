@@ -114,9 +114,10 @@ class CashControlAPIController extends AppBaseController
             'manual_income' => (float) (clone $query)->where('type', 'MANUAL_INCOME')->sum('amount'),
             'total_out' => (float) (clone $query)->where('direction', 'OUT')->sum('amount'),
         ];
+        $perPage = max(1, min((int) $request->input('per_page', 10), 100));
         $movements = $query->with(['user:id,first_name,last_name', 'approvedBy:id,first_name,last_name'])
             ->withExists('reversal')
-            ->latest()->paginate(min((int) $request->input('page.size', 20), 100));
+            ->latest()->paginate($perPage);
 
         $payload = $movements->toArray();
         $payload['summary'] = $summary;

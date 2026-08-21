@@ -68,7 +68,7 @@ const CashControl = () => {
     const loadMovements = useCallback(async (page = 1, showProgress = false) => {
         if (showProgress) setMovementLoading(true);
         try {
-            const response = await apiConfig.get(`cash-control/movements?page[size]=10&page=${page}`);
+            const response = await apiConfig.get(`cash-control/movements?per_page=10&page=${page}`);
             const result = response.data;
             setMovements(result.data || []);
             setMovementMeta({
