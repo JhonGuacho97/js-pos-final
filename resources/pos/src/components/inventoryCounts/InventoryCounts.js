@@ -122,6 +122,7 @@ const CountWorkspace = ({ id }) => {
     const [notice, setNotice] = useState(null);
     const [acting, setActing] = useState(false);
     const [savingPage, setSavingPage] = useState(false);
+    const [showCancel, setShowCancel] = useState(false);
     const rowSavers = useRef(new Map());
     const requestSequence = useRef(0);
 
@@ -170,11 +171,21 @@ const CountWorkspace = ({ id }) => {
         setSavingPage(false);
     };
     useEffect(() => { const timer = setTimeout(() => load(page), search ? 280 : 0); return () => clearTimeout(timer); }, [id, page, filter, search]);
-    const runAction = async (action) => {
+    const runAction = async (action, payload = undefined) => {
         setActing(true); setNotice(null);
-        try { const response = await apiConfig.post(`${apiBaseURL.INVENTORY_COUNTS}/${id}/${action}`); setNotice({ tone: "success", text: response.data.message }); await load(page); }
-        catch (error) { setNotice({ tone: "error", text: requestMessage(error, "No se pudo completar la acción.") }); }
-        finally { setActing(false); }
+        try {
+            const response = await apiConfig.post(`${apiBaseURL.INVENTORY_COUNTS}/${id}/${action}`, payload);
+            setNotice({ tone: "success", text: response.data.message }); await load(page);
+            return true;
+        } catch (error) {
+            setNotice({ tone: "error", text: requestMessage(error, "No se pudo completar la acción.") });
+            return false;
+        } finally { setActing(false); }
+    };
+    const cancelCount = async (reason) => {
+        const cancelled = await runAction("cancel", { cancel_reason: reason });
+        if (cancelled) setShowCancel(false);
+        return cancelled;
     };
     const editable = ["draft", "counting"].includes(count?.status) && permissions.can_perform;
     const progress = count?.progress || 0;
@@ -183,13 +194,25 @@ const CountWorkspace = ({ id }) => {
         <header className="pc-workspace-head"><button type="button" className="pc-back" onClick={() => navigate("/app/inventory-counts")}><i className="bi bi-arrow-left" /></button><div><span>CONTEO FÍSICO</span><h1>{count?.reference_code || "Cargando…"}</h1><p>{count?.warehouse?.name || "Bodega"} · {count?.category?.name || "Todos los productos"}</p></div>{count && <StatusBadge status={count.status} />}</header>
         {notice && <Notice tone={notice.tone} text={notice.text} onClose={() => setNotice(null)} />}
         {count && <section className="pc-workspace-summary pc-panel"><div className="pc-workspace-progress"><div><span>AVANCE DEL CONTEO</span><strong>{count.counted_items_count} de {count.items_count}</strong></div><div className="pc-progress pc-progress--large"><span><i style={{ width: `${progress}%` }} /></span><small>{progress}% completado</small></div></div><div className="pc-workspace-stat"><i className="bi bi-exclamation-diamond" /><span><small>Diferencias</small><strong>{count.difference_items_count === null ? "Oculto" : count.difference_items_count}</strong></span></div><div className="pc-workspace-stat"><i className={`bi ${count.blind_count ? "bi-eye-slash" : "bi-eye"}`} /><span><small>Modalidad</small><strong>{count.blind_count ? "Ciego" : "Visible"}</strong></span></div><div className="pc-workspace-actions">
+            {permissions.can_cancel && <button className="pc-button pc-button--danger-light" disabled={acting} onClick={() => setShowCancel(true)}><i className="bi bi-x-circle" /> Cancelar conteo</button>}
             {editable && <button className="pc-button pc-button--primary" disabled={acting || count.counted_items_count < count.items_count} onClick={() => runAction("submit")}><i className="bi bi-send" /> Enviar a revisión</button>}
-            {count.status === "review" && permissions.can_approve && <><button className="pc-button pc-button--danger-light" disabled={acting} onClick={() => runAction("cancel")}><i className="bi bi-x-circle" /> Cancelar</button><button className="pc-button pc-button--primary" disabled={acting} onClick={() => runAction("approve")}><i className="bi bi-check2-circle" /> Aprobar y ajustar</button></>}
+            {count.status === "review" && permissions.can_approve && <button className="pc-button pc-button--primary" disabled={acting} onClick={() => runAction("approve")}><i className="bi bi-check2-circle" /> Aprobar y ajustar</button>}
         </div></section>}
         {count?.status === "review" && <div className="pc-review-banner"><i className="bi bi-shield-check" /><div><strong>Revisión antes de ajustar</strong><span>Comprueba las diferencias. Si el stock cambió desde el inicio, EcuaPos impedirá la aprobación.</span></div></div>}
         <section className="pc-panel pc-counting-panel"><div className="pc-panel__title pc-counting-tools"><div><span>PRODUCTOS DEL CONTEO</span><h2>{pagination.total || 0} productos</h2></div><div className="pc-search"><i className="bi bi-search" /><input value={search} onChange={e => { setSearch(e.target.value); setPage(1); }} placeholder="Escanear o buscar producto" autoFocus /></div><select value={filter} onChange={e => { setFilter(e.target.value); setPage(1); }}><option value="">Todos</option><option value="pending">Sin contar</option><option value="match">Sin diferencia</option><option value="difference">Con diferencia</option></select></div>
             <div className={`pc-table-wrap ${loading ? "is-loading" : ""}`}><table className="pc-table pc-count-table"><thead><tr><th>Producto</th><th>Esperado</th><th>Conteo físico</th><th>Diferencia</th><th>Observación</th><th /></tr></thead><tbody>{!loading && !items.length ? <tr><td colSpan="6"><EmptyState text="No hay productos con este filtro." /></td></tr> : items.map(item => <InventoryItemRow key={item.id} item={item} countId={id} editable={editable} onSaved={handleItemSaved} registerSaver={registerSaver} />)}</tbody></table>{loading && <div className="pc-loading"><span className="spinner-border" /><small>Cargando productos…</small></div>}</div><Pagination page={page} pagination={pagination} setPage={changePageSafely} busy={savingPage || loading} /></section>
+        {showCancel && <CancelCountModal saving={acting} onClose={() => !acting && setShowCancel(false)} onConfirm={cancelCount} />}
     </main>;
+};
+
+const CancelCountModal = ({ saving, onClose, onConfirm }) => {
+    const [reason, setReason] = useState("");
+    const submit = async (event) => {
+        event.preventDefault();
+        if (reason.trim().length < 3) return;
+        await onConfirm(reason.trim());
+    };
+    return <div className="pc-modal-backdrop" role="presentation" onMouseDown={event => event.target === event.currentTarget && onClose()}><section className="pc-modal pc-modal--cancel" role="dialog" aria-modal="true" aria-labelledby="cancel-count-title"><header><div className="pc-modal__icon pc-modal__icon--danger"><i className="bi bi-x-octagon" /></div><div><span>CANCELAR CONTEO</span><h2 id="cancel-count-title">¿Detener este conteo físico?</h2><p>Las cantidades registradas se conservarán como evidencia, pero no modificarán las existencias.</p></div><button type="button" disabled={saving} onClick={onClose}><i className="bi bi-x-lg" /></button></header><form onSubmit={submit}><label className="pc-notes pc-notes--flush"><span>Motivo de cancelación</span><textarea autoFocus required minLength="3" maxLength="500" value={reason} onChange={event => setReason(event.target.value)} placeholder="Ej.: Se inició con la bodega equivocada" /></label><div className="pc-cancel-warning"><i className="bi bi-shield-exclamation" /><span><strong>Esta acción no ajustará el stock.</strong><small>El conteo quedará bloqueado y visible en el historial para auditoría.</small></span></div><footer><button type="button" className="pc-button pc-button--light" disabled={saving} onClick={onClose}>Volver</button><button type="submit" className="pc-button pc-button--danger" disabled={saving || reason.trim().length < 3}>{saving ? "Cancelando…" : "Sí, cancelar conteo"}</button></footer></form></section></div>;
 };
 
 const InventoryItemRow = ({ item, countId, editable, onSaved, registerSaver }) => {

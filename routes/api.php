@@ -466,9 +466,11 @@ Route::middleware(['auth:sanctum', 'store.context'])->group(function () {
             Route::patch('/{inventoryCount}/items/{item}', [InventoryCountAPIController::class, 'updateItem']);
             Route::post('/{inventoryCount}/submit', [InventoryCountAPIController::class, 'submit']);
         });
+        Route::middleware('permission:perform_inventory_counts|approve_inventory_counts')->group(function () {
+            Route::post('/{inventoryCount}/cancel', [InventoryCountAPIController::class, 'cancel']);
+        });
         Route::middleware('permission:approve_inventory_counts')->group(function () {
             Route::post('/{inventoryCount}/approve', [InventoryCountAPIController::class, 'approve']);
-            Route::post('/{inventoryCount}/cancel', [InventoryCountAPIController::class, 'cancel']);
         });
     });
 

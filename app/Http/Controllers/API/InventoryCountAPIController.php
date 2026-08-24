@@ -25,7 +25,7 @@ class InventoryCountAPIController extends AppBaseController
     {
         $query = InventoryCount::query()
             ->where('store_id', $this->requireCurrentStoreId())
-            ->with(['warehouse:id,name', 'category:id,name', 'creator:id,first_name,last_name'])
+            ->with(['warehouse:id,name', 'category:id,name', 'creator:id,first_name,last_name', 'canceller:id,first_name,last_name'])
             ->withCount([
                 'items',
                 'items as counted_items_count' => fn ($q) => $q->whereNotNull('counted_quantity'),
@@ -142,6 +142,7 @@ class InventoryCountAPIController extends AppBaseController
         $inventoryCount->load([
             'warehouse:id,name', 'category:id,name', 'creator:id,first_name,last_name',
             'submitter:id,first_name,last_name', 'approver:id,first_name,last_name',
+            'canceller:id,first_name,last_name',
             'adjustment:id,reference_code',
         ])->loadCount([
             'items',
@@ -216,6 +217,7 @@ class InventoryCountAPIController extends AppBaseController
             'permissions' => [
                 'can_perform' => $request->user()->can('perform_inventory_counts'),
                 'can_approve' => $request->user()->can('approve_inventory_counts'),
+                'can_cancel' => $this->canCancel($inventoryCount, $request),
             ],
         ]);
     }
@@ -327,15 +329,43 @@ class InventoryCountAPIController extends AppBaseController
         ]);
     }
 
-    public function cancel(InventoryCount $inventoryCount): JsonResponse
+    public function cancel(InventoryCount $inventoryCount, Request $request): JsonResponse
     {
         $this->authorizeCount($inventoryCount);
         if (in_array($inventoryCount->status, [InventoryCount::COMPLETED, InventoryCount::CANCELLED], true)) {
             throw ValidationException::withMessages(['status' => 'Este conteo ya no se puede cancelar.']);
         }
-        $inventoryCount->update(['status' => InventoryCount::CANCELLED]);
+        if (! $this->canCancel($inventoryCount, $request)) {
+            return response()->json([
+                'success' => false,
+                'message' => 'No tiene permiso para cancelar este conteo.',
+            ], 403);
+        }
+        $data = $request->validate([
+            'cancel_reason' => ['required', 'string', 'min:3', 'max:500'],
+        ]);
+        $inventoryCount->update([
+            'status' => InventoryCount::CANCELLED,
+            'cancel_reason' => trim($data['cancel_reason']),
+            'cancelled_by' => $request->user()->id,
+            'cancelled_at' => now(),
+        ]);
 
         return response()->json(['success' => true, 'message' => 'Conteo cancelado.', 'data' => $this->serializeCount($inventoryCount)]);
+    }
+
+    private function canCancel(InventoryCount $count, Request $request): bool
+    {
+        if (in_array($count->status, [InventoryCount::COMPLETED, InventoryCount::CANCELLED], true)) {
+            return false;
+        }
+        if ($request->user()->can('approve_inventory_counts')) {
+            return true;
+        }
+
+        return in_array($count->status, [InventoryCount::DRAFT, InventoryCount::COUNTING], true)
+            && $request->user()->can('perform_inventory_counts')
+            && (int) $count->created_by === (int) $request->user()->id;
     }
 
     private function authorizeCount(InventoryCount $count): void
@@ -362,6 +392,8 @@ class InventoryCountAPIController extends AppBaseController
             'status' => $count->status,
             'blind_count' => $count->blind_count,
             'notes' => $count->notes,
+            'cancel_reason' => $count->cancel_reason,
+            'created_by' => $count->created_by,
             'warehouse' => $count->warehouse ? ['id' => $count->warehouse->id, 'name' => $count->warehouse->name] : null,
             'category' => $count->category ? ['id' => $count->category->id, 'name' => $count->category->name] : null,
             'items_count' => $items,
@@ -371,10 +403,12 @@ class InventoryCountAPIController extends AppBaseController
             'creator' => $count->creator ? trim($count->creator->first_name.' '.$count->creator->last_name) : null,
             'submitter' => $count->submitter ? trim($count->submitter->first_name.' '.$count->submitter->last_name) : null,
             'approver' => $count->approver ? trim($count->approver->first_name.' '.$count->approver->last_name) : null,
+            'canceller' => $count->canceller ? trim($count->canceller->first_name.' '.$count->canceller->last_name) : null,
             'adjustment' => $count->adjustment ? ['id' => $count->adjustment->id, 'reference_code' => $count->adjustment->reference_code] : null,
             'created_at' => $count->created_at?->toIso8601String(),
             'submitted_at' => $count->submitted_at?->toIso8601String(),
             'approved_at' => $count->approved_at?->toIso8601String(),
+            'cancelled_at' => $count->cancelled_at?->toIso8601String(),
         ];
     }
 }

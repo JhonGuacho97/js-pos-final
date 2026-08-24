@@ -142,6 +142,81 @@ class InventoryCountTest extends TestCase
         ));
     }
 
+    public function test_creator_can_cancel_an_active_count_with_audited_reason(): void
+    {
+        [$store, $warehouse, $counter] = $this->context(['perform_inventory_counts']);
+        $this->productWithStock($store, $warehouse, 5);
+        Sanctum::actingAs($counter, ['*']);
+        $headers = ['X-Store-Id' => $store->id];
+        $countId = $this->withHeaders($headers)->postJson('/api/inventory-counts', [
+            'warehouse_id' => $warehouse->id,
+        ])->assertCreated()->json('data.id');
+
+        $this->withHeaders($headers)->postJson("/api/inventory-counts/{$countId}/cancel", [
+            'cancel_reason' => 'Se seleccionó la bodega equivocada',
+        ])->assertOk()->assertJsonPath('data.status', InventoryCount::CANCELLED);
+
+        $this->assertDatabaseHas('inventory_counts', [
+            'id' => $countId,
+            'status' => InventoryCount::CANCELLED,
+            'cancel_reason' => 'Se seleccionó la bodega equivocada',
+            'cancelled_by' => $counter->id,
+        ]);
+        $this->assertNotNull(InventoryCount::findOrFail($countId)->cancelled_at);
+    }
+
+    public function test_performer_cannot_cancel_another_users_count_or_a_count_in_review(): void
+    {
+        [$store, $warehouse, $creator] = $this->context(['perform_inventory_counts']);
+        $this->productWithStock($store, $warehouse, 5);
+        Sanctum::actingAs($creator, ['*']);
+        $headers = ['X-Store-Id' => $store->id];
+        $countId = $this->withHeaders($headers)->postJson('/api/inventory-counts', [
+            'warehouse_id' => $warehouse->id,
+        ])->assertCreated()->json('data.id');
+
+        $other = User::create([
+            'first_name' => 'Otro', 'last_name' => 'Contador', 'email' => Str::random(10).'@example.test',
+            'phone' => '0977777777', 'password' => bcrypt('secret123'), 'status' => true,
+        ]);
+        $other->stores()->attach($store->id);
+        setPermissionsTeamId($store->id);
+        $other->givePermissionTo(Permission::firstOrCreate(['name' => 'perform_inventory_counts', 'guard_name' => 'web']));
+        Sanctum::actingAs($other, ['*']);
+
+        $this->withHeaders($headers)->postJson("/api/inventory-counts/{$countId}/cancel", [
+            'cancel_reason' => 'Intento no autorizado',
+        ])->assertForbidden();
+
+        InventoryCount::whereKey($countId)->update(['status' => InventoryCount::REVIEW]);
+        Sanctum::actingAs($creator, ['*']);
+        $this->withHeaders($headers)->postJson("/api/inventory-counts/{$countId}/cancel", [
+            'cancel_reason' => 'Ya fue enviado a revisión',
+        ])->assertForbidden();
+        $this->assertSame(InventoryCount::REVIEW, InventoryCount::findOrFail($countId)->status);
+    }
+
+    public function test_approver_can_cancel_a_count_in_review_but_not_a_completed_count(): void
+    {
+        [$store, $warehouse, $approver] = $this->context(['perform_inventory_counts', 'approve_inventory_counts']);
+        $this->productWithStock($store, $warehouse, 5);
+        Sanctum::actingAs($approver, ['*']);
+        $headers = ['X-Store-Id' => $store->id];
+        $countId = $this->withHeaders($headers)->postJson('/api/inventory-counts', [
+            'warehouse_id' => $warehouse->id,
+        ])->assertCreated()->json('data.id');
+        InventoryCount::whereKey($countId)->update(['status' => InventoryCount::REVIEW]);
+
+        $this->withHeaders($headers)->postJson("/api/inventory-counts/{$countId}/cancel", [
+            'cancel_reason' => 'Diferencias que requieren un conteo nuevo',
+        ])->assertOk()->assertJsonPath('data.status', InventoryCount::CANCELLED);
+
+        InventoryCount::whereKey($countId)->update(['status' => InventoryCount::COMPLETED]);
+        $this->withHeaders($headers)->postJson("/api/inventory-counts/{$countId}/cancel", [
+            'cancel_reason' => 'No debe poder cancelarse',
+        ])->assertUnprocessable();
+    }
+
     private function context(array $permissions): array
     {
         $suffix = Str::lower(Str::random(10));
