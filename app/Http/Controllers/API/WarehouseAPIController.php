@@ -8,13 +8,18 @@ use App\Http\Requests\UpdateWarehouseRequest;
 use App\Http\Resources\WarehouseCollection;
 use App\Http\Resources\WarehouseResource;
 use App\Models\ManageStock;
+use App\Models\CatalogSetting;
+use App\Models\POSRegister;
 use App\Models\Purchase;
 use App\Models\PurchaseReturn;
 use App\Models\Sale;
 use App\Models\SaleReturn;
+use App\Models\Setting;
+use App\Models\Warehouse;
 use App\Repositories\WarehouseRepository;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Prettus\Validator\Exceptions\ValidatorException;
 
 /**
@@ -39,6 +44,10 @@ class WarehouseAPIController extends AppBaseController
         if ($storeId = $this->currentStoreId()) {
             $warehousesQuery->where('store_id', $storeId);
         }
+        $canManageWarehouses = $request->user()?->can('manage_warehouses') ?? false;
+        if (! ($request->boolean('include_inactive') && $canManageWarehouses)) {
+            $warehousesQuery->where('is_active', true);
+        }
         $warehouses = $warehousesQuery->paginate($perPage);
         WarehouseResource::usingWithCollection();
 
@@ -52,6 +61,7 @@ class WarehouseAPIController extends AppBaseController
     {
         $input = $request->all();
         $input['store_id'] = $input['store_id'] ?? $this->requireCurrentStoreId();
+        $input['is_active'] = $input['is_active'] ?? true;
         $warehouse = $this->warehouseRepository->create($input);
 
         return new WarehouseResource($warehouse);
@@ -59,6 +69,7 @@ class WarehouseAPIController extends AppBaseController
 
     public function warehouseDetails($id)
     {
+        $this->authorizeWarehouseAccess((int) $id);
         $warehouses = ManageStock::where('warehouse_id', $id)->with('product')->get();
 
         $products = [];
@@ -83,9 +94,39 @@ class WarehouseAPIController extends AppBaseController
      */
     public function update(UpdateWarehouseRequest $request, $id): WarehouseResource
     {
-        $this->authorizeStoreOwnership($this->warehouseRepository->find($id));
+        $existing = $this->warehouseRepository->find($id);
+        $this->authorizeStoreOwnership($existing);
         $input = $request->all();
-        $warehouse = $this->warehouseRepository->update($input, $id);
+
+        $warehouse = DB::transaction(function () use ($existing, $input, $id) {
+            $isBeingDisabled = array_key_exists('is_active', $input)
+                && ! filter_var($input['is_active'], FILTER_VALIDATE_BOOLEAN);
+
+            if ($isBeingDisabled) {
+                if (POSRegister::where('warehouse_id', $existing->id)->whereNull('closed_at')->exists()) {
+                    abort(422, 'No puedes desactivar esta bodega mientras tenga turnos de caja abiertos.');
+                }
+
+                $otherActive = Warehouse::where('store_id', $existing->store_id)
+                    ->active()->where('id', '<>', $existing->id)->orderBy('id')->first();
+                if (! $otherActive) {
+                    abort(422, 'No se puede desactivar la última bodega activa de la tienda.');
+                }
+
+                if ((int) getSettingValue('default_warehouse') === (int) $existing->id) {
+                    Setting::updateOrCreate(
+                        ['store_id' => $existing->store_id, 'key' => 'default_warehouse'],
+                        ['value' => (string) $otherActive->id]
+                    );
+                }
+
+                CatalogSetting::where('store_id', $existing->store_id)
+                    ->where('warehouse_id', $existing->id)
+                    ->update(['warehouse_id' => $otherActive->id]);
+            }
+
+            return $this->warehouseRepository->update($input, $id);
+        });
 
         return new WarehouseResource($warehouse);
     }

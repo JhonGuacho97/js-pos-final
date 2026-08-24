@@ -146,7 +146,7 @@ class WarehousePriceAPIController extends AppBaseController
      */
     private function warehousesForCurrentStore()
     {
-        $query = Warehouse::orderBy('name');
+        $query = Warehouse::active()->orderBy('name');
         if ($storeId = $this->currentStoreId()) {
             $query->where('store_id', $storeId);
         }
@@ -168,7 +168,7 @@ class WarehousePriceAPIController extends AppBaseController
         }
 
         $warehouseIds = array_column($prices, 'warehouse_id');
-        $validCount = Warehouse::where('store_id', $storeId)->whereIn('id', $warehouseIds)->count();
+        $validCount = Warehouse::where('store_id', $storeId)->active()->whereIn('id', $warehouseIds)->count();
 
         if ($validCount !== count(array_unique($warehouseIds))) {
             throw new UnprocessableEntityHttpException('Una o más sucursales no pertenecen a la tienda activa.');

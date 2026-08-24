@@ -17,8 +17,6 @@ import {
     faStore, faCheck, faGlobe
 } from '@fortawesome/free-solid-svg-icons';
 import { Dropdown } from 'react-bootstrap';
-import { productQuantityReportAction } from '../../store/action/paymentQuantityReport';
-import { Filters } from '../../constants';
 import PosRegisterModel from '../posRegister/PosRegisterModel.js';
 import { headerStyles } from './styles/HeaderStyles.js';
 
@@ -26,7 +24,7 @@ import { headerStyles } from './styles/HeaderStyles.js';
 const Header = (props) => {
     const {
         logoutAction, newRoutes, updateLanguage,
-        selectedLanguage, productQuantityReportAction,
+        selectedLanguage,
     } = props;
 
     const navigate = useNavigate();
@@ -44,8 +42,6 @@ const Header = (props) => {
 
     const [deleteModel,          setDeleteModel]          = useState(false);
     const [isFullscreen,         setIsFullscreen]         = useState(false);
-    const [warehouseValue]                                = useState({ label: 'All', value: null });
-    const [totalRecords,         setTotalRecords]         = useState(0);
     const [showPosRegisterModel, setShowPosRegisterModel] = useState(false);
 
     const { allConfigData, languages } = useSelector(state => state);
@@ -60,11 +56,6 @@ const Header = (props) => {
         window.location.reload();
     };
     const currentStoreName = stores.find((s) => String(s.id) === String(currentStoreId))?.name;
-
-    useEffect(() => {
-        let isLoading;
-        productQuantityReportAction(warehouseValue.value, Filters.OBJ, isLoading = false, setTotalRecords);
-    }, []);
 
     // El dropdown de idioma necesita la lista completa (antes solo la
     // pedía LanguageModel, que ahora se reemplaza por este dropdown
@@ -247,8 +238,8 @@ const Header = (props) => {
 };
 
 const mapStateToProps = (state) => {
-    const { selectedLanguage, productQuantityReport } = state;
-    return { selectedLanguage, productQuantityReport };
+    const { selectedLanguage } = state;
+    return { selectedLanguage };
 };
 
-export default connect(mapStateToProps, { logoutAction, updateLanguage, productQuantityReportAction })(Header);
+export default connect(mapStateToProps, { logoutAction, updateLanguage })(Header);

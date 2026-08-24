@@ -79,7 +79,7 @@ class SettingAPIController extends AppBaseController
         }
 
         $settings['logo'] = getLogoUrl();
-        $settings['warehouse_name'] = Warehouse::whereId($settings['default_warehouse'])->first()->name ?? '';
+        $settings['warehouse_name'] = Warehouse::active()->whereId($settings['default_warehouse'] ?? null)->value('name') ?? '';
         $settings['customer_name'] = Customer::whereId($settings['default_customer'])->first()->name ?? '';
         $settings['currency_symbol'] = Currency::whereId($settings['currency'])->first()->symbol ?? '';
         $settings['countries'] = Country::all();
@@ -112,7 +112,7 @@ class SettingAPIController extends AppBaseController
         ];
         $settings = $this->scopedSettingsQuery()->whereIn('key', $keyName)->get()->pluck('value', 'key')->toArray();
         $settings['logo'] = getLogoUrl();
-        $settings['warehouse_name'] = Warehouse::whereId($settings['default_warehouse'])->first()->name ?? '';
+        $settings['warehouse_name'] = Warehouse::active()->whereId($settings['default_warehouse'] ?? null)->value('name') ?? '';
         $settings['customer_name'] = Customer::whereId($settings['default_customer'])->first()->name ?? '';
         $settings['currency_symbol'] = Currency::whereId($settings['currency'])->first()->symbol ?? '';
 

@@ -43,11 +43,11 @@ class SaleReturnAPIController extends AppBaseController
         $perPage = getPageSize($request);
         $search = $request->filter['search'] ?? '';
         $customer = (Customer::where('name', 'LIKE', "%$search%")->get()->count() != 0);
-        $warehouse = (Warehouse::where('name', 'LIKE', "%$search%")->get()->count() != 0);
+        $warehouse = (Warehouse::active()->where('name', 'LIKE', "%$search%")->get()->count() != 0);
         $salesReturn = $this->saleReturnRepository;
         if ($storeId = $this->currentStoreId()) {
             $salesReturn->whereHas('warehouse', function ($q) use ($storeId) {
-                $q->where('store_id', $storeId);
+                $q->where('store_id', $storeId)->active();
             });
         }
         if ($customer || $warehouse) {

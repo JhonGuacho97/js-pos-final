@@ -19,15 +19,16 @@ export const stockDetailsWarehouseAction =
                 });
                 dispatch(
                     setTotalRecord(
-                        response.data.meta.total !== undefined &&
-                            response.data.meta.total >= 0
-                            ? response.data.meta.total
-                            : response.data.data.total
+                        response.data.meta?.total ?? response.data.data?.length ?? 0
                     )
                 );
                 if (isLoading) {
                     dispatch(setLoading(false));
                 }
             })
-            .catch(({ response }) => {});
+            .catch(({ response }) => {
+                if (isLoading) {
+                    dispatch(setLoading(false));
+                }
+            });
     };

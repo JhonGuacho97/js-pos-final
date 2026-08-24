@@ -23,6 +23,7 @@ const EditWarehouse = ( props ) => {
         city: warehouse.attributes.city,
         email: warehouse.attributes.email,
         zip_code: warehouse.attributes.zip_code,
+        is_active: warehouse.attributes.is_active,
         id: warehouse.id
     } ) );
 

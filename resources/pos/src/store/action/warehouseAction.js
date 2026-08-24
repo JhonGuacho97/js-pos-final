@@ -17,7 +17,7 @@ import {
 } from "../../offline/catalogStorage";
 
 export const fetchWarehouses =
-    (filter = {}, isLoading = true) =>
+    (filter = {}, isLoading = true, includeInactive = false) =>
     async (dispatch) => {
         if (isLoading) {
             dispatch(setLoading(true));
@@ -32,6 +32,9 @@ export const fetchWarehouses =
                 filter.created_at)
         ) {
             url += requestParam(filter, null, null, null, url);
+        }
+        if (includeInactive) {
+            url += (url.includes("?") ? "&" : "?") + "include_inactive=1";
         }
         apiConfig
             .get(url)
@@ -147,6 +150,48 @@ export const editWarehouse =
                 );
             });
     };
+
+export const toggleWarehouseStatus = (warehouse) => async (dispatch) => {
+    try {
+        const response = await apiConfig.patch(
+            apiBaseURL.WAREHOUSES + "/" + warehouse.id,
+            {
+                name: warehouse.name,
+                email: warehouse.email,
+                phone: warehouse.phone,
+                country: warehouse.country,
+                city: warehouse.city,
+                zip_code: warehouse.zip_code,
+                is_active: !warehouse.is_active,
+            }
+        );
+
+        dispatch({
+            type: warehouseActionType.EDIT_WAREHOUSE,
+            payload: response.data.data,
+        });
+        dispatch(
+            addToast({
+                text: warehouse.is_active
+                    ? "Bodega desactivada correctamente."
+                    : "Bodega activada correctamente.",
+            })
+        );
+
+        return true;
+    } catch (error) {
+        dispatch(
+            addToast({
+                text:
+                    error?.response?.data?.message ||
+                    "No se pudo actualizar el estado de la bodega.",
+                type: toastType.ERROR,
+            })
+        );
+
+        return false;
+    }
+};
 
 export const deleteWarehouse = (warehouseId) => async (dispatch) => {
     apiConfig

@@ -167,7 +167,10 @@ class ProductImport implements ToCollection, WithChunkReading, WithStartRow, Wit
                         'supplier' => $row[15],
                         'quantity' => $row[16],
                     ];
-                    $warehouse = Warehouse::whereRaw('LOWER(name) = ?', [strtolower($purchaseStock['warehouse'])])->first();
+                    $warehouse = Warehouse::active()
+                        ->where('store_id', $storeId)
+                        ->whereRaw('LOWER(name) = ?', [strtolower($purchaseStock['warehouse'])])
+                        ->first();
                     $supplier = Supplier::whereRaw('LOWER(name) = ?', [strtolower($purchaseStock['supplier'])])->first();
 
                     if ($warehouse && $supplier) {

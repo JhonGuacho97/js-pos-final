@@ -77,7 +77,7 @@ const ReactDataTable = (props) => {
     const [show, setShow] = useState(false);
     const dispatch = useDispatch();
 
-    const tableColumns = useMemo(() => columns, []);
+    const tableColumns = useMemo(() => columns, [columns]);
 
     useEffect(() => {
         onChangeDidMount(currentPage);

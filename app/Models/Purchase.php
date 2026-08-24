@@ -197,7 +197,7 @@ class Purchase extends BaseModel implements HasMedia, JsonResourceful
     public function scopeSearch($query, $search = '')
     {
         $supplier = (Supplier::where('name', 'LIKE', "%$search%")->get()->count() != 0);
-        $warehouse = (Warehouse::where('name', 'LIKE', "%$search%")->get()->count() != 0);
+        $warehouse = (Warehouse::active()->where('name', 'LIKE', "%$search%")->get()->count() != 0);
         if ($supplier || $warehouse) {
             return $query->whereHas('supplier', function (Builder $q) use ($search, $supplier) {
                 if ($supplier) {

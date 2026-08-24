@@ -18,7 +18,7 @@ class SalesWarehouseReportExport implements FromView
             $salesQuery = Sale::with('warehouse', 'customer');
         }
         if ($storeId) {
-            $salesQuery->whereIn('warehouse_id', Warehouse::where('store_id', $storeId)->pluck('id'));
+            $salesQuery->whereIn('warehouse_id', Warehouse::where('store_id', $storeId)->active()->pluck('id'));
         }
         $sales = $salesQuery->get();
 

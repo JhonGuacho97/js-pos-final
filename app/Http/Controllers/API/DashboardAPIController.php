@@ -159,7 +159,7 @@ class DashboardAPIController extends AppBaseController
         $activeCashiersCount = POSRegister::whereNull('closed_at')
             ->when($this->currentStoreId(), function ($q, $storeId) {
                 $q->whereHas('warehouse', function ($qw) use ($storeId) {
-                    $qw->where('store_id', $storeId);
+                    $qw->where('store_id', $storeId)->active();
                 });
             })
             ->distinct('user_id')
@@ -168,7 +168,7 @@ class DashboardAPIController extends AppBaseController
         $lowStockCount = ManageStock::where('alert', true)
             ->when($this->currentStoreId(), function ($q, $storeId) {
                 $q->whereHas('warehouse', function ($qw) use ($storeId) {
-                    $qw->where('store_id', $storeId);
+                    $qw->where('store_id', $storeId)->active();
                 });
             })
             ->count();
@@ -735,7 +735,7 @@ class DashboardAPIController extends AppBaseController
         $baseQuery = ManageStock::where('alert', true)
             ->when($this->currentStoreId(), function ($q, $storeId) {
                 $q->whereHas('warehouse', function ($qw) use ($storeId) {
-                    $qw->where('store_id', $storeId);
+                    $qw->where('store_id', $storeId)->active();
                 });
             });
 
@@ -836,7 +836,7 @@ class DashboardAPIController extends AppBaseController
             })
             ->when($this->currentStoreId(), function ($q, $storeId) {
                 $q->whereHas('warehouse', function ($qw) use ($storeId) {
-                    $qw->where('store_id', $storeId);
+                    $qw->where('store_id', $storeId)->active();
                 });
             })
             ->get()

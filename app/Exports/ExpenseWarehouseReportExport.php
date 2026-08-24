@@ -18,7 +18,7 @@ class ExpenseWarehouseReportExport implements FromView
             $expensesQuery = Expense::with('warehouse', 'expenseCategory');
         }
         if ($storeId) {
-            $expensesQuery->whereIn('warehouse_id', Warehouse::where('store_id', $storeId)->pluck('id'));
+            $expensesQuery->whereIn('warehouse_id', Warehouse::where('store_id', $storeId)->active()->pluck('id'));
         }
         $expenses = $expensesQuery->get();
 

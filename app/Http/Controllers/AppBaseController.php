@@ -54,7 +54,13 @@ class AppBaseController extends Controller
             return null;
         }
 
-        return $user->default_warehouse_id;
+        if (! $user->default_warehouse_id) {
+            return null;
+        }
+
+        return Warehouse::whereKey($user->default_warehouse_id)->active()->exists()
+            ? (int) $user->default_warehouse_id
+            : -1;
     }
 
     /**
@@ -82,9 +88,9 @@ class AppBaseController extends Controller
 
         $storeId = $this->currentStoreId();
         if ($storeId !== null && $warehouseId !== null) {
-            $belongs = Warehouse::whereKey($warehouseId)->where('store_id', $storeId)->exists();
+            $belongs = Warehouse::whereKey($warehouseId)->where('store_id', $storeId)->active()->exists();
             if (! $belongs) {
-                throw new AccessDeniedHttpException('Esa sucursal no pertenece a la tienda activa.');
+                throw new AccessDeniedHttpException('La bodega no pertenece a la tienda activa o se encuentra desactivada.');
             }
         }
     }
@@ -99,7 +105,7 @@ class AppBaseController extends Controller
     protected function scopeQueryToCurrentStore($query, string $warehouseColumn = 'warehouse_id')
     {
         if ($storeId = $this->currentStoreId()) {
-            $query->whereIn($warehouseColumn, Warehouse::where('store_id', $storeId)->pluck('id'));
+            $query->whereIn($warehouseColumn, Warehouse::where('store_id', $storeId)->active()->pluck('id'));
         }
 
         return $query;

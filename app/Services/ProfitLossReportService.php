@@ -289,7 +289,7 @@ class ProfitLossReportService
         if ($warehouseId) {
             return [$warehouseId];
         }
-        return $storeId ? Warehouse::where('store_id', $storeId)->pluck('id')->all() : null;
+        return $storeId ? Warehouse::where('store_id', $storeId)->active()->pluck('id')->all() : null;
     }
 
     private function margin(float $profit, float $revenue): float

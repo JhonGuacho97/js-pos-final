@@ -17,7 +17,8 @@ const WarehouseForm = (props) => {
         phone: singleWarehouse ? singleWarehouse[0].phone : '',
         country: singleWarehouse ? singleWarehouse[0].country : '',
         city: singleWarehouse ? singleWarehouse[0].city : '',
-        zip_code: singleWarehouse ? singleWarehouse[0].zip_code : ''
+        zip_code: singleWarehouse ? singleWarehouse[0].zip_code : '',
+        is_active: singleWarehouse ? singleWarehouse[0].is_active !== false : true
     });
 
     const [errors, setErrors] = useState({
@@ -29,7 +30,7 @@ const WarehouseForm = (props) => {
         zip_code: ''
     });
 
-    const disabled = singleWarehouse && singleWarehouse[0].name === warehouseValue.name && singleWarehouse[0].phone === warehouseValue.phone && singleWarehouse[0].country === warehouseValue.country && singleWarehouse[0].city === warehouseValue.city && singleWarehouse[0].email === warehouseValue.email && singleWarehouse[0].zip_code === warehouseValue.zip_code
+    const disabled = singleWarehouse && singleWarehouse[0].name === warehouseValue.name && singleWarehouse[0].phone === warehouseValue.phone && singleWarehouse[0].country === warehouseValue.country && singleWarehouse[0].city === warehouseValue.city && singleWarehouse[0].email === warehouseValue.email && singleWarehouse[0].zip_code === warehouseValue.zip_code && singleWarehouse[0].is_active === warehouseValue.is_active
 
     const handleValidation = () => {
         let errorss = {};
@@ -59,7 +60,7 @@ const WarehouseForm = (props) => {
 
     const onChangeInput = (e) => {
         e.preventDefault();
-        setWarehouseValue(inputs => ({...inputs, [e.target.name]: e.target.value}))
+        setWarehouseValue(inputs => ({...inputs, [e.target.name]: e.target.type === 'checkbox' ? e.target.checked : e.target.value}))
         setErrors('');
     };
 

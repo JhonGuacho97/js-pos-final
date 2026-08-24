@@ -39,7 +39,7 @@ class PurchaseReturnAPIController extends AppBaseController
         $perPage = getPageSize($request);
         $search = $request->filter['search'] ?? '';
         $supplier = (Supplier::where('name', 'LIKE', "%$search%")->get()->count() != 0);
-        $warehouse = (Warehouse::where('name', 'LIKE', "%$search%")->get()->count() != 0);
+        $warehouse = (Warehouse::active()->where('name', 'LIKE', "%$search%")->get()->count() != 0);
         $purchasesReturn = $this->purchaseReturnRepository;
         if ($supplier || $warehouse) {
             $purchasesReturn->whereHas('supplier', function (Builder $q) use ($search, $supplier) {

@@ -20,13 +20,16 @@ export const productQuantityReportAction =
             .then((response) => {
                 dispatch({
                     type: productQuantityReportActionType.QUANTITY_REPORT,
-                    payload: response.data[0].data,
+                    payload: response.data.data || [],
                 });
                 dispatch(
                     setTotalRecord(
-                        response.data[0].total
+                        response.data.meta?.total ?? response.data.summary?.total ?? 0
                     )
                 );
+                if (typeof setTotalRecords === "function") {
+                    setTotalRecords(response.data.summary?.total ?? response.data.meta?.total ?? 0);
+                }
                 if (isLoading) {
                     dispatch(setLoading(false));
                 }
@@ -34,5 +37,8 @@ export const productQuantityReportAction =
             .catch(({ response }) => {
                 // dispatch(addToast(
                 //     {text: response.data.message, type: toastType.ERROR}));
+                if (isLoading) {
+                    dispatch(setLoading(false));
+                }
             });
     };

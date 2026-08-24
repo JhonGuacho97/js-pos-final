@@ -179,7 +179,7 @@ class DashboardAPIController extends AppBaseController
             ->where('alert', true)
             ->when($this->currentStoreId(), function ($q, $storeId) {
                 $q->whereHas('warehouse', function ($qw) use ($storeId) {
-                    $qw->where('store_id', $storeId);
+                    $qw->where('store_id', $storeId)->active();
                 });
             })
             ->limit(10)->latest()->get();

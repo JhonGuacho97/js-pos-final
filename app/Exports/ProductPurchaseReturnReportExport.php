@@ -17,7 +17,7 @@ class ProductPurchaseReturnReportExport implements FromView
             $q->where('product_id', '=', $productId);
         })->with(['purchaseReturnItems.product', 'supplier']);
         if ($storeId) {
-            $purchaseReturnsQuery->whereIn('warehouse_id', Warehouse::where('store_id', $storeId)->pluck('id'));
+            $purchaseReturnsQuery->whereIn('warehouse_id', Warehouse::where('store_id', $storeId)->active()->pluck('id'));
         }
         $purchaseReturns = $purchaseReturnsQuery->get();
 

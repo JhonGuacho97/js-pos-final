@@ -12,6 +12,8 @@ export const routePermissions = [
     { path: "dashboard", permission: Permissions.MANAGE_DASHBOARD },
     { path: "my-sales", permission: Permissions.MANAGE_SELLER_DASHBOARD },
     { path: "kardex", permission: Permissions.MANAGE_KARDEX },
+    { path: "inventory-counts", permission: Permissions.INVENTORY_COUNTS_ACCESS },
+    { path: "inventory-counts/:id", permission: Permissions.INVENTORY_COUNTS_ACCESS },
     { path: "electronic-invoices", permission: Permissions.MANAGE_ELECTRONIC_INVOICES },
     { path: "sri-config", permission: Permissions.MANAGE_SRI_CONFIG },
     { path: "cash-control", permission: Permissions.CASH_CONTROL_ACCESS },

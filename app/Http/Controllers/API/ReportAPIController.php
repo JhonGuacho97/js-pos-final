@@ -228,12 +228,27 @@ class ReportAPIController extends AppBaseController
 
     public function stockReportExcel(Request $request): JsonResponse
     {
-        if (Storage::exists('excel/stock-report-excel.xlsx')) {
-            Storage::delete('excel/stock-report-excel.xlsx');
-        }
-        Excel::store(new StockReportExport, 'excel/stock-report-excel.xlsx');
+        $validated = $request->validate([
+            'warehouse_id' => ['required', 'integer', 'exists:warehouses,id'],
+            'search' => ['nullable', 'string', 'max:120'],
+            'category_id' => ['nullable', 'integer'],
+            'status' => ['nullable', 'in:all,healthy,low,critical,out,negative'],
+        ]);
+        $this->authorizeWarehouseAccess((int) $validated['warehouse_id']);
 
-        $data['stock_report_excel_url'] = Storage::url('excel/stock-report-excel.xlsx');
+        // Un nombre por tienda/usuario evita que dos clientes descarguen el
+        // archivo temporal generado por otra sesión en hosting compartido.
+        $fileName = sprintf(
+            'excel/stock-report-%s-%s.xlsx',
+            $this->currentStoreId() ?? 'store',
+            Auth::id() ?? 'user'
+        );
+        if (Storage::exists($fileName)) {
+            Storage::delete($fileName);
+        }
+        Excel::store(new StockReportExport($validated), $fileName);
+
+        $data['stock_report_excel_url'] = Storage::url($fileName);
 
         return $this->sendResponse($data, 'Stock Report retrieved successfully');
     }
@@ -288,14 +303,24 @@ class ReportAPIController extends AppBaseController
 
     public function getProductQuantity(Request $request): JsonResponse
     {
-        $productId = $request->get('product_id');
-        $product = ManageStock::whereProductId($productId)->with('warehouse', 'product')
+        $productId = (int) $request->get('product_id');
+        $productModel = Product::findOrFail($productId);
+        $this->authorizeStoreOwnership($productModel);
+        $product = ManageStock::whereProductId($productId)->with('warehouse', 'product.productCategory')
             ->when($this->currentStoreId(), function ($q, $storeId) {
                 $q->whereHas('warehouse', function ($qw) use ($storeId) {
-                    $qw->where('store_id', $storeId);
+                    $qw->where('store_id', $storeId)->active();
                 });
             })
             ->get();
+
+        $units = BaseUnit::query()->pluck('name', 'id');
+        $product->each(function (ManageStock $stock) use ($units) {
+            $stock->setAttribute('product_unit_name', $units->get($stock->product->product_unit, ''));
+            if ($stock->product->is_kit) {
+                $stock->setAttribute('quantity', $stock->product->buildableQuantity($stock->warehouse_id));
+            }
+        });
 
         return $this->sendResponse($product, 'Product Quantity retrieved successfully');
     }
@@ -305,36 +330,123 @@ class ReportAPIController extends AppBaseController
      */
     public function stockAlerts(Request $request, $warehouseId = null): JsonResponse
     {
-        $perPage = getPageSize($request);
-        $manageStocks = $this->manageStockRepository->with('warehouse')->where('alert', true)->latest();
+        $request->validate([
+            'search' => ['nullable', 'string', 'max:120'],
+            'category_id' => ['nullable', 'integer'],
+            'severity' => ['nullable', 'in:all,out,critical,low'],
+            'page.size' => ['nullable', 'integer', 'min:5', 'max:100'],
+            'page.number' => ['nullable', 'integer', 'min:1'],
+        ]);
+
+        $warehouseId = $warehouseId !== null ? (int) $warehouseId : null;
+        if ($warehouseId !== null) {
+            $this->authorizeWarehouseAccess($warehouseId);
+        }
+
+        $query = ManageStock::query()
+            ->with(['warehouse', 'product.productCategory', 'product.variationType'])
+            // Se calcula en vivo. La columna alert puede quedar desactualizada
+            // si alguien cambia el mínimo del producto sin mover existencias.
+            ->whereHas('product', function (Builder $productQuery) {
+                $productQuery->whereRaw(
+                    'manage_stocks.quantity <= CAST(COALESCE(products.stock_alert, 0) AS DECIMAL(20,4))'
+                );
+                if ($storeId = $this->currentStoreId()) {
+                    $productQuery->where('store_id', $storeId);
+                }
+            });
+
         if ($storeId = $this->currentStoreId()) {
-            $manageStocks->whereHas('warehouse', function ($q) use ($storeId) {
-                $q->where('store_id', $storeId);
+            $query->whereHas('warehouse', fn (Builder $warehouseQuery) =>
+                $warehouseQuery->where('store_id', $storeId)->active()
+            );
+        }
+        if ($restrictedWarehouse = $this->restrictedWarehouseId()) {
+            $query->where('warehouse_id', $restrictedWarehouse);
+        }
+        if ($warehouseId !== null) {
+            $query->where('warehouse_id', $warehouseId);
+        }
+
+        $search = trim((string) $request->get('search', ''));
+        if ($search !== '') {
+            $query->whereHas('product', function (Builder $productQuery) use ($search) {
+                $like = '%'.$search.'%';
+                $productQuery->where(function (Builder $searchQuery) use ($like) {
+                    $searchQuery->where('code', 'like', $like)
+                        ->orWhere('product_code', 'like', $like)
+                        ->orWhere('name', 'like', $like);
+                });
             });
         }
-        if ($warehouseId != null) {
-            $manageStocks = $manageStocks->where('warehouse_id', $warehouseId);
-        }
-        $countManageStocks = $manageStocks->count();
-        $manageStocks = $manageStocks->paginate($perPage);
-
-        $productResponse = [];
-
-        foreach ($manageStocks as $stock) {
-            $product = Product::where('id', $stock->product_id)->first();
-            $productUnitName = BaseUnit::whereId($product->product_unit)->value('name');
-            $stock['product_unit_name'] = $productUnitName;
-            $product->stock = $stock;
-            $productResponse[] = $product;
+        if ($request->filled('category_id')) {
+            $query->whereHas('product', fn (Builder $productQuery) =>
+                $productQuery->where('product_category_id', (int) $request->get('category_id'))
+            );
         }
 
-        return Response::json([
-            [
-                'success' => true,
-                'data' => $productResponse,
-                'manage_stocks' => $manageStocks,
-                'message' => 'Stocks retrieved successfully',
-                'total' => $countManageStocks,
+        $summaryStocks = (clone $query)->get();
+        $summary = ['total' => 0, 'out' => 0, 'critical' => 0, 'low' => 0, 'shortage' => 0.0];
+        foreach ($summaryStocks as $stock) {
+            $quantity = (float) $stock->quantity;
+            $threshold = (float) ($stock->product->stock_alert ?? 0);
+            $severity = $quantity <= 0 ? 'out' : ($quantity <= $threshold * 0.5 ? 'critical' : 'low');
+            $summary['total']++;
+            $summary[$severity]++;
+            $summary['shortage'] += max($threshold - $quantity, 0);
+        }
+        $summary['shortage'] = round($summary['shortage'], 4);
+
+        $severity = $request->get('severity');
+        if ($severity === 'out') {
+            $query->where('manage_stocks.quantity', '<=', 0);
+        } elseif ($severity === 'critical') {
+            $query->where('manage_stocks.quantity', '>', 0)
+                ->whereHas('product', fn (Builder $productQuery) => $productQuery->whereRaw(
+                    'manage_stocks.quantity <= CAST(COALESCE(products.stock_alert, 0) AS DECIMAL(20,4)) * 0.5'
+                ));
+        } elseif ($severity === 'low') {
+            $query->where('manage_stocks.quantity', '>', 0)
+                ->whereHas('product', fn (Builder $productQuery) => $productQuery->whereRaw(
+                    'manage_stocks.quantity > CAST(COALESCE(products.stock_alert, 0) AS DECIMAL(20,4)) * 0.5'
+                ));
+        }
+
+        $perPage = (int) $request->input('page.size', 10);
+        $page = (int) $request->input('page.number', 1);
+        $stocks = $query->orderBy('manage_stocks.quantity')->paginate($perPage, ['*'], 'page', $page);
+        $units = BaseUnit::query()->pluck('name', 'id');
+        $rows = $stocks->getCollection()->map(function (ManageStock $stock) use ($units) {
+            $product = $stock->product;
+            $quantity = (float) $stock->quantity;
+            $threshold = (float) ($product->stock_alert ?? 0);
+            return [
+                'id' => $stock->id,
+                'product_id' => $product->id,
+                'code' => $product->code,
+                'name' => $product->name,
+                'variation_label' => $product->variationType?->name,
+                'category_name' => $product->productCategory?->name ?? 'Sin categoría',
+                'warehouse_id' => $stock->warehouse_id,
+                'warehouse_name' => $stock->warehouse?->name,
+                'quantity' => round($quantity, 4),
+                'stock_alert' => round($threshold, 4),
+                'shortage' => round(max($threshold - $quantity, 0), 4),
+                'unit_name' => $units->get($product->product_unit, ''),
+                'severity' => $quantity <= 0 ? 'out' : ($quantity <= $threshold * 0.5 ? 'critical' : 'low'),
+                'updated_at' => optional($stock->updated_at)->toIso8601String(),
+            ];
+        })->values();
+
+        return response()->json([
+            'success' => true,
+            'data' => $rows,
+            'summary' => $summary,
+            'meta' => [
+                'current_page' => $stocks->currentPage(),
+                'last_page' => $stocks->lastPage(),
+                'per_page' => $stocks->perPage(),
+                'total' => $stocks->total(),
             ],
         ]);
     }
@@ -463,7 +575,7 @@ class ReportAPIController extends AppBaseController
 
         $search = $request->filter['search'] ?? '';
         $supplier = (Supplier::where('name', 'LIKE', "%$search%")->get()->count() != 0);
-        $warehouse = (Warehouse::where('name', 'LIKE', "%$search%")->get()->count() != 0);
+        $warehouse = (Warehouse::active()->where('name', 'LIKE', "%$search%")->get()->count() != 0);
 
         $purchases = QueryBuilder::for(Purchase::class)
             ->where('supplier_id', $supplierId)
@@ -499,7 +611,7 @@ class ReportAPIController extends AppBaseController
 
         $search = $request->filter['search'] ?? '';
         $supplier = (Supplier::where('name', 'LIKE', "%$search%")->get()->count() != 0);
-        $warehouse = (Warehouse::where('name', 'LIKE', "%$search%")->get()->count() != 0);
+        $warehouse = (Warehouse::active()->where('name', 'LIKE', "%$search%")->get()->count() != 0);
         $reference = (PurchaseReturn::whereSupplierId($supplierId)->where(
             'reference_code',
             'LIKE',

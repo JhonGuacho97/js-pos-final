@@ -440,7 +440,7 @@ class Product extends BaseModel implements HasMedia, JsonResourceful
             'warehouses',
             'manage_stocks.warehouse_id',
             'warehouses.id'
-        )->select(
+        )->where('warehouses.is_active', true)->select(
             DB::raw('sum(quantity) as total_quantity'),
             'manage_stocks.warehouse_id',
             'warehouses.name'
@@ -452,7 +452,9 @@ class Product extends BaseModel implements HasMedia, JsonResourceful
      */
     public function inStock($id)
     {
-        $totalQuantity = Managestock::where('product_id', $id)->sum('quantity');
+        $totalQuantity = Managestock::where('product_id', $id)
+            ->whereHas('warehouse', fn ($query) => $query->active())
+            ->sum('quantity');
 
         return $totalQuantity;
     }

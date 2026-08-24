@@ -52,6 +52,7 @@ use App\Http\Controllers\API\UserAPIController;
 use App\Http\Controllers\API\WarehouseAPIController;
 use App\Http\Controllers\API\VariationAPIController;
 use App\Http\Controllers\API\KardexAPIController;
+use App\Http\Controllers\API\InventoryCountAPIController;
 use App\Http\Controllers\API\LoginLogController;
 use App\Http\Controllers\MailTemplateAPIController;
 use Illuminate\Support\Facades\Route;
@@ -455,6 +456,22 @@ Route::middleware(['auth:sanctum', 'store.context'])->group(function () {
         Route::resource('adjustments', AdjustmentAPIController::class);
     });
 
+    Route::prefix('inventory-counts')->group(function () {
+        Route::middleware('permission:view_inventory_counts|perform_inventory_counts|approve_inventory_counts')->group(function () {
+            Route::get('/', [InventoryCountAPIController::class, 'index']);
+            Route::get('/{inventoryCount}', [InventoryCountAPIController::class, 'show']);
+        });
+        Route::middleware('permission:perform_inventory_counts')->group(function () {
+            Route::post('/', [InventoryCountAPIController::class, 'store']);
+            Route::patch('/{inventoryCount}/items/{item}', [InventoryCountAPIController::class, 'updateItem']);
+            Route::post('/{inventoryCount}/submit', [InventoryCountAPIController::class, 'submit']);
+        });
+        Route::middleware('permission:approve_inventory_counts')->group(function () {
+            Route::post('/{inventoryCount}/approve', [InventoryCountAPIController::class, 'approve']);
+            Route::post('/{inventoryCount}/cancel', [InventoryCountAPIController::class, 'cancel']);
+        });
+    });
+
     //purchase return routes
     Route::middleware('permission:manage_purchase_return')->group(function () {
         Route::resource('purchases-return', PurchaseReturnAPIController::class)->only(['store', 'update', 'destroy']);
@@ -566,11 +583,14 @@ Route::middleware(['auth:sanctum', 'store.context'])->group(function () {
     );
 
     //Warehouse Products alert Quantity Report
-    Route::get('product-stock-alerts/{warehouse_id?}', [ReportAPIController::class, 'stockAlerts']);
+    Route::get('product-stock-alerts/{warehouse_id?}', [ReportAPIController::class, 'stockAlerts'])
+        ->middleware('permission:manage_reports');
 
     //stock report
-    Route::get('stock-report', [ManageStockAPIController::class, 'stockReport'])->name('report-stockReport');
-    Route::get('stock-report-excel', [ReportAPIController::class, 'stockReportExcel'])->name('report-stockReportExcel');
+    Route::get('stock-report', [ManageStockAPIController::class, 'stockReport'])
+        ->middleware('permission:manage_reports')->name('report-stockReport');
+    Route::get('stock-report-excel', [ReportAPIController::class, 'stockReportExcel'])
+        ->middleware('permission:manage_reports')->name('report-stockReportExcel');
     Route::get(
         'get-sale-product-report',
         [SaleAPIController::class, 'getSaleProductReport']
@@ -603,7 +623,8 @@ Route::middleware(['auth:sanctum', 'store.context'])->group(function () {
         'get-product-purchase-return-report-excel',
         [ReportAPIController::class, 'getPurchaseReturnProductReportExport']
     );
-    Route::get('get-product-count', [ReportAPIController::class, 'getProductQuantity']);
+    Route::get('get-product-count', [ReportAPIController::class, 'getProductQuantity'])
+        ->middleware('permission:manage_reports');
 
     Route::get('config', [UserAPIController::class, 'config']);
     Route::get('my-stores', [StoreAPIController::class, 'misTiendas']);

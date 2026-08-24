@@ -108,7 +108,7 @@ export default [
         permission: Permissions.MANAGE_SALE,
     },
     {
-        title: "Cuentas por cobrar",
+        title: "accounts-receivable.title",
         name: "accounts receivable",
         fontIcon: <FontAwesomeIcon icon={faHandHoldingDollar} />,
         to: "/app/accounts-receivable",
@@ -241,6 +241,14 @@ export default [
         to: "/app/kardex",
         class: "d-flex",
         permission: Permissions.MANAGE_KARDEX,
+    },
+    {
+        title: "inventory-counts.title",
+        name: "inventory counts",
+        fontIcon: <FontAwesomeIcon icon={faClipboardList} />,
+        to: "/app/inventory-counts",
+        class: "d-flex",
+        permission: Permissions.INVENTORY_COUNTS_ACCESS,
     },
     {
         title: "adjustments.title",

@@ -21,6 +21,7 @@ class WarehouseRepository extends BaseRepository
         'city',
         'email',
         'zip_code',
+        'is_active',
         'created_at',
     ];
 

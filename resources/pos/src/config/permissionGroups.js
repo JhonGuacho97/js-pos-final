@@ -57,6 +57,9 @@ const SLUG_TO_GROUP = {
     manage_adjustments: 'inventory',
     manage_transfers: 'inventory',
     manage_kardex: 'inventory',
+    view_inventory_counts: 'inventory',
+    perform_inventory_counts: 'inventory',
+    approve_inventory_counts: 'inventory',
 
     manage_expenses: 'expenses',
     manage_expense_categories: 'expenses',

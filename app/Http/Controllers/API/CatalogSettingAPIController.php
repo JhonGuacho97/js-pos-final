@@ -16,7 +16,7 @@ class CatalogSettingAPIController extends AppBaseController
         $storeId = $this->requireCurrentStoreId();
         $setting = CatalogSetting::firstOrCreate(
             ['store_id' => $storeId],
-            ['warehouse_id' => Warehouse::where('store_id', $storeId)->orderBy('id')->value('id')]
+            ['warehouse_id' => Warehouse::where('store_id', $storeId)->active()->orderBy('id')->value('id')]
         );
 
         return $this->sendResponse($this->payload($setting), 'Configuración del catálogo obtenida.');
@@ -28,7 +28,9 @@ class CatalogSettingAPIController extends AppBaseController
         $data = $request->validate([
             'warehouse_id' => [
                 'required',
-                Rule::exists('warehouses', 'id')->where(fn ($query) => $query->where('store_id', $storeId)),
+                Rule::exists('warehouses', 'id')->where(fn ($query) => $query
+                    ->where('store_id', $storeId)
+                    ->where('is_active', true)),
             ],
             'is_enabled' => 'present|boolean',
             'whatsapp_number' => 'required_if:is_enabled,true|nullable|string|max:30',

@@ -34,6 +34,9 @@ const SLUG_TO_LABEL_KEY = {
     manage_adjustments: 'role.permission.manage_adjustments',
     manage_transfers: 'role.permission.manage_transfers',
     manage_kardex: 'role.permission.manage_kardex',
+    view_inventory_counts: 'role.permission.view_inventory_counts',
+    perform_inventory_counts: 'role.permission.perform_inventory_counts',
+    approve_inventory_counts: 'role.permission.approve_inventory_counts',
 
     manage_expenses: 'role.permission.manage_expenses',
     manage_expense_categories: 'role.permission.manage_expense_categories',

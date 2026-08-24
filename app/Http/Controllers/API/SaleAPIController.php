@@ -61,7 +61,7 @@ class SaleAPIController extends AppBaseController
         $perPage = getPageSize($request);
         $search = $request->filter['search'] ?? '';
         $customer = (Customer::where('name', 'LIKE', "%$search%")->get()->count() != 0);
-        $warehouse = (Warehouse::where('name', 'LIKE', "%$search%")->get()->count() != 0);
+        $warehouse = (Warehouse::active()->where('name', 'LIKE', "%$search%")->get()->count() != 0);
 
         $sales = $this->saleRepository;
         $sales->withCount('payments');
@@ -117,7 +117,7 @@ class SaleAPIController extends AppBaseController
         // Tienda A no debe listar ventas de la Tienda B.
         if ($storeId = $this->currentStoreId()) {
             $sales->whereHas('warehouse', function ($q) use ($storeId) {
-                $q->where('store_id', $storeId);
+                $q->where('store_id', $storeId)->active();
             });
         }
 
@@ -152,7 +152,7 @@ class SaleAPIController extends AppBaseController
     {
         $search = $request->filter['search'] ?? '';
         $customer = (Customer::where('name', 'LIKE', "%$search%")->get()->count() != 0);
-        $warehouse = (Warehouse::where('name', 'LIKE', "%$search%")->get()->count() != 0);
+        $warehouse = (Warehouse::active()->where('name', 'LIKE', "%$search%")->get()->count() != 0);
 
         if ($customer || $warehouse) {
             $query->whereHas('customer', function (Builder $q) use ($search, $customer) {

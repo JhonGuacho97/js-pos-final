@@ -21,7 +21,7 @@ class PurchasesWarehouseReportExport implements FromView
             $purchasesQuery = Purchase::with('warehouse', 'supplier');
         }
         if ($storeId) {
-            $purchasesQuery->whereIn('warehouse_id', Warehouse::where('store_id', $storeId)->pluck('id'));
+            $purchasesQuery->whereIn('warehouse_id', Warehouse::where('store_id', $storeId)->active()->pluck('id'));
         }
         $purchases = $purchasesQuery->get();
 

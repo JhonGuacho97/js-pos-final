@@ -51,12 +51,17 @@ class Warehouse extends BaseModel
 
     protected $fillable = [
         'store_id',
+        'is_active',
         'name',
         'phone',
         'country',
         'city',
         'email',
         'zip_code',
+    ];
+
+    protected $casts = [
+        'is_active' => 'boolean',
     ];
 
     public static $rules = [
@@ -66,6 +71,7 @@ class Warehouse extends BaseModel
         'city' => 'required',
         'email' => 'nullable|email|unique:warehouses',
         'zip_code' => 'nullable|numeric',
+        'is_active' => 'sometimes|boolean',
     ];
 
     public function prepareLinks(): array
@@ -84,6 +90,7 @@ class Warehouse extends BaseModel
             'city' => $this->city,
             'email' => $this->email,
             'zip_code' => $this->zip_code,
+            'is_active' => $this->is_active,
             'created_at' => $this->created_at,
         ];
 
@@ -95,9 +102,15 @@ class Warehouse extends BaseModel
         $fields = [
             'id' => $this->id,
             'name' => $this->name,
+            'is_active' => $this->is_active,
         ];
 
         return $fields;
+    }
+
+    public function scopeActive($query)
+    {
+        return $query->where('is_active', true);
     }
 
     public function products(): HasMany

@@ -11,7 +11,7 @@ dayjs.extend(isoWeek);
 dayjs.extend(relativeTime);
 import { useNavigate } from 'react-router-dom';
 import MasterLayout from '../MasterLayout';
-import { fetchWarehouses } from '../../store/action/warehouseAction';
+import { fetchWarehouses, toggleWarehouseStatus } from '../../store/action/warehouseAction';
 import ReactDataTable from '../../shared/table/ReactDataTable';
 import DeleteWarehouse from './DeleteWarehouse';
 import TabTitle from '../../shared/tab-title/TabTitle';
@@ -20,9 +20,10 @@ import ActionButton from '../../shared/action-buttons/ActionButton';
 import TopProgressBar from "../../shared/components/loaders/TopProgressBar";
 
 const Warehouses = ( props ) => {
-    const { fetchWarehouses, warehouses, totalRecord, isLoading, allConfigData } = props;
+    const { fetchWarehouses, toggleWarehouseStatus, warehouses, totalRecord, isLoading, allConfigData } = props;
     const [ deleteModel, setDeleteModel ] = useState( false );
     const [ isDelete, setIsDelete ] = useState( null );
+    const [ updatingWarehouseId, setUpdatingWarehouseId ] = useState( null );
     const navigate = useNavigate();
 
     const onClickDeleteModel = ( isDelete = null ) => {
@@ -31,7 +32,7 @@ const Warehouses = ( props ) => {
     };
 
     const onChange = ( filter ) => {
-        fetchWarehouses( filter, true );
+        fetchWarehouses( filter, true, true );
     };
 
     const goToEditProduct = ( item ) => {
@@ -43,6 +44,15 @@ const Warehouses = ( props ) => {
         navigate( `/app/warehouse/detail/${id}` )
     };
 
+    const onToggleStatus = async ( warehouse ) => {
+        if ( updatingWarehouseId !== null ) {
+            return;
+        }
+        setUpdatingWarehouseId( warehouse.id );
+        await toggleWarehouseStatus( warehouse );
+        setUpdatingWarehouseId( null );
+    };
+
     const itemsValue = warehouses.length >= 0 && warehouses.map( warehouse => ( {
         date: getFormattedDate( warehouse.attributes.created_at, allConfigData && allConfigData ),
         time: dayjs( warehouse.attributes.created_at ).format( 'LT' ),
@@ -52,6 +62,7 @@ const Warehouses = ( props ) => {
         city: warehouse.attributes.city,
         email: warehouse.attributes.email,
         zip_code: warehouse.attributes.zip_code,
+        is_active: warehouse.attributes.is_active,
         id: warehouse.id
     } ) );
 
@@ -67,6 +78,34 @@ const Warehouses = ( props ) => {
                     <div>{row.email}</div>
                 </div>
             }
+        },
+        {
+            name: 'Estado',
+            selector: row => row.is_active,
+            sortable: true,
+            cell: row => (
+                <div className='d-flex align-items-center gap-2' onClick={event => event.stopPropagation()}>
+                    <div className='form-check form-switch m-0'>
+                        <input
+                            id={`warehouse-status-${row.id}`}
+                            className='form-check-input cursor-pointer'
+                            type='checkbox'
+                            role='switch'
+                            aria-label={`${row.is_active ? 'Desactivar' : 'Activar'} ${row.name}`}
+                            checked={row.is_active}
+                            disabled={updatingWarehouseId !== null}
+                            onChange={() => onToggleStatus(row)}
+                        />
+                    </div>
+                    <label
+                        htmlFor={`warehouse-status-${row.id}`}
+                        className={`badge cursor-pointer ${row.is_active ? 'bg-light-success text-success' : 'bg-light-danger text-danger'}`}
+                    >
+                        {updatingWarehouseId === row.id && <span className='spinner-border spinner-border-sm me-1' />}
+                        {row.is_active ? 'Activa' : 'Inactiva'}
+                    </label>
+                </div>
+            )
         },
         {
             name: getFormattedMessage( 'globally.input.phone-number.label' ),
@@ -136,5 +175,5 @@ const mapStateToProps = ( state ) => {
     return { warehouses, totalRecord, isLoading, allConfigData }
 };
 
-export default connect( mapStateToProps, { fetchWarehouses } )( Warehouses );
+export default connect( mapStateToProps, { fetchWarehouses, toggleWarehouseStatus } )( Warehouses );
 

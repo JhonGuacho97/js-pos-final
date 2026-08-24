@@ -34,7 +34,7 @@ class AdjustmentAPIController extends AppBaseController
 
         if ($storeId = $this->currentStoreId()) {
             $adjustments->whereHas('warehouse', function ($q) use ($storeId) {
-                $q->where('store_id', $storeId);
+                $q->where('store_id', $storeId)->active();
             });
         }
 

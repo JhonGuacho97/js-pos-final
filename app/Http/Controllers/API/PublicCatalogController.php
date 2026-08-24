@@ -205,7 +205,7 @@ class PublicCatalogController extends Controller
         abort_unless($store->is_active, 404);
         $setting = $store->catalogSetting;
         abort_unless($setting?->is_enabled && $setting->warehouse_id && $setting->whatsapp_number, 404);
-        abort_unless($store->warehouses()->whereKey($setting->warehouse_id)->exists(), 404);
+        abort_unless($store->warehouses()->whereKey($setting->warehouse_id)->active()->exists(), 404);
 
         return $setting;
     }

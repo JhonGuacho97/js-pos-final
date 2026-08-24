@@ -40,7 +40,7 @@ class PurchaseAPIController extends AppBaseController
         $perPage = getPageSize($request);
         $search = $request->filter['search'] ?? '';
         $supplier = (Supplier::where('name', 'LIKE', "%$search%")->get()->count() != 0);
-        $warehouse = (Warehouse::where('name', 'LIKE', "%$search%")->get()->count() != 0);
+        $warehouse = (Warehouse::active()->where('name', 'LIKE', "%$search%")->get()->count() != 0);
         $purchases = $this->purchaseRepository;
         if ($supplier || $warehouse) {
             $purchases->whereHas('supplier', function (Builder $q) use ($search, $supplier) {

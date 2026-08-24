@@ -19,6 +19,8 @@
         <th style="width: 200%">{{ __('messages.pdf.cost') }}</th>
         <th style="width: 200%">{{ __('messages.pdf.price') }}</th>
         <th style="width: 250%">{{ __('messages.pdf.current_stock') }}</th>
+        <th style="width: 250%">Mínimo</th>
+        <th style="width: 250%">Valor a costo</th>
     </tr>
     </thead>
     <tbody>
@@ -30,6 +32,8 @@
             <td>{{number_format($stock->product->product_cost,2)}}</td>
             <td>{{number_format($stock->product->product_price,2)}}</td>
             <td>{{ $stock->quantity }}</td>
+            <td>{{ $stock->product->stock_alert ?? 0 }}</td>
+            <td>{{ number_format($stock->quantity * $stock->product->product_cost, 2) }}</td>
         </tr>
     @endforeach
     </tbody>

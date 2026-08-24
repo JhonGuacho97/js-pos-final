@@ -48,7 +48,10 @@ class ProductAPIController extends AppBaseController
         // vez para toda la página, es lo mismo que ya se hacía pero sin el
         // costo repetido.
         $products->with(['productCategory', 'brand', 'mainProduct.media', 'variationProduct.variation', 'variationProduct.variationType'])
-            ->withSum('stocks', 'quantity');
+            ->withSum([
+                'stocks as stocks_sum_quantity' => fn ($query) => $query
+                    ->whereHas('warehouse', fn ($warehouseQuery) => $warehouseQuery->active()),
+            ], 'quantity');
 
         if ($storeId = $this->currentStoreId()) {
             $products->where('store_id', $storeId);
@@ -59,7 +62,8 @@ class ProductAPIController extends AppBaseController
         }
 
         if ($request->get('warehouse_id') && $request->get('warehouse_id') != 'null') {
-            $warehouseId = $request->get('warehouse_id');
+            $warehouseId = (int) $request->get('warehouse_id');
+            $this->authorizeWarehouseAccess($warehouseId);
             $products->whereHas('stock', function ($q) use ($warehouseId) {
                 $q->where('manage_stocks.warehouse_id', $warehouseId);
             })->with([

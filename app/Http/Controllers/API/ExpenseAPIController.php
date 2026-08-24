@@ -40,7 +40,7 @@ class ExpenseAPIController extends AppBaseController
             $expenses->where('warehouse_id', $request->get('warehouse_id'));
         }
         $search = $request->filter['search'] ?? '';
-        $warehouse = (Warehouse::where('name', 'LIKE', "%$search%")->get()->count() != 0);
+        $warehouse = (Warehouse::active()->where('name', 'LIKE', "%$search%")->get()->count() != 0);
         if ($warehouse) {
             $expenses->whereHas('warehouse', function (Builder $q) use ($search, $warehouse) {
                 if ($warehouse) {

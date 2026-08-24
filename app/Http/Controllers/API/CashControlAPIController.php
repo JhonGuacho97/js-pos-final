@@ -38,7 +38,7 @@ class CashControlAPIController extends AppBaseController
         $session = $canViewOwn
             ? POSRegister::with(['cashRegister', 'warehouse'])
                 ->where('user_id', Auth::id())->whereNull('closed_at')
-                ->whereHas('warehouse', fn ($query) => $query->where('store_id', $storeId))
+                ->whereHas('warehouse', fn ($query) => $query->where('store_id', $storeId)->active())
                 ->latest()->first()
             : null;
 
@@ -49,7 +49,7 @@ class CashControlAPIController extends AppBaseController
         $activeSessions = $canTransfer
             ? POSRegister::with(['cashRegister:id,name', 'warehouse:id,name,store_id', 'user:id,first_name,last_name'])
                 ->whereNull('closed_at')
-                ->whereHas('warehouse', fn ($query) => $query->where('store_id', $storeId))
+                ->whereHas('warehouse', fn ($query) => $query->where('store_id', $storeId)->active())
                 ->when($session, fn ($query) => $query->whereKeyNot($session->id))
                 ->latest()->get()->map(fn (POSRegister $item) => [
                     'id' => $item->id,
@@ -60,7 +60,7 @@ class CashControlAPIController extends AppBaseController
             : collect();
         $supervisionSessions = $canSupervise
             ? POSRegister::with(['cashRegister:id,name', 'warehouse:id,name,store_id', 'user:id,first_name,last_name'])
-                ->whereNull('closed_at')->whereHas('warehouse', fn ($query) => $query->where('store_id', $storeId))
+                ->whereNull('closed_at')->whereHas('warehouse', fn ($query) => $query->where('store_id', $storeId)->active())
                 ->oldest()->get()->map(fn (POSRegister $item) => [
                     'id' => $item->id,
                     'opened_at' => $item->created_at,
@@ -101,7 +101,7 @@ class CashControlAPIController extends AppBaseController
             'active_sessions' => $activeSessions,
             'supervision_sessions' => $supervisionSessions,
             'warehouses' => $canManageRegisters
-                ? Warehouse::where('store_id', $storeId)->orderBy('name')->get(['id', 'name'])
+                ? Warehouse::where('store_id', $storeId)->active()->orderBy('name')->get(['id', 'name'])
                 : [],
         ], 'Cash control retrieved successfully.');
     }
@@ -196,7 +196,7 @@ class CashControlAPIController extends AppBaseController
         $sessions = POSRegister::with([
             'cashRegister:id,name,code', 'warehouse:id,name,store_id', 'user:id,first_name,last_name',
             'reviewedBy:id,first_name,last_name',
-            ])->whereHas('warehouse', fn ($query) => $query->where('store_id', $storeId))
+            ])->whereHas('warehouse', fn ($query) => $query->where('store_id', $storeId)->active())
             ->when($status === 'open', fn ($query) => $query->whereNull('closed_at'))
             ->when($status === 'closed', fn ($query) => $query->whereNotNull('closed_at'))
             ->latest()->paginate($perPage);
@@ -264,7 +264,7 @@ class CashControlAPIController extends AppBaseController
         $storeId = (int) $this->currentStoreId();
 
         return POSRegister::where('user_id', Auth::id())->whereNull('closed_at')
-            ->whereHas('warehouse', fn ($query) => $query->where('store_id', $storeId))
+            ->whereHas('warehouse', fn ($query) => $query->where('store_id', $storeId)->active())
             ->latest()->firstOrFail();
     }
 }

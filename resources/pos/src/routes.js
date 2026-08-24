@@ -157,6 +157,7 @@ const LoginLogs = lazyWithRetry(() => import(/* webpackChunkName: "login-logs" *
 const SellerDashboard = lazyWithRetry(() => import(/* webpackChunkName: "seller-dashboard" */ "./components/sellerDashboard/SellerDashboard"), "SellerDashboard");
 
 const Kardex = lazyWithRetry(() => import(/* webpackChunkName: "kardex" */ "./components/kardex/Kardex"), "Kardex");
+const InventoryCounts = lazyWithRetry(() => import(/* webpackChunkName: "inventory-counts" */ "./components/inventoryCounts/InventoryCounts"), "InventoryCounts");
 
 // Configuración de facturación electrónica SRI.
 const SriConfigPage = lazyWithRetry(() => import(/* webpackChunkName: "sri-config" */ "./components/sri/SriConfigPage"), "SriConfigPage");
@@ -177,6 +178,16 @@ export const route = [
         path: "kardex",
         ele: <Kardex />,
         permission: Permissions.MANAGE_KARDEX,
+    },
+    {
+        path: "inventory-counts",
+        ele: <InventoryCounts />,
+        permission: Permissions.INVENTORY_COUNTS_ACCESS,
+    },
+    {
+        path: "inventory-counts/:id",
+        ele: <InventoryCounts />,
+        permission: Permissions.INVENTORY_COUNTS_ACCESS,
     },
     {
         path: "sri-config",
