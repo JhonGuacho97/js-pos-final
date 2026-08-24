@@ -1,13 +1,14 @@
 import React from 'react';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faArrowUp, faArrowDown } from '@fortawesome/free-solid-svg-icons';
+import { formatNumber } from '../../shared/sharedMethod';
 
 const formatValue = (value, format, currency) => {
     const num = Number(value) || 0;
     if (format === 'currency') {
-        return `${currency} ${num.toFixed(2)}`;
+        return `${currency} ${formatNumber(num, 2, 2)}`;
     }
-    return num.toLocaleString();
+    return formatNumber(num, 0, 0);
 };
 
 const StatCard = ({ title, value, deltaPercent, format = 'number', currency = '$', icon, iconClassName }) => {

@@ -12,7 +12,7 @@ import {
 import { Line } from 'react-chartjs-2';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faArrowUp, faArrowDown } from '@fortawesome/free-solid-svg-icons';
-import { getFormattedMessage } from '../../shared/sharedMethod';
+import { formatNumber, getFormattedMessage } from '../../shared/sharedMethod';
 
 ChartJS.register(CategoryScale, LinearScale, PointElement, LineElement, Filler, Tooltip);
 
@@ -59,7 +59,7 @@ const TodaySalesCard = () => {
                 displayColors: false,
                 callbacks: {
                     title: (items) => (granularity === 'hourly' ? `${items[0].label}:00` : items[0].label),
-                    label: (item) => `${currency} ${Number(item.raw).toFixed(2)}`,
+                    label: (item) => `${currency} ${formatNumber(item.raw, 2, 2)}`,
                 },
             },
         },
@@ -103,18 +103,18 @@ const TodaySalesCard = () => {
                     </span>
                 )}
             </div>
-            <div className="today-sales-card-value">{currency} {totalSales.toFixed(2)}</div>
+            <div className="today-sales-card-value">{currency} {formatNumber(totalSales, 2, 2)}</div>
             <div className="today-sales-card-sparkline">
                 <Line options={options} data={data} />
             </div>
             <div className="today-sales-card-footer">
                 <div className="today-sales-card-metric">
                     <span className="today-sales-card-metric-label">{getFormattedMessage('dashboard.stat.avg-basket.label')}</span>
-                    <span className="today-sales-card-metric-value">{currency} {avgBasket.toFixed(2)}</span>
+                    <span className="today-sales-card-metric-value">{currency} {formatNumber(avgBasket, 2, 2)}</span>
                 </div>
                 <div className="today-sales-card-metric">
                     <span className="today-sales-card-metric-label">{getFormattedMessage('dashboard.stat.items-sold.label')}</span>
-                    <span className="today-sales-card-metric-value">{itemsSold.toLocaleString()}</span>
+                    <span className="today-sales-card-metric-value">{formatNumber(itemsSold, 0, 0)}</span>
                 </div>
             </div>
         </div>

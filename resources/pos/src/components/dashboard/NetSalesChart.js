@@ -9,6 +9,7 @@ import {
     Tooltip,
 } from 'chart.js';
 import { Line } from 'react-chartjs-2';
+import { formatNumber } from '../../shared/sharedMethod';
 
 ChartJS.register(CategoryScale, LinearScale, PointElement, LineElement, Filler, Tooltip);
 
@@ -25,10 +26,7 @@ const formatDateLabel = (dateStr) => {
 
 const formatCompactCurrency = (value, currency) => {
     const num = Number(value) || 0;
-    if (Math.abs(num) >= 1000) {
-        return `${currency} ${(num / 1000).toFixed(1)}k`;
-    }
-    return `${currency} ${num.toFixed(0)}`;
+    return `${currency} ${formatNumber(num, 0, Math.abs(num) >= 1000 ? 1 : 0)}`;
 };
 
 const NetSalesChart = ({ dates, current, previous, currency = '$' }) => {
@@ -47,7 +45,7 @@ const NetSalesChart = ({ dates, current, previous, currency = '$' }) => {
                 padding: 10,
                 cornerRadius: 8,
                 callbacks: {
-                    label: (item) => `${item.dataset.label}: ${currency} ${Number(item.raw).toFixed(2)}`,
+                    label: (item) => `${item.dataset.label}: ${currency} ${formatNumber(item.raw, 2, 2)}`,
                 },
             },
         },

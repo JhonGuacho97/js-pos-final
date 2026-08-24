@@ -3,7 +3,7 @@ import { connect } from 'react-redux';
 import dayjs from 'dayjs';
 import relativeTime from 'dayjs/plugin/relativeTime';
 import 'dayjs/locale/es';
-import { getFormattedMessage } from '../../shared/sharedMethod';
+import { formatNumber, getFormattedMessage } from '../../shared/sharedMethod';
 import { recentSales } from '../../store/action/recentSaleDashboardAction';
 
 dayjs.extend(relativeTime);
@@ -37,7 +37,7 @@ const ActivityFeed = (props) => {
                                     <div className="activity-feed-line">
                                         <span className="activity-feed-ref">{attrs.reference_code}</span>
                                         <span className="activity-feed-customer">{attrs.customer_name}</span>
-                                        <span className="activity-feed-amount">{currency} {Number(attrs.grand_total).toFixed(2)}</span>
+                                        <span className="activity-feed-amount">{currency} {formatNumber(attrs.grand_total, 2, 2)}</span>
                                     </div>
                                     <div className="activity-feed-meta">
                                         {attrs.user_name && <span>{attrs.user_name}</span>}

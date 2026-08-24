@@ -1,7 +1,7 @@
 import React, { useEffect } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { Link } from 'react-router-dom';
-import { getFormattedMessage } from '../../shared/sharedMethod';
+import { formatNumber, getFormattedMessage } from '../../shared/sharedMethod';
 import { fetchActiveShifts } from '../../store/action/activeShiftsAction';
 
 const ShiftPanel = () => {
@@ -50,8 +50,8 @@ const ShiftPanel = () => {
                                         : getFormattedMessage('dashboard.shift.status.off.label')}
                                 </span>
                             </span>
-                            <span className="shift-col-right shift-sales-value">{currency} {Number(shift.sales_amount).toFixed(2)}</span>
-                            <span className="shift-col-right">{shift.transaction_count}</span>
+                            <span className="shift-col-right shift-sales-value">{currency} {formatNumber(shift.sales_amount, 2, 2)}</span>
+                            <span className="shift-col-right">{formatNumber(shift.transaction_count, 0, 0)}</span>
                         </div>
                     ))}
                 </div>

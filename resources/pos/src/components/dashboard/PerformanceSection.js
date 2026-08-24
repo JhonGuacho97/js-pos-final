@@ -6,7 +6,7 @@ import { faArrowUp, faArrowDown } from '@fortawesome/free-solid-svg-icons';
 import PeriodSelector from '../../shared/components/PeriodSelector';
 import NetSalesChart from './NetSalesChart';
 import CategoryMixDonut from './CategoryMixDonut';
-import { getFormattedMessage } from '../../shared/sharedMethod';
+import { formatNumber, getFormattedMessage } from '../../shared/sharedMethod';
 import { fetchPerformanceNetSales } from '../../store/action/performanceNetSalesAction';
 import { fetchCategoryMix } from '../../store/action/categoryMixAction';
 
@@ -55,14 +55,14 @@ const PerformanceSection = () => {
                             <div className="performance-metric">
                                 <span className="performance-metric-label">{getFormattedMessage('dashboard.performance.net-sales.title')}</span>
                                 <div className="performance-metric-value-row">
-                                    <span className="performance-metric-value">{currency} {netSalesCurrent.toFixed(2)}</span>
+                                    <span className="performance-metric-value">{currency} {formatNumber(netSalesCurrent, 2, 2)}</span>
                                     <Delta percent={performanceNetSales?.net_sales_vs_previous_percent} />
                                 </div>
                             </div>
                             <div className="performance-metric">
                                 <span className="performance-metric-label">{getFormattedMessage('dashboard.performance.avg-basket.label')}</span>
                                 <div className="performance-metric-value-row">
-                                    <span className="performance-metric-value">{currency} {avgBasketCurrent.toFixed(2)}</span>
+                                    <span className="performance-metric-value">{currency} {formatNumber(avgBasketCurrent, 2, 2)}</span>
                                     <Delta percent={performanceNetSales?.avg_basket_vs_previous_percent} />
                                 </div>
                             </div>

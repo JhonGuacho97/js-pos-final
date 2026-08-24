@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
-import { getFormattedMessage } from '../../shared/sharedMethod';
+import { formatNumber, getFormattedMessage } from '../../shared/sharedMethod';
 import { fetchTopProducts } from '../../store/action/topProductsAction';
 
 const PERIODS = [
@@ -65,8 +65,8 @@ const TopProductsList = () => {
                                     <span className="top-products-category">{row.product_category_name || '-'}</span>
                                 </div>
                                 <div className="top-products-metrics">
-                                    <span className="top-products-qty">{row.total_quantity} {row.sale_unit}</span>
-                                    <span className="top-products-total">{currency} {Number(row.grand_total).toFixed(2)}</span>
+                                    <span className="top-products-qty">{formatNumber(row.total_quantity, 0, 2)} {row.sale_unit}</span>
+                                    <span className="top-products-total">{currency} {formatNumber(row.grand_total, 2, 2)}</span>
                                 </div>
                             </div>
                         );

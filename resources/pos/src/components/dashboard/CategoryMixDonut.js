@@ -1,6 +1,6 @@
 import React from 'react';
 import ReactECharts from 'echarts-for-react';
-import { getFormattedMessage } from '../../shared/sharedMethod';
+import { formatNumber, getFormattedMessage } from '../../shared/sharedMethod';
 
 // Ancla en el azul primario del sistema (#2F6FED, ver _variables.scss)
 // en vez de un naranja ajeno al resto del dashboard.
@@ -12,7 +12,7 @@ const CategoryMixDonut = ({ categories, total, currency = '$' }) => {
     const option = {
         tooltip: {
             trigger: 'item',
-            formatter: `{b}: ${currency} {c} ({d}%)`,
+            formatter: (params) => `${params.name}: ${currency} ${formatNumber(params.value, 2, 2)} (${params.percent}%)`,
         },
         color: COLORS,
         series: [
@@ -32,7 +32,7 @@ const CategoryMixDonut = ({ categories, total, currency = '$' }) => {
             <div className="category-mix-donut-chart">
                 <ReactECharts option={option} style={{ height: 220, width: 220 }} />
                 <div className="category-mix-donut-center">
-                    <div className="category-mix-donut-center-value">{currency} {Number(total || 0).toFixed(2)}</div>
+                    <div className="category-mix-donut-center-value">{currency} {formatNumber(total, 2, 2)}</div>
                     <div className="category-mix-donut-center-label">{getFormattedMessage('dashboard.category-mix.total.label')}</div>
                 </div>
             </div>
@@ -41,7 +41,7 @@ const CategoryMixDonut = ({ categories, total, currency = '$' }) => {
                     <div className="category-mix-donut-legend-row" key={row.category_name}>
                         <span className="category-mix-donut-legend-dot" style={{ backgroundColor: COLORS[index % COLORS.length] }} />
                         <span className="category-mix-donut-legend-name">{row.category_name}</span>
-                        <span className="category-mix-donut-legend-value">{currency} {Number(row.total).toFixed(2)}</span>
+                        <span className="category-mix-donut-legend-value">{currency} {formatNumber(row.total, 2, 2)}</span>
                     </div>
                 ))}
             </div>

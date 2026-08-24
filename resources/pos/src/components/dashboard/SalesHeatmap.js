@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
-import { getFormattedMessage } from '../../shared/sharedMethod';
+import { formatNumber, getFormattedMessage } from '../../shared/sharedMethod';
 import { fetchSalesHeatmap } from '../../store/action/salesHeatmapAction';
 
 const DAY_LABELS = {
@@ -93,19 +93,19 @@ const SalesHeatmap = () => {
                 <div className="heatmap-tooltip-sales-row">
                     <span className="heatmap-tooltip-dot" />
                     <span className="heatmap-tooltip-sales-label">{getFormattedMessage('dashboard.heatmap.tooltip.sales.label')}</span>
-                    <span className="heatmap-tooltip-sales-value">{currency} {sales.toFixed(2)}</span>
+                    <span className="heatmap-tooltip-sales-value">{currency} {formatNumber(sales, 2, 2)}</span>
                 </div>
                 <div className="heatmap-tooltip-row">
                     <span>{getFormattedMessage('dashboard.heatmap.tooltip.transactions.label')}</span>
-                    <span>{transactions}</span>
+                    <span>{formatNumber(transactions, 0, 0)}</span>
                 </div>
                 <div className="heatmap-tooltip-row">
                     <span>{getFormattedMessage('dashboard.heatmap.tooltip.items.label')}</span>
-                    <span>{items.toFixed(2)}</span>
+                    <span>{formatNumber(items, 2, 2)}</span>
                 </div>
                 <div className="heatmap-tooltip-row">
                     <span>{getFormattedMessage('dashboard.heatmap.tooltip.avg-sale.label')}</span>
-                    <span>{currency} {avgSale.toFixed(2)}</span>
+                    <span>{currency} {formatNumber(avgSale, 2, 2)}</span>
                 </div>
                 <div className="heatmap-tooltip-row">
                     <span>{getFormattedMessage('dashboard.heatmap.tooltip.share-of-day.label')}</span>
