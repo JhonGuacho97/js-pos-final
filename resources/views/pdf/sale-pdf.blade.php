@@ -375,10 +375,11 @@
         </thead>
         <tbody>
             @foreach($sale->saleItems as $saleItem)
+                @php($presentationName = optional(optional($saleItem->productPresentation)->variationType)->name)
                 <tr>
-                    <td>{{ $saleItem->product->name }}</td>
+                    <td>{{ $saleItem->product->name }} @if($presentationName)<br><small>{{ $presentationName }} · {{ $saleItem->presentation_equivalence }} unidades</small>@endif</td>
                     <td>{{ currencyAlignment(number_format((float) $saleItem->net_unit_price, 2)) }}</td>
-                    <td>{{ $saleItem->quantity }}</td>
+                    <td>{{ $presentationName ? $saleItem->presentation_quantity.' '.$presentationName : $saleItem->quantity }}</td>
                     <td>{{ currencyAlignment(number_format((float) $saleItem->discount_amount, 2)) }}</td>
                     <td>{{ currencyAlignment(number_format((float) $saleItem->tax_amount, 2)) }}</td>
                     <td>{{ currencyAlignment(number_format((float) $saleItem->sub_total, 2)) }}</td>

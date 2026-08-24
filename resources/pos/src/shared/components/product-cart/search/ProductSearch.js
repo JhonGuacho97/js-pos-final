@@ -104,6 +104,7 @@ const ProductSearch = (props) => {
         const newLine = {
             ...baseLine,
             product_presentation_id: presentation.id,
+            product_presentation: presentation,
             presentation_quantity: qty,
             presentation_equivalence: presentation.equivalence,
             // OJO: NO tocar short_name acá -- ese campo es la unidad

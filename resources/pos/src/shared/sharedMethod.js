@@ -119,36 +119,47 @@ export const ProtectedRoute = (props) => {
     }
 };
 
-export const formatAmount = (num) => {
-    if (num >= 1000000000) {
-        return (num / 1000000000).toFixed(1).replace(/\.0$/, "") + "B";
+export const formatNumber = (
+    value,
+    minimumFractionDigits = 0,
+    maximumFractionDigits = 2
+) => {
+    const numericValue = Number(value);
+    if (!Number.isFinite(numericValue)) {
+        return new Intl.NumberFormat("en-US", {
+            minimumFractionDigits,
+            maximumFractionDigits,
+        }).format(0);
     }
-    if (num >= 1000000) {
-        return (num / 1000000).toFixed(1).replace(/\.0$/, "") + "M";
-    }
-    if (num >= 1000) {
-        return (num / 1000).toFixed(1).replace(/\.0$/, "") + "K";
-    }
-    return num;
+
+    return new Intl.NumberFormat("en-US", {
+        minimumFractionDigits,
+        maximumFractionDigits,
+    }).format(numericValue);
 };
+
+// Métricas grandes sin abreviarlas: en información contable es preferible
+// ver 2,340.4 a 2.3K para no ocultar precisión.
+export const formatAmount = (num) => formatNumber(num, 0, 1);
 
 export const currencySymbolHandling = (
     isRightside,
     currency,
     value,
-    is_forment
+    is_forment,
+    precision = 2
 ) => {
     if (isRightside?.is_currency_right === "true") {
         if (is_forment) {
             return formatAmount(value) + " " + currency;
         } else {
-            return parseFloat(value).toFixed(2) + " " + currency;
+            return formatNumber(value, precision, precision) + " " + currency;
         }
     } else {
         if (is_forment) {
             return currency + " " + formatAmount(value);
         } else {
-            return currency + " " + parseFloat(value).toFixed(2);
+            return currency + " " + formatNumber(value, precision, precision);
         }
     }
 };

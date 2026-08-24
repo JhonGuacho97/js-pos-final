@@ -345,7 +345,12 @@ class SaleAPIController extends AppBaseController
     public function pdfDownload(Sale $sale): JsonResponse
     {
         $this->authorizeWarehouseAccess($sale->warehouse_id);
-        $sale = $sale->load('customer', 'saleItems.product', 'payments');
+        $sale = $sale->load(
+            'customer',
+            'saleItems.product',
+            'saleItems.productPresentation.variationType',
+            'payments'
+        );
         $data = [];
 
         if (Storage::exists('pdf/Sale-' . $sale->reference_code . '.pdf')) {

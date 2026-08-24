@@ -344,7 +344,10 @@ class SaleRepository extends BaseRepository
             throw new UnprocessableEntityHttpException('Producto no encontrado.');
         }
 
-        if (!empty($saleItem['product_presentation_id']) && $product->manage_presentations) {
+        if (!empty($saleItem['product_presentation_id'])) {
+            if (!$product->manage_presentations) {
+                throw new UnprocessableEntityHttpException('El producto no admite la presentación seleccionada.');
+            }
             $presentation = $product->presentations()->whereId($saleItem['product_presentation_id'])->first();
             if (!$presentation) {
                 throw new UnprocessableEntityHttpException('Presentación inválida para el producto ' . $product->name);

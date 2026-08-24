@@ -109,7 +109,11 @@ class SaleReturnAPIController extends AppBaseController
     public function edit(SaleReturn $salesReturn): SaleReturnResource
     {
         $this->authorizeWarehouseAccess($salesReturn->warehouse_id);
-        $salesReturn = $salesReturn->load('saleReturnItems.product', 'warehouse');
+        $salesReturn = $salesReturn->load(
+            'saleReturnItems.product',
+            'saleReturnItems.productPresentation.variationType',
+            'warehouse'
+        );
 
         return new SaleReturnResource($salesReturn);
     }
@@ -120,7 +124,12 @@ class SaleReturnAPIController extends AppBaseController
         if (empty($salesReturn)) {
             return $this->sendError('Sale Return is not created');
         }
-        $salesReturn = $salesReturn->load('saleReturnItems', 'saleReturnItems.product', 'warehouse');
+        $salesReturn = $salesReturn->load(
+            'saleReturnItems',
+            'saleReturnItems.product',
+            'saleReturnItems.productPresentation.variationType',
+            'warehouse'
+        );
 
         return new SaleReturnResource($salesReturn);
     }
@@ -178,7 +187,12 @@ class SaleReturnAPIController extends AppBaseController
 
     public function saleReturnInfo(SaleReturn $salesReturn): JsonResponse
     {
-        $salesReturn = $salesReturn->load('saleReturnItems.product.variationType', 'warehouse', 'customer');
+        $salesReturn = $salesReturn->load(
+            'saleReturnItems.product.variationType',
+            'saleReturnItems.productPresentation.variationType',
+            'warehouse',
+            'customer'
+        );
         $keyName = [
             'email', 'company_name', 'phone', 'address',
         ];
@@ -193,7 +207,11 @@ class SaleReturnAPIController extends AppBaseController
      */
     public function pdfDownload(SaleReturn $saleReturn): JsonResponse
     {
-        $saleReturn = $saleReturn->load('customer', 'saleReturnItems.product');
+        $saleReturn = $saleReturn->load(
+            'customer',
+            'saleReturnItems.product',
+            'saleReturnItems.productPresentation.variationType'
+        );
         $data = [];
         if (Storage::exists('pdf/sale_return-'.$saleReturn->reference_code.'.pdf')) {
             Storage::delete('pdf/sale_return-'.$saleReturn->reference_code.'.pdf');

@@ -8,6 +8,7 @@ import HeaderTitle from "../header/HeaderTitle";
 import TabTitle from "../../shared/tab-title/TabTitle";
 import {
     currencySymbolHandling,
+    formatNumber,
     getFormattedMessage,
     placeholderText,
 } from "../../shared/sharedMethod";
@@ -232,9 +233,7 @@ const PurchaseReturnDetails = (props) => {
                                             )}
                                         </th>
                                         <th className="ps-3">
-                                            {getFormattedMessage(
-                                                "globally.detail.net-unit-cost"
-                                            )}
+                                            Costo neto / presentación
                                         </th>
                                         <th className="ps-3">
                                             {getFormattedMessage(
@@ -242,9 +241,7 @@ const PurchaseReturnDetails = (props) => {
                                             )}
                                         </th>
                                         <th className="ps-3">
-                                            {getFormattedMessage(
-                                                "globally.detail.unit-cost"
-                                            )}
+                                            Costo / unidad base
                                         </th>
                                         <th className="ps-3">
                                             {getFormattedMessage(
@@ -267,6 +264,13 @@ const PurchaseReturnDetails = (props) => {
                                     {purchaseReturnDetails.purchase_return_items &&
                                         purchaseReturnDetails.purchase_return_items.map(
                                             (details, index) => {
+                                                const presentation = details.product_presentation;
+                                                const equivalence = Number(details.presentation_equivalence || 1);
+                                                const quantity = presentation
+                                                    ? Number(details.presentation_quantity || 0)
+                                                    : Number(details.quantity || 0);
+                                                const name = presentation?.variation_type?.name || "presentación";
+                                                const label = quantity === 1 ? name : `${name}s`;
                                                 return (
                                                     <tr
                                                         key={index}
@@ -296,9 +300,12 @@ const PurchaseReturnDetails = (props) => {
                                                                         .currency_symbol,
                                                                 details.net_unit_cost
                                                             )}
+                                                            {presentation && <div className="text-muted fs-small">por {name}</div>}
                                                         </td>
                                                         <td>
-                                                            {details.quantity}
+                                                            <strong>{formatNumber(quantity, 0, 2)}</strong>{" "}
+                                                            {presentation ? label : "unidades"}
+                                                            {presentation && <div className="text-muted fs-small">= {formatNumber(details.quantity, 0, 2)} unidades</div>}
                                                         </td>
                                                         <td>
                                                             {currencySymbolHandling(
@@ -307,7 +314,9 @@ const PurchaseReturnDetails = (props) => {
                                                                     frontSetting
                                                                         .value
                                                                         .currency_symbol,
-                                                                details.product_cost
+                                                                Number(details.product_cost || 0) / equivalence,
+                                                                false,
+                                                                presentation ? 4 : 2
                                                             )}
                                                         </td>
                                                         <td>

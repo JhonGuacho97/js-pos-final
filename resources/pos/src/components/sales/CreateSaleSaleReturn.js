@@ -64,7 +64,13 @@ const CreateSaleSaleReturn = (props) => {
             stock: item.product && item.product.stocks.filter(item => item.warehouse_id === sales.attributes.warehouse_id),
             sub_total: item.sub_total,
             sale_unit: item.sale_unit && item.sale_unit.id && item.sale_unit.id,
-            quantity: item.quantity,
+            quantity: item.product_presentation_id
+                ? item.presentation_quantity
+                : item.quantity,
+            product_presentation_id: item.product_presentation_id || null,
+            presentation_quantity: item.presentation_quantity,
+            presentation_equivalence: item.presentation_equivalence,
+            product_presentation: item.product_presentation || null,
             id: item.id,
             sale_item_id: item.id,
             newItem: '',

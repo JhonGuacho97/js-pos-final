@@ -123,10 +123,11 @@
     </thead>
     <tbody style="background-color: #f5f3f3;">
     @foreach($purchase->purchaseItems  as $purchaseItem)
+        @php($presentationName = optional(optional($purchaseItem->productPresentation)->variationType)->name)
         <tr align="center">
-            <td>{{$purchaseItem->product->name}}</td>
+            <td>{{$purchaseItem->product->name}} @if($presentationName)<br><small>{{$presentationName}} · {{$purchaseItem->presentation_equivalence}} unidades</small>@endif</td>
             <td>{{currencyAlignment(number_format((float)$purchaseItem->net_unit_cost, 2))}}</td>
-            <td>{{$purchaseItem->quantity}}</td>
+            <td>{{$presentationName ? $purchaseItem->presentation_quantity.' '.$presentationName : $purchaseItem->quantity}}</td>
             <td>{{currencyAlignment(number_format((float)$purchaseItem->discount_amount, 2))}}</td>
             <td>{{currencyAlignment(number_format((float)$purchaseItem->tax_amount, 2))}}</td>
             <td>{{currencyAlignment(number_format((float)$purchaseItem->sub_total, 2))}}</td>

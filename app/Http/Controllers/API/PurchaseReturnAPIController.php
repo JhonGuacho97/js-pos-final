@@ -89,7 +89,11 @@ class PurchaseReturnAPIController extends AppBaseController
 
     public function edit(PurchaseReturn $purchasesReturn): PurchaseReturnResource
     {
-        $purchasesReturn = $purchasesReturn->load('purchaseReturnItems.product.stocks', 'warehouse');
+        $purchasesReturn = $purchasesReturn->load(
+            'purchaseReturnItems.product.stocks',
+            'purchaseReturnItems.productPresentation.variationType',
+            'warehouse'
+        );
 
         return new PurchaseReturnResource($purchasesReturn);
     }
@@ -126,7 +130,12 @@ class PurchaseReturnAPIController extends AppBaseController
 
     public function purchaseReturnInfo(PurchaseReturn $purchaseReturn): JsonResponse
     {
-        $purchaseReturn = $purchaseReturn->load(['purchaseReturnItems.product.variationType', 'warehouse', 'supplier']);
+        $purchaseReturn = $purchaseReturn->load([
+            'purchaseReturnItems.product.variationType',
+            'purchaseReturnItems.productPresentation.variationType',
+            'warehouse',
+            'supplier',
+        ]);
         $keyName = [
             'email', 'company_name', 'phone', 'address',
         ];
@@ -141,7 +150,11 @@ class PurchaseReturnAPIController extends AppBaseController
      */
     public function pdfDownload(PurchaseReturn $purchaseReturn): JsonResponse
     {
-        $purchaseReturn = $purchaseReturn->load('purchaseReturnItems.product', 'supplier');
+        $purchaseReturn = $purchaseReturn->load(
+            'purchaseReturnItems.product',
+            'purchaseReturnItems.productPresentation.variationType',
+            'supplier'
+        );
 
         $data = [];
         if (Storage::exists('pdf/purchase_return-'.$purchaseReturn->reference_code.'.pdf')) {

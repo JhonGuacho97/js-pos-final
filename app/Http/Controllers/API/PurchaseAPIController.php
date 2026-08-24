@@ -98,7 +98,11 @@ class PurchaseAPIController extends AppBaseController
     public function edit(Purchase $purchase): PurchaseResource
     {
         $this->authorizeWarehouseAccess($purchase->warehouse_id);
-        $purchase = $purchase->load('purchaseItems.product.stocks', 'warehouse');
+        $purchase = $purchase->load(
+            'purchaseItems.product.stocks',
+            'purchaseItems.productPresentation.variationType',
+            'warehouse'
+        );
 
         return new PurchaseResource($purchase);
     }
@@ -151,7 +155,11 @@ class PurchaseAPIController extends AppBaseController
     public function pdfDownload(Purchase $purchase): JsonResponse
     {
         $this->authorizeWarehouseAccess($purchase->warehouse_id);
-        $purchase = $purchase->load('purchaseItems.product', 'supplier');
+        $purchase = $purchase->load(
+            'purchaseItems.product',
+            'purchaseItems.productPresentation.variationType',
+            'supplier'
+        );
 
         $data = [];
         if (Storage::exists('pdf.purchase-pdf-'.$purchase->reference_code.'.pdf')) {
@@ -171,7 +179,12 @@ class PurchaseAPIController extends AppBaseController
     public function purchaseInfo(Purchase $purchase): JsonResponse
     {
         $this->authorizeWarehouseAccess($purchase->warehouse_id);
-        $purchase = $purchase->load(['purchaseItems.product.variationType', 'warehouse', 'supplier']);
+        $purchase = $purchase->load([
+            'purchaseItems.product.variationType',
+            'purchaseItems.productPresentation.variationType',
+            'warehouse',
+            'supplier',
+        ]);
         $keyName = [
             'email', 'company_name', 'phone', 'address',
         ];

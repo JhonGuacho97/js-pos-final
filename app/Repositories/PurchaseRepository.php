@@ -117,13 +117,14 @@ class PurchaseRepository extends BaseRepository
 
         if (!empty($purchaseItem['product_presentation_id'])) {
             $product = Product::whereId($purchaseItem['product_id'])->first();
-            if ($product && $product->manage_presentations) {
-                $presentation = $product->presentations()->whereId($purchaseItem['product_presentation_id'])->first();
-                if (!$presentation) {
-                    throw new UnprocessableEntityHttpException('Presentación inválida para el producto ' . $product->name);
-                }
-                $equivalence = $presentation->equivalence;
+            if (!$product || !$product->manage_presentations) {
+                throw new UnprocessableEntityHttpException('El producto no admite la presentación seleccionada.');
             }
+            $presentation = $product->presentations()->whereId($purchaseItem['product_presentation_id'])->first();
+            if (!$presentation) {
+                throw new UnprocessableEntityHttpException('Presentación inválida para el producto ' . $product->name);
+            }
+            $equivalence = $presentation->equivalence;
         }
 
         $purchaseItem['presentation_quantity'] = $presentationQuantity;

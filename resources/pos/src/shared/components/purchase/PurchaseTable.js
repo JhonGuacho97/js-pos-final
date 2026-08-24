@@ -118,6 +118,15 @@ const PurchaseTable = (props) => {
                                 <span>{singleProduct.variation_type_name}</span>
                             </span>
                         )}
+                        {singleProduct.product_presentation && (
+                            <span className="badge bg-light-info ms-1">
+                                <span>
+                                    {singleProduct.product_presentation.variation_type?.name ||
+                                        singleProduct.product_presentation.name ||
+                                        "Presentación"}
+                                </span>
+                            </span>
+                        )}
                         <span className="badge bg-light-primary p-1 ms-1">
                             <FontAwesomeIcon
                                 icon={faPencil}
@@ -197,6 +206,11 @@ const PurchaseTable = (props) => {
                                 +
                             </InputGroup.Text>
                         </InputGroup>
+                        {singleProduct.product_presentation && (
+                            <div className="text-muted fs-small mt-1 text-center">
+                                = {singleProduct.quantity * (singleProduct.presentation_equivalence || 1)} unidades
+                            </div>
+                        )}
                     </div>
                 </td>
                 <td>

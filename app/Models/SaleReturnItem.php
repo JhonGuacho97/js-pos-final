@@ -140,6 +140,9 @@ class SaleReturnItem extends BaseModel implements JsonResourceful
     {
         $fields = [
             'product_id' => $this->product_id,
+            'product_presentation_id' => $this->product_presentation_id,
+            'presentation_quantity' => $this->presentation_quantity,
+            'presentation_equivalence' => $this->presentation_equivalence,
             'net_unit_price' => $this->net_unit_price,
             'product_price' => $this->product_price,
             'unit_cost' => $this->unit_cost,
@@ -168,5 +171,10 @@ class SaleReturnItem extends BaseModel implements JsonResourceful
     public function product(): BelongsTo
     {
         return $this->belongsTo(Product::class, 'product_id', 'id');
+    }
+
+    public function productPresentation(): BelongsTo
+    {
+        return $this->belongsTo(ProductPresentation::class, 'product_presentation_id', 'id');
     }
 }

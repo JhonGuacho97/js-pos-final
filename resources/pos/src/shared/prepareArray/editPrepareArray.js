@@ -1,6 +1,7 @@
 export const editPrepareArray = (products, warehouse_id) => {
     let purchaseProductRowArray = [];
     products.forEach(product => {
+        const hasPresentation = Boolean(product.product_presentation_id);
         purchaseProductRowArray.push({
             name: product.name,
             code: product.product.code,
@@ -18,7 +19,13 @@ export const editPrepareArray = (products, warehouse_id) => {
             discount_value: product.discount_value,
             discount_amount: product.discount_amount,
             purchase_unit:product.purchase_unit.id,
-            quantity: product.quantity,
+            // La BD conserva quantity en unidades base para inventario. En el
+            // formulario se edita la cantidad comprada de la presentación.
+            quantity: hasPresentation ? product.presentation_quantity : product.quantity,
+            product_presentation_id: product.product_presentation_id || null,
+            presentation_quantity: product.presentation_quantity,
+            presentation_equivalence: product.presentation_equivalence,
+            product_presentation: product.product_presentation || null,
             sub_total: Number(product.sub_total),
             id: product.id,
             purchase_item_id: product.id,

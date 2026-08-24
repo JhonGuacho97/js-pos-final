@@ -364,7 +364,7 @@ class SaleReturnRepository extends BaseRepository
         }
         $product = Product::whereId($item['product_id'])->first();
         if (!$product || !$product->manage_presentations) {
-            return $quantity;
+            throw new UnprocessableEntityHttpException('El producto no admite la presentación seleccionada.');
         }
         $presentation = $product->presentations()->whereId($item['product_presentation_id'])->first();
         if (!$presentation) {
@@ -445,13 +445,14 @@ class SaleReturnRepository extends BaseRepository
         $equivalence = 1;
         if (!empty($saleReturnItem['product_presentation_id'])) {
             $product = Product::whereId($saleReturnItem['product_id'])->first();
-            if ($product && $product->manage_presentations) {
-                $presentation = $product->presentations()->whereId($saleReturnItem['product_presentation_id'])->first();
-                if (!$presentation) {
-                    throw new UnprocessableEntityHttpException('Presentación inválida para el producto ' . $product->name);
-                }
-                $equivalence = $presentation->equivalence;
+            if (!$product || !$product->manage_presentations) {
+                throw new UnprocessableEntityHttpException('El producto no admite la presentación seleccionada.');
             }
+            $presentation = $product->presentations()->whereId($saleReturnItem['product_presentation_id'])->first();
+            if (!$presentation) {
+                throw new UnprocessableEntityHttpException('Presentación inválida para el producto ' . $product->name);
+            }
+            $equivalence = $presentation->equivalence;
         }
         $saleReturnItem['presentation_quantity'] = $presentationQuantity;
         $saleReturnItem['presentation_equivalence'] = $equivalence;

@@ -195,7 +195,7 @@ const ProductTableBody = (props) => {
                             <span className="badge bg-light-info ms-1">
                                 <span>
                                     {singleProduct.product_presentation.variation_type
-                                        ?.name || "Presentación"}
+                                        ?.name || singleProduct.product_presentation.name || "Presentación"}
                                 </span>
                             </span>
                         )}
@@ -220,7 +220,8 @@ const ProductTableBody = (props) => {
                     )}
                     {singleProduct.product_presentation && (
                         <div className="text-muted fs-small">
-                            por {singleProduct.product_presentation.variation_type?.name || "presentación"}
+                            por {singleProduct.product_presentation.variation_type?.name ||
+                                singleProduct.product_presentation.name || "presentación"}
                         </div>
                     )}
                 </td>

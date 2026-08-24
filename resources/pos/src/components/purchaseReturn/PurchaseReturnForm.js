@@ -267,7 +267,8 @@ const PurchaseReturnForm = ( props ) => {
                         </label>
                         <ProductSearch values={purchaseValue} products={products} isAllProducts={true}
                             handleValidation={handleValidation} updateProducts={updateProducts}
-                            setUpdateProducts={setUpdateProducts} customProducts={customProducts} />
+                            setUpdateProducts={setUpdateProducts} customProducts={customProducts}
+                            presentationMode="purchase" />
                     </div>
                     <div className='col-12 md-12'>
                         <label className='form-label'>

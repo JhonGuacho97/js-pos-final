@@ -128,10 +128,11 @@
     </thead>
     <tbody style="background-color: #f5f3f3;">
     @foreach($saleReturn->saleReturnItems  as $saleReturnItem)
+        @php($presentationName = optional(optional($saleReturnItem->productPresentation)->variationType)->name)
         <tr align="center">
-            <td>{{$saleReturnItem->product->name}}</td>
+            <td>{{$saleReturnItem->product->name}} @if($presentationName)<br><small>{{$presentationName}} · {{$saleReturnItem->presentation_equivalence}} unidades</small>@endif</td>
             <td>{{currencyAlignment(number_format((float)$saleReturnItem->net_unit_price, 2))}}</td>
-            <td>{{$saleReturnItem->quantity}}</td>
+            <td>{{$presentationName ? $saleReturnItem->presentation_quantity.' '.$presentationName : $saleReturnItem->quantity}}</td>
             <td>{{currencyAlignment(number_format((float)$saleReturnItem->discount_amount, 2))}}</td>
             <td>{{currencyAlignment(number_format((float)$saleReturnItem->tax_amount, 2))}}</td>
             <td>{{currencyAlignment(number_format((float)$saleReturnItem->sub_total, 2))}}</td>
