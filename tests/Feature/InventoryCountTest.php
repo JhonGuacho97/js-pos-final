@@ -107,6 +107,41 @@ class InventoryCountTest extends TestCase
         $this->assertSame(9.0, (float) ManageStock::where('product_id', $product->id)->value('quantity'));
     }
 
+    public function test_count_items_are_paginated_without_repeating_the_first_page(): void
+    {
+        [$store, $warehouse, $counter] = $this->context(['perform_inventory_counts']);
+        foreach (range(1, 23) as $index) {
+            $this->productWithStock($store, $warehouse, $index);
+        }
+        Sanctum::actingAs($counter, ['*']);
+        $headers = ['X-Store-Id' => $store->id];
+
+        $countId = $this->withHeaders($headers)->postJson('/api/inventory-counts', [
+            'warehouse_id' => $warehouse->id,
+        ])->assertCreated()->json('data.id');
+
+        $firstPage = $this->withHeaders($headers)
+            ->getJson("/api/inventory-counts/{$countId}?page=1&per_page=10")
+            ->assertOk()
+            ->assertJsonPath('items.current_page', 1)
+            ->assertJsonPath('items.last_page', 3)
+            ->assertJsonCount(10, 'items.data')
+            ->json('items.data');
+
+        $secondPage = $this->withHeaders($headers)
+            ->getJson("/api/inventory-counts/{$countId}?page=2&per_page=10")
+            ->assertOk()
+            ->assertJsonPath('items.current_page', 2)
+            ->assertJsonPath('items.last_page', 3)
+            ->assertJsonCount(10, 'items.data')
+            ->json('items.data');
+
+        $this->assertEmpty(array_intersect(
+            array_column($firstPage, 'id'),
+            array_column($secondPage, 'id')
+        ));
+    }
+
     private function context(array $permissions): array
     {
         $suffix = Str::lower(Str::random(10));

@@ -52,7 +52,8 @@ class InventoryCountAPIController extends AppBaseController
         }
 
         $perPage = min(50, max(10, $request->integer('per_page', 15)));
-        $paginator = $query->latest('id')->paginate($perPage);
+        $page = max(1, $request->integer('page', 1));
+        $paginator = $query->latest('id')->paginate($perPage, ['*'], 'page', $page);
         $paginator->setCollection($paginator->getCollection()->map(fn (InventoryCount $count) => $this->serializeCount($count)));
 
         $summaryQuery = InventoryCount::query()->where('store_id', $this->requireCurrentStoreId());
@@ -171,7 +172,8 @@ class InventoryCountAPIController extends AppBaseController
             || $request->user()->can('approve_inventory_counts');
 
         $perPage = min(100, max(10, $request->integer('per_page', 50)));
-        $paginator = $items->orderBy('id')->paginate($perPage);
+        $page = max(1, $request->integer('page', 1));
+        $paginator = $items->orderBy('id')->paginate($perPage, ['*'], 'page', $page);
         $pageItems = $paginator->getCollection();
         $currentStocks = ManageStock::where('warehouse_id', $inventoryCount->warehouse_id)
             ->whereIn('product_id', $pageItems->pluck('product_id'))->pluck('quantity', 'product_id');

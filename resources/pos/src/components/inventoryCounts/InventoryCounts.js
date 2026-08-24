@@ -43,20 +43,26 @@ const CountList = ({ warehouses = [], productCategories = [], fetchAllWarehouses
     const [error, setError] = useState("");
     const [showCreate, setShowCreate] = useState(false);
     const [permissions, setPermissions] = useState({});
+    const requestSequence = useRef(0);
 
     useEffect(() => { fetchAllWarehouses(); fetchAllProductCategories(); }, []);
-    const load = async () => {
+    const load = async (requestedPage = page) => {
+        const requestId = ++requestSequence.current;
         setLoading(true); setError("");
         try {
-            const response = await apiConfig.get(apiBaseURL.INVENTORY_COUNTS, { params: { page, per_page: 15, status: status || undefined, search: search || undefined } });
+            const response = await apiConfig.get(apiBaseURL.INVENTORY_COUNTS, { params: { page: requestedPage, per_page: 15, status: status || undefined, search: search || undefined } });
+            if (requestId !== requestSequence.current) return;
             setRows(response.data.data || []);
             setSummary(response.data.summary || {});
             setPagination(response.data);
             setPermissions(response.data.permissions || {});
-        } catch (requestError) { setError(requestMessage(requestError, "No se pudieron cargar los conteos.")); }
-        finally { setLoading(false); }
+        } catch (requestError) {
+            if (requestId === requestSequence.current) setError(requestMessage(requestError, "No se pudieron cargar los conteos."));
+        } finally {
+            if (requestId === requestSequence.current) setLoading(false);
+        }
     };
-    useEffect(() => { const timer = setTimeout(load, search ? 280 : 0); return () => clearTimeout(timer); }, [page, status, search]);
+    useEffect(() => { const timer = setTimeout(() => load(page), search ? 280 : 0); return () => clearTimeout(timer); }, [page, status, search]);
 
     const cards = [
         { key: "counting", label: "En proceso", value: Number(summary.draft || 0) + Number(summary.counting || 0), icon: "bi-upc-scan", tone: "blue" },
@@ -117,15 +123,21 @@ const CountWorkspace = ({ id }) => {
     const [acting, setActing] = useState(false);
     const [savingPage, setSavingPage] = useState(false);
     const rowSavers = useRef(new Map());
+    const requestSequence = useRef(0);
 
-    const load = async () => {
+    const load = async (requestedPage = page) => {
+        const requestId = ++requestSequence.current;
         setLoading(true);
         try {
-            const response = await apiConfig.get(`${apiBaseURL.INVENTORY_COUNTS}/${id}`, { params: { page, per_page: 50, search: search || undefined, item_status: filter || undefined } });
+            const response = await apiConfig.get(`${apiBaseURL.INVENTORY_COUNTS}/${id}`, { params: { page: requestedPage, per_page: 50, search: search || undefined, item_status: filter || undefined } });
+            if (requestId !== requestSequence.current) return;
             rowSavers.current.clear();
             setCount(response.data.data); setItems(response.data.items?.data || []); setPagination(response.data.items || {}); setPermissions(response.data.permissions || {});
-        } catch (error) { setNotice({ tone: "error", text: requestMessage(error, "No se pudo abrir el conteo.") }); }
-        finally { setLoading(false); }
+        } catch (error) {
+            if (requestId === requestSequence.current) setNotice({ tone: "error", text: requestMessage(error, "No se pudo abrir el conteo.") });
+        } finally {
+            if (requestId === requestSequence.current) setLoading(false);
+        }
     };
     const registerSaver = (itemId, saver) => {
         if (saver) rowSavers.current.set(itemId, saver);
@@ -157,10 +169,10 @@ const CountWorkspace = ({ id }) => {
         }
         setSavingPage(false);
     };
-    useEffect(() => { const timer = setTimeout(load, search ? 280 : 0); return () => clearTimeout(timer); }, [id, page, filter, search]);
+    useEffect(() => { const timer = setTimeout(() => load(page), search ? 280 : 0); return () => clearTimeout(timer); }, [id, page, filter, search]);
     const runAction = async (action) => {
         setActing(true); setNotice(null);
-        try { const response = await apiConfig.post(`${apiBaseURL.INVENTORY_COUNTS}/${id}/${action}`); setNotice({ tone: "success", text: response.data.message }); await load(); }
+        try { const response = await apiConfig.post(`${apiBaseURL.INVENTORY_COUNTS}/${id}/${action}`); setNotice({ tone: "success", text: response.data.message }); await load(page); }
         catch (error) { setNotice({ tone: "error", text: requestMessage(error, "No se pudo completar la acción.") }); }
         finally { setActing(false); }
     };
@@ -176,7 +188,7 @@ const CountWorkspace = ({ id }) => {
         </div></section>}
         {count?.status === "review" && <div className="pc-review-banner"><i className="bi bi-shield-check" /><div><strong>Revisión antes de ajustar</strong><span>Comprueba las diferencias. Si el stock cambió desde el inicio, EcuaPos impedirá la aprobación.</span></div></div>}
         <section className="pc-panel pc-counting-panel"><div className="pc-panel__title pc-counting-tools"><div><span>PRODUCTOS DEL CONTEO</span><h2>{pagination.total || 0} productos</h2></div><div className="pc-search"><i className="bi bi-search" /><input value={search} onChange={e => { setSearch(e.target.value); setPage(1); }} placeholder="Escanear o buscar producto" autoFocus /></div><select value={filter} onChange={e => { setFilter(e.target.value); setPage(1); }}><option value="">Todos</option><option value="pending">Sin contar</option><option value="match">Sin diferencia</option><option value="difference">Con diferencia</option></select></div>
-            <div className={`pc-table-wrap ${loading ? "is-loading" : ""}`}><table className="pc-table pc-count-table"><thead><tr><th>Producto</th><th>Esperado</th><th>Conteo físico</th><th>Diferencia</th><th>Observación</th><th /></tr></thead><tbody>{!loading && !items.length ? <tr><td colSpan="6"><EmptyState text="No hay productos con este filtro." /></td></tr> : items.map(item => <InventoryItemRow key={item.id} item={item} countId={id} editable={editable} onSaved={handleItemSaved} registerSaver={registerSaver} />)}</tbody></table>{loading && <div className="pc-loading"><span className="spinner-border" /><small>Cargando productos…</small></div>}</div><Pagination page={page} pagination={pagination} setPage={changePageSafely} busy={savingPage} /></section>
+            <div className={`pc-table-wrap ${loading ? "is-loading" : ""}`}><table className="pc-table pc-count-table"><thead><tr><th>Producto</th><th>Esperado</th><th>Conteo físico</th><th>Diferencia</th><th>Observación</th><th /></tr></thead><tbody>{!loading && !items.length ? <tr><td colSpan="6"><EmptyState text="No hay productos con este filtro." /></td></tr> : items.map(item => <InventoryItemRow key={item.id} item={item} countId={id} editable={editable} onSaved={handleItemSaved} registerSaver={registerSaver} />)}</tbody></table>{loading && <div className="pc-loading"><span className="spinner-border" /><small>Cargando productos…</small></div>}</div><Pagination page={page} pagination={pagination} setPage={changePageSafely} busy={savingPage || loading} /></section>
     </main>;
 };
 
@@ -214,7 +226,7 @@ const InventoryItemRow = ({ item, countId, editable, onSaved, registerSaver }) =
 const StatusBadge = ({ status }) => { const value = STATUS[status] || STATUS.draft; return <span className={`pc-status pc-status--${value.tone}`}><i className={`bi ${value.icon}`} />{value.label}</span>; };
 const Notice = ({ tone, text, onClose }) => <div className={`pc-notice pc-notice--${tone}`}><i className={`bi ${tone === "success" ? "bi-check2-circle" : "bi-exclamation-triangle"}`} /><span>{text}</span>{onClose && <button type="button" onClick={onClose}><i className="bi bi-x" /></button>}</div>;
 const EmptyState = ({ text = "Todavía no existen conteos físicos." }) => <div className="pc-empty"><span><i className="bi bi-clipboard2-data" /></span><strong>Sin registros</strong><small>{text}</small></div>;
-const Pagination = ({ page, pagination, setPage, busy = false }) => <footer className="pc-pagination"><span><strong>{pagination.total || 0}</strong> registros{busy && <small className="pc-pagination__saving"><span className="spinner-border spinner-border-sm" /> Guardando página…</small>}</span><div><button type="button" disabled={busy || page <= 1} onClick={() => setPage(page - 1)}><i className="bi bi-chevron-left" /> Anterior</button><small>{pagination.current_page || page} / {pagination.last_page || 1}</small><button type="button" disabled={busy || page >= (pagination.last_page || 1)} onClick={() => setPage(page + 1)}>Siguiente <i className="bi bi-chevron-right" /></button></div></footer>;
+const Pagination = ({ page, pagination, setPage, busy = false }) => <footer className="pc-pagination"><span><strong>{pagination.total || 0}</strong> registros{busy && <small className="pc-pagination__saving"><span className="spinner-border spinner-border-sm" /> Actualizando página…</small>}</span><div><button type="button" disabled={busy || page <= 1} onClick={() => setPage(Math.max(1, page - 1))}><i className="bi bi-chevron-left" /> Anterior</button><small>{page} / {pagination.last_page || 1}</small><button type="button" disabled={busy || page >= (pagination.last_page || 1)} onClick={() => setPage(Math.min(pagination.last_page || 1, page + 1))}>Siguiente <i className="bi bi-chevron-right" /></button></div></footer>;
 const formatDate = value => value ? new Intl.DateTimeFormat("es-EC", { dateStyle: "medium", timeStyle: "short" }).format(new Date(value)) : "—";
 const formatNumber = value => new Intl.NumberFormat("es-EC", { maximumFractionDigits: 4 }).format(Number(value || 0));
 
