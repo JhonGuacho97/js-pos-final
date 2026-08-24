@@ -68,6 +68,9 @@ class Customer extends BaseModel
         'identification',
         'tipo_identificacion',    // NUEVO — '04','05','06','07','08'
         'es_consumidor_final',    // NUEVO — boolean
+        'credit_enabled',
+        'credit_limit',
+        'default_payment_terms_days',
         'name',
         'email',
         'phone',
@@ -79,12 +82,18 @@ class Customer extends BaseModel
 
     protected $casts = [
         'es_consumidor_final' => 'boolean',
+        'credit_enabled' => 'boolean',
+        'credit_limit' => 'double',
+        'default_payment_terms_days' => 'integer',
     ];
 
     public static $rules = [
         'identification' => 'nullable|unique:customers',
         'tipo_identificacion' => 'nullable|in:04,05,06,07,08',
         'es_consumidor_final' => 'nullable|boolean',
+        'credit_enabled' => 'nullable|boolean',
+        'credit_limit' => 'nullable|numeric|min:0|max:9999999999999.99',
+        'default_payment_terms_days' => 'nullable|integer|min:0|max:3650',
         'name' => 'required',
         'email' => 'required|email|unique:customers',
         'phone' => 'required|numeric',
@@ -177,6 +186,9 @@ class Customer extends BaseModel
             'identification' => $this->identification,
             'tipo_identificacion' => $this->tipo_identificacion,
             'es_consumidor_final' => $this->es_consumidor_final,
+            'credit_enabled' => $this->credit_enabled,
+            'credit_limit' => $this->credit_limit,
+            'default_payment_terms_days' => $this->default_payment_terms_days,
             'name' => $this->name,
             'email' => $this->email,
             'phone' => $this->phone,

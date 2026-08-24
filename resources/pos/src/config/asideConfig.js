@@ -40,6 +40,7 @@ import {
     faCashRegister,
     faGlobe,
     faBagShopping,
+    faHandHoldingDollar,
 } from "@fortawesome/free-solid-svg-icons";
 import { getFormattedMessage } from "../shared/sharedMethod";
 
@@ -105,6 +106,14 @@ export default [
         to: "/app/sales",
         class: "d-flex",
         permission: Permissions.MANAGE_SALE,
+    },
+    {
+        title: "Cuentas por cobrar",
+        name: "accounts receivable",
+        fontIcon: <FontAwesomeIcon icon={faHandHoldingDollar} />,
+        to: "/app/accounts-receivable",
+        class: "d-flex",
+        permission: Permissions.ACCOUNTS_RECEIVABLE_ACCESS,
     },
     {
         title: "quotations.title",

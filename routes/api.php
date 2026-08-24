@@ -22,6 +22,7 @@ use App\Http\Controllers\API\ManageStockAPIController;
 use App\Http\Controllers\API\PermissionController;
 use App\Http\Controllers\API\POSRegisterAPIController;
 use App\Http\Controllers\API\CashControlAPIController;
+use App\Http\Controllers\API\AccountsReceivableAPIController;
 use App\Http\Controllers\API\ProductAPIController;
 use App\Http\Controllers\API\ProductCategoryAPIController;
 use App\Http\Controllers\API\PurchaseAPIController;
@@ -548,6 +549,8 @@ Route::middleware(['auth:sanctum', 'store.context'])->group(function () {
     Route::get('customer-pdf-download/{customer}', [CustomerAPIController::class, 'pdfDownload']);
     Route::get('customer-sales-pdf-download/{customer}', [CustomerAPIController::class, 'customerSalesPdfDownload']);
     Route::get('customers/{customer}/sales-summary', [CustomerAPIController::class, 'salesSummary']);
+    Route::get('customers/{customer}/credit-profile', [CustomerAPIController::class, 'creditProfile'])
+        ->middleware('permission:manage_customers|manage_sale|manage_pos_screen|view_accounts_receivable|collect_accounts_receivable|manage_accounts_receivable');
     Route::get('customers/{customer}/sales-detail', [CustomerAPIController::class, 'salesDetail']);
     Route::get(
         'customer-quotations-pdf-download/{customer}',
@@ -629,6 +632,23 @@ Route::middleware(['auth:sanctum', 'store.context'])->group(function () {
             ->middleware('permission:manage_cash_control|view_cash_closures|review_cash_closure');
         Route::post('sessions/{session}/review', [CashControlAPIController::class, 'reviewClosure'])
             ->middleware('permission:review_cash_closure');
+    });
+
+    Route::middleware('permission:view_accounts_receivable|collect_accounts_receivable|manage_accounts_receivable')
+        ->prefix('accounts-receivable')->group(function () {
+        Route::get('/', [AccountsReceivableAPIController::class, 'index']);
+        Route::get('summary', [AccountsReceivableAPIController::class, 'summary']);
+        Route::get('customers', [AccountsReceivableAPIController::class, 'customers']);
+        Route::get('customers/{customer}/statement', [AccountsReceivableAPIController::class, 'customerStatement']);
+        Route::post('customers/{customer}/payments', [AccountsReceivableAPIController::class, 'collectCustomer'])
+            ->middleware('permission:collect_accounts_receivable');
+        Route::get('{sale}', [AccountsReceivableAPIController::class, 'show']);
+        Route::post('{sale}/payments', [AccountsReceivableAPIController::class, 'collect'])
+            ->middleware('permission:collect_accounts_receivable');
+        Route::post('{sale}/activities', [AccountsReceivableAPIController::class, 'storeActivity'])
+            ->middleware('permission:collect_accounts_receivable|manage_accounts_receivable');
+        Route::patch('{sale}/terms', [AccountsReceivableAPIController::class, 'updateTerms'])
+            ->middleware('permission:manage_accounts_receivable');
     });
 
     // Coupon Code Routes

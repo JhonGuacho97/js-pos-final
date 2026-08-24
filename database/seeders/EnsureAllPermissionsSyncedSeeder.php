@@ -63,6 +63,9 @@ class EnsureAllPermissionsSyncedSeeder extends Seeder
             'transfer_cash' => 'Transferir efectivo entre cajas',
             'review_cash_closure' => 'Revisar cierres de caja',
             'manage_catalog_orders' => 'Manage Catalog Orders',
+            'view_accounts_receivable' => 'Ver cuentas por cobrar',
+            'collect_accounts_receivable' => 'Registrar cobros de cartera',
+            'manage_accounts_receivable' => 'Gestionar condiciones de crédito',
         ];
 
         foreach ($permissions as $name => $displayName) {
@@ -72,17 +75,18 @@ class EnsureAllPermissionsSyncedSeeder extends Seeder
             );
         }
 
-        /** @var Role $adminRole */
-        $adminRole = Role::whereName(Role::ADMIN)->first();
+        $adminRoles = Role::whereName(Role::ADMIN)->get();
 
-        if (empty($adminRole)) {
-            $adminRole = Role::create([
+        if ($adminRoles->isEmpty()) {
+            $adminRoles = collect([Role::create([
                 'name' => 'admin',
                 'display_name' => ' Admin',
-            ]);
+            ])]);
         }
 
         $allPermissions = Permission::pluck('name', 'id');
-        $adminRole->syncPermissions($allPermissions);
+        $adminRoles->each(fn (Role $adminRole) => $adminRole->syncPermissions($allPermissions));
+
+        app(\Spatie\Permission\PermissionRegistrar::class)->forgetCachedPermissions();
     }
 }

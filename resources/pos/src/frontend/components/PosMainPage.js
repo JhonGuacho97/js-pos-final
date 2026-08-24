@@ -53,6 +53,7 @@ import CustomerForm from "./customerModel/CustomerForm";
 import HoldListModal from "./holdListModal/HoldListModal";
 import { fetchHoldLists } from "../../store/action/pos/HoldListAction";
 import { useNavigate } from "react-router";
+import apiConfig from "../../config/apiConfig";
 import PosCloseRegisterDetailsModel from "../../components/posRegister/PosCloseRegisterDetailsModel.js";
 import DeleteModel from "../../shared/action-buttons/DeleteModel";
 import { addToast } from "../../store/action/toastAction";
@@ -166,6 +167,9 @@ const PosMainPage = (props) => {
     });
     const [errors, setErrors] = useState({ notes: "" });
     const [tipoComprobanteSri, setTipoComprobanteSri] = useState("");
+    const [creditProfile, setCreditProfile] = useState(null);
+    const [creditLoading, setCreditLoading] = useState(false);
+    const [creditTerms, setCreditTerms] = useState({ payment_terms_days: 0, payment_due_date: dayjs().format('YYYY-MM-DD') });
     const [catalogStatus, setCatalogStatus] = useState({
         status: navigator.onLine ? "idle" : "checking",
         online: navigator.onLine,
@@ -305,6 +309,15 @@ const PosMainPage = (props) => {
         }
         if (paymentRows.some((row) => Number(row.amount) > 0 && !row.payment_type?.value)) {
             errors["payment"] = "Selecciona el método de cada pago ingresado.";
+            isValid = false;
+        }
+        const newBalance = Math.max(0, Number(grandTotal) - Math.min(Number(grandTotal), totalTendered));
+        if (catalogStatus.online && creditProfile?.credit_enabled && newBalance > Number(creditProfile.available_credit || 0)) {
+            errors["payment"] = `El saldo pendiente supera el cupo disponible del cliente ($${Number(creditProfile.available_credit || 0).toFixed(2)}).`;
+            isValid = false;
+        }
+        if (newBalance > 0 && !creditTerms.payment_due_date) {
+            errors["payment"] = "Selecciona la fecha de vencimiento del saldo pendiente.";
             isValid = false;
         }
         setErrors(errors);
@@ -813,6 +826,28 @@ const PosMainPage = (props) => {
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [cashPayment]);
 
+    useEffect(() => {
+        if (!cashPayment || !catalogStatus.online) {
+            setCreditProfile(null);
+            return;
+        }
+        const customer = Array.isArray(selectedCustomerOption) ? selectedCustomerOption[0] : selectedCustomerOption;
+        if (!customer?.value) return;
+        let active = true;
+        setCreditLoading(true);
+        apiConfig.get(`customers/${customer.value}/credit-profile`)
+            .then((response) => {
+                if (!active) return;
+                const profile = response.data.data;
+                setCreditProfile(profile);
+                const days = Number(profile.default_payment_terms_days || 0);
+                setCreditTerms({ payment_terms_days: days, payment_due_date: dayjs().add(days, 'day').format('YYYY-MM-DD') });
+            })
+            .catch(() => active && setCreditProfile(null))
+            .finally(() => active && setCreditLoading(false));
+        return () => { active = false; };
+    }, [cashPayment, selectedCustomerOption, catalogStatus.online]);
+
     const updateCost = (item) => {
         setNewCost(item);
     };
@@ -919,6 +954,8 @@ const PosMainPage = (props) => {
             status: 1,
             hold_ref_no: hold_ref_no,
             payment_status: totalPaidAmount(),
+            payment_terms_days: Number(creditTerms.payment_terms_days || 0),
+            payment_due_date: totalPaidAmount() === 1 ? null : creditTerms.payment_due_date,
         };
         return formValue;
     };
@@ -947,6 +984,8 @@ const PosMainPage = (props) => {
             },
         });
         resetPaymentRows();
+        setCreditProfile(null);
+        setCreditTerms({ payment_terms_days: 0, payment_due_date: dayjs().format('YYYY-MM-DD') });
         setCartProductIds("");
     };
 
@@ -1413,6 +1452,11 @@ const PosMainPage = (props) => {
                     tipoComprobanteSri={tipoComprobanteSri}
                     onTipoComprobanteChange={setTipoComprobanteSri}
                     offlineMode={!catalogStatus.online}
+                    selectedCustomer={Array.isArray(selectedCustomerOption) ? selectedCustomerOption[0] : selectedCustomerOption}
+                    creditProfile={creditProfile}
+                    creditLoading={creditLoading}
+                    creditTerms={creditTerms}
+                    onCreditTermsChange={setCreditTerms}
                 />
             )}
             {lgShow && (

@@ -15,6 +15,7 @@ use App\Models\SmsSetting;
 use App\Models\SmsTemplate;
 use App\Services\SalePaymentAllocator;
 use App\Services\InventoryCostSnapshotService;
+use App\Services\AccountsReceivableService;
 use Carbon\Carbon;
 use Exception;
 use Illuminate\Support\Arr;
@@ -109,7 +110,18 @@ class SaleRepository extends BaseRepository
                 'created_offline',
                 'status',
                 'payment_status',
+                'payment_due_date',
+                'payment_terms_days',
+                'collection_note',
             ]);
+
+            if (in_array((int) ($saleInputArray['payment_status'] ?? Sale::PAID), [Sale::UNPAID, Sale::PARTIAL_PAID], true)
+                && empty($saleInputArray['payment_due_date'])) {
+                $terms = (int) (Customer::whereKey($saleInputArray['customer_id'])
+                    ->value('default_payment_terms_days') ?? 0);
+                $saleInputArray['payment_terms_days'] = $terms;
+                $saleInputArray['payment_due_date'] = Carbon::parse($saleInputArray['date'])->addDays($terms)->toDateString();
+            }
 
             $saleInputArray['user_id'] = Auth::id();
             /** @var Sale $sale */
@@ -121,6 +133,13 @@ class SaleRepository extends BaseRepository
                 ]);
             }
             $sale = $this->storeSaleItems($sale, $input);
+
+            $customer = Customer::findOrFail($sale->customer_id);
+            app(AccountsReceivableService::class)->assertCreditAvailable(
+                $customer,
+                (float) $sale->dueAmount($sale->id),
+                $sale->id
+            );
 
             // El precio del catálogo local es una fotografía. Si cambió en
             // el servidor durante el corte, no registramos silenciosamente
@@ -499,6 +518,19 @@ class SaleRepository extends BaseRepository
                 'payment_type' => $input['payment_type'],
                 'amount' => $input['paid_amount'],
                 'received_amount' => $input['paid_amount'],
+            ]);
+        } elseif ($input['payment_status'] == Sale::PARTIAL_PAID) {
+            $partialAmount = round((float) ($input['paid_amount'] ?? 0), 2);
+            if ($partialAmount <= 0 || $partialAmount >= round((float) $input['grand_total'], 2)) {
+                throw new UnprocessableEntityHttpException('El abono inicial debe ser mayor a cero y menor al total de la venta.');
+            }
+            $input['paid_amount'] = $partialAmount;
+            SalesPayment::create([
+                'sale_id' => $sale->id,
+                'payment_date' => Carbon::now('America/Guayaquil')->toDateString(),
+                'payment_type' => $input['payment_type'],
+                'amount' => $partialAmount,
+                'received_amount' => $partialAmount,
             ]);
         } elseif ($input['payment_status'] == Sale::UNPAID) {
             $input['paid_amount'] = 0;

@@ -13,6 +13,7 @@ use App\Models\Sale;
 use App\Models\SaleItem;
 use App\Models\SalesPayment;
 use App\Repositories\CustomerRepository;
+use App\Services\AccountsReceivableService;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Carbon\Carbon;
 use Illuminate\Http\JsonResponse;
@@ -30,9 +31,16 @@ class CustomerAPIController extends AppBaseController
     /** @var CustomerRepository */
     private $customerRepository;
 
-    public function __construct(CustomerRepository $customerRepository)
+    public function __construct(CustomerRepository $customerRepository, private readonly AccountsReceivableService $receivables)
     {
         $this->customerRepository = $customerRepository;
+    }
+
+    public function creditProfile(Customer $customer): JsonResponse
+    {
+        $this->authorizeStoreOwnership($customer);
+
+        return response()->json(['data' => $this->receivables->customerProfile($customer)]);
     }
 
     public function index(Request $request): CustomerCollection

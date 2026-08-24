@@ -62,6 +62,7 @@ class SalesPaymentRepository extends BaseRepository
 
             $saleAmount = $sale->grand_total;
             $payAmount = $input['amount'];
+            $creditedAmount = $sale->creditedAmount();
 
             // Antes no había límite server-side: un pago mayor al saldo
             // pendiente se aceptaba igual (solo el frontend lo evitaba),
@@ -69,7 +70,7 @@ class SalesPaymentRepository extends BaseRepository
             // registro de a dónde fue el excedente (a diferencia del
             // flujo de venta nueva, este endpoint no tiene noción de
             // "vuelto").
-            $saldoPendiente = round($saleAmount - $existAmount, 2);
+            $saldoPendiente = max(0, round($saleAmount - $existAmount - $creditedAmount, 2));
             if (round($payAmount, 2) > round($saldoPendiente, 2)) {
                 throw new UnprocessableEntityHttpException(
                     "El monto del pago (\${$payAmount}) no puede ser mayor al saldo pendiente (\${$saldoPendiente})."
@@ -80,7 +81,7 @@ class SalesPaymentRepository extends BaseRepository
 
             $paymentStatus = Sale::PARTIAL_PAID;
 
-            if (($payAmount > 0) && ($paidAmount >= $saleAmount)) {
+            if (($payAmount > 0) && (($paidAmount + $creditedAmount) >= $saleAmount)) {
                 $paymentStatus = Sale::PAID;
             }
 
@@ -116,9 +117,10 @@ class SalesPaymentRepository extends BaseRepository
             $saleAmount = $sale->grand_total;
             $payAmount = $input['amount'];
             $paidAmount = ($existAmount - $salesPayment->amount) + $payAmount;
+            $creditedAmount = $sale->creditedAmount();
 
-            if (round($paidAmount, 2) > round($saleAmount, 2)) {
-                $available = max(0, round($saleAmount - ($existAmount - $salesPayment->amount), 2));
+            if (round($paidAmount + $creditedAmount, 2) > round($saleAmount, 2)) {
+                $available = max(0, round($saleAmount - $creditedAmount - ($existAmount - $salesPayment->amount), 2));
                 throw new UnprocessableEntityHttpException(
                     "El monto del pago no puede superar el saldo disponible (\${$available})."
                 );
@@ -126,7 +128,7 @@ class SalesPaymentRepository extends BaseRepository
 
             $paymentStatus = Sale::PARTIAL_PAID;
 
-            if (($payAmount > 0) && ($paidAmount >= $saleAmount)) {
+            if (($payAmount > 0) && (($paidAmount + $creditedAmount) >= $saleAmount)) {
                 $paymentStatus = Sale::PAID;
             }
 

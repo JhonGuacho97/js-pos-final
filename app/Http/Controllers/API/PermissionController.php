@@ -7,7 +7,6 @@ use App\Http\Resources\PermissionCollection;
 use App\Http\Resources\PermissionResource;
 use App\Repositories\PermissionRepository;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Cache;
 
 class PermissionController extends AppBaseController
 {
@@ -22,10 +21,11 @@ class PermissionController extends AppBaseController
     {
         $perPage = getPageSize($request);
 
-        $permissions = Cache::remember("permissions_{$perPage}", 3600, function () use ($perPage) {
-            PermissionResource::usingWithCollection();
-            return $this->permissionRepository->paginate($perPage);
-        });
+        // Es un catálogo pequeño y cambia al desplegar módulos. Mantenerlo
+        // una hora en caché dejaba permisos nuevos invisibles hasta ejecutar
+        // comandos manuales en cPanel.
+        PermissionResource::usingWithCollection();
+        $permissions = $this->permissionRepository->paginate($perPage);
 
         PermissionResource::usingWithCollection();
         return new PermissionCollection($permissions);

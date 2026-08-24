@@ -26,6 +26,9 @@ const EditCustomer = (props) => {
         city: customer.attributes.city,
         address: customer.attributes.address,
         dob: customer.attributes.dob,
+        credit_enabled: customer.attributes.credit_enabled,
+        credit_limit: customer.attributes.credit_limit,
+        default_payment_terms_days: customer.attributes.default_payment_terms_days,
         id: customer.id
     }));
 

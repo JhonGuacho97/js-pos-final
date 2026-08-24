@@ -661,6 +661,10 @@ export const Permissions = {
     REVERSE_CASH_MOVEMENT: "reverse_cash_movement",
     TRANSFER_CASH: "transfer_cash",
     REVIEW_CASH_CLOSURE: "review_cash_closure",
+    VIEW_ACCOUNTS_RECEIVABLE: "view_accounts_receivable",
+    COLLECT_ACCOUNTS_RECEIVABLE: "collect_accounts_receivable",
+    MANAGE_ACCOUNTS_RECEIVABLE: "manage_accounts_receivable",
+    ACCOUNTS_RECEIVABLE_ACCESS: "view_accounts_receivable|collect_accounts_receivable|manage_accounts_receivable",
     CASH_CONTROL_ACCESS: "manage_cash_control|view_own_cash_session|create_cash_income|create_cash_expense|withdraw_cash|view_cash_supervision|view_cash_closures|manage_cash_registers|reverse_cash_movement|transfer_cash|review_cash_closure",
 };
 

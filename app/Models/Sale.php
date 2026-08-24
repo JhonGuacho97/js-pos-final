@@ -118,6 +118,9 @@ class Sale extends BaseModel implements HasMedia, JsonResourceful
         'note',
         'status',
         'payment_status',
+        'payment_due_date',
+        'payment_terms_days',
+        'collection_note',
         'reference_code',
         'barcode_symbol',
         'is_return',
@@ -142,6 +145,9 @@ class Sale extends BaseModel implements HasMedia, JsonResourceful
         'notes' => 'nullable',
         'status' => 'integer|required',
         'payment_status' => 'integer|required',
+        'payment_due_date' => 'nullable|date',
+        'payment_terms_days' => 'nullable|integer|min:0|max:3650',
+        'collection_note' => 'nullable|string|max:2000',
         'reference_code' => 'nullable',
     ];
 
@@ -158,6 +164,8 @@ class Sale extends BaseModel implements HasMedia, JsonResourceful
         'received_amount' => 'double',
         'paid_amount' => 'double',
         'payment_status' => 'integer',
+        'payment_due_date' => 'date',
+        'payment_terms_days' => 'integer',
         'status' => 'integer',
         'payment_type' => 'integer',
     ];
@@ -244,6 +252,9 @@ class Sale extends BaseModel implements HasMedia, JsonResourceful
             'note' => $this->note,
             'status' => $this->status,
             'payment_status' => $this->payment_status,
+            'payment_due_date' => optional($this->payment_due_date)->format('Y-m-d'),
+            'payment_terms_days' => $this->payment_terms_days,
+            'collection_note' => $this->collection_note,
             'reference_code' => $this->reference_code,
             'sale_items' => $this->saleItems,
             'created_at' => $this->created_at,
@@ -408,6 +419,16 @@ class Sale extends BaseModel implements HasMedia, JsonResourceful
         return $this->hasMany(SalesPayment::class, 'sale_id', 'id');
     }
 
+    public function collectionActivities(): HasMany
+    {
+        return $this->hasMany(CollectionActivity::class, 'sale_id', 'id');
+    }
+
+    public function latestCollectionActivity(): HasOne
+    {
+        return $this->hasOne(CollectionActivity::class, 'sale_id', 'id')->latestOfMany('contacted_at');
+    }
+
     /**
      * @return int|mixed
      */
@@ -415,15 +436,16 @@ class Sale extends BaseModel implements HasMedia, JsonResourceful
     {
         $grandTotal = Sale::whereId($id)->value('grand_total');
         $paidAmount = SalesPayment::whereSaleId($id)->sum('amount');
+        $creditedAmount = $this->creditedAmount($id);
 
-        // Antes esto ignoraba por completo las notas de crédito: una
-        // factura ya pagada al 100% que recibía una NC seguía mostrando
-        // "Due: $0.00" sin reflejar que ahora se le acreditó algo al
-        // cliente. Se descuenta lo ya acreditado en notas de crédito
-        // válidas (mismo criterio de "válida" que usa
-        // CreditNoteRepository: se excluyen solo las que el SRI rechazó
-        // de forma permanente).
-        $creditedAmount = CreditNote::where('sale_id', $id)
+        return max(0, round($grandTotal - $paidAmount - $creditedAmount, 2));
+    }
+
+    /** Importe de notas de crédito válidas aplicado a la venta. */
+    public function creditedAmount(?int $id = null): float
+    {
+        return (float) CreditNote::where('sale_id', $id ?? $this->id)
+            ->where('generar_como', CreditNote::GENERAR_SALDO)
             ->noCanceladas()
             ->where(function ($q) {
                 $q->whereDoesntHave('electronicInvoice')
@@ -435,19 +457,22 @@ class Sale extends BaseModel implements HasMedia, JsonResourceful
                     });
             })
             ->sum('grand_total');
+    }
 
-        $dueAmount = $grandTotal - $paidAmount - $creditedAmount;
+    /** Recalcula el estado visible de pago desde sus movimientos reales. */
+    public function refreshPaymentStatus(): self
+    {
+        $payments = round((float) $this->payments()->sum('amount'), 2);
+        $settled = round($payments + $this->creditedAmount(), 2);
+        $total = round((float) $this->grand_total, 2);
 
-        // NOTA: esto sigue sin distinguir "no debe nada" de "se le debe
-        // dinero de vuelta al cliente" (ambos casos quedan en 0) -- para
-        // eso hace falta un concepto de saldo a favor del cliente
-        // separado, que es un cambio de producto más grande (requiere
-        // decidir cómo se salda: efectivo, nota de crédito para
-        // próxima compra, etc.) y no se implementó acá.
-        if ($dueAmount < 0) {
-            $dueAmount = 0;
-        }
+        $this->forceFill([
+            'paid_amount' => $payments,
+            'payment_status' => $settled >= $total
+                ? self::PAID
+                : ($payments > 0 ? self::PARTIAL_PAID : self::UNPAID),
+        ])->save();
 
-        return $dueAmount;
+        return $this;
     }
 }

@@ -275,6 +275,13 @@ class CreditNoteRepository extends BaseRepository
                 }
             }
 
+            // Una nota generada como SALDO liquida parte de la factura.
+            // Mantener payment_status sincronizado evita que una deuda ya
+            // cubierta siga apareciendo en cartera como pendiente.
+            if ($creditNote->generar_como === CreditNote::GENERAR_SALDO) {
+                $sale->refreshPaymentStatus();
+            }
+
             DB::commit();
 
             return $creditNote->load('creditNoteItems', 'customer', 'warehouse', 'sale', 'category');
@@ -352,6 +359,9 @@ class CreditNoteRepository extends BaseRepository
             }
 
             $creditNote->update(['status' => CreditNote::STATUS_CANCELADA]);
+            if ($creditNote->generar_como === CreditNote::GENERAR_SALDO && $creditNote->sale) {
+                $creditNote->sale->refreshPaymentStatus();
+            }
 
             // Si esta era la única nota/devolución que marcaba la venta
             // como "con devolución", se limpia el indicador -- si quedan
@@ -426,7 +436,7 @@ class CreditNoteRepository extends BaseRepository
                     : 'FACTURA',
                 'forma_pago' => self::FORMA_PAGO_LABELS[$sale->payment_type] ?? 'OTRO',
                 'total' => $sale->grand_total,
-                'saldo' => round(($sale->grand_total ?? 0) - $pagado, 2),
+                'saldo' => $sale->dueAmount($sale->id),
             ];
         });
 
@@ -482,7 +492,7 @@ class CreditNoteRepository extends BaseRepository
         }
 
         $pagado = $sale->payments->sum('amount');
-        $saldo = round(($sale->grand_total ?? 0) - $pagado, 2);
+        $saldo = $sale->dueAmount($sale->id);
 
         return [
             'sale_id' => $sale->id,

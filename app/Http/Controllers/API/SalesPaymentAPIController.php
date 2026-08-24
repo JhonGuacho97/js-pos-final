@@ -65,16 +65,17 @@ class SalesPaymentAPIController extends AppBaseController
             DB::beginTransaction();
 
             $saleID = SalesPayment::whereKey($id)->value('sale_id');
-            Sale::whereKey($saleID)->lockForUpdate()->firstOrFail();
+            $sale = Sale::whereKey($saleID)->lockForUpdate()->firstOrFail();
             $salePayment = SalesPayment::whereId($id)->lockForUpdate()->firstOrFail();
             $this->authorizeWarehouseAccess($salePayment->sale()->value('warehouse_id'));
 
             $existAmount = SalesPayment::whereSaleId($saleID)->sum('amount') - $salePayment->amount;
 
-            $saleTotal = (float) Sale::whereKey($saleID)->value('grand_total');
-            $status = $existAmount <= 0
-                ? Sale::UNPAID
-                : ($existAmount >= $saleTotal ? Sale::PAID : Sale::PARTIAL_PAID);
+            $saleTotal = (float) $sale->grand_total;
+            $settledAmount = $existAmount + $sale->creditedAmount();
+            $status = $settledAmount >= $saleTotal
+                ? Sale::PAID
+                : ($existAmount <= 0 ? Sale::UNPAID : Sale::PARTIAL_PAID);
 
             Sale::whereId($saleID)->update([
                 'payment_status' => $status,

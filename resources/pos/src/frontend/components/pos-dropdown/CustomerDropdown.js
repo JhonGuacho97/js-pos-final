@@ -21,6 +21,9 @@ const CustomerDropDown = (props) => {
             label: `${customer.attributes.name}${suffix}`,
             offlineCustomerUuid: customer.attributes?.offline_client_uuid || null,
             offlineStatus: status || null,
+            credit_enabled: Boolean(customer.attributes?.credit_enabled),
+            credit_limit: Number(customer.attributes?.credit_limit || 0),
+            default_payment_terms_days: Number(customer.attributes?.default_payment_terms_days || 0),
         }
     });
 

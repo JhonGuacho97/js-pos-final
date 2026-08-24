@@ -10,6 +10,7 @@ import ModelFooter from '../../../shared/components/modelFooter';
 import { getFormattedMessage, placeholderText, numValidate } from '../../../shared/sharedMethod';
 import IdentificacionField from '../../../components/customer/identificacionField';
 import { useCustomerForm } from '../../../hooks/useCustomerFom';
+import '../../../components/customer/customer-credit.scss';
 
 const CustomerForm = (props) => {
     const { show, hide, singleCustomer, offlineMode, onCustomerCreated } = props;
@@ -61,7 +62,7 @@ const CustomerForm = (props) => {
                             <div className="row">
 
                                 {/* Tipo identificación */}
-                                <div className="col-md-6 mb-3">
+                            <div className="col-md-6 mb-3">
                                     <label className="form-label">
                                         Tipo de identificación:
                                     </label>
@@ -218,6 +219,20 @@ const CustomerForm = (props) => {
                                         </span>
                                     )}
                                 </div>
+
+                                {!offlineMode && <div className="col-12">
+                                <section className={`customer-credit-card ${customerValue.credit_enabled ? "is-enabled" : ""}`}>
+                                    <div className="customer-credit-card__heading">
+                                        <div className="customer-credit-card__icon"><i className="bi bi-credit-card-2-front" /></div>
+                                        <div><span>CRÉDITO</span><h3>Condiciones comerciales</h3><p>Opcional: controla cupo y plazo para ventas pendientes.</p></div>
+                                        <label className="customer-credit-switch"><input type="checkbox" name="credit_enabled" checked={Boolean(customerValue.credit_enabled)} onChange={onChangeInput} /><span /><b>{customerValue.credit_enabled ? "Activo" : "Sin control"}</b></label>
+                                    </div>
+                                    {customerValue.credit_enabled && <div className="customer-credit-fields">
+                                        <label>Cupo máximo<div><span>$</span><input type="number" min="0" step="0.01" name="credit_limit" value={customerValue.credit_limit} onChange={onChangeInput} /></div></label>
+                                        <label>Plazo habitual<div><input type="number" min="0" max="3650" name="default_payment_terms_days" value={customerValue.default_payment_terms_days} onChange={onChangeInput} /><span>días</span></div></label>
+                                    </div>}
+                                </section>
+                                </div>}
 
                                 <ModelFooter
                                     onEditRecord={customerData}

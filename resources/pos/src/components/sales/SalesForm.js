@@ -30,6 +30,7 @@ import ReactSelect from '../../shared/select/reactSelect';
 import CustomerForm from '../../frontend/components/customerModel/CustomerForm';
 import CustomerSalesHistoryModal from '../customer/CustomerSalesHistoryModal';
 import '../../assets/scss/custom/pages/sales-form.scss';
+import apiConfig from '../../config/apiConfig';
 
 const SalesForm = (props) => {
     const {
@@ -61,6 +62,8 @@ const SalesForm = (props) => {
     const [modalShowCustomer, setModalShowCustomer] = useState(false);
     const [modalEditCustomer, setModalEditCustomer] = useState(false);
     const [modalHistorial, setModalHistorial] = useState(false);
+    const [creditProfile, setCreditProfile] = useState(null);
+    const [creditLoading, setCreditLoading] = useState(false);
 
     const [saleValue, setSaleValue] = useState({
         date: new Date(),
@@ -76,7 +79,10 @@ const SalesForm = (props) => {
         paid_amount: 0,
         status_id: { label: getFormattedMessage("status.filter.complated.label"), value: 1 },
         payment_status: { label: getFormattedMessage("payment-status.filter.unpaid.label"), value: 2 },
-        payment_type: { label: getFormattedMessage("payment-type.filter.cash.label"), value: 1 }
+        payment_type: { label: getFormattedMessage("payment-type.filter.cash.label"), value: 1 },
+        payment_terms_days: 0,
+        payment_due_date: dayjs().format('YYYY-MM-DD'),
+        initial_payment_amount: ''
     });
     const [errors, setErrors] = useState({
         date: '',
@@ -113,7 +119,10 @@ const SalesForm = (props) => {
                 grand_total: singleSale ? singleSale.grand_total : '0.00',
                 status_id: singleSale ? singleSale.status_id : '',
                 payment_status: singleSale.is_Partial === 3 ? { "label": getFormattedMessage('payment-status.filter.partial.label'), "value": 3 } : singleSale ? singleSale.payment_status : '',
-                payment_type: singleSale ? singleSale.payment_type : ''
+                payment_type: singleSale ? singleSale.payment_type : '',
+                payment_terms_days: singleSale ? (singleSale.payment_terms_days ?? 0) : 0,
+                payment_due_date: singleSale?.payment_due_date || dayjs().format('YYYY-MM-DD'),
+                initial_payment_amount: singleSale?.paid_amount || ''
             })
         }
         if (singleSale && isQuotation) {
@@ -167,6 +176,17 @@ const SalesForm = (props) => {
             error['payment_status'] = getFormattedMessage("globally.payment.status.validate.label")
         } else if (!saleValue.payment_type) {
             error['payment_type'] = getFormattedMessage("globally.payment.type.validate.label")
+        } else if (Number(saleValue.payment_status?.value) === 3 && (!(Number(saleValue.initial_payment_amount) > 0) || Number(saleValue.initial_payment_amount) >= Number(calculateCartTotalAmount(updateProducts, saleValue)))) {
+            dispatch(addToast({ text: 'El abono inicial debe ser mayor a cero y menor al total de la venta.', type: toastType.ERROR }))
+        } else if (creditProfile?.credit_enabled) {
+            const total = Number(calculateCartTotalAmount(updateProducts, saleValue));
+            const paid = Number(saleValue.payment_status?.value) === 1 ? total : Number(saleValue.initial_payment_amount || 0);
+            const newBalance = Math.max(0, total - paid);
+            if (newBalance > Number(creditProfile.available_credit || 0)) {
+                dispatch(addToast({ text: `El saldo de esta venta supera el cupo disponible del cliente (${frontSetting.value?.currency_symbol || '$'}${Number(creditProfile.available_credit || 0).toFixed(2)}).`, type: toastType.ERROR }));
+            } else {
+                isValid = true;
+            }
         } else {
             isValid = true;
         }
@@ -183,6 +203,33 @@ const SalesForm = (props) => {
         setSaleValue(inputs => ({ ...inputs, customer_id: obj }));
         setErrors('');
     };
+
+    const selectedCustomerId = saleValue.customer_id?.value || saleValue.customer_id || null;
+    useEffect(() => {
+        if (!selectedCustomerId || isQuotation) {
+            setCreditProfile(null);
+            return;
+        }
+        let active = true;
+        setCreditLoading(true);
+        apiConfig.get(`customers/${selectedCustomerId}/credit-profile`)
+            .then((response) => {
+                if (!active) return;
+                const profile = response.data.data;
+                setCreditProfile(profile);
+                if (!singleSale) {
+                    const days = Number(profile.default_payment_terms_days || 0);
+                    setSaleValue((current) => ({
+                        ...current,
+                        payment_terms_days: days,
+                        payment_due_date: dayjs(current.date || new Date()).add(days, 'day').format('YYYY-MM-DD'),
+                    }));
+                }
+            })
+            .catch(() => active && setCreditProfile(null))
+            .finally(() => active && setCreditLoading(false));
+        return () => { active = false; };
+    }, [selectedCustomerId, isQuotation]);
 
     const onChangeInput = (e) => {
         e.preventDefault();
@@ -244,7 +291,8 @@ const SalesForm = (props) => {
 
     const handleCallback = (date) => {
         setSaleValue(previousState => {
-            return { ...previousState, date: date }
+            const days = Number(previousState.payment_terms_days || 0);
+            return { ...previousState, date: date, payment_due_date: dayjs(date).add(days, 'day').format('YYYY-MM-DD') }
         });
         setErrors('');
     };
@@ -291,7 +339,10 @@ const SalesForm = (props) => {
             note: prepareData.notes,
             status: prepareData.status_id.value ? prepareData.status_id.value : prepareData.status_id,
             payment_status: prepareData.payment_status.value ? prepareData.payment_status.value : prepareData.payment_status,
-            payment_type: prepareData.payment_status.value === 2 ? 0 : prepareData.payment_type.value ? prepareData.payment_type.value : prepareData.payment_type
+            payment_type: prepareData.payment_status.value === 2 ? 0 : prepareData.payment_type.value ? prepareData.payment_type.value : prepareData.payment_type,
+            paid_amount: Number(prepareData.payment_status?.value) === 3 ? Number(prepareData.initial_payment_amount || 0) : 0,
+            payment_terms_days: Number(prepareData.payment_terms_days || 0),
+            payment_due_date: Number(prepareData.payment_status?.value) === 1 ? null : prepareData.payment_due_date,
         }
         return formValue
     };
@@ -323,7 +374,6 @@ const SalesForm = (props) => {
         }
     }
 
-    const selectedCustomerId = saleValue.customer_id && saleValue.customer_id.value;
     const selectedCustomer = selectedCustomerId
         ? (customers || []).find((c) => String(c.id) === String(selectedCustomerId))
         : null;
@@ -383,6 +433,12 @@ const SalesForm = (props) => {
                             <div><span>Correo</span><strong>{selectedCustomerData?.email || 'Sin información'}</strong></div>
                             <div><span>Dirección</span><strong>{selectedCustomerData?.address || 'Sin información'}</strong></div>
                         </div>
+                        {selectedCustomerFlat && <div className={`sale-credit-snapshot ${creditProfile?.credit_enabled ? 'is-controlled' : ''}`}>
+                            <div><i className='bi bi-credit-card-2-front' /><span><small>Crédito del cliente</small><strong>{creditLoading ? 'Consultando…' : creditProfile?.credit_enabled ? 'Cupo controlado' : 'Sin límite controlado'}</strong></span></div>
+                            <div><small>Saldo actual</small><strong>{frontSetting.value?.currency_symbol || '$'}{Number(creditProfile?.outstanding_balance || 0).toFixed(2)}</strong></div>
+                            <div><small>Disponible</small><strong>{creditProfile?.available_credit === null || creditProfile?.available_credit === undefined ? 'Sin límite' : `${frontSetting.value?.currency_symbol || '$'}${Number(creditProfile.available_credit).toFixed(2)}`}</strong></div>
+                            {Number(creditProfile?.overdue_balance || 0) > 0 && <div className='is-overdue'><small>Vencido</small><strong>{frontSetting.value?.currency_symbol || '$'}{Number(creditProfile.overdue_balance).toFixed(2)}</strong></div>}
+                        </div>}
                     </section>
 
                     <section className='sale-panel sale-document-panel'>
@@ -516,6 +572,9 @@ const SalesForm = (props) => {
                                         defaultValue={paymentTypeDefaultValue[0]} multiLanguageOption={paymentMethodOption}
                                         onChange={onPaymentTypeChange} />
                                 )}
+                                {!singleSale && Number(saleValue?.payment_status?.value) === 3 && <label className='sale-credit-field'>Abono inicial
+                                    <InputGroup><InputGroup.Text>{frontSetting.value?.currency_symbol || '$'}</InputGroup.Text><input className='form-control' type='number' min='0.01' step='0.01' value={saleValue.initial_payment_amount} onChange={(e) => setSaleValue({ ...saleValue, initial_payment_amount: e.target.value })} /></InputGroup>
+                                </label>}
                                 {isQuotation && <ReactSelect multiLanguageOption={paymentStatusFilterOptions}
                                     onChange={onPaymentStatusChange} name='payment_status'
                                     title={getFormattedMessage('dashboard.recentSales.paymentStatus.label')}
@@ -528,6 +587,11 @@ const SalesForm = (props) => {
                                     defaultValue={paymentTypeDefaultValue[0]} multiLanguageOption={paymentMethodOption}
                                     onChange={onPaymentTypeChange} />}
                             </div>
+                            {!singleSale && [2, 3].includes(Number(saleValue?.payment_status?.value)) && <div className='sale-credit-terms'>
+                                <div><i className='bi bi-calendar2-week' /><span><strong>Condiciones de crédito</strong><small>Este saldo aparecerá en cuentas por cobrar.</small></span></div>
+                                <label>Días de plazo<input type='number' min='0' max='3650' value={saleValue.payment_terms_days} onChange={(e) => { const days = Number(e.target.value || 0); setSaleValue({ ...saleValue, payment_terms_days: days, payment_due_date: dayjs(saleValue.date).add(days, 'day').format('YYYY-MM-DD') }); }} /></label>
+                                <label>Fecha de vencimiento<input type='date' value={saleValue.payment_due_date} onChange={(e) => setSaleValue({ ...saleValue, payment_due_date: e.target.value })} /></label>
+                            </div>}
                         </div>
 
                         <div className='sale-summary-section sale-notes-section'>

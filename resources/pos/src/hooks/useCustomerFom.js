@@ -30,6 +30,9 @@ export const useCustomerForm = ({ singleCustomer, addCustomerData, editCustomer,
         country: customerData?.country || "",
         city: customerData?.city || "",
         address: customerData?.address || "",
+        credit_enabled: Boolean(customerData?.credit_enabled),
+        credit_limit: customerData?.credit_limit ?? "0.00",
+        default_payment_terms_days: customerData?.default_payment_terms_days ?? 0,
     });
 
     const [errors, setErrors] = useState({});
@@ -43,7 +46,10 @@ export const useCustomerForm = ({ singleCustomer, addCustomerData, editCustomer,
         customerData.phone === customerValue.phone &&
         customerData.country === customerValue.country &&
         customerData.city === customerValue.city &&
-        customerData.address === customerValue.address;
+        customerData.address === customerValue.address &&
+        Boolean(customerData.credit_enabled) === Boolean(customerValue.credit_enabled) &&
+        Number(customerData.credit_limit || 0) === Number(customerValue.credit_limit || 0) &&
+        Number(customerData.default_payment_terms_days || 0) === Number(customerValue.default_payment_terms_days || 0);
 
     const handleValidation = () => {
         const e = {};
@@ -55,6 +61,8 @@ export const useCustomerForm = ({ singleCustomer, addCustomerData, editCustomer,
         if (!customerValue.country) e.country = "El país es obligatorio";
         if (!customerValue.city) e.city = "La ciudad es obligatoria";
         if (!customerValue.address) e.address = "La dirección es obligatoria";
+        if (customerValue.credit_enabled && Number(customerValue.credit_limit) < 0) e.credit_limit = "El cupo no puede ser negativo";
+        if (customerValue.credit_enabled && Number(customerValue.default_payment_terms_days) < 0) e.default_payment_terms_days = "El plazo no puede ser negativo";
 
         const errorId = validarIdentificacion(
             customerValue.tipo_identificacion,
@@ -67,8 +75,9 @@ export const useCustomerForm = ({ singleCustomer, addCustomerData, editCustomer,
     };
 
     const onChangeInput = (e) => {
-        const { name, value } = e.target;
-        let newValues = { ...customerValue, [name]: value };
+        const { name, value, type, checked } = e.target;
+        const nextValue = type === "checkbox" ? checked : value;
+        let newValues = { ...customerValue, [name]: nextValue };
 
         if (name === "tipo_identificacion" && value === "07") {
             newValues.identification = "";

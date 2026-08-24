@@ -18,6 +18,7 @@ import {
 } from "../../../../shared/sharedMethod";
 import ReactSelect from "../../../../shared/select/reactSelect";
 import SriComprobanteSelect from "../../sri/SriComprobanteSelect";
+import dayjs from 'dayjs';
 
 const CashPaymentModel = (props) => {
     const {
@@ -43,6 +44,11 @@ const CashPaymentModel = (props) => {
         tipoComprobanteSri,
         onTipoComprobanteChange,
         offlineMode,
+        selectedCustomer,
+        creditProfile,
+        creditLoading,
+        creditTerms,
+        onCreditTermsChange,
     } = props;
 
     const currencySymbol = settings.attributes && settings.attributes.currency_symbol;
@@ -51,6 +57,7 @@ const CashPaymentModel = (props) => {
         0
     );
     const liveDifference = totalPaid - grandTotal;
+    const pendingBalance = Math.max(0, Number(grandTotal) - Math.min(Number(grandTotal), totalPaid));
     const status =
         totalPaid <= 0
             ? {
@@ -242,6 +249,18 @@ const CashPaymentModel = (props) => {
                                 {errors.payment}
                             </div>
                         )}
+
+                        {pendingBalance > 0 && <div className={`pos-credit-checkout ${creditProfile?.credit_enabled ? 'is-controlled' : ''}`}>
+                            <div className="pos-credit-checkout__heading"><span><i className="bi bi-calendar2-check" /></span><div><small>VENTA A CRÉDITO</small><h3>Saldo pendiente {formatMoney(pendingBalance)}</h3><p>{selectedCustomer?.label || 'Cliente seleccionado'}</p></div>{creditLoading && <i className="spinner-border spinner-border-sm" />}</div>
+                            <div className="pos-credit-checkout__metrics">
+                                <div><span>Deuda actual</span><strong>{formatMoney(creditProfile?.outstanding_balance || 0)}</strong></div>
+                                <div><span>Cupo disponible</span><strong>{creditProfile?.available_credit === null || creditProfile?.available_credit === undefined ? 'Sin límite' : formatMoney(creditProfile.available_credit)}</strong></div>
+                                {Number(creditProfile?.overdue_balance || 0) > 0 && <div className="is-overdue"><span>Saldo vencido</span><strong>{formatMoney(creditProfile.overdue_balance)}</strong></div>}
+                            </div>
+                            <div className="pos-credit-checkout__terms"><label>Plazo<input type="number" min="0" max="3650" value={creditTerms.payment_terms_days} onChange={(event) => { const days = Number(event.target.value || 0); onCreditTermsChange({ payment_terms_days: days, payment_due_date: dayjs().add(days, 'day').format('YYYY-MM-DD') }); }} /><b>días</b></label><label>Vencimiento<input type="date" value={creditTerms.payment_due_date} onChange={(event) => onCreditTermsChange({ ...creditTerms, payment_due_date: event.target.value })} /></label></div>
+                            {creditProfile?.credit_enabled && pendingBalance > Number(creditProfile.available_credit || 0) && <div className="pos-credit-checkout__warning"><i className="bi bi-exclamation-triangle" /> El saldo supera el cupo disponible. Reduce el pendiente o registra un abono mayor.</div>}
+                            {offlineMode && <div className="pos-credit-checkout__offline"><i className="bi bi-cloud-slash" /> El cupo se validará al sincronizar la venta.</div>}
+                        </div>}
 
                         <div className="pos-payment-notes">
                             <Form.Label>{getFormattedMessage("globally.input.notes.label")}</Form.Label>
