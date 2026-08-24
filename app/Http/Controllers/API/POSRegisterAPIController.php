@@ -126,7 +126,7 @@ class POSRegisterAPIController extends AppBaseController
                 ]);
             }
 
-            $data = $this->getRegisterData($register->created_at->toDateTimeString(), now()->toDateTimeString());
+            $data = $this->getRegisterData($register->created_at->toDateTimeString(), now()->toDateTimeString(), $register);
             $expectedCash = $this->cashControl->currentBalance($register);
             $difference = round($countedCash - $expectedCash, 4);
             if (abs($difference) > 0.009 && empty($input['discrepancy_reason'])) {
@@ -191,11 +191,10 @@ class POSRegisterAPIController extends AppBaseController
             $startDate = $register->created_at->toDateTimeString();
         }
 
-        $data = $this->getRegisterData($startDate, $endDate);
+        $data = $this->getRegisterData($startDate, $endDate, $register);
         $data['cash_in_hand'] = $register->cash_in_hand;
         $data['opening_denominations'] = $register->opening_denominations ?? [];
-        $data['total_cash_amount'] = $data['cash_in_hand'] + $data['todays_specific_sales_cash_payment']
-            - $data['refunded_cash'] + $this->cashControl->manualNet($register);
+        $data['total_cash_amount'] = $this->cashControl->currentBalance($register);
         $data['manual_cash_net'] = $this->cashControl->manualNet($register);
 
         return $this->sendResponse($data, 'Details retrieved successfully');
@@ -262,7 +261,7 @@ class POSRegisterAPIController extends AppBaseController
         return new POSRegisterCollection($register);
     }
 
-    public function getRegisterData($startDate, $endDate)
+    public function getRegisterData($startDate, $endDate, ?POSRegister $register = null)
     {
         $totalGrandTotalAmount = Sale::where('user_id', Auth::id())
             ->whereBetween('created_at', [$startDate, $endDate])
@@ -273,41 +272,47 @@ class POSRegisterAPIController extends AppBaseController
             ->pluck('id')
             ->toArray();
 
-        $data['today_sales_cash_payment'] = SalesPayment::whereIn('sale_id', $saleIds)
-            ->whereBetween('created_at', [$startDate, $endDate])
+        $payments = SalesPayment::query();
+        if ($register) {
+            $payments->where('pos_register_id', $register->id);
+        } else {
+            $payments->whereIn('sale_id', $saleIds)->whereBetween('created_at', [$startDate, $endDate]);
+        }
+
+        $data['today_sales_cash_payment'] = (clone $payments)
             ->where('payment_type', SalesPayment::CASH)
             ->sum('amount');
 
-        $data['todays_specific_sales_cash_payment'] = SalesPayment::whereIn('sale_id', $saleIds)
-            ->whereBetween('created_at', [$startDate, $endDate])
+        $data['todays_specific_sales_cash_payment'] = (clone $payments)
             ->where('payment_type', SalesPayment::CASH)
             ->sum('amount');
 
-        $data['today_sales_cheque_payment'] = SalesPayment::whereIn('sale_id', $saleIds)
-            ->whereBetween('created_at', [$startDate, $endDate])
+        $data['today_sales_cheque_payment'] = (clone $payments)
             ->where('payment_type', SalesPayment::CHEQUE)
             ->sum('amount');
 
-        $data['today_sales_bank_transfer_payment'] = SalesPayment::whereIn('sale_id', $saleIds)
-            ->whereBetween('created_at', [$startDate, $endDate])
+        $data['today_sales_bank_transfer_payment'] = (clone $payments)
             ->where('payment_type', SalesPayment::BANK_TRANSFER)
             ->sum('amount');
 
-        $data['today_sales_other_payment'] = SalesPayment::whereIn('sale_id', $saleIds)
-            ->whereBetween('created_at', [$startDate, $endDate])
+        $data['today_sales_other_payment'] = (clone $payments)
             ->where('payment_type', SalesPayment::OTHER)
             ->sum('amount');
 
         $data['today_sales_amount'] = $totalGrandTotalAmount;
 
-        $data['today_sales_return_amount'] = SaleReturn::whereIn('sale_id', $saleIds)
-            ->sum('grand_total');
+        $returns = SaleReturn::query();
+        if ($register) {
+            $returns->where('pos_register_id', $register->id);
+        } else {
+            $returns->whereIn('sale_id', $saleIds)->whereBetween('created_at', [$startDate, $endDate]);
+        }
+        $data['today_sales_return_amount'] = (clone $returns)->sum('grand_total');
 
-        $data['today_sales_payment_amount'] = SalesPayment::whereIn('sale_id', $saleIds)
-            ->whereBetween('payment_date', [$startDate, $endDate])
-            ->sum('amount');
-
-        $data['today_sales_payment_amount'] = $data['today_sales_amount'] - $data['today_sales_return_amount'];
+        // Este es el total efectivamente recibido durante el turno. Antes se
+        // sobrescribía con ventas menos devoluciones, inflando cierres cuando
+        // existían ventas parciales o pendientes.
+        $data['today_sales_payment_amount'] = (clone $payments)->sum('amount');
         // Antes filtraba por sale.payment_type == CASH -- ese campo solo
         // guarda el PRIMER método de pago recibido (ver SaleRepository),
         // así que una venta pagada mitad tarjeta / mitad efectivo (tarjeta
@@ -321,7 +326,7 @@ class POSRegisterAPIController extends AppBaseController
         // originales es una decisión de negocio que no está definida hoy
         // (¿se devuelve en el mismo método que se cobró? ¿a criterio del
         // cajero?) y queda fuera de este fix.
-        $data['refunded_cash'] = SaleReturn::whereIn('sale_id', $saleIds)
+        $data['refunded_cash'] = (clone $returns)
             ->where(function (Builder $query) {
                 $query->where('payment_type', SaleReturn::CASH)
                     ->orWhere(function (Builder $legacy) {

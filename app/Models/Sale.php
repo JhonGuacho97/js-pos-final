@@ -322,6 +322,46 @@ class Sale extends BaseModel implements HasMedia, JsonResourceful
     }
 
     /**
+     * Desglose real de pagos para el XML. Agrupa métodos que comparten el
+     * mismo código SRI, limita el total al importe de la factura y conserva
+     * compatibilidad con ventas antiguas que no tienen filas de pago.
+     */
+    public function pagosSri(): array
+    {
+        $payments = $this->relationLoaded('payments') ? $this->payments : $this->payments()->get();
+        $remaining = round((float) $this->grand_total, 2);
+        $grouped = [];
+
+        foreach ($payments as $payment) {
+            if ($remaining <= 0) {
+                break;
+            }
+
+            $amount = min(round((float) $payment->amount, 2), $remaining);
+            if ($amount <= 0) {
+                continue;
+            }
+
+            $code = match ((int) $payment->payment_type) {
+                self::CASH => '01',
+                self::CHEQUE, self::BANK_TRANSFER => '15',
+                default => '01',
+            };
+            $grouped[$code] = round(($grouped[$code] ?? 0) + $amount, 2);
+            $remaining = round($remaining - $amount, 2);
+        }
+
+        if ($remaining > 0) {
+            $code = $this->formaPagoSri();
+            $grouped[$code] = round(($grouped[$code] ?? 0) + $remaining, 2);
+        }
+
+        return collect($grouped)->map(
+            fn ($amount, $code) => ['formaPago' => (string) $code, 'total' => (float) $amount]
+        )->values()->all();
+    }
+
+    /**
      * Fecha de emisión en formato dd/MM/yyyy que requiere el SRI.
      */
     public function fechaEmisionSri(): string

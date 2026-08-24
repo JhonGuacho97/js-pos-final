@@ -57,6 +57,7 @@ class SalesPayment extends BaseModel implements JsonResourceful
      */
     protected $fillable = [
         'sale_id',
+        'pos_register_id',
         'reference',
         'payment_date',
         'payment_type',
@@ -78,6 +79,7 @@ class SalesPayment extends BaseModel implements JsonResourceful
      */
     public static $rules = [
         'payment_date' => 'date',
+        'payment_type' => 'required|integer|in:1,2,3,4',
         'amount' => 'required|numeric|min:0.01',
     ];
 
@@ -127,6 +129,11 @@ class SalesPayment extends BaseModel implements JsonResourceful
     public function sale(): BelongsTo
     {
         return $this->belongsTo(Sale::class, 'sale_id', 'id');
+    }
+
+    public function posRegister(): BelongsTo
+    {
+        return $this->belongsTo(POSRegister::class, 'pos_register_id');
     }
 
     public function scopeUser(Builder $builder, $userId)

@@ -9,7 +9,6 @@ use App\Models\Sale;
 use App\Models\SalesPayment;
 use App\Repositories\SalesPaymentRepository;
 use Exception;
-use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Symfony\Component\HttpKernel\Exception\UnprocessableEntityHttpException;
 
@@ -31,6 +30,7 @@ class SalesPaymentAPIController extends AppBaseController
      */
     public function getAllPayments(Sale $sale)
     {
+        $this->authorizeWarehouseAccess($sale->warehouse_id);
         $data = [
             'sale_id' => $sale->id,
             'data' => $sale->payments,
@@ -41,6 +41,7 @@ class SalesPaymentAPIController extends AppBaseController
 
     public function createSalePayment(Sale $sale, CreateSalePaymentRequest $request): SalesPaymentResource
     {
+        $this->authorizeWarehouseAccess($sale->warehouse_id);
         $input = $request->all();
 
         $salePayment = $this->salesPaymentRepository->storeSalePayment($input, $sale);
@@ -48,8 +49,9 @@ class SalesPaymentAPIController extends AppBaseController
         return new SalesPaymentResource($salePayment);
     }
 
-    public function updateSalePayment(SalesPayment $salesPayment, Request $request): SalesPaymentResource
+    public function updateSalePayment(SalesPayment $salesPayment, CreateSalePaymentRequest $request): SalesPaymentResource
     {
+        $this->authorizeWarehouseAccess($salesPayment->sale()->value('warehouse_id'));
         $input = $request->all();
 
         $salePayment = $this->salesPaymentRepository->updateSalePayment($input, $salesPayment);
@@ -62,12 +64,17 @@ class SalesPaymentAPIController extends AppBaseController
         try {
             DB::beginTransaction();
 
-            $salePayment = SalesPayment::whereId($id)->firstOrFail();
-            $saleID = $salePayment->sale_id;
+            $saleID = SalesPayment::whereKey($id)->value('sale_id');
+            Sale::whereKey($saleID)->lockForUpdate()->firstOrFail();
+            $salePayment = SalesPayment::whereId($id)->lockForUpdate()->firstOrFail();
+            $this->authorizeWarehouseAccess($salePayment->sale()->value('warehouse_id'));
 
             $existAmount = SalesPayment::whereSaleId($saleID)->sum('amount') - $salePayment->amount;
 
-            $status = $existAmount <= 0 ? Sale::UNPAID : Sale::PARTIAL_PAID;
+            $saleTotal = (float) Sale::whereKey($saleID)->value('grand_total');
+            $status = $existAmount <= 0
+                ? Sale::UNPAID
+                : ($existAmount >= $saleTotal ? Sale::PAID : Sale::PARTIAL_PAID);
 
             Sale::whereId($saleID)->update([
                 'payment_status' => $status,

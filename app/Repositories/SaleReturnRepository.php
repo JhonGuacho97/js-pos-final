@@ -13,6 +13,7 @@ use App\Models\Sale;
 use App\Models\SaleItem;
 use App\Models\SaleReturn;
 use App\Models\SaleReturnItem;
+use App\Services\InventoryCostSnapshotService;
 use App\Models\SmsSetting;
 use App\Models\SmsTemplate;
 use Carbon\Carbon;
@@ -319,6 +320,7 @@ class SaleReturnRepository extends BaseRepository
             //            }
 
             $item = $this->calculationSaleReturnItems($saleReturnItem);
+            $item = array_merge($item, app(InventoryCostSnapshotService::class)->forReturn($saleID, $item));
             $saleReturnItem = new SaleReturnItem($item);
             $saleReturn->saleReturnItems()->save($saleReturnItem);
         }
@@ -604,7 +606,13 @@ class SaleReturnRepository extends BaseRepository
             $item = SaleReturnItem::whereId($saleReturnItem['sale_return_item_id']);
 
             $product = ManageStock::whereWarehouseId($warehouseId)->whereProductId($saleReturnItem['product_id'])->first();
-            $oldItem = SaleReturnItem::whereId($saleReturnItem['sale_return_item_id'])->first();
+            $oldItem = SaleReturnItem::with('saleReturn')->whereId($saleReturnItem['sale_return_item_id'])->first();
+            if ($oldItem?->saleReturn?->sale_id) {
+                $saleReturnItem = array_merge(
+                    $saleReturnItem,
+                    app(InventoryCostSnapshotService::class)->forReturn($oldItem->saleReturn->sale_id, $saleReturnItem)
+                );
+            }
             $totalQuantity = 0;
             if ($product && $oldItem && $oldItem->quantity != $saleReturnItem['quantity']) {
                 if ($oldItem->quantity > $saleReturnItem['quantity']) {

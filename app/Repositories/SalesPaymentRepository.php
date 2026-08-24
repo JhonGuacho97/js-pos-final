@@ -56,13 +56,9 @@ class SalesPaymentRepository extends BaseRepository
         try {
             DB::beginTransaction();
 
-            $existAnySalePayment = SalesPayment::whereSaleId($sale->id)->exists();
+            $sale = Sale::whereKey($sale->id)->lockForUpdate()->firstOrFail();
 
-            $existAmount = 0;
-
-            if ($existAnySalePayment) {
-                $existAmount = SalesPayment::whereSaleId($sale->id)->sum('amount');
-            }
+            $existAmount = SalesPayment::whereSaleId($sale->id)->lockForUpdate()->get()->sum('amount');
 
             $saleAmount = $sale->grand_total;
             $payAmount = $input['amount'];
@@ -74,7 +70,7 @@ class SalesPaymentRepository extends BaseRepository
             // flujo de venta nueva, este endpoint no tiene noción de
             // "vuelto").
             $saldoPendiente = round($saleAmount - $existAmount, 2);
-            if (round($payAmount, 2) > $saldoPendiente + 0.01) {
+            if (round($payAmount, 2) > round($saldoPendiente, 2)) {
                 throw new UnprocessableEntityHttpException(
                     "El monto del pago (\${$payAmount}) no puede ser mayor al saldo pendiente (\${$saldoPendiente})."
                 );
@@ -114,11 +110,19 @@ class SalesPaymentRepository extends BaseRepository
         try {
             DB::beginTransaction();
 
-            $existAmount = SalesPayment::whereSaleId($salesPayment->sale_id)->sum('amount');
-            $sale = Sale::whereId($salesPayment->sale_id)->firstOrFail();
+            $sale = Sale::whereId($salesPayment->sale_id)->lockForUpdate()->firstOrFail();
+            $salesPayment = SalesPayment::whereKey($salesPayment->id)->lockForUpdate()->firstOrFail();
+            $existAmount = SalesPayment::whereSaleId($salesPayment->sale_id)->lockForUpdate()->get()->sum('amount');
             $saleAmount = $sale->grand_total;
             $payAmount = $input['amount'];
             $paidAmount = ($existAmount - $salesPayment->amount) + $payAmount;
+
+            if (round($paidAmount, 2) > round($saleAmount, 2)) {
+                $available = max(0, round($saleAmount - ($existAmount - $salesPayment->amount), 2));
+                throw new UnprocessableEntityHttpException(
+                    "El monto del pago no puede superar el saldo disponible (\${$available})."
+                );
+            }
 
             $paymentStatus = Sale::PARTIAL_PAID;
 
@@ -129,6 +133,7 @@ class SalesPaymentRepository extends BaseRepository
             $sale->update([
                 'payment_status' => $paymentStatus,
                 'paid_amount' => $paidAmount,
+                'payment_type' => $input['payment_type'],
             ]);
 
             $salesPayment->update($input);

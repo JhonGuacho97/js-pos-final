@@ -13,4 +13,16 @@ class SalesPaymentObserver
     {
         $this->cashControl->recordSalePayment($payment);
     }
+
+    public function updated(SalesPayment $payment): void
+    {
+        if ($payment->wasChanged(['amount', 'payment_type'])) {
+            $this->cashControl->replaceSalePaymentMovement($payment);
+        }
+    }
+
+    public function deleted(SalesPayment $payment): void
+    {
+        $this->cashControl->removeSalePaymentMovement($payment);
+    }
 }

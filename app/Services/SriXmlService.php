@@ -175,12 +175,14 @@ class SriXmlService
 
         // pagos
         $pagos = $dom->createElement('pagos');
-        $pago = $dom->createElement('pago');
-        $this->nodo($dom, $pago, 'formaPago', $sale->formaPagoSri());
-        $this->nodo($dom, $pago, 'total', $this->decimal2($sale->grand_total ?? 0));
-        $this->nodo($dom, $pago, 'plazo', '0');
-        $this->nodo($dom, $pago, 'unidadTiempo', 'dias');
-        $pagos->appendChild($pago);
+        foreach ($sale->pagosSri() as $payment) {
+            $pago = $dom->createElement('pago');
+            $this->nodo($dom, $pago, 'formaPago', $payment['formaPago']);
+            $this->nodo($dom, $pago, 'total', $this->decimal2($payment['total']));
+            $this->nodo($dom, $pago, 'plazo', '0');
+            $this->nodo($dom, $pago, 'unidadTiempo', 'dias');
+            $pagos->appendChild($pago);
+        }
         $infoFact->appendChild($pagos);
         $factura->appendChild($infoFact);
 

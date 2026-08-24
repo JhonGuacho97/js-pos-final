@@ -237,6 +237,11 @@ const CashPaymentModel = (props) => {
                                 {status.label}
                             </Badge>
                         </div>
+                        {errors.payment && (
+                            <div className="alert alert-danger mt-3 mb-0" role="alert">
+                                {errors.payment}
+                            </div>
+                        )}
 
                         <div className="pos-payment-notes">
                             <Form.Label>{getFormattedMessage("globally.input.notes.label")}</Form.Label>

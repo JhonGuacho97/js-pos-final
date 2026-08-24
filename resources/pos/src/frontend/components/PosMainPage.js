@@ -279,15 +279,33 @@ const PosMainPage = (props) => {
 
     const handleValidation = () => {
         let errors = {};
-        let isValid = false;
+        let isValid = true;
         if (
             cashPaymentValue["notes"] &&
             cashPaymentValue["notes"].length > 100
         ) {
             errors["notes"] =
                 "The notes must not be greater than 100 characters";
-        } else {
-            isValid = true;
+            isValid = false;
+        }
+
+        const totalTendered = paymentRows.reduce(
+            (sum, row) => sum + (Number(row.amount) || 0),
+            0
+        );
+        const cashTendered = paymentRows.reduce(
+            (sum, row) => sum + (row.payment_type?.value === 1 ? (Number(row.amount) || 0) : 0),
+            0
+        );
+        const changeDue = Math.max(0, totalTendered - grandTotal);
+        if (changeDue > cashTendered + 0.009) {
+            errors["payment"] =
+                "El excedente no puede devolverse: el efectivo recibido no alcanza para cubrir el cambio.";
+            isValid = false;
+        }
+        if (paymentRows.some((row) => Number(row.amount) > 0 && !row.payment_type?.value)) {
+            errors["payment"] = "Selecciona el método de cada pago ingresado.";
+            isValid = false;
         }
         setErrors(errors);
         return isValid;

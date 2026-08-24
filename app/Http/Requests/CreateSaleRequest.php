@@ -25,6 +25,9 @@ class CreateSaleRequest extends FormRequest
     {
         return array_merge(Sale::$rules, [
             'requested_electronic_document' => ['nullable', 'in:01'],
+            'payments' => ['nullable', 'array'],
+            'payments.*.amount' => ['required_with:payments', 'numeric', 'min:0.01'],
+            'payments.*.payment_type' => ['required_with:payments', 'integer', 'in:1,2,3,4'],
         ]);
     }
 }

@@ -13,6 +13,8 @@ use App\Models\SaleItem;
 use App\Models\SalesPayment;
 use App\Models\SmsSetting;
 use App\Models\SmsTemplate;
+use App\Services\SalePaymentAllocator;
+use App\Services\InventoryCostSnapshotService;
 use Carbon\Carbon;
 use Exception;
 use Illuminate\Support\Arr;
@@ -384,6 +386,12 @@ class SaleRepository extends BaseRepository
         // inventario (ej: 2 cajas * 24 = 48), para que el descuento de stock
         // y todo lo demás que consume 'quantity' funcione sin cambios.
         $saleItem['quantity'] = $presentationQuantity * $equivalence;
+        $saleItem = array_merge($saleItem, app(InventoryCostSnapshotService::class)->forSale(
+            $product->loadMissing(['kitItems.component', 'kitItems.presentation.product']),
+            (float) $saleItem['quantity'],
+            $presentation,
+            (float) $presentationQuantity
+        ));
 
         return $saleItem;
     }
@@ -451,44 +459,22 @@ class SaleRepository extends BaseRepository
             // contar como "pagado". El vuelto solo tiene sentido devolverlo
             // en efectivo (no se puede "devolver vuelto" por transferencia),
             // así que se descuenta únicamente de las filas en efectivo.
-            $totalTendered = 0;
-            foreach ($input['payments'] as $payment) {
-                $totalTendered += (float) ($payment['amount'] ?? 0);
-            }
-            $changeDue = max(0, $totalTendered - (float) $input['grand_total']);
-            $remainingChangeToDeduct = $changeDue;
-
             $totalPaid = 0;
             $firstPaymentType = null;
 
-            foreach ($input['payments'] as $payment) {
-                $tendered = (float) ($payment['amount'] ?? 0);
-                if ($tendered <= 0) {
-                    continue;
-                }
-
-                $applied = $tendered;
-                if ($remainingChangeToDeduct > 0 && $payment['payment_type'] == SalesPayment::CASH) {
-                    $deduction = min($remainingChangeToDeduct, $applied);
-                    $applied -= $deduction;
-                    $remainingChangeToDeduct -= $deduction;
-                }
-
-                if ($applied <= 0) {
-                    // Este pago en efectivo se fue completo en dar vuelto
-                    // (raro, pero posible si hay más de una fila en
-                    // efectivo) -- no se registra un pago de $0.
-                    continue;
-                }
-
+            $allocatedPayments = app(SalePaymentAllocator::class)->allocate(
+                $input['payments'],
+                (float) $input['grand_total']
+            );
+            foreach ($allocatedPayments as $payment) {
                 SalesPayment::create([
                     'sale_id' => $sale->id,
                     'payment_date' => Carbon::now('America/Guayaquil')->toDateString(),
                     'payment_type' => $payment['payment_type'],
-                    'amount' => $applied,
-                    'received_amount' => $tendered,
+                    'amount' => $payment['amount'],
+                    'received_amount' => $payment['received_amount'],
                 ]);
-                $totalPaid += $applied;
+                $totalPaid += $payment['amount'];
                 if ($firstPaymentType === null) {
                     $firstPaymentType = $payment['payment_type'];
                 }

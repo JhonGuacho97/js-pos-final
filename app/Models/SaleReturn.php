@@ -90,6 +90,7 @@ class SaleReturn extends BaseModel implements HasMedia, JsonResourceful
         'status',
         'reference_code',
         'sale_id',
+        'pos_register_id',
     ];
 
     /**
@@ -194,6 +195,11 @@ class SaleReturn extends BaseModel implements HasMedia, JsonResourceful
     public function sale(): BelongsTo
     {
         return $this->belongsTo(Sale::class, 'sale_id', 'id');
+    }
+
+    public function posRegister(): BelongsTo
+    {
+        return $this->belongsTo(POSRegister::class, 'pos_register_id');
     }
 
     public function scopeUser(Builder $builder, $userId)

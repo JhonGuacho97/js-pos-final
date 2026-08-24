@@ -4,12 +4,11 @@ namespace App\Services;
 
 use App\Models\CashMovement;
 use App\Models\POSRegister;
-use App\Models\Sale;
 use App\Models\SaleReturn;
 use App\Models\SalesPayment;
 use App\Models\Expense;
 use App\Models\Warehouse;
-use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
@@ -54,27 +53,15 @@ class CashControlService
 
     public function currentBalance(POSRegister $session): float
     {
-        $end = $session->closed_at ?? now();
-        $saleIds = Sale::where('user_id', $session->user_id)
-            ->whereBetween('created_at', [$session->created_at, $end])
-            ->pluck('id');
-        $cashSales = (float) SalesPayment::whereIn('sale_id', $saleIds)
-            ->whereBetween('created_at', [$session->created_at, $end])
-            ->where('payment_type', SalesPayment::CASH)
-            ->sum('amount');
-        $cashRefunds = (float) SaleReturn::whereIn('sale_id', $saleIds)
-            ->where(function (Builder $query) {
-                $query->where('payment_type', SaleReturn::CASH)
-                    ->orWhere(function (Builder $legacy) {
-                        $legacy->where(function (Builder $payment) {
-                            $payment->whereNull('payment_type')->orWhere('payment_type', 0);
-                        })->whereHas('sale.payments', function (Builder $payment) {
-                            $payment->where('payment_type', SalesPayment::CASH);
-                        });
-                    });
-            })->sum('grand_total');
+        // La caja se contabiliza por el turno que recibió o entregó el dinero,
+        // no por la fecha de creación de la venta. OPENING se excluye porque
+        // cash_in_hand ya contiene ese mismo valor.
+        $movementNet = (float) $session->movements()
+            ->where('type', '!=', CashMovement::OPENING)
+            ->selectRaw("COALESCE(SUM(CASE WHEN direction = 'IN' THEN amount ELSE -amount END), 0) AS net")
+            ->value('net');
 
-        return round((float) $session->cash_in_hand + $cashSales - $cashRefunds + $this->manualNet($session), 4);
+        return round((float) $session->cash_in_hand + $movementNet, 4);
     }
 
     public function manualNet(POSRegister $session): float
@@ -95,39 +82,89 @@ class CashControlService
 
     public function recordSalePayment(SalesPayment $payment): ?CashMovement
     {
-        if ((int) $payment->payment_type !== SalesPayment::CASH) {
-            return null;
-        }
         $sale = $payment->sale;
         if (! $sale?->user_id || ! $sale?->warehouse_id) {
             return null;
         }
-        $session = POSRegister::where('user_id', $sale->user_id)
-            ->where('warehouse_id', $sale->warehouse_id)
-            ->whereNull('closed_at')
-            ->where('created_at', '<=', $payment->created_at ?? now())
-            ->latest()->first();
+
+        $session = $this->resolveOpenSession(
+            $sale->warehouse_id,
+            $payment->pos_register_id,
+            Auth::id() ?: $sale->user_id
+        );
+
+        // Los métodos no monetarios también quedan atribuidos al turno para
+        // que el cierre sume lo realmente cobrado por cada medio.
         if (! $session) {
+            if ((int) $payment->payment_type === SalesPayment::CASH) {
+                throw ValidationException::withMessages([
+                    'payment_type' => 'El cobro en efectivo requiere una caja abierta en esta sucursal.',
+                ]);
+            }
             return null;
         }
-        $storeId = (int) Warehouse::whereKey($sale->warehouse_id)->value('store_id');
 
-        return CashMovement::firstOrCreate([
+        if ((int) $payment->pos_register_id !== (int) $session->id) {
+            $payment->updateQuietly(['pos_register_id' => $session->id]);
+        }
+
+        if ((int) $payment->payment_type !== SalesPayment::CASH) {
+            return null;
+        }
+
+        $existing = CashMovement::where('source_type', SalesPayment::class)
+            ->where('source_id', $payment->id)
+            ->where('type', CashMovement::SALE_PAYMENT)
+            ->whereDoesntHave('reversal')
+            ->latest('id')
+            ->first();
+        if ($existing) {
+            return $existing;
+        }
+
+        $storeId = (int) Warehouse::whereKey($sale->warehouse_id)->value('store_id');
+        $balance = $this->currentBalance($session);
+
+        return CashMovement::create([
             'source_type' => SalesPayment::class,
             'source_id' => $payment->id,
             'type' => CashMovement::SALE_PAYMENT,
-        ], [
             'pos_register_id' => $session->id,
             'cash_register_id' => $session->cash_register_id,
             'store_id' => $storeId,
             'warehouse_id' => $sale->warehouse_id,
-            'user_id' => $sale->user_id,
+            'user_id' => Auth::id() ?: $sale->user_id,
             'direction' => CashMovement::IN,
             'amount' => $payment->amount,
-            'balance_after' => $this->currentBalance($session),
+            'balance_after' => $balance + (float) $payment->amount,
             'reference' => $sale->reference_code,
             'description' => 'Cobro en efectivo de venta',
         ]);
+    }
+
+    public function replaceSalePaymentMovement(SalesPayment $payment): void
+    {
+        $session = $this->paymentSession($payment);
+        if ($session?->closed_at) {
+            throw ValidationException::withMessages([
+                'payment' => 'No se puede modificar un pago perteneciente a una caja cerrada.',
+            ]);
+        }
+
+        $this->reverseActivePaymentMovements($payment, 'Corrección de pago');
+        $this->recordSalePayment($payment);
+    }
+
+    public function removeSalePaymentMovement(SalesPayment $payment): void
+    {
+        $session = $this->paymentSession($payment);
+        if ($session?->closed_at) {
+            throw ValidationException::withMessages([
+                'payment' => 'No se puede eliminar un pago perteneciente a una caja cerrada.',
+            ]);
+        }
+
+        $this->reverseActivePaymentMovements($payment, 'Eliminación de pago');
     }
 
     public function recordExpense(Expense $expense, int $userId, int $storeId): CashMovement
@@ -166,27 +203,35 @@ class CashControlService
 
     public function recordSaleReturn(SaleReturn $saleReturn): ?CashMovement
     {
-        if ((int) $saleReturn->payment_type !== SaleReturn::CASH) {
-            return null;
-        }
-
         $sale = $saleReturn->sale;
         if (! $sale?->user_id || ! $saleReturn->warehouse_id) {
             return null;
         }
 
-        $session = POSRegister::where('user_id', $sale->user_id)
-            ->where('warehouse_id', $saleReturn->warehouse_id)
-            ->whereNull('closed_at')
-            ->where('created_at', '<=', $saleReturn->created_at ?? now())
-            ->latest()->first();
+        $session = $this->resolveOpenSession(
+            $saleReturn->warehouse_id,
+            $saleReturn->pos_register_id,
+            Auth::id() ?: $sale->user_id
+        );
         if (! $session) {
-            throw ValidationException::withMessages([
-                'payment_type' => 'La devolución en efectivo requiere una caja abierta en esta sucursal.',
-            ]);
+            if ((int) $saleReturn->payment_type === SaleReturn::CASH) {
+                throw ValidationException::withMessages([
+                    'payment_type' => 'La devolución en efectivo requiere una caja abierta en esta sucursal.',
+                ]);
+            }
+            return null;
+        }
+
+        if ((int) $saleReturn->pos_register_id !== (int) $session->id) {
+            $saleReturn->updateQuietly(['pos_register_id' => $session->id]);
+        }
+
+        if ((int) $saleReturn->payment_type !== SaleReturn::CASH) {
+            return null;
         }
 
         $storeId = (int) Warehouse::whereKey($saleReturn->warehouse_id)->value('store_id');
+        $balance = $this->currentBalance($session);
         $movement = CashMovement::firstOrCreate([
             'source_type' => SaleReturn::class,
             'source_id' => $saleReturn->id,
@@ -196,16 +241,78 @@ class CashControlService
             'cash_register_id' => $session->cash_register_id,
             'store_id' => $storeId,
             'warehouse_id' => $saleReturn->warehouse_id,
-            'user_id' => $sale->user_id,
+            'user_id' => Auth::id() ?: $sale->user_id,
             'direction' => CashMovement::OUT,
             'amount' => $saleReturn->grand_total,
-            'balance_after' => $this->currentBalance($session),
+            'balance_after' => $balance - (float) $saleReturn->grand_total,
             'reference' => $saleReturn->reference_code,
             'description' => 'Devolución de venta pagada en efectivo',
         ]);
         $saleReturn->updateQuietly(['cash_movement_id' => $movement->id]);
 
         return $movement;
+    }
+
+    private function resolveOpenSession(int $warehouseId, ?int $preferredSessionId, int $userId): ?POSRegister
+    {
+        if ($preferredSessionId) {
+            $preferred = POSRegister::whereKey($preferredSessionId)->first();
+            if ($preferred && ! $preferred->closed_at && (int) $preferred->warehouse_id === $warehouseId) {
+                return $preferred;
+            }
+        }
+
+        return POSRegister::where('user_id', $userId)
+            ->where('warehouse_id', $warehouseId)
+            ->whereNull('closed_at')
+            ->latest('created_at')
+            ->first();
+    }
+
+    private function paymentSession(SalesPayment $payment): ?POSRegister
+    {
+        return $payment->pos_register_id
+            ? POSRegister::whereKey($payment->pos_register_id)->first()
+            : null;
+    }
+
+    private function reverseActivePaymentMovements(SalesPayment $payment, string $reason): void
+    {
+        $movements = CashMovement::where('source_type', SalesPayment::class)
+            ->where('source_id', $payment->id)
+            ->where('type', CashMovement::SALE_PAYMENT)
+            ->whereDoesntHave('reversal')
+            ->lockForUpdate()
+            ->get();
+
+        foreach ($movements as $movement) {
+            $session = POSRegister::whereKey($movement->pos_register_id)->lockForUpdate()->firstOrFail();
+            if ($session->closed_at) {
+                throw ValidationException::withMessages([
+                    'payment' => 'No se puede corregir un movimiento de una caja cerrada.',
+                ]);
+            }
+
+            $balance = $this->currentBalance($session);
+            CashMovement::create([
+                'pos_register_id' => $session->id,
+                'cash_register_id' => $session->cash_register_id,
+                'store_id' => $movement->store_id,
+                'warehouse_id' => $movement->warehouse_id,
+                'user_id' => Auth::id() ?: $movement->user_id,
+                'type' => CashMovement::REVERSAL,
+                'direction' => CashMovement::OUT,
+                'amount' => $movement->amount,
+                'balance_after' => $balance - (float) $movement->amount,
+                'reference' => $movement->reference,
+                'description' => $reason,
+                'source_type' => SalesPayment::class,
+                'source_id' => $payment->id,
+                'reversed_movement_id' => $movement->id,
+                'reversal_reason' => $reason,
+                'metadata' => ['original_amount' => (float) $movement->amount],
+            ]);
+        }
     }
 
     public function reverseMovement(CashMovement $movement, string $reason, int $approverId, int $storeId): CashMovement

@@ -31,6 +31,7 @@ use App\Models\SaleReturnItem;
 use App\Models\SalesPayment;
 use App\Models\Supplier;
 use App\Models\Warehouse;
+use App\Services\ProfitLossReportService;
 use App\Repositories\CustomerRepository;
 use App\Repositories\ManageStockRepository;
 use App\Repositories\PurchaseRepository;
@@ -576,77 +577,25 @@ class ReportAPIController extends AppBaseController
 
     public function getProfitLossReport(Request $request)
     {
-        $data = [];
-        $data['sales'] = $this->scopeQueryToCurrentStore(Sale::whereBetween(
-            'date',
-            [$request->get('start_date'), $request->get('end_date')]
-        ))->sum('grand_total');
-        $data['purchase_returns'] = $this->scopeQueryToCurrentStore(PurchaseReturn::whereBetween(
-            'date',
-            [$request->get('start_date'), $request->get('end_date')]
-        ))->sum('grand_total');
-        $data['purchases'] = $this->scopeQueryToCurrentStore(Purchase::whereBetween(
-            'date',
-            [$request->get('start_date'), $request->get('end_date')]
-        ))->sum('grand_total') - $data['purchase_returns'];
-        $data['sale_returns'] = $this->scopeQueryToCurrentStore(SaleReturn::whereBetween(
-            'date',
-            [$request->get('start_date'), $request->get('end_date')]
-        ))->sum('grand_total');
-        $data['expenses'] = $this->scopeQueryToCurrentStore(Expense::whereBetween(
-            'date',
-            [$request->get('start_date'), $request->get('end_date')]
-        ))->sum('amount');
-        $data['sales_payment_amount'] = $this->scopeSalesPaymentsToCurrentStore(SalesPayment::whereBetween(
-            'payment_date',
-            [$request->get('start_date'), $request->get('end_date')]
-        ))->sum('amount');
-        $data['Revenue'] = $data['sales'] - $data['sale_returns'];
-        $data['payments_received'] = $data['sales_payment_amount'] + $data['purchase_returns'];
-
-        $productCost = 0;
-        $productItemCost = 0;
-
-        $sales = $this->scopeQueryToCurrentStore(Sale::whereBetween(
-            'date',
-            [$request->get('start_date'), $request->get('end_date')]
-        ))->with('saleItems.productPresentation.product')->get();
-
-        $allSaleReturnsItemsQuery = SaleReturnItem::join('sales_return', 'sales_return.id', '=', 'sale_return_items.sale_return_id')
-            ->join('sales', 'sales.id', '=', 'sales_return.sale_id')
-            ->whereBetween('sales.date', [$request->get('start_date'), $request->get('end_date')]);
-        if ($storeId = $this->currentStoreId()) {
-            $allSaleReturnsItemsQuery->whereIn('sales.warehouse_id', Warehouse::where('store_id', $storeId)->pluck('id'));
-        }
-        $allSaleReturnsItems = $allSaleReturnsItemsQuery
-            ->select('sale_return_items.quantity', 'sale_return_items.product_id')
-            ->with('product')
-            ->get();
-
-
-        foreach ($sales as $sale) {
-            foreach ($sale->saleItems as $saleItem) {
-                if ($saleItem->product_presentation_id && $saleItem->productPresentation) {
-                    // Presentación (Six Pack/Caja/...): usa el costo real de
-                    // ESA presentación (con su override si lo tiene) en vez
-                    // de asumir costo_base × equivalencia a ciegas.
-                    $productCost += $saleItem->productPresentation->effectiveCost()
-                        * (float) $saleItem->presentation_quantity;
-                } else {
-                    $productCost += $saleItem->product->product_cost * $saleItem->quantity;
-                }
-            }
+        $validated = $request->validate([
+            'start_date' => ['required', 'date'],
+            'end_date' => ['required', 'date', 'after_or_equal:start_date'],
+            'warehouse_id' => ['nullable', 'integer', 'exists:warehouses,id'],
+        ]);
+        if (! empty($validated['warehouse_id'])) {
+            $this->authorizeWarehouseAccess((int) $validated['warehouse_id']);
         }
 
-        foreach ($allSaleReturnsItems as $saleReturn) {
-            $productItemCost = $productItemCost + ($saleReturn->product->product_cost * $saleReturn->quantity);
-        }
+        return $this->sendResponse(
+            app(ProfitLossReportService::class)->generate(
+                $validated['start_date'],
+                $validated['end_date'],
+                $this->currentStoreId(),
+                isset($validated['warehouse_id']) ? (int) $validated['warehouse_id'] : null
+            ),
+            'Profit loss report info retrieved successfully'
+        );
 
-        $data['product_cost'] = $productCost - $productItemCost;
-
-        $data['gross_profit'] = $data['sales'] - $data['product_cost'] - $data['sale_returns'];
-
-        return $this->sendResponse($data, 'Profit loss report info retrieved successfully');
     }
 
     public function getCustomerReport(Request $request)
