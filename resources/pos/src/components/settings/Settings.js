@@ -25,6 +25,7 @@ import HeaderTitle from "../header/HeaderTitle";
 import TopProgressBar from "../../shared/components/loaders/TopProgressBar";
 import dateFormatOptions from "./dateFormatOptions.json";
 import { downloadBackup } from "../../store/action/backupAction";
+import "./settings.scss";
 
 const Settings = (props) => {
     const {
@@ -77,6 +78,7 @@ const Settings = (props) => {
         country: "",
         countries: "",
         state: "",
+        city: "",
         postCode: "",
         date_format: "",
         Currency_icon_Right_side: "",
@@ -727,6 +729,13 @@ const Settings = (props) => {
         setErrors("");
     };
 
+    const scrollToSettingsSection = (sectionId) => {
+        document.getElementById(sectionId)?.scrollIntoView({
+            behavior: "smooth",
+            block: "start",
+        });
+    };
+
     return (
         <MasterLayout>
             <TopProgressBar />
@@ -734,11 +743,39 @@ const Settings = (props) => {
             <HeaderTitle
                 title={getFormattedMessage("settings.system-settings.title")}
             />
-            <>
-                <div className="card">
-                    <div className="card-body">
+            <main className="settings-v2">
+                <header className="settings-hero">
+                    <div>
+                        <span className="settings-eyebrow">Configuración general</span>
+                        <h1>Centro de configuración</h1>
+                        <p>Personaliza la identidad, operación y preferencias principales de EcuaPos.</p>
+                    </div>
+                    <div className="settings-hero-badge">
+                        <span className="settings-status-dot" />
+                        Sistema activo
+                    </div>
+                </header>
+
+                <nav className="settings-index" aria-label="Secciones de configuración">
+                    <button type="button" onClick={() => scrollToSettingsSection("settings-identity")}><i className="bi bi-building" /><span>Identidad</span></button>
+                    <button type="button" onClick={() => scrollToSettingsSection("settings-operation")}><i className="bi bi-sliders" /><span>Operación</span></button>
+                    <button type="button" onClick={() => scrollToSettingsSection("settings-location")}><i className="bi bi-geo-alt" /><span>Ubicación</span></button>
+                    <button type="button" onClick={() => scrollToSettingsSection("settings-interface")}><i className="bi bi-layout-sidebar" /><span>Interfaz</span></button>
+                    <button type="button" onClick={() => scrollToSettingsSection("settings-maintenance")}><i className="bi bi-shield-check" /><span>Mantenimiento</span></button>
+                </nav>
+
+                <div className="settings-form-card">
+                    <div className="settings-form-body">
                         <Form>
-                            <div className="row">
+                            <div className="row settings-form-grid">
+                                <div className="col-12 settings-section-heading" id="settings-identity">
+                                    <span className="settings-section-icon"><i className="bi bi-building" /></span>
+                                    <div>
+                                        <span className="settings-section-step">01 · Identidad y formato</span>
+                                        <h2>Información del negocio</h2>
+                                        <p>Define cómo se identifica la empresa y cómo se presentan sus valores.</p>
+                                    </div>
+                                </div>
                                 <div className="col-lg-6 mb-3">
                                     <div>
                                         {settings &&
@@ -939,6 +976,14 @@ const Settings = (props) => {
                                 {/*    <ReactSelect title={getFormattedMessage("settings.system-settings.select.default-language.label")} placeholder={placeholderText("settings.system-settings.select.default-language.placeholder.label")} defaultValue={selectedLanguage}*/}
                                 {/*                 data={languages} onChange={onLanguagesChange} errors={errors['default_language']}/>*/}
                                 {/*</div>*/}
+                                <div className="col-12 settings-section-heading" id="settings-operation">
+                                    <span className="settings-section-icon"><i className="bi bi-sliders" /></span>
+                                    <div>
+                                        <span className="settings-section-step">02 · Operación</span>
+                                        <h2>Valores predeterminados</h2>
+                                        <p>Selecciona el cliente y almacén que agilizan el trabajo diario.</p>
+                                    </div>
+                                </div>
                                 <div className="col-lg-6 mb-3">
                                     {settings &&
                                         settings.attributes &&
@@ -990,6 +1035,14 @@ const Settings = (props) => {
                                         )}
                                 </div>
 
+                                <div className="col-12 settings-section-heading" id="settings-location">
+                                    <span className="settings-section-icon"><i className="bi bi-geo-alt" /></span>
+                                    <div>
+                                        <span className="settings-section-step">03 · Ubicación y documentos</span>
+                                        <h2>Datos regionales</h2>
+                                        <p>Configura la ubicación, dirección y formato de fecha del establecimiento.</p>
+                                    </div>
+                                </div>
                                 {/* Country  */}
                                 <div className="col-lg-6 mb-3">
                                     {settings &&
@@ -1148,6 +1201,14 @@ const Settings = (props) => {
                                             : null}
                                     </span>
                                 </div>
+                                <div className="col-12 settings-section-heading" id="settings-interface">
+                                    <span className="settings-section-icon"><i className="bi bi-layout-sidebar" /></span>
+                                    <div>
+                                        <span className="settings-section-step">04 · Interfaz</span>
+                                        <h2>Preferencias visuales</h2>
+                                        <p>Controla los elementos visibles en comprobantes, menú lateral y pie de página.</p>
+                                    </div>
+                                </div>
                                 <div className="col-lg-6 mb-3">
                                     <div className="col-md-6">
                                         <label className="form-check form-check-custom form-check-solid form-check-inline d-flex align-items-center my-3 cursor-pointer custom-label">
@@ -1218,12 +1279,17 @@ const Settings = (props) => {
                                     </div>
                                 </div>
 
-                                <div>
+                                <div className="col-12 settings-save-bar">
+                                    <div className="settings-save-state">
+                                        <i className={`bi ${disable ? "bi-check2-circle" : "bi-exclamation-circle"}`} />
+                                        <span>{disable ? "Configuración actualizada" : "Tienes cambios pendientes por guardar"}</span>
+                                    </div>
                                     <button
                                         disabled={disable}
-                                        className="btn btn-primary mt-4"
+                                        className="btn btn-primary settings-save-button"
                                         onClick={(event) => onEdit(event)}
                                     >
+                                        <i className="bi bi-check2 me-2" />
                                         {getFormattedMessage(
                                             "globally.save-btn"
                                         )}
@@ -1234,38 +1300,39 @@ const Settings = (props) => {
                     </div>
                 </div>
 
-                <div className="w-100 mx-auto pt-lg-10 pt-5">
-                    <h4 className="mb-5">
-                        {getFormattedMessage("settings.clear-cache.title")}
-                    </h4>
-                    <Form className="card card-body">
-                        <div className="row">
-                            <div>
+                <section className="settings-maintenance" id="settings-maintenance">
+                    <div className="settings-maintenance-heading">
+                        <span className="settings-eyebrow">Herramientas del sistema</span>
+                        <h2>Mantenimiento y respaldo</h2>
+                        <p>Acciones administrativas para mantener el sistema actualizado y proteger la información.</p>
+                    </div>
+                    <div className="settings-maintenance-grid">
+                        <article className="settings-tool-card settings-tool-card--cache">
+                            <span className="settings-tool-icon"><i className="bi bi-lightning-charge" /></span>
+                            <div className="settings-tool-copy">
+                                <h3>{getFormattedMessage("settings.clear-cache.title")}</h3>
+                                <p>Renueva la caché de la aplicación cuando una configuración no se refleje inmediatamente.</p>
+                            </div>
+                            <Form>
                                 <button
-                                    className="btn btn-primary"
+                                    className="btn settings-tool-button"
                                     onClick={(event) => onCacheClear(event)}
                                 >
+                                    <i className="bi bi-arrow-clockwise me-2" />
                                     {getFormattedMessage(
                                         "settings.clear-cache.title"
                                     )}
                                 </button>
+                            </Form>
+                        </article>
+                        <article className="settings-tool-card settings-tool-card--backup">
+                            <span className="settings-tool-icon"><i className="bi bi-database-check" /></span>
+                            <div className="settings-tool-copy">
+                                <h3>{getFormattedMessage("settings.backup.title")}</h3>
+                                <p>{getFormattedMessage("settings.backup.description")}</p>
                             </div>
-                        </div>
-                    </Form>
-                </div>
-                {/* Backup de base de datos */}
-                <div className="w-100 mx-auto pt-lg-10 pt-5">
-                    <h4 className="mb-5">
-                        {getFormattedMessage("settings.backup.title")}
-                    </h4>
-                    <div className="card card-body">
-                        <div className="row">
-                            <div className="col-12">
-                                <p className="text-muted mb-4">
-                                    {getFormattedMessage("settings.backup.description")}
-                                </p>
                                 <button
-                                    className="btn btn-success"
+                                    className="btn settings-tool-button"
                                     onClick={onBackupDownload}
                                     disabled={isBackingUp}
                                 >
@@ -1285,12 +1352,10 @@ const Settings = (props) => {
                                         </>
                                     )}
                                 </button>
-                            </div>
-                        </div>
+                        </article>
                     </div>
-                </div>
-
-            </>
+                </section>
+            </main>
         </MasterLayout>
     );
 };
