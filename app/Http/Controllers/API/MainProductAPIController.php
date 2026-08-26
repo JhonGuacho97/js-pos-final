@@ -130,7 +130,8 @@ class MainProductAPIController extends AppBaseController
                     foreach ($presentations as $sort => $presentation) {
                         \App\Models\ProductPresentation::create([
                             'product_id' => $product->id,
-                            'variation_type_id' => $presentation['variation_type_id'],
+                            'presentation_type_id' => $presentation['presentation_type_id'] ?? null,
+                            'variation_type_id' => $presentation['variation_type_id'] ?? null,
                             'equivalence' => $presentation['equivalence'],
                             'price' => $presentation['price'],
                             'cost' => $presentation['cost'] ?? null,

@@ -7,6 +7,8 @@ use App\Models\Brand;
 use App\Models\Product;
 use App\Models\ProductCategory;
 use App\Models\ProductPresentation;
+use App\Models\PresentationFamily;
+use App\Models\PresentationType;
 use App\Models\Purchase;
 use App\Models\PurchaseItem;
 use App\Models\Sale;
@@ -71,6 +73,51 @@ class PresentationCalculationIntegrityTest extends TestCase
         $this->assertSame(8, $attributes['product_presentation_id']);
         $this->assertSame(5.0, (float) $attributes['presentation_quantity']);
         $this->assertSame(24.0, (float) $attributes['presentation_equivalence']);
+    }
+
+    public function test_presentation_catalog_is_independent_from_product_variations(): void
+    {
+        $suffix = Str::upper(Str::random(8));
+        $store = Store::create(['name' => "Catalog {$suffix}", 'slug' => 'catalog-' . Str::lower($suffix), 'is_active' => true]);
+        $category = ProductCategory::create(['store_id' => $store->id, 'name' => "Tabaco {$suffix}"]);
+        $brand = Brand::create(['store_id' => $store->id, 'name' => "Brand {$suffix}"]);
+        $unit = BaseUnit::firstOrCreate(['name' => "Unit {$suffix}"]);
+        $family = PresentationFamily::create(['store_id' => $store->id, 'name' => 'Tabaco', 'slug' => 'tabaco']);
+        $type = PresentationType::create([
+            'store_id' => $store->id,
+            'presentation_family_id' => $family->id,
+            'name' => 'Cajetilla',
+            'slug' => 'cajetilla',
+            'default_equivalence' => 20,
+        ]);
+        $product = Product::create([
+            'store_id' => $store->id,
+            'name' => "Cigarrillo {$suffix}",
+            'code' => "CIG{$suffix}",
+            'product_code' => "BAR{$suffix}",
+            'product_category_id' => $category->id,
+            'brand_id' => $brand->id,
+            'product_cost' => .1,
+            'product_price' => .2,
+            'product_unit' => (string) $unit->id,
+            'barcode_symbol' => Product::CODE128,
+            'manage_presentations' => true,
+        ]);
+
+        $presentation = ProductPresentation::create([
+            'product_id' => $product->id,
+            'presentation_type_id' => $type->id,
+            'equivalence' => 20,
+            'price' => 3.5,
+            'is_default' => true,
+        ]);
+
+        $attributes = $presentation->prepareAttributes();
+
+        $this->assertNull($presentation->variation_type_id);
+        $this->assertSame('Cajetilla', $attributes['name']);
+        $this->assertSame($family->id, $attributes['presentation_family_id']);
+        $this->assertSame(20.0, (float) $attributes['equivalence']);
     }
 
     private function line(Product $product, ProductPresentation $presentation, float $quantity, array $overrides): array

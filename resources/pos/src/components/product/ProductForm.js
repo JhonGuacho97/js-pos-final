@@ -43,8 +43,22 @@ import { fetchAllVariations } from "../../store/action/variationAction";
 import ReactMultiSelect from "../../shared/select/ReactMultiSelect";
 import { toUpper } from "lodash";
 import PresentationsSection from "./sections/PresentationsSection";
+import apiConfig from "../../config/apiConfig";
+import { apiBaseURL } from "../../constants";
 import "../../assets/scss/custom/pages/sales-form.scss";
 import "../../assets/scss/custom/pages/product-form.scss";
+
+const normalizeBoolean = (value, fallback = false) => {
+    if (value === undefined || value === null || value === "") {
+        return fallback;
+    }
+
+    if (typeof value === "string") {
+        return ["1", "true", "yes", "on"].includes(value.trim().toLowerCase());
+    }
+
+    return value === true || value === 1;
+};
 
 const ProductForm = (props) => {
     const {
@@ -112,6 +126,8 @@ const ProductForm = (props) => {
     const [unitModel, setUnitModel] = useState(false);
     const [managePresentations, setManagePresentations] = useState(false);
     const [presentations, setPresentations] = useState([]);
+    const [presentationFamilies, setPresentationFamilies] = useState([]);
+    const [selectedPresentationFamilyId, setSelectedPresentationFamilyId] = useState(null);
     const [removedImage, setRemovedImage] = useState([]);
     const [isClearDropdown, setIsClearDropdown] = useState(true);
     const [isDropdown, setIsDropdown] = useState(true);
@@ -132,6 +148,14 @@ const ProductForm = (props) => {
         fetchAllWarehouses();
         fetchAllSuppliers();
         dispatch(fetchAllVariations());
+    }, []);
+
+    useEffect(() => {
+        apiConfig.get(apiBaseURL.PRESENTATION_CATALOG).then(({ data }) => {
+            const families = data?.data || [];
+            setPresentationFamilies(families);
+            setSelectedPresentationFamilyId((current) => current || families.find((family) => family.slug === "general")?.id || families[0]?.id || null);
+        });
     }, []);
 
     useEffect(() => {
@@ -166,21 +190,6 @@ const ProductForm = (props) => {
             value: variationType.id,
             label: variationType.name,
         }));
-
-    // Todas las variation_types, pero SOLO de los grupos marcados como
-    // "usar para presentaciones de venta" (ej. "Presentaciones": Unidad,
-    // Caja, Six Pack) -- antes juntaba TODOS los grupos (tallas, colores,
-    // lo que sea), y esa lista crecía sin control a medida que se
-    // agregaban más variantes de otro tipo.
-    const allVariationTypesFlatOptions = variations
-        ?.filter((variation) => variation?.attributes?.is_presentation)
-        ?.flatMap(
-            (variation) =>
-                variation?.attributes?.variation_types?.map((vType) => ({
-                    value: vType.id,
-                    label: vType.name,
-                })) || []
-        );
 
     const newTax =
         singleProduct &&
@@ -295,8 +304,12 @@ const ProductForm = (props) => {
                         : ""
                     : "",
                 notes: singleProduct ? singleProduct[0].notes : "",
-                catalog_visible: singleProduct ? singleProduct[0].catalog_visible !== false : true,
-                catalog_featured: singleProduct ? Boolean(singleProduct[0].catalog_featured) : false,
+                catalog_visible: singleProduct
+                    ? normalizeBoolean(singleProduct[0].catalog_visible, true)
+                    : true,
+                catalog_featured: singleProduct
+                    ? normalizeBoolean(singleProduct[0].catalog_featured)
+                    : false,
                 catalog_description: singleProduct ? singleProduct[0].catalog_description || "" : "",
                 images: singleProduct ? singleProduct[0].images : "",
                 isEdit: singleProduct ? singleProduct[0].is_Edit : false,
@@ -352,6 +365,21 @@ const ProductForm = (props) => {
             product_category_id: obj,
         }));
         setErrors({});
+
+        const categoryName = (obj?.label || "").toLowerCase();
+        const suggestedSlug = /cigar|tabac/.test(categoryName)
+            ? "tabaco"
+            : /cervez|bebid|licor|vino|gaseosa/.test(categoryName)
+                ? "bebidas"
+                : /farmac|medic|salud/.test(categoryName)
+                    ? "farmacia"
+                    : /ferret|herram|tornill|cable/.test(categoryName)
+                        ? "ferreteria"
+                        : "general";
+        const suggestedFamily = presentationFamilies.find((family) => family.slug === suggestedSlug);
+        if (suggestedFamily && presentations.every((presentation) => !presentation.presentation_type_id)) {
+            setSelectedPresentationFamilyId(suggestedFamily.id);
+        }
     };
 
     const productTypesOptionsObj = getFormattedOptions(productTypesOptions);
@@ -899,9 +927,11 @@ const ProductForm = (props) => {
                         "presentations",
                         JSON.stringify(
                             presentations.map((p) => ({
+                                presentation_type_id: p.presentation_type_id,
                                 variation_type_id: p.variation_type_id,
                                 equivalence: p.equivalence,
                                 price: p.price,
+                                cost: p.cost || null,
                                 is_base_unit: p.is_base_unit,
                                 is_default: p.is_default,
                             }))
@@ -1989,7 +2019,16 @@ const ProductForm = (props) => {
                                     }}
                                     presentations={presentations}
                                     setPresentations={setPresentations}
-                                    variationTypesOptions={allVariationTypesFlatOptions}
+                                    presentationFamilies={presentationFamilies}
+                                    selectedPresentationFamilyId={selectedPresentationFamilyId}
+                                    onPresentationFamilyChange={setSelectedPresentationFamilyId}
+                                    onPresentationTypeCreated={(familyId, type) => {
+                                        setPresentationFamilies((families) => families.map((family) =>
+                                            family.id === familyId
+                                                ? { ...family, types: [...family.types, type] }
+                                                : family
+                                        ));
+                                    }}
                                     frontSetting={frontSetting}
                                     errors={errors}
                                 />

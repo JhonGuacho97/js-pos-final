@@ -22,6 +22,7 @@ export const apiBaseURL = {
     MAIN_PRODUCTS: "/main-products",
     PRODUCTS: "/products",
     PRODUCT_PRESENTATIONS: "/product-presentations",
+    PRESENTATION_CATALOG: "/presentation-catalog",
     IMPORT_PRODUCT: "/import-products",
     IMPORT_SUPPLIER: "/import-suppliers",
     IMPORT_CUSTOMERS: "/import-customers",

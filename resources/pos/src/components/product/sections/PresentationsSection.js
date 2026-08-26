@@ -1,8 +1,10 @@
-import React from "react";
+import React, { useState } from "react";
 import { Button } from "react-bootstrap-v5";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faTrash, faPlus, faBoxOpen, faStar } from "@fortawesome/free-solid-svg-icons";
 import ReactSelect from "../../../shared/select/reactSelect";
+import apiConfig from "../../../config/apiConfig";
+import { apiBaseURL } from "../../../constants";
 import {
     decimalValidate,
     getFormattedMessage,
@@ -29,12 +31,58 @@ const PresentationsSection = ({
     onToggleManagePresentations,
     presentations,
     setPresentations,
-    variationTypesOptions, // lista plana de variation_types (todas las variaciones, ej: Unidad/Caja/Six Pack)
+    presentationFamilies,
+    selectedPresentationFamilyId,
+    onPresentationFamilyChange,
+    onPresentationTypeCreated,
     frontSetting,
     errors,
 }) => {
+    const [showCustomType, setShowCustomType] = useState(false);
+    const [customType, setCustomType] = useState({ name: "", default_equivalence: "" });
+    const [customTypeError, setCustomTypeError] = useState("");
+    const [savingCustomType, setSavingCustomType] = useState(false);
     const currencySymbol =
         (frontSetting && frontSetting.value && frontSetting.value.currency_symbol) || "";
+    const familyOptions = (presentationFamilies || []).map((family) => ({
+        value: family.id,
+        label: family.name,
+    }));
+    const selectedFamily = (presentationFamilies || []).find(
+        (family) => family.id === selectedPresentationFamilyId
+    );
+    const presentationTypesOptions = (selectedFamily?.types || []).map((type) => ({
+        value: type.id,
+        label: type.name,
+        default_equivalence: type.default_equivalence,
+    }));
+
+    const saveCustomType = async () => {
+        if (!selectedPresentationFamilyId || !customType.name.trim()) {
+            setCustomTypeError("Escribe el nombre de la presentación.");
+            return;
+        }
+
+        setSavingCustomType(true);
+        setCustomTypeError("");
+        try {
+            const { data } = await apiConfig.post(
+                `${apiBaseURL.PRESENTATION_CATALOG}/families/${selectedPresentationFamilyId}/types`,
+                {
+                    name: customType.name.trim(),
+                    default_equivalence: customType.default_equivalence || null,
+                }
+            );
+            const createdType = data?.data;
+            if (createdType) onPresentationTypeCreated(selectedPresentationFamilyId, createdType);
+            setCustomType({ name: "", default_equivalence: "" });
+            setShowCustomType(false);
+        } catch (error) {
+            setCustomTypeError(error?.response?.data?.message || "No se pudo crear la presentación.");
+        } finally {
+            setSavingCustomType(false);
+        }
+    };
 
     const addRow = () => {
         setPresentations((prev) => [
@@ -42,6 +90,7 @@ const PresentationsSection = ({
             {
                 key: `new_${Date.now()}_${prev.length}`,
                 variation_type_id: null,
+                presentation_type_id: null,
                 equivalence: prev.length === 0 ? 1 : "",
                 price: "",
                 is_base_unit: prev.length === 0, // la primera fila por defecto es la unidad base
@@ -137,28 +186,87 @@ const PresentationsSection = ({
 
             {managePresentations && (
                 <div className="col-12">
+                    <div className="mb-3" style={{ maxWidth: 360 }}>
+                        {/* <span style={fieldLabelStyle}>Familia de presentaciones</span> */}
+                        <ReactSelect
+                            title="Familia de presentaciones"
+                            data={familyOptions}
+                            value={familyOptions.find((option) => option.value === selectedPresentationFamilyId) || ""}
+                            onChange={(option) => onPresentationFamilyChange(option.value)}
+                            placeholder="Selecciona el tipo de negocio o producto"
+                        />
+                        <small className="text-muted d-block mt-1">
+                            Solo se mostrarán opciones compatibles con esta familia.
+                        </small>
+                        <button
+                            type="button"
+                            className="btn btn-link btn-sm px-0 mt-1 text-decoration-none"
+                            onClick={() => setShowCustomType((visible) => !visible)}
+                        >
+                            <FontAwesomeIcon icon={faPlus} className="me-1" />
+                            Crear opción personalizada
+                        </button>
+                    </div>
+                    {showCustomType && (
+                        <div className="d-flex flex-wrap align-items-end gap-2 p-3 mb-3 rounded border bg-light">
+                            <div style={{ minWidth: 220, flex: "1 1 220px" }}>
+                                <span style={fieldLabelStyle}>Nombre</span>
+                                <input
+                                    className="form-control"
+                                    value={customType.name}
+                                    placeholder="Ej: Display, Docena, Cartón x10"
+                                    onChange={(event) => setCustomType((value) => ({ ...value, name: event.target.value }))}
+                                />
+                            </div>
+                            <div style={{ minWidth: 170, flex: "0 1 190px" }}>
+                                <span style={fieldLabelStyle}>Equivalencia inicial</span>
+                                <input
+                                    className="form-control"
+                                    value={customType.default_equivalence}
+                                    placeholder="Ej: 10 (editable después)"
+                                    onKeyPress={(event) => decimalValidate(event)}
+                                    onChange={(event) => setCustomType((value) => ({ ...value, default_equivalence: event.target.value }))}
+                                />
+                            </div>
+                            <Button type="button" onClick={saveCustomType} disabled={savingCustomType}>
+                                {savingCustomType ? "Guardando..." : "Guardar opción"}
+                            </Button>
+                            <small className="text-muted w-100">
+                                Se cargará automáticamente al elegir esta opción, pero podrás ajustarla para cada producto.
+                            </small>
+                            {customTypeError && <span className="text-danger w-100 small">{customTypeError}</span>}
+                        </div>
+                    )}
                     {presentations.map((row) => (
                         <div style={rowStyle} key={row.key}>
                             <div style={{ ...fieldGroupStyle, flex: "1 1 160px" }}>
-                                <span style={fieldLabelStyle}>
-                                    {getFormattedMessage("product.input.sale-unit.label")}
-                                </span>
                                 <ReactSelect
-                                    data={variationTypesOptions}
+                                    title={getFormattedMessage("product.input.sale-unit.label")}
+                                    data={presentationTypesOptions}
                                     value={
-                                        row.variation_type_id
+                                        row.presentation_type_id
                                             ? {
-                                                value: row.variation_type_id,
+                                                value: row.presentation_type_id,
                                                 label:
-                                                    variationTypesOptions?.find(
-                                                        (o) => o.value === row.variation_type_id
-                                                    )?.label || "",
+                                                    presentationTypesOptions?.find(
+                                                        (o) => o.value === row.presentation_type_id
+                                                    )?.label || row.name || "",
                                             }
                                             : ""
                                     }
-                                    onChange={(obj) =>
-                                        updateRow(row.key, "variation_type_id", obj.value)
-                                    }
+                                    onChange={(obj) => {
+                                        const selectedType = presentationTypesOptions.find(
+                                            (option) => option.value === obj.value
+                                        );
+                                        updateRow(row.key, "presentation_type_id", obj.value);
+                                        if (!row.is_base_unit) {
+                                            updateRow(
+                                                row.key,
+                                                "equivalence",
+                                                selectedType?.default_equivalence ?? ""
+                                            );
+                                        }
+                                    }}
                                     placeholder={placeholderText(
                                         "product.input.sale-unit.placeholder.label"
                                     )}

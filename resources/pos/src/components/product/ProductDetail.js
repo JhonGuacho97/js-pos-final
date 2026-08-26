@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import { connect, useDispatch, useSelector } from "react-redux";
+import { connect } from "react-redux";
 import { Button, Image, Table } from "react-bootstrap-v5";
 import { useParams } from "react-router-dom";
 import Carousel from "react-elastic-carousel";
@@ -23,14 +23,12 @@ import DeleteProduct from "./DeleteProduct";
 import CreateSubProductModal from "./CreateSubProductModal";
 import PresentationsDetailsModal from "./PresentationsDetailsModal";
 import WarehousePricesModal from "./WarehousePricesModal";
-import { fetchAllVariations } from "../../store/action/variationAction";
 import ResourceDetailHeader from "../../shared/components/ResourceDetailHeader";
 import "../../assets/scss/custom/pages/resource-detail.scss";
 
 const ProductDetail = (props) => {
     const { products, fetchMainProduct, clearMainProduct, isLoading, frontSetting, allConfigData } = props;
     const { id } = useParams();
-    const dispatch = useDispatch();
     const result = products && products.length > 0
         ? products.reduce((obj, cur) => ({ ...obj, [cur.type]: cur }), {})
         : {};
@@ -45,24 +43,9 @@ const ProductDetail = (props) => {
     const [productData, setProductData] = useState({});
     const [deleteModel, setDeleteModel] = useState(false);
     const [isDelete, setIsDelete] = useState(null);
-    const variations = useSelector((state) => state.variations);
-
-    // Mismo filtro que ProductForm.js: solo variantes marcadas como "usar
-    // para presentaciones de venta", no todas (tallas, colores, etc.).
-    const variationTypesFlatOptions = variations
-        ?.filter((variation) => variation?.attributes?.is_presentation)
-        ?.flatMap(
-            (variation) =>
-                variation?.attributes?.variation_types?.map((vType) => ({
-                    value: vType.id,
-                    label: vType.name,
-                })) || []
-        );
-
     useEffect(() => {
         clearMainProduct();
         fetchMainProduct(id);
-        dispatch(fetchAllVariations());
         return () => {
             clearMainProduct();
         }
@@ -447,7 +430,6 @@ const ProductDetail = (props) => {
                             show={showPresentationsModal}
                             setShow={setShowPresentationsModal}
                             productId={allProducts && allProducts[0] && allProducts[0].id}
-                            variationTypesOptions={variationTypesFlatOptions}
                             frontSetting={frontSetting}
                             allConfigData={allConfigData}
                         />

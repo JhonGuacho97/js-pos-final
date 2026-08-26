@@ -35,13 +35,14 @@ const PresentationsDetailsModal = ({
     show,
     setShow,
     productId,
-    variationTypesOptions,
     frontSetting,
 }) => {
     const dispatch = useDispatch();
     const [presentations, setPresentations] = useState([]);
     const [isLoading, setIsLoading] = useState(false);
     const [newRow, setNewRow] = useState(null);
+    const [presentationFamilies, setPresentationFamilies] = useState([]);
+    const [selectedFamilyId, setSelectedFamilyId] = useState(null);
     const [warehousePricePresentationId, setWarehousePricePresentationId] = useState(null);
     const [showWarehousePriceModal, setShowWarehousePriceModal] = useState(false);
     const currencySymbol =
@@ -55,7 +56,12 @@ const PresentationsDetailsModal = ({
                 apiConfig.get(apiBaseURL.PRODUCT_PRESENTATIONS, {
                     params: { product_id: productId },
                 }),
-            (response) => setPresentations(response.data.data || [])
+            (response) => {
+                const rows = response.data.data || [];
+                setPresentations(rows);
+                const currentFamilyId = rows.find((row) => row.presentation_family_id)?.presentation_family_id;
+                if (currentFamilyId) setSelectedFamilyId(currentFamilyId);
+            }
         );
         setIsLoading(false);
     };
@@ -63,6 +69,11 @@ const PresentationsDetailsModal = ({
     useEffect(() => {
         if (show && productId) {
             fetchPresentations();
+            apiConfig.get(apiBaseURL.PRESENTATION_CATALOG).then(({ data }) => {
+                const families = data?.data || [];
+                setPresentationFamilies(families);
+                setSelectedFamilyId((current) => current || families.find((family) => family.slug === "general")?.id || families[0]?.id || null);
+            });
         } else {
             setNewRow(null);
         }
@@ -76,6 +87,7 @@ const PresentationsDetailsModal = ({
     const startNewRow = () => {
         setNewRow({
             variation_type_id: null,
+            presentation_type_id: null,
             equivalence: presentations.length === 0 ? 1 : "",
             price: "",
             is_base_unit: presentations.length === 0,
@@ -84,7 +96,7 @@ const PresentationsDetailsModal = ({
     };
 
     const saveNewRow = async () => {
-        if (!newRow.variation_type_id || !newRow.equivalence || newRow.price === "") {
+        if (!newRow.presentation_type_id || !newRow.equivalence || newRow.price === "") {
             dispatch(
                 addToast({
                     text: "Completá todos los campos antes de guardar",
@@ -102,6 +114,17 @@ const PresentationsDetailsModal = ({
         setNewRow(null);
         fetchPresentations();
     };
+
+    const familyOptions = presentationFamilies.map((family) => ({
+        value: family.id,
+        label: family.name,
+    }));
+    const selectedFamily = presentationFamilies.find((family) => family.id === selectedFamilyId);
+    const presentationTypeOptions = (selectedFamily?.types || []).map((type) => ({
+        value: type.id,
+        label: type.name,
+        default_equivalence: type.default_equivalence,
+    }));
 
     const updateRow = async (row) => {
         await apiRequest(dispatch, () =>
@@ -265,14 +288,14 @@ const PresentationsDetailsModal = ({
                                                     row.margin > 0
                                                         ? "#ecfdf5"
                                                         : row.margin < 0
-                                                        ? "#fef2f2"
-                                                        : "#f3f4f6",
+                                                            ? "#fef2f2"
+                                                            : "#f3f4f6",
                                                 color:
                                                     row.margin > 0
                                                         ? "#059669"
                                                         : row.margin < 0
-                                                        ? "#dc2626"
-                                                        : "#6b7280",
+                                                            ? "#dc2626"
+                                                            : "#6b7280",
                                             }}
                                         >
                                             {row.margin !== undefined
@@ -356,11 +379,33 @@ const PresentationsDetailsModal = ({
                             <div style={{ ...rowStyle, backgroundColor: "#eff6ff", border: "1px dashed #93c5fd" }}>
                                 <div style={{ maxWidth: 240, marginBottom: 12 }}>
                                     <ReactSelect
-                                        data={variationTypesOptions}
+                                        title="Familia de presentaciones"
+                                        data={familyOptions}
+                                        value={familyOptions.find((option) => option.value === selectedFamilyId) || ""}
+                                        placeholder="Familia de presentaciones"
+                                        onChange={(obj) => {
+                                            setSelectedFamilyId(obj.value);
+                                            setNewRow((row) => ({ ...row, presentation_type_id: null }));
+                                        }}
+                                    />
+                                </div>
+                                <div style={{ maxWidth: 240, marginBottom: 12 }}>
+                                    <ReactSelect
+                                        title="Nombre de la presentación"
+                                        data={presentationTypeOptions}
                                         placeholder="Nombre de la presentación"
-                                        onChange={(obj) =>
-                                            setNewRow((r) => ({ ...r, variation_type_id: obj.value }))
-                                        }
+                                        onChange={(obj) => {
+                                            const selectedType = presentationTypeOptions.find(
+                                                (option) => option.value === obj.value
+                                            );
+                                            setNewRow((row) => ({
+                                                ...row,
+                                                presentation_type_id: obj.value,
+                                                equivalence: row.is_base_unit
+                                                    ? 1
+                                                    : (selectedType?.default_equivalence ?? ""),
+                                            }));
+                                        }}
                                     />
                                 </div>
 

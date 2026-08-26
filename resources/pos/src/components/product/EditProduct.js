@@ -48,6 +48,9 @@ const EditProduct = (props) => {
         purchase_unit: getPurchaseUnit,
         quantity_limit: subProduct?.quantity_limit,
         notes: subProduct?.notes,
+        catalog_visible: subProduct?.catalog_visible,
+        catalog_featured: subProduct?.catalog_featured,
+        catalog_description: subProduct?.catalog_description,
         images: product?.attributes.images,
         status_id: {
             label: getFormattedMessage("status.filter.received.label"),

@@ -32,7 +32,10 @@ class ProductPresentationAPIController extends AppBaseController
             'product_id' => 'required|exists:products,id',
         ]);
 
-        $presentations = ProductPresentation::where('product_id', $request->get('product_id'))
+        $product = Product::findOrFail($request->integer('product_id'));
+        $this->authorizeStoreOwnership($product);
+
+        $presentations = ProductPresentation::where('product_id', $product->id)
             ->orderBy('sort')
             ->get()
             ->map(fn (ProductPresentation $p) => $p->prepareAttributes());
@@ -55,6 +58,9 @@ class ProductPresentationAPIController extends AppBaseController
             DB::beginTransaction();
 
             $input = $request->all();
+            $product = Product::findOrFail($input['product_id']);
+            $this->authorizeStoreOwnership($product);
+            $this->validatePresentationTypeStore($input['presentation_type_id'] ?? null, $product->store_id);
 
             if (!empty($input['is_base_unit'])) {
                 ProductPresentation::where('product_id', $input['product_id'])->update(['is_base_unit' => false]);
@@ -79,9 +85,11 @@ class ProductPresentationAPIController extends AppBaseController
     public function update(Request $request, $id): JsonResponse
     {
         $presentation = ProductPresentation::findOrFail($id);
+        $this->authorizeStoreOwnership($presentation->product);
 
         $validator = Validator::make($request->all(), [
-            'variation_type_id' => 'required|exists:variation_types,id',
+            'presentation_type_id' => 'required_without:variation_type_id|nullable|exists:presentation_types,id',
+            'variation_type_id' => 'required_without:presentation_type_id|nullable|exists:variation_types,id',
             'equivalence' => 'required|numeric|min:0.0001',
             'price' => 'required|numeric|min:0',
             'is_base_unit' => 'boolean',
@@ -95,6 +103,7 @@ class ProductPresentationAPIController extends AppBaseController
             DB::beginTransaction();
 
             $input = $request->all();
+            $this->validatePresentationTypeStore($input['presentation_type_id'] ?? null, $presentation->product->store_id);
 
             if (!empty($input['is_base_unit'])) {
                 ProductPresentation::where('product_id', $presentation->product_id)
@@ -121,6 +130,7 @@ class ProductPresentationAPIController extends AppBaseController
     public function destroy($id): JsonResponse
     {
         $presentation = ProductPresentation::findOrFail($id);
+        $this->authorizeStoreOwnership($presentation->product);
         $productId = $presentation->product_id;
 
         // No permitir borrar la última presentación de un producto que
@@ -137,5 +147,12 @@ class ProductPresentationAPIController extends AppBaseController
         $presentation->delete();
 
         return $this->sendSuccess('Product presentation deleted successfully');
+    }
+
+    private function validatePresentationTypeStore(?int $presentationTypeId, int $storeId): void
+    {
+        if ($presentationTypeId && !\App\Models\PresentationType::whereKey($presentationTypeId)->where('store_id', $storeId)->exists()) {
+            throw new UnprocessableEntityHttpException('La presentación no pertenece a la tienda activa.');
+        }
     }
 }

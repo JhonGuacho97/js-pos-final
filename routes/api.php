@@ -51,6 +51,7 @@ use App\Http\Controllers\API\UnitAPIController;
 use App\Http\Controllers\API\UserAPIController;
 use App\Http\Controllers\API\WarehouseAPIController;
 use App\Http\Controllers\API\VariationAPIController;
+use App\Http\Controllers\API\PresentationCatalogAPIController;
 use App\Http\Controllers\API\KardexAPIController;
 use App\Http\Controllers\API\InventoryCountAPIController;
 use App\Http\Controllers\API\LoginLogController;
@@ -239,6 +240,11 @@ Route::middleware(['auth:sanctum', 'store.context'])->group(function () {
 
     Route::resource('product-presentations', \App\Http\Controllers\API\ProductPresentationAPIController::class)
         ->only(['index', 'store', 'update', 'destroy']);
+    Route::get('presentation-catalog', [PresentationCatalogAPIController::class, 'index']);
+    Route::middleware('permission:manage_products|manage_variations')->group(function () {
+        Route::post('presentation-catalog/families', [PresentationCatalogAPIController::class, 'storeFamily']);
+        Route::post('presentation-catalog/families/{family}/types', [PresentationCatalogAPIController::class, 'storeType']);
+    });
 
     Route::resource('product-kits', \App\Http\Controllers\API\ProductKitAPIController::class)
         ->only(['index', 'store', 'update', 'destroy']);

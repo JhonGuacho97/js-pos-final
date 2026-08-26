@@ -37,6 +37,7 @@ class ProductPresentation extends BaseModel implements JsonResourceful
     protected $fillable = [
         'product_id',
         'variation_type_id',
+        'presentation_type_id',
         'equivalence',
         'price',
         'cost',
@@ -48,6 +49,7 @@ class ProductPresentation extends BaseModel implements JsonResourceful
     protected $casts = [
         'product_id' => 'integer',
         'variation_type_id' => 'integer',
+        'presentation_type_id' => 'integer',
         'equivalence' => 'float',
         'price' => 'float',
         'cost' => 'float',
@@ -58,7 +60,8 @@ class ProductPresentation extends BaseModel implements JsonResourceful
 
     public static $rules = [
         'product_id' => 'required|exists:products,id',
-        'variation_type_id' => 'required|exists:variation_types,id',
+        'presentation_type_id' => 'required_without:variation_type_id|nullable|exists:presentation_types,id',
+        'variation_type_id' => 'required_without:presentation_type_id|nullable|exists:variation_types,id',
         'equivalence' => 'required|numeric|min:0.0001',
         'price' => 'required|numeric|min:0',
         'cost' => 'nullable|numeric|min:0',
@@ -75,6 +78,11 @@ class ProductPresentation extends BaseModel implements JsonResourceful
     public function variationType(): BelongsTo
     {
         return $this->belongsTo(VariationType::class, 'variation_type_id', 'id');
+    }
+
+    public function presentationType(): BelongsTo
+    {
+        return $this->belongsTo(PresentationType::class, 'presentation_type_id', 'id');
     }
 
     public function warehousePrices(): \Illuminate\Database\Eloquent\Relations\HasMany
@@ -129,7 +137,9 @@ class ProductPresentation extends BaseModel implements JsonResourceful
             'id' => $this->id,
             'product_id' => $this->product_id,
             'variation_type_id' => $this->variation_type_id,
-            'name' => $this->variationType->name ?? '',
+            'presentation_type_id' => $this->presentation_type_id,
+            'presentation_family_id' => $this->presentationType?->presentation_family_id,
+            'name' => $this->presentationType?->name ?? $this->variationType?->name ?? '',
             'equivalence' => $this->equivalence,
             'price' => $this->price,
             'effective_price' => $effectivePrice,
