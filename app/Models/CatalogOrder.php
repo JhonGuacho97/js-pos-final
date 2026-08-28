@@ -26,7 +26,7 @@ class CatalogOrder extends BaseModel
     ];
 
     protected $fillable = [
-        'store_id', 'warehouse_id', 'sale_id', 'reference', 'status', 'assigned_to', 'customer_name',
+        'store_id', 'warehouse_id', 'customer_id', 'sale_id', 'reference', 'status', 'assigned_to', 'customer_name',
         'customer_phone', 'fulfillment_type', 'delivery_address',
         'payment_method', 'notes', 'internal_notes', 'subtotal', 'delivery_fee', 'grand_total',
         'whatsapp_opened_at', 'confirmed_at', 'preparing_at', 'completed_at', 'cancelled_at',
@@ -51,6 +51,11 @@ class CatalogOrder extends BaseModel
     public function warehouse(): BelongsTo
     {
         return $this->belongsTo(Warehouse::class);
+    }
+
+    public function customer(): BelongsTo
+    {
+        return $this->belongsTo(Customer::class);
     }
 
     public function items(): HasMany

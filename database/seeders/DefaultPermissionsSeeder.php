@@ -54,6 +54,14 @@ class DefaultPermissionsSeeder extends Seeder
                 'display_name' => 'Manage Users',
             ],
             [
+                'name' => 'change_user_passwords',
+                'display_name' => 'Cambiar contraseñas de usuarios',
+            ],
+            [
+                'name' => 'change_customer_passwords',
+                'display_name' => 'Cambiar contraseñas de clientes',
+            ],
+            [
                 'name' => 'manage_expense_categories',
                 'display_name' => 'Manage Expense Categories',
             ],

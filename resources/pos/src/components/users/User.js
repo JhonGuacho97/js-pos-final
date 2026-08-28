@@ -26,7 +26,8 @@ import { faEye, faEyeSlash } from '@fortawesome/free-solid-svg-icons';
 import axios from 'axios';
 
 const User = (props) => {
-    const { users, fetchUsers, totalRecord, isLoading, allConfigData } = props;
+    const { users, fetchUsers, totalRecord, isLoading, allConfigData, config } = props;
+    const canChangePassword = Array.isArray(config) && config.includes('change_user_passwords');
     const [deleteModel, setDeleteModel] = useState(false);
     const [isDelete, setIsDelete] = useState(null);
 
@@ -162,7 +163,7 @@ const User = (props) => {
                 item={row}
                 goToEditProduct={goToEdit}
                 onClickDeleteModel={onClickDeleteModel}
-                onClickPassword={openPasswordModal}
+                onClickPassword={canChangePassword ? openPasswordModal : null}
                 isEditMode={true}
             />
         }
@@ -273,7 +274,7 @@ const User = (props) => {
 };
 
 const mapStateToProps = (state) => {
-    const { users, totalRecord, isLoading, allConfigData } = state;
-    return { users, totalRecord, isLoading, allConfigData }
+    const { users, totalRecord, isLoading, allConfigData, config } = state;
+    return { users, totalRecord, isLoading, allConfigData, config }
 };
 export default connect(mapStateToProps, { fetchUsers,changeUserPassword })(User);

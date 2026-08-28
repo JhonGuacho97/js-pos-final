@@ -41,6 +41,13 @@ const CashControl = () => {
     const [historyMeta, setHistoryMeta] = useState({ currentPage: 1, lastPage: 1, from: 0, to: 0, total: 0 });
     const [reviewing, setReviewing] = useState(null);
     const [reviewNote, setReviewNote] = useState('');
+    const [supervisedSession, setSupervisedSession] = useState(null);
+    const [supervisedMovements, setSupervisedMovements] = useState([]);
+    const [supervisionLoading, setSupervisionLoading] = useState(false);
+    const [supervisionPage, setSupervisionPage] = useState(1);
+    const [supervisionMeta, setSupervisionMeta] = useState({ currentPage: 1, lastPage: 1, from: 0, to: 0, total: 0 });
+    const [supervisionSummary, setSupervisionSummary] = useState({ openingCash: 0, expectedCash: 0, cashSales: 0, manualIncome: 0, totalOut: 0, transfersIn: 0, transfersOut: 0, refunds: 0 });
+    const [supervisionFilters, setSupervisionFilters] = useState({ type: '', search: '' });
     // El endpoint calcula estas capacidades con la misma tienda activa y el
     // mismo contexto de autorización que protegen las rutas del servidor.
     const canTransfer = overview?.capabilities?.transfer_cash === true;
@@ -111,6 +118,56 @@ const CashControl = () => {
         }
     }, [dispatch, loadMovements]);
 
+    const loadSupervisedMovements = useCallback(async (sessionId, page = 1, filters = { type: '', search: '' }) => {
+        if (!sessionId) return;
+        setSupervisionLoading(true);
+        try {
+            const params = new URLSearchParams({ page: String(page), per_page: '10' });
+            if (filters.type) params.set('type', filters.type);
+            if (filters.search?.trim()) params.set('search', filters.search.trim());
+            const response = await apiConfig.get(`cash-control/sessions/${sessionId}/movements?${params.toString()}`);
+            const result = response.data;
+            setSupervisedMovements(result.data || []);
+            setSupervisionMeta({
+                currentPage: result.current_page || 1,
+                lastPage: result.last_page || 1,
+                from: result.from || 0,
+                to: result.to || 0,
+                total: result.total || 0,
+            });
+            setSupervisionSummary({
+                openingCash: Number(result.summary?.opening_cash || 0),
+                expectedCash: Number(result.summary?.expected_cash || 0),
+                cashSales: Number(result.summary?.cash_sales || 0),
+                manualIncome: Number(result.summary?.manual_income || 0),
+                totalOut: Number(result.summary?.total_out || 0),
+                transfersIn: Number(result.summary?.transfers_in || 0),
+                transfersOut: Number(result.summary?.transfers_out || 0),
+                refunds: Number(result.summary?.refunds || 0),
+            });
+            setSupervisionPage(result.current_page || 1);
+        } catch (error) {
+            dispatch(addToast({ text: error?.response?.data?.message || 'No se pudieron cargar los movimientos de esta caja.', type: toastType.ERROR }));
+        } finally {
+            setSupervisionLoading(false);
+        }
+    }, [dispatch]);
+
+    const openSupervision = (session) => {
+        const filters = { type: '', search: '' };
+        setSupervisedSession(session);
+        setSupervisionFilters(filters);
+        setSupervisedMovements([]);
+        setSupervisionMeta({ currentPage: 1, lastPage: 1, from: 0, to: 0, total: 0 });
+        loadSupervisedMovements(session.id, 1, filters);
+    };
+
+    const closeSupervision = () => {
+        if (supervisionLoading) return;
+        setSupervisedSession(null);
+        setSupervisedMovements([]);
+    };
+
     useEffect(() => { loadData(); }, [loadData]);
 
     useEffect(() => {
@@ -159,6 +216,20 @@ const CashControl = () => {
             document.removeEventListener('keydown', closeOnEscape);
         };
     }, [reviewing, saving]);
+
+    useEffect(() => {
+        if (!supervisedSession) return undefined;
+        const previousOverflow = document.body.style.overflow;
+        const closeOnEscape = (event) => {
+            if (event.key === 'Escape' && !supervisionLoading) closeSupervision();
+        };
+        document.body.style.overflow = 'hidden';
+        document.addEventListener('keydown', closeOnEscape);
+        return () => {
+            document.body.style.overflow = previousOverflow;
+            document.removeEventListener('keydown', closeOnEscape);
+        };
+    }, [supervisedSession, supervisionLoading]);
 
     const apiError = (error, fallback) => {
         const errors = error?.response?.data?.errors;
@@ -342,7 +413,8 @@ const CashControl = () => {
                             <h3>{item.cash_register?.name || 'Caja principal'}</h3>
                             <p>{item.warehouse?.name} · {item.user?.first_name} {item.user?.last_name}</p>
                             <div><span>Efectivo esperado</span><strong>{currency}{Number(item.expected_cash).toFixed(2)}</strong></div>
-                            <small>Abierta {new Date(item.opened_at).toLocaleString('es-EC')}</small>
+                            <small>Abierta {new Date(item.opened_at).toLocaleString('es-EC')} · {item.movements_count || 0} movimientos</small>
+                            <button type="button" onClick={() => openSupervision(item)}><i className="bi bi-eye" /> Ver movimientos</button>
                         </article>)}
                         {!overview?.supervision_sessions?.length && <div className="cash-inline-empty">No hay cajas abiertas en esta tienda.</div>}
                     </div>
@@ -412,6 +484,55 @@ const CashControl = () => {
                         <button type="button" className="btn btn-light" disabled={saving} onClick={closeReviewModal}>Cancelar</button>
                         <button type="button" className="btn btn-danger" disabled={saving || !reviewNote.trim()} onClick={() => reviewClosure('REJECTED')}><i className="bi bi-x-circle" /> {saving ? 'Procesando...' : 'Rechazar'}</button>
                         <button type="button" className="btn btn-success" disabled={saving} onClick={() => reviewClosure('APPROVED')}><i className="bi bi-check-circle" /> {saving ? 'Procesando...' : 'Aprobar cierre'}</button>
+                    </footer>
+                </section>
+            </div>,
+            document.body
+        )}
+        {supervisedSession && createPortal(
+            <div className="cash-review-backdrop" onMouseDown={(event) => event.target === event.currentTarget && closeSupervision()}>
+                <section className="cash-supervision-modal" role="dialog" aria-modal="true" aria-labelledby="cash-supervision-title">
+                    <header>
+                        <div className="cash-supervision-modal-icon"><i className="bi bi-activity" /></div>
+                        <div className="cash-supervision-modal-title"><span>SUPERVISIÓN EN TIEMPO REAL</span><h2 id="cash-supervision-title">{supervisedSession.cash_register?.name || 'Caja principal'}</h2><p>{supervisedSession.warehouse?.name} · {supervisedSession.user?.first_name} {supervisedSession.user?.last_name}</p></div>
+                        <div className="cash-supervision-live"><i /> TURNO ABIERTO</div>
+                        <button className="cash-review-close" type="button" aria-label="Cerrar movimientos" disabled={supervisionLoading} onClick={closeSupervision}><i className="bi bi-x-lg" /></button>
+                    </header>
+
+                    <div className="cash-supervision-kpis">
+                        <div><span>Fondo inicial</span><strong>{currency}{supervisionSummary.openingCash.toFixed(2)}</strong></div>
+                        <div className="is-primary"><span>Efectivo esperado</span><strong>{currency}{supervisionSummary.expectedCash.toFixed(2)}</strong></div>
+                        <div className="is-positive"><span>Ventas en efectivo</span><strong>+{currency}{supervisionSummary.cashSales.toFixed(2)}</strong></div>
+                        <div className="is-negative"><span>Salidas totales</span><strong>-{currency}{supervisionSummary.totalOut.toFixed(2)}</strong></div>
+                    </div>
+
+                    <div className="cash-supervision-breakdown">
+                        <span>Ingresos manuales <b>+{currency}{supervisionSummary.manualIncome.toFixed(2)}</b></span>
+                        <span>Transferencias recibidas <b>+{currency}{supervisionSummary.transfersIn.toFixed(2)}</b></span>
+                        <span>Transferencias enviadas <b>-{currency}{supervisionSummary.transfersOut.toFixed(2)}</b></span>
+                        <span>Reembolsos <b>-{currency}{supervisionSummary.refunds.toFixed(2)}</b></span>
+                    </div>
+
+                    <form className="cash-supervision-filters" onSubmit={(event) => { event.preventDefault(); loadSupervisedMovements(supervisedSession.id, 1, supervisionFilters); }}>
+                        <label><i className="bi bi-search" /><input value={supervisionFilters.search} onChange={(event) => setSupervisionFilters({ ...supervisionFilters, search: event.target.value })} placeholder="Buscar referencia o detalle" /></label>
+                        <select value={supervisionFilters.type} onChange={(event) => { const filters = { ...supervisionFilters, type: event.target.value }; setSupervisionFilters(filters); loadSupervisedMovements(supervisedSession.id, 1, filters); }}>
+                            <option value="">Todos los movimientos</option>
+                            {Object.entries(movementLabels).map(([value, label]) => <option key={value} value={value}>{label}</option>)}
+                        </select>
+                        <button type="submit" disabled={supervisionLoading}><i className="bi bi-arrow-clockwise" /> Actualizar</button>
+                    </form>
+
+                    <div className="cash-supervision-ledger table-responsive">
+                        <table><thead><tr><th>Fecha</th><th>Movimiento</th><th>Detalle</th><th>Referencia</th><th>Registrado por</th><th className="text-end">Monto</th></tr></thead><tbody>
+                            {!supervisionLoading && supervisedMovements.map((item) => <tr key={item.id}><td>{new Date(item.created_at).toLocaleString('es-EC')}</td><td><span className={`cash-type is-${item.direction.toLowerCase()}`}>{movementLabels[item.type] || item.type}</span></td><td>{item.description || '—'}{item.reversal_reason && <small className="cash-reason">Motivo: {item.reversal_reason}</small>}</td><td>{item.reference || '—'}</td><td>{item.user ? `${item.user.first_name || ''} ${item.user.last_name || ''}`.trim() : '—'}</td><td className={`text-end cash-value is-${item.direction.toLowerCase()}`}>{item.direction === 'IN' ? '+' : '-'}{currency}{Number(item.amount).toFixed(2)}</td></tr>)}
+                            {!supervisionLoading && !supervisedMovements.length && <tr><td colSpan="6" className="cash-no-data">No hay movimientos que coincidan con los filtros.</td></tr>}
+                            {supervisionLoading && <tr><td colSpan="6" className="cash-no-data">Cargando movimientos de la caja...</td></tr>}
+                        </tbody></table>
+                    </div>
+
+                    <footer className="cash-supervision-footer">
+                        <span>{supervisionMeta.total > 0 ? `Mostrando ${supervisionMeta.from}-${supervisionMeta.to} de ${supervisionMeta.total} movimientos` : 'Sin movimientos registrados'}</span>
+                        <div><button disabled={supervisionLoading || supervisionMeta.currentPage <= 1} onClick={() => loadSupervisedMovements(supervisedSession.id, Math.max(1, supervisionPage - 1), supervisionFilters)}><i className="bi bi-chevron-left" /> Anterior</button><strong>Página {supervisionMeta.currentPage} de {supervisionMeta.lastPage}</strong><button disabled={supervisionLoading || supervisionMeta.currentPage >= supervisionMeta.lastPage} onClick={() => loadSupervisedMovements(supervisedSession.id, Math.min(supervisionMeta.lastPage, supervisionPage + 1), supervisionFilters)}>Siguiente <i className="bi bi-chevron-right" /></button></div>
                     </footer>
                 </section>
             </div>,

@@ -60,12 +60,14 @@ class CashControlAPIController extends AppBaseController
             : collect();
         $supervisionSessions = $canSupervise
             ? POSRegister::with(['cashRegister:id,name', 'warehouse:id,name,store_id', 'user:id,first_name,last_name'])
+                ->withCount('movements')
                 ->whereNull('closed_at')->whereHas('warehouse', fn ($query) => $query->where('store_id', $storeId)->active())
                 ->oldest()->get()->map(fn (POSRegister $item) => [
                     'id' => $item->id,
                     'opened_at' => $item->created_at,
                     'opening_cash' => (float) $item->cash_in_hand,
                     'expected_cash' => $this->cashControl->currentBalance($item),
+                    'movements_count' => $item->movements_count,
                     'cash_register' => $item->cashRegister,
                     'warehouse' => $item->warehouse,
                     'user' => $item->user,
@@ -121,6 +123,85 @@ class CashControlAPIController extends AppBaseController
 
         $payload = $movements->toArray();
         $payload['summary'] = $summary;
+
+        return response()->json($payload);
+    }
+
+    public function supervisedMovements(Request $request, POSRegister $session)
+    {
+        $storeId = (int) $this->currentStoreId();
+        $session->loadMissing([
+            'cashRegister:id,name,code',
+            'warehouse:id,name,store_id,is_active',
+            'user:id,first_name,last_name',
+        ]);
+
+        // La supervisión es deliberadamente de solo lectura y únicamente
+        // sobre turnos abiertos de la tienda activa. Devolver 404 evita
+        // revelar la existencia de sesiones pertenecientes a otra tienda.
+        if ($session->closed_at
+            || (int) $session->warehouse?->store_id !== $storeId
+            || ! $session->warehouse?->is_active) {
+            return response()->json([
+                'success' => false,
+                'message' => 'El turno solicitado no está disponible.',
+            ], 404);
+        }
+
+        $validated = $request->validate([
+            'type' => ['nullable', Rule::in([
+                CashMovement::OPENING,
+                CashMovement::MANUAL_INCOME,
+                CashMovement::MANUAL_EXPENSE,
+                CashMovement::WITHDRAWAL,
+                CashMovement::SALE_PAYMENT,
+                CashMovement::EXPENSE_PAYMENT,
+                CashMovement::CASH_REFUND,
+                CashMovement::REVERSAL,
+                CashMovement::TRANSFER_IN,
+                CashMovement::TRANSFER_OUT,
+            ])],
+            'search' => ['nullable', 'string', 'max:100'],
+            'per_page' => ['nullable', 'integer', 'min:1', 'max:100'],
+        ]);
+
+        $baseQuery = $session->movements();
+        $summary = [
+            'opening_cash' => (float) $session->cash_in_hand,
+            'expected_cash' => $this->cashControl->currentBalance($session),
+            'cash_sales' => (float) (clone $baseQuery)->where('type', CashMovement::SALE_PAYMENT)->where('direction', CashMovement::IN)->sum('amount'),
+            'manual_income' => (float) (clone $baseQuery)->where('type', CashMovement::MANUAL_INCOME)->where('direction', CashMovement::IN)->sum('amount'),
+            'total_out' => (float) (clone $baseQuery)->where('direction', CashMovement::OUT)->sum('amount'),
+            'transfers_in' => (float) (clone $baseQuery)->where('type', CashMovement::TRANSFER_IN)->sum('amount'),
+            'transfers_out' => (float) (clone $baseQuery)->where('type', CashMovement::TRANSFER_OUT)->sum('amount'),
+            'refunds' => (float) (clone $baseQuery)->where('type', CashMovement::CASH_REFUND)->sum('amount'),
+        ];
+
+        $search = trim((string) ($validated['search'] ?? ''));
+        $query = $session->movements()
+            ->when($validated['type'] ?? null, fn ($builder, $type) => $builder->where('type', $type))
+            ->when($search !== '', function ($builder) use ($search) {
+                $builder->where(function ($nested) use ($search) {
+                    $nested->where('description', 'like', "%{$search}%")
+                        ->orWhere('reference', 'like', "%{$search}%");
+                });
+            });
+
+        $movements = $query
+            ->with(['user:id,first_name,last_name', 'approvedBy:id,first_name,last_name'])
+            ->withExists('reversal')
+            ->latest()
+            ->paginate((int) ($validated['per_page'] ?? 10));
+
+        $payload = $movements->toArray();
+        $payload['summary'] = $summary;
+        $payload['session'] = [
+            'id' => $session->id,
+            'opened_at' => $session->created_at,
+            'cash_register' => $session->cashRegister,
+            'warehouse' => $session->warehouse,
+            'user' => $session->user,
+        ];
 
         return response()->json($payload);
     }

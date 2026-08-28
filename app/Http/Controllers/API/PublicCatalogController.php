@@ -12,8 +12,10 @@ use App\Models\Setting;
 use App\Models\Store;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Auth\AuthenticationException;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
 
@@ -35,6 +37,7 @@ class PublicCatalogController extends Controller
                 'variationProduct.variation',
                 'variationProduct.variationType',
                 'presentations.variationType',
+                'presentations.presentationType',
                 'presentations.warehousePrices',
                 'warehousePrices',
                 'kitItems',
@@ -83,6 +86,10 @@ class PublicCatalogController extends Controller
     public function storeOrder(Request $request, Store $store): JsonResponse
     {
         $setting = $this->activeSetting($store);
+        $account = Auth::guard('catalog_customer')->user();
+        if (!$account || !$account->is_active || (int) $account->store_id !== (int) $store->id) {
+            throw new AuthenticationException('Debes iniciar sesión para realizar un pedido.', ['catalog_customer']);
+        }
         $data = $request->validate([
             'customer_name' => 'required|string|max:255',
             'customer_phone' => 'required|string|max:30',
@@ -105,7 +112,8 @@ class PublicCatalogController extends Controller
         }
 
         $warehouseId = (int) $setting->warehouse_id;
-        $order = DB::transaction(function () use ($data, $store, $setting, $warehouseId) {
+        $customerId = (int) $account->customer_id;
+        $order = DB::transaction(function () use ($data, $store, $setting, $warehouseId, $customerId) {
             $resolvedItems = [];
             $subtotal = 0;
 
@@ -113,7 +121,7 @@ class PublicCatalogController extends Controller
                 $product = Product::query()
                     ->where('store_id', $store->id)
                     ->where('catalog_visible', true)
-                    ->with(['variationProduct.variationType', 'presentations.variationType', 'warehousePrices'])
+                    ->with(['variationProduct.variationType', 'presentations.variationType', 'presentations.presentationType', 'warehousePrices'])
                     ->find($requestedItem['product_id']);
 
                 if (!$product) {
@@ -152,7 +160,7 @@ class PublicCatalogController extends Controller
                     'product_presentation_id' => $presentation?->id,
                     'product_name' => $product->mainProduct?->name ?: $product->name,
                     'variant_name' => $product->variationProduct?->variationType?->name,
-                    'presentation_name' => $presentation?->variationType?->name,
+                    'presentation_name' => $presentation?->displayName(),
                     'presentation_equivalence' => $equivalence,
                     'quantity' => (float) $requestedItem['quantity'],
                     'unit_price' => $unitPrice,
@@ -169,6 +177,7 @@ class PublicCatalogController extends Controller
             $order = CatalogOrder::create([
                 'store_id' => $store->id,
                 'warehouse_id' => $warehouseId,
+                'customer_id' => $customerId,
                 'status' => 'pending',
                 'customer_name' => $data['customer_name'],
                 'customer_phone' => $data['customer_phone'],
@@ -182,6 +191,11 @@ class PublicCatalogController extends Controller
             ]);
             $order->update(['reference' => 'PED-'.now()->format('ymd').'-'.str_pad($order->id, 6, '0', STR_PAD_LEFT)]);
             $order->items()->createMany($resolvedItems);
+            $order->statusHistory()->create([
+                'from_status' => null,
+                'to_status' => CatalogOrder::PENDING,
+                'note' => null,
+            ]);
 
             return $order->load('items');
         });
@@ -246,7 +260,7 @@ class PublicCatalogController extends Controller
                 $available = (int) floor($stock / $presentation->equivalence);
                 return [
                     'id' => $presentation->id,
-                    'name' => $presentation->variationType?->name ?: 'Presentación',
+                    'name' => $presentation->displayName(),
                     'equivalence' => (float) $presentation->equivalence,
                     'price' => $presentation->priceForWarehouse($warehouseId),
                     'available' => $available > 0,

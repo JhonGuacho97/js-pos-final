@@ -41,9 +41,23 @@ const SLUG_TO_LABEL_KEY = {
     manage_expenses: 'role.permission.manage_expenses',
     manage_expense_categories: 'role.permission.manage_expense_categories',
 
+    manage_cash_control: 'role.permission.manage_cash_control',
+    view_own_cash_session: 'role.permission.view_own_cash_session',
+    create_cash_income: 'role.permission.create_cash_income',
+    create_cash_expense: 'role.permission.create_cash_expense',
+    withdraw_cash: 'role.permission.withdraw_cash',
+    view_cash_supervision: 'role.permission.view_cash_supervision',
+    view_cash_closures: 'role.permission.view_cash_closures',
+    manage_cash_registers: 'role.permission.manage_cash_registers',
+    reverse_cash_movement: 'role.permission.reverse_cash_movement',
+    transfer_cash: 'role.permission.transfer_cash',
+    review_cash_closure: 'role.permission.review_cash_closure',
+
     manage_suppliers: 'role.permission.manage_suppliers',
     manage_customers: 'role.permission.manage_customers',
     manage_users: 'role.permission.manage_users',
+    change_user_passwords: 'role.permission.change_user_passwords',
+    change_customer_passwords: 'role.permission.change_customer_passwords',
     manage_login_logs: 'role.permission.manage_login_logs',
 
     manage_report: 'role.permission.manage_report',

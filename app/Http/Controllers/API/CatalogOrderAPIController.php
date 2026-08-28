@@ -156,7 +156,10 @@ class CatalogOrderAPIController extends AppBaseController
                 throw new UnprocessableEntityHttpException('Confirma el pedido antes de convertirlo en venta.');
             }
 
-            $customer = $this->defaultCustomerForStore($order->store_id);
+            $customer = $order->customer_id
+                ? Customer::where('store_id', $order->store_id)->find($order->customer_id)
+                : null;
+            $customer ??= $this->defaultCustomerForStore($order->store_id);
             if (!$customer) {
                 throw new UnprocessableEntityHttpException('Configura un cliente predeterminado para esta tienda antes de convertir pedidos.');
             }

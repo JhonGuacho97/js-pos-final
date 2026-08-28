@@ -43,7 +43,7 @@ class ProductKitItem extends Model
             'component_name' => $this->component?->name,
             'component_code' => $this->component?->code,
             'component_product_presentation_id' => $this->component_product_presentation_id,
-            'component_presentation_name' => $this->presentation?->variationType?->name,
+            'component_presentation_name' => $this->presentation?->displayName(),
             'component_presentation_equivalence' => $this->component_product_presentation_id ? (float) $this->presentation?->equivalence : null,
             'quantity' => $this->quantity,
         ];

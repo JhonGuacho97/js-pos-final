@@ -90,6 +90,13 @@ class ProductPresentation extends BaseModel implements JsonResourceful
         return $this->hasMany(PresentationWarehousePrice::class, 'product_presentation_id', 'id');
     }
 
+    public function displayName(): string
+    {
+        return $this->presentationType?->name
+            ?? $this->variationType?->name
+            ?? 'Presentación';
+    }
+
     /**
      * Precio efectivo de esta presentación para una sucursal dada.
      * Si no hay override para esa sucursal, cae al precio general.
@@ -139,7 +146,7 @@ class ProductPresentation extends BaseModel implements JsonResourceful
             'variation_type_id' => $this->variation_type_id,
             'presentation_type_id' => $this->presentation_type_id,
             'presentation_family_id' => $this->presentationType?->presentation_family_id,
-            'name' => $this->presentationType?->name ?? $this->variationType?->name ?? '',
+            'name' => $this->displayName(),
             'equivalence' => $this->equivalence,
             'price' => $this->price,
             'effective_price' => $effectivePrice,

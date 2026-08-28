@@ -15,7 +15,11 @@ class UpdateCustomerRequest extends FormRequest
 
     public function rules(): array
     {
-        $id = $this->route('customer');
+        $routeCustomer = $this->route('customer');
+        $customer = $routeCustomer instanceof Customer
+            ? $routeCustomer
+            : Customer::find($routeCustomer);
+        $id = $customer?->id ?? $routeCustomer;
         $rules = Customer::$rules;
 
         $rules['email'] = [
@@ -31,6 +35,9 @@ class UpdateCustomerRequest extends FormRequest
                 ->where(fn ($query) => $query->where('store_id', currentStoreId()))
                 ->ignore($id),
         ];
+        $rules['email'][] = Rule::unique('customer_accounts', 'email')
+            ->where(fn ($query) => $query->where('store_id', currentStoreId()))
+            ->ignore($customer?->account()->value('id'));
 
         return $rules;
     }

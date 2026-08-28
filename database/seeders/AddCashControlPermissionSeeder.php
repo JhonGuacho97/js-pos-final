@@ -16,7 +16,7 @@ class AddCashControlPermissionSeeder extends Seeder
             'create_cash_income' => 'Registrar ingreso de caja',
             'create_cash_expense' => 'Registrar egreso de caja',
             'withdraw_cash' => 'Registrar retiro de efectivo',
-            'view_cash_supervision' => 'Ver supervisión de cajas',
+            'view_cash_supervision' => 'Supervisar turnos y movimientos de cajas abiertas',
             'view_cash_closures' => 'Ver cierres de caja',
             'manage_cash_registers' => 'Gestionar cajas físicas',
             'reverse_cash_movement' => 'Revertir movimiento de caja',

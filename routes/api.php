@@ -81,7 +81,6 @@ Route::get('/health', HealthController::class);
 Route::get('/sri/lookup', [SriController::class, 'lookup']);
 Route::prefix('catalog/{store:slug}')->middleware('throttle:60,1')->group(function () {
     Route::get('/', [PublicCatalogController::class, 'show']);
-    Route::post('/orders', [PublicCatalogController::class, 'storeOrder'])->middleware('throttle:15,1');
 });
 Route::get('electronic-invoices/{electronicInvoice}/ride', [ElectronicInvoiceController::class, 'ride']);
 Route::get('electronic-invoices/{electronicInvoice}/xml', [ElectronicInvoiceController::class, 'descargarXml']);
@@ -281,6 +280,9 @@ Route::middleware(['auth:sanctum', 'store.context'])->group(function () {
     Route::middleware('permission:manage_customers')->group(function () {
         Route::resource('customers', CustomerAPIController::class)->except(['index', 'store']);
     });
+    Route::middleware('permission:change_customer_passwords')->group(function () {
+        Route::post('customers/{customer}/change-password', [CustomerAPIController::class, 'updatePassword']);
+    });
     // El modal "Agregar cliente" del propio POS (CustomerForm.js dentro de
     // frontend/, distinto del formulario admin de Personas > Clientes)
     // llama esta misma ruta -- mismo caso que sales.store: un vendedor sin
@@ -298,8 +300,9 @@ Route::middleware(['auth:sanctum', 'store.context'])->group(function () {
     Route::middleware('permission:manage_users')->group(function () {
         Route::resource('users', UserAPIController::class);
         Route::post('users/{user}', [UserAPIController::class, 'update']);
-        Route::post('users/{user}/change-password', [UserAPIController::class, 'updateUserPassword']);
     });
+    Route::post('users/{user}/change-password', [UserAPIController::class, 'updateUserPassword'])
+        ->middleware('permission:change_user_passwords');
     // update user profile
     Route::get('edit-profile', [UserAPIController::class, 'editProfile'])->name('edit-profile');
     Route::post('update-profile', [UserAPIController::class, 'updateProfile'])->name('update-profile');
@@ -648,6 +651,8 @@ Route::middleware(['auth:sanctum', 'store.context'])->group(function () {
         Route::get('overview', [CashControlAPIController::class, 'overview']);
         Route::get('movements', [CashControlAPIController::class, 'movements'])
             ->middleware('permission:manage_cash_control|view_own_cash_session|create_cash_income|create_cash_expense|withdraw_cash|reverse_cash_movement|transfer_cash');
+        Route::get('sessions/{session}/movements', [CashControlAPIController::class, 'supervisedMovements'])
+            ->middleware('permission:manage_cash_control|view_cash_supervision');
         Route::post('movements', [CashControlAPIController::class, 'storeMovement']);
         Route::post('movements/{cashMovement}/reverse', [CashControlAPIController::class, 'reverse'])
             ->middleware('permission:reverse_cash_movement');

@@ -23,14 +23,19 @@ import {
 import ActionButton from "../../shared/action-buttons/ActionButton";
 import TopProgressBar from "../../shared/components/loaders/TopProgressBar";
 import ImportCustomersModel from "./ImportCustomersModel";
+import CustomerPasswordModal from "./CustomerPasswordModal";
+import "./customer-credit.scss";
 
 const Customers = (props) => {
-    const { fetchCustomers, customers, totalRecord, isLoading, allConfigData } =
+    const { fetchCustomers, customers, totalRecord, isLoading, allConfigData, config } =
         props;
     const [deleteModel, setDeleteModel] = useState(false);
     const [isDelete, setIsDelete] = useState(null);
     const navigate = useNavigate();
     const [importCustomers, setImportCustomers] = useState(false);
+    const [passwordCustomer, setPasswordCustomer] = useState(null);
+    const [currentFilter, setCurrentFilter] = useState({});
+    const canChangePassword = Array.isArray(config) && config.includes('change_customer_passwords');
     const handleClose = () => {
         setImportCustomers(!importCustomers);
     };
@@ -40,6 +45,7 @@ const Customers = (props) => {
     };
 
     const onChange = (filter) => {
+        setCurrentFilter(filter);
         fetchCustomers(filter, true);
     };
 
@@ -62,6 +68,9 @@ const Customers = (props) => {
             identification: customer.attributes.identification,
             country: customer.attributes.country,
             city: customer.attributes.city,
+            has_catalog_account: Boolean(customer.attributes.has_catalog_account),
+            catalog_account_active: Boolean(customer.attributes.catalog_account_active),
+            es_consumidor_final: Boolean(customer.attributes.es_consumidor_final),
             id: customer.id,
         }));
 
@@ -120,6 +129,7 @@ const Customers = (props) => {
                     goToEditProduct={goToEditProduct}
                     isEditMode={true}
                     onClickDeleteModel={onClickDeleteModel}
+                    onClickPassword={canChangePassword && !row.es_consumidor_final && row.email ? setPasswordCustomer : null}
                 />
             ),
         },
@@ -152,13 +162,22 @@ const Customers = (props) => {
                     show={importCustomers}
                 />
             )}
+            <CustomerPasswordModal
+                show={Boolean(passwordCustomer)}
+                customer={passwordCustomer}
+                onHide={() => setPasswordCustomer(null)}
+                onSaved={() => {
+                    setPasswordCustomer(null);
+                    fetchCustomers(currentFilter, true);
+                }}
+            />
         </MasterLayout>
     );
 };
 
 const mapStateToProps = (state) => {
-    const { customers, totalRecord, isLoading, allConfigData } = state;
-    return { customers, totalRecord, isLoading, allConfigData };
+    const { customers, totalRecord, isLoading, allConfigData, config } = state;
+    return { customers, totalRecord, isLoading, allConfigData, config };
 };
 
 export default connect(mapStateToProps, { fetchCustomers })(Customers);

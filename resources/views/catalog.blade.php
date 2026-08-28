@@ -3,6 +3,7 @@
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+    <meta name="csrf-token" content="{{ csrf_token() }}">
     <meta name="theme-color" content="#155eef">
     <meta name="description" content="Catálogo virtual de {{ $store->name }}">
     <title>{{ $store->name }} · Catálogo</title>
@@ -13,10 +14,12 @@
 <body>
     <div id="catalog-root"></div>
     <script>
-        window.__ECUAPOS_CATALOG__ = @json([
+        window.__ECUAPOS_CATALOG__ = {{ Illuminate\Support\Js::from([
             'slug' => $store->slug,
             'apiUrl' => url('/api/catalog/'.$store->slug),
-        ]);
+            'accountUrl' => url('/catalogo/'.$store->slug.'/cuenta'),
+            'orderUrl' => url('/catalogo/'.$store->slug.'/pedidos'),
+        ]) }};
     </script>
     <script src="{{ mix('js/catalog.js') }}"></script>
 </body>

@@ -4,11 +4,13 @@ namespace App\Http\Controllers\API;
 
 use App\Http\Controllers\AppBaseController;
 use App\Http\Requests\CreateCustomerRequest;
+use App\Http\Requests\AdminUpdateCustomerPasswordRequest;
 use App\Http\Requests\UpdateCustomerRequest;
 use App\Http\Resources\CustomerCollection;
 use App\Http\Resources\CustomerResource;
 use App\Imports\CustomerImport;
 use App\Models\Customer;
+use App\Models\CustomerAccount;
 use App\Models\Sale;
 use App\Models\SaleItem;
 use App\Models\SalesPayment;
@@ -19,7 +21,9 @@ use Carbon\Carbon;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Str;
 use Maatwebsite\Excel\Facades\Excel;
 use Prettus\Validator\Exceptions\ValidatorException;
 
@@ -51,6 +55,7 @@ class CustomerAPIController extends AppBaseController
             $customersQuery->where('store_id', $storeId);
         }
         $customers = $customersQuery->paginate($perPage);
+        $customers->getCollection()->load('account:id,customer_id,is_active');
         CustomerResource::usingWithCollection();
 
         return new CustomerCollection($customers);
@@ -75,8 +80,59 @@ class CustomerAPIController extends AppBaseController
     {
         $customer = $this->customerRepository->find($id);
         $this->authorizeStoreOwnership($customer);
+        $customer->load('account:id,customer_id,is_active');
 
         return new CustomerResource($customer);
+    }
+
+    public function updatePassword(AdminUpdateCustomerPasswordRequest $request, Customer $customer): JsonResponse
+    {
+        $this->authorizeStoreOwnership($customer);
+
+        if ($customer->es_consumidor_final || !$customer->email) {
+            return $this->sendError('Este cliente no puede utilizar una cuenta del catálogo.');
+        }
+
+        $email = Str::lower(trim($customer->email));
+        $duplicateAccount = CustomerAccount::query()
+            ->where('store_id', $customer->store_id)
+            ->whereRaw('LOWER(email) = ?', [$email])
+            ->where('customer_id', '<>', $customer->id)
+            ->exists();
+
+        if ($duplicateAccount) {
+            return $this->sendError('El correo del cliente ya está vinculado a otra cuenta del catálogo.');
+        }
+
+        $created = false;
+        DB::transaction(function () use ($customer, $request, $email, &$created) {
+            $account = $customer->account()->first();
+            $created = !$account;
+
+            if (!$account) {
+                $account = new CustomerAccount([
+                    'store_id' => $customer->store_id,
+                    'email' => $email,
+                    'is_active' => true,
+                ]);
+                $account->customer()->associate($customer);
+            }
+
+            $account->forceFill([
+                'email' => $email,
+                'password' => Hash::make($request->password),
+                'remember_token' => Str::random(60),
+            ])->save();
+
+            DB::table('customer_password_reset_tokens')
+                ->where('store_id', $customer->store_id)
+                ->where('email', $email)
+                ->delete();
+        });
+
+        return $this->sendSuccess($created
+            ? 'Acceso al catálogo creado y contraseña establecida correctamente.'
+            : 'Contraseña del cliente actualizada correctamente.');
     }
 
     /**
@@ -84,12 +140,23 @@ class CustomerAPIController extends AppBaseController
      */
     public function update(UpdateCustomerRequest $request, $id): CustomerResource
     {
-        $this->authorizeStoreOwnership($this->customerRepository->find($id));
+        $existingCustomer = $this->customerRepository->find($id);
+        $this->authorizeStoreOwnership($existingCustomer);
         $input = $request->all();
         if (! empty($input['dob'])) {
             $input['dob'] = $input['dob'] ?? date('Y/m/d');
         }
-        $customer = $this->customerRepository->update($input, $id);
+        $customer = DB::transaction(function () use ($input, $id, $existingCustomer) {
+            $updated = $this->customerRepository->update($input, $id);
+            if ($existingCustomer->account) {
+                $existingCustomer->account->update([
+                    'email' => Str::lower(trim($updated->email)),
+                ]);
+            }
+
+            return $updated;
+        });
+        $customer->load('account:id,customer_id,is_active');
 
         return new CustomerResource($customer);
     }

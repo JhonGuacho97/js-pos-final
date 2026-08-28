@@ -6,6 +6,7 @@ namespace App\Models;
 use App\Traits\HasJsonResourcefulData;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
 /**
@@ -173,6 +174,16 @@ class Customer extends BaseModel
         return $this->belongsTo(Store::class, 'store_id', 'id');
     }
 
+    public function account(): HasOne
+    {
+        return $this->hasOne(CustomerAccount::class);
+    }
+
+    public function catalogOrders(): HasMany
+    {
+        return $this->hasMany(CatalogOrder::class);
+    }
+
     // ── Métodos existentes (sin cambios) ─────────
 
     public function prepareLinks(): array
@@ -182,6 +193,8 @@ class Customer extends BaseModel
 
     public function prepareAttributes(): array
     {
+        $catalogAccount = $this->relationLoaded('account') ? $this->account : null;
+
         return [
             'identification' => $this->identification,
             'tipo_identificacion' => $this->tipo_identificacion,
@@ -196,6 +209,8 @@ class Customer extends BaseModel
             'city' => $this->city,
             'address' => $this->address,
             'dob' => $this->dob,
+            'has_catalog_account' => $catalogAccount !== null,
+            'catalog_account_active' => (bool) ($catalogAccount?->is_active),
             'created_at' => $this->created_at,
         ];
     }
