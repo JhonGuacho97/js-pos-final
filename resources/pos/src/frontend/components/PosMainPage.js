@@ -1169,7 +1169,7 @@ const PosMainPage = (props) => {
         setShowCloseDetailsModal(true);
     };
 
-    const handleCloseRegisterDetails = (data) => {
+    const handleCloseRegisterDetails = async (data) => {
         if (data.cash_in_hand_while_closing.toString().trim()?.length === 0) {
             dispatch(
                 addToast({
@@ -1179,9 +1179,15 @@ const PosMainPage = (props) => {
                     type: toastType.ERROR,
                 })
             );
+            return false;
         } else {
-            setShowCloseDetailsModal(false);
-            dispatch(closeRegisterAction(data, navigate));
+            try {
+                await dispatch(closeRegisterAction(data, navigate));
+                setShowCloseDetailsModal(false);
+                return true;
+            } catch (error) {
+                return false;
+            }
         }
     };
 

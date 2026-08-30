@@ -2,6 +2,7 @@ import React from "react";
 import Table from "react-bootstrap/Table";
 import { numValidate } from "../../shared/sharedMethod";
 import { denominationsTotal } from "../../shared/cashDenominations";
+import "./denomination-counter.scss";
 
 /**
  * Tabla de conteo de efectivo (Denominación | Cantidad | Subtotal), usada
@@ -16,7 +17,14 @@ import { denominationsTotal } from "../../shared/cashDenominations";
  *
  * rows: [{ value: 20, label: "$20", quantity: "" }, ...]
  */
-const DenominationCounter = ({ rows, setRows, currencySymbol = "$", onTotalChange }) => {
+const DenominationCounter = ({
+    rows,
+    setRows,
+    currencySymbol = "$",
+    onTotalChange,
+    variant = "table",
+    formatMoney,
+}) => {
     const total = denominationsTotal(rows);
 
     React.useEffect(() => {
@@ -30,6 +38,81 @@ const DenominationCounter = ({ rows, setRows, currencySymbol = "$", onTotalChang
             prev.map((row) => (row.value === value ? { ...row, quantity } : row))
         );
     };
+
+    const changeQuantity = (row, change) => {
+        const nextQuantity = Math.max(0, (Number(row.quantity) || 0) + change);
+        onQuantityChange(row.value, String(nextQuantity));
+    };
+
+    const money = (amount) =>
+        formatMoney
+            ? formatMoney(amount)
+            : `${currencySymbol}${Number(amount || 0).toFixed(2)}`;
+
+    if (variant === "compact") {
+        return (
+            <div className="denomination-counter denomination-counter--compact">
+                <div className="denomination-counter__grid">
+                    {rows.map((row) => {
+                        const subtotal = (Number(row.quantity) || 0) * row.value;
+                        return (
+                            <article
+                                key={row.value}
+                                className={Number(row.quantity) > 0 ? "has-value" : ""}
+                            >
+                                <div className="denomination-counter__label">
+                                    <span>{row.value >= 1 ? "Billete / moneda" : "Moneda"}</span>
+                                    <strong>{row.label}</strong>
+                                </div>
+                                <div className="denomination-counter__controls">
+                                    <button
+                                        type="button"
+                                        aria-label={`Restar ${row.label}`}
+                                        onClick={() => changeQuantity(row, -1)}
+                                        disabled={!Number(row.quantity)}
+                                    >
+                                        <i className="bi bi-dash" />
+                                    </button>
+                                    <input
+                                        type="text"
+                                        inputMode="numeric"
+                                        aria-label={`Cantidad de ${row.label}`}
+                                        value={row.quantity}
+                                        placeholder="0"
+                                        onKeyPress={(event) => numValidate(event)}
+                                        onChange={(event) =>
+                                            onQuantityChange(row.value, event.target.value)
+                                        }
+                                    />
+                                    <button
+                                        type="button"
+                                        aria-label={`Sumar ${row.label}`}
+                                        onClick={() => changeQuantity(row, 1)}
+                                    >
+                                        <i className="bi bi-plus" />
+                                    </button>
+                                </div>
+                                <div className="denomination-counter__subtotal">
+                                    <small>Subtotal</small>
+                                    <strong>{money(subtotal)}</strong>
+                                </div>
+                            </article>
+                        );
+                    })}
+                </div>
+                <div className="denomination-counter__total">
+                    <span>
+                        <i className="bi bi-calculator" />
+                        <span>
+                            <small>TOTAL CONTADO</small>
+                            <strong>Efectivo físico en caja</strong>
+                        </span>
+                    </span>
+                    <b>{money(total)}</b>
+                </div>
+            </div>
+        );
+    }
 
     return (
         <Table responsive bordered className="mb-0 text-nowrap">

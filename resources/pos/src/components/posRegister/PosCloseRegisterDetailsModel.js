@@ -1,28 +1,6 @@
-import dayjs from 'dayjs';
-import utc from 'dayjs/plugin/utc';
-import localizedFormat from 'dayjs/plugin/localizedFormat';
-import isoWeek from 'dayjs/plugin/isoWeek';
-import relativeTime from 'dayjs/plugin/relativeTime';
-dayjs.extend(utc);
-dayjs.extend(localizedFormat);
-dayjs.extend(isoWeek);
-dayjs.extend(relativeTime);
-import React, { useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import Modal from "react-bootstrap/Modal";
 import { useSelector } from "react-redux";
-import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import {
-    faMoneyBillWave,
-    faMoneyCheckDollar,
-    faBuildingColumns,
-    faEllipsis,
-    faCircleCheck,
-    faTriangleExclamation,
-    faCashRegister,
-    faChevronDown,
-    faChevronUp,
-    faCalculator,
-} from "@fortawesome/free-solid-svg-icons";
 import {
     currencySymbolHandling,
     getFormattedMessage,
@@ -30,6 +8,15 @@ import {
 } from "../../shared/sharedMethod";
 import DenominationCounter from "./DenominationCounter";
 import { buildEmptyDenominationRows } from "../../shared/cashDenominations";
+import "./pos-close-register.scss";
+
+const discrepancyReasons = [
+    "Gasto pagado desde la caja",
+    "Ingreso extra no registrado en el sistema",
+    "Error al dar cambio a un cliente",
+    "Error de conteo",
+    "Otro",
+];
 
 const PosCloseRegisterDetailsModel = ({
     showCloseDetailsModal,
@@ -39,435 +26,402 @@ const PosCloseRegisterDetailsModel = ({
     const { frontSetting, allConfigData, closeRegisterDetails } = useSelector(
         (state) => state
     );
-    const currencySymbol =
-        frontSetting &&
-        frontSetting.value &&
-        frontSetting.value.currency_symbol;
+    const currencySymbol = frontSetting?.value?.currency_symbol;
 
+    const [step, setStep] = useState("count");
     const [formValue, setFormsValue] = useState({
         cash_in_hand_while_closing: 0,
         notes: "",
     });
     const [discrepancyReason, setDiscrepancyReason] = useState("");
     const [discrepancyNote, setDiscrepancyNote] = useState("");
-    const [motivoError, setMotivoError] = useState("");
-
-    // Motivos típicos de por qué la caja no cuadró -- si ninguno aplica,
-    // "Otro" habilita un campo de texto libre.
-    const discrepancyReasons = [
-        "Gasto pagado desde la caja",
-        "Ingreso extra no registrado en el sistema",
-        "Error al dar cambio a un cliente",
-        "Error de conteo",
-        "Otro",
-    ];
+    const [validationError, setValidationError] = useState("");
     const [denominationRows, setDenominationRows] = useState(
-        buildEmptyDenominationRows()
+        buildEmptyDenominationRows
     );
-    // Un solo toggle para TODO lo que es "información de referencia"
-    // (apertura, ventas por método de pago, totales). Cerrado por defecto:
-    // lo único que el cajero necesita hacer activamente es contar, así que
-    // eso es lo único que se ve de entrada.
-    const [showSummary, setShowSummary] = useState(false);
+    const [zeroCashConfirmed, setZeroCashConfirmed] = useState(false);
+    const [isSubmitting, setIsSubmitting] = useState(false);
 
-    // El total contado (suma de billetes/monedas) reemplaza el prefill
-    // automático que existía antes: ahora el cajero cuenta el efectivo
-    // físico, en vez de arrancar con el valor que el sistema espera.
+    useEffect(() => {
+        if (!showCloseDetailsModal) return;
+
+        setStep("count");
+        setFormsValue({ cash_in_hand_while_closing: 0, notes: "" });
+        setDiscrepancyReason("");
+        setDiscrepancyNote("");
+        setValidationError("");
+        setDenominationRows(buildEmptyDenominationRows());
+        setZeroCashConfirmed(false);
+        setIsSubmitting(false);
+    }, [showCloseDetailsModal]);
+
+    const money = (amount) =>
+        currencySymbolHandling(
+            allConfigData,
+            currencySymbol,
+            Number(amount || 0)
+        );
+    const value = (key) => Number(closeRegisterDetails?.[key] || 0);
+
+    const expectedCash = value("total_cash_amount");
+    const countedCash = Number(formValue.cash_in_hand_while_closing) || 0;
+    const cashDifference = Math.round((countedCash - expectedCash) * 100) / 100;
+    const hasCountInput = denominationRows.some((row) => row.quantity !== "");
+    const canReview = hasCountInput || zeroCashConfirmed;
+    const detailsReady = Object.keys(closeRegisterDetails || {}).length > 0;
+
+    const closeStatus =
+        Math.abs(cashDifference) < 0.01
+            ? {
+                  label: "Caja cuadrada",
+                  description: "El efectivo contado coincide con el valor esperado.",
+                  tone: "success",
+                  icon: "bi-check2-circle",
+              }
+            : cashDifference > 0
+            ? {
+                  label: "Sobrante de caja",
+                  description: "Hay más efectivo físico del registrado por el sistema.",
+                  tone: "warning",
+                  icon: "bi-exclamation-triangle",
+              }
+            : {
+                  label: "Faltante de caja",
+                  description: "El efectivo físico es menor al valor esperado.",
+                  tone: "danger",
+                  icon: "bi-exclamation-triangle",
+              };
+
+    const paymentMethods = useMemo(
+        () => [
+            {
+                key: "cash",
+                label: getFormattedMessage("cash.label"),
+                amount: value("today_sales_cash_payment"),
+                icon: "bi-cash-stack",
+            },
+            {
+                key: "transfer",
+                label: getFormattedMessage(
+                    "payment-type.filter.bank-transfer.label"
+                ),
+                amount: value("today_sales_bank_transfer_payment"),
+                icon: "bi-bank",
+            },
+            {
+                key: "cheque",
+                label: getFormattedMessage("payment-type.filter.cheque.label"),
+                amount: value("today_sales_cheque_payment"),
+                icon: "bi-receipt",
+            },
+            {
+                key: "other",
+                label: getFormattedMessage("payment-type.filter.other.label"),
+                amount: value("today_sales_other_payment"),
+                icon: "bi-wallet2",
+            },
+        ],
+        [closeRegisterDetails]
+    );
+
+    const currentDate = new Intl.DateTimeFormat("es-EC", {
+        weekday: "long",
+        day: "numeric",
+        month: "long",
+        year: "numeric",
+    }).format(new Date());
+
     const onCountedTotalChange = (total) => {
-        setFormsValue((data) => ({
-            ...data,
+        setFormsValue((current) => ({
+            ...current,
             cash_in_hand_while_closing: total,
         }));
     };
 
-    const expectedCash = closeRegisterDetails?.total_cash_amount || 0;
-    const countedCash = Number(formValue.cash_in_hand_while_closing) || 0;
-    const cashDifference = countedCash - expectedCash;
-    const openingCash = closeRegisterDetails?.cash_in_hand || 0;
-    const todaySales = closeRegisterDetails?.today_sales_amount || 0;
+    const onReviewCount = () => {
+        if (!canReview) {
+            setValidationError(
+                "Ingresa al menos una cantidad o confirma que la caja está vacía."
+            );
+            return;
+        }
+        setValidationError("");
+        setStep("review");
+    };
 
-    const closeStatus =
-        cashDifference === 0
-            ? { label: "Caja cuadrada", tone: "success", icon: faCircleCheck }
-            : cashDifference > 0
-            ? { label: "Sobrante — revisar", tone: "warning", icon: faTriangleExclamation }
-            : { label: "Faltante", tone: "danger", icon: faTriangleExclamation };
+    const onSubmit = async () => {
+        if (cashDifference !== 0 && !discrepancyReason) {
+            setValidationError(
+                "Selecciona el motivo del faltante o sobrante antes de cerrar."
+            );
+            return;
+        }
+        if (
+            cashDifference !== 0 &&
+            discrepancyReason === "Otro" &&
+            !discrepancyNote.trim()
+        ) {
+            setValidationError("Describe brevemente el motivo de la diferencia.");
+            return;
+        }
 
-    const toneStyles = {
-        success: { bg: "#ecfdf5", fg: "#059669", ring: "#a7f3d0" },
-        warning: { bg: "#fffbeb", fg: "#b45309", ring: "#fde68a" },
-        danger: { bg: "#fef2f2", fg: "#dc2626", ring: "#fecaca" },
-    }[closeStatus.tone];
+        setValidationError("");
+        setIsSubmitting(true);
+        const completed = await handleCloseRegisterDetails({
+            ...formValue,
+            closing_denominations: denominationRows
+                .filter((row) => Number(row.quantity) > 0)
+                .map((row) => ({
+                    value: row.value,
+                    quantity: Number(row.quantity),
+                    subtotal: Number(row.quantity) * row.value,
+                })),
+            discrepancy_reason:
+                cashDifference !== 0 ? discrepancyReason : null,
+            discrepancy_note:
+                cashDifference !== 0 && discrepancyReason === "Otro"
+                    ? discrepancyNote.trim()
+                    : null,
+        });
 
-    // Un vistazo rápido a cómo entró la plata hoy -- transferencia incluida
-    // y bien visible, no enterrada en una fila de tabla.
-    const paymentMethods = [
-        {
-            key: "cash",
-            label: getFormattedMessage("cash.label"),
-            amount: closeRegisterDetails?.today_sales_cash_payment,
-            icon: faMoneyBillWave,
-            accent: "#16a34a",
-        },
-        {
-            key: "transfer",
-            label: getFormattedMessage(
-                "payment-type.filter.bank-transfer.label"
-            ),
-            amount: closeRegisterDetails?.today_sales_bank_transfer_payment,
-            icon: faBuildingColumns,
-            accent: "#2F6FED",
-        },
-        {
-            key: "cheque",
-            label: getFormattedMessage("payment-type.filter.cheque.label"),
-            amount: closeRegisterDetails?.today_sales_cheque_payment,
-            icon: faMoneyCheckDollar,
-            accent: "#d97706",
-        },
-        {
-            key: "other",
-            label: getFormattedMessage("payment-type.filter.other.label"),
-            amount: closeRegisterDetails?.today_sales_other_payment,
-            icon: faEllipsis,
-            accent: "#64748b",
-        },
-    ];
+        if (!completed) setIsSubmitting(false);
+    };
 
-    const totals = [
-        {
-            key: "total-sales",
-            label: getFormattedMessage("register.total-sales.label"),
-            amount: closeRegisterDetails?.today_sales_amount,
-        },
-        {
-            key: "total-refund",
-            label: getFormattedMessage("register.total-refund.title"),
-            amount: closeRegisterDetails?.today_sales_return_amount,
-        },
-        {
-            key: "total-payment",
-            label: getFormattedMessage("register.total-payment.title"),
-            amount: closeRegisterDetails?.today_sales_payment_amount,
-        },
-    ];
-
-    const onChangeInput = (e) => {
-        setFormsValue((data) => ({
-            ...data,
-            [e.target.name]: e.target.value,
-        }));
+    const closeModal = () => {
+        if (!isSubmitting) setShowCloseDetailsModal(false);
     };
 
     return (
-        <>
-            <Modal
-                size="lg"
-                aria-labelledby="example-custom-modal-styling-title"
-                show={showCloseDetailsModal}
-                onHide={() => setShowCloseDetailsModal(false)}
-                className="registerModel-content"
-            >
-                <Modal.Header closeButton>
-                    <Modal.Title id="example-modal-sizes-title-lg">
-                        {getFormattedMessage("globally.close-register.title")} (
-                        {dayjs(Date()).format("MMMM Do YYYY")})
-                    </Modal.Title>
-                </Modal.Header>
-                <Modal.Body style={{ maxHeight: "78vh", overflowY: "auto" }}>
-                    {/* Todo lo que es "referencia" (apertura, ventas por
-                        método de pago, totales del día) vive acá adentro,
-                        colapsado. El cajero lo abre si lo necesita, pero no
-                        le compite visualmente al conteo. */}
-                    <div
-                        className="rounded mb-4"
-                        style={{ border: "1px solid #e5e7eb" }}
-                    >
-                        <button
-                            type="button"
-                            className="btn btn-light w-100 d-flex align-items-center justify-content-between p-3"
-                            onClick={() => setShowSummary((prev) => !prev)}
-                        >
-                            <span className="d-flex align-items-center gap-3 flex-wrap">
-                                <span className="d-flex align-items-center gap-2">
-                                    <FontAwesomeIcon icon={faCashRegister} className="text-muted" />
-                                    <span className="text-muted">Resumen del día</span>
-                                </span>
-                                <span className="text-muted fs-small">
-                                    Apertura{" "}
-                                    <strong className="text-body">
-                                        {currencySymbolHandling(allConfigData, currencySymbol, openingCash)}
-                                    </strong>
-                                    {" · "}
-                                    Ventas{" "}
-                                    <strong className="text-body">
-                                        {currencySymbolHandling(allConfigData, currencySymbol, todaySales)}
-                                    </strong>
-                                </span>
-                            </span>
-                            <FontAwesomeIcon
-                                icon={showSummary ? faChevronUp : faChevronDown}
-                                className="text-muted flex-shrink-0"
+        <Modal
+            size="lg"
+            centered
+            show={showCloseDetailsModal}
+            onHide={closeModal}
+            backdrop={isSubmitting ? "static" : true}
+            keyboard={!isSubmitting}
+            className="pos-close-register-modal"
+            aria-labelledby="pos-close-register-title"
+        >
+            <Modal.Header closeButton={!isSubmitting}>
+                <div className="pos-close-heading">
+                    <span className="pos-close-heading__icon">
+                        <i className="bi bi-lock" />
+                    </span>
+                    <div>
+                        <span className="pos-close-eyebrow">CIERRE DE TURNO</span>
+                        <Modal.Title id="pos-close-register-title">
+                            Cerrar registro de caja
+                        </Modal.Title>
+                        <p>
+                            <i className="bi bi-calendar3" /> {currentDate}
+                        </p>
+                    </div>
+                </div>
+                <span className="pos-close-status">
+                    <i /> Caja abierta
+                </span>
+            </Modal.Header>
+
+            <div className="pos-close-progress" aria-label="Progreso del cierre">
+                <div className={step === "count" ? "is-active" : "is-complete"}>
+                    <span>{step === "review" ? <i className="bi bi-check-lg" /> : "1"}</span>
+                    <div><strong>Contar efectivo</strong><small>Arqueo físico</small></div>
+                </div>
+                <i className="bi bi-chevron-right" />
+                <div className={step === "review" ? "is-active" : ""}>
+                    <span>2</span>
+                    <div><strong>Revisar y cerrar</strong><small>Confirmar resultado</small></div>
+                </div>
+            </div>
+
+            <Modal.Body>
+                {!detailsReady ? (
+                    <div className="pos-close-loading">
+                        <span className="spinner-border spinner-border-sm" />
+                        <strong>Preparando la información del turno...</strong>
+                    </div>
+                ) : step === "count" ? (
+                    <div className="pos-close-count-step">
+                        <section className="pos-close-guidance">
+                            <span><i className="bi bi-shield-check" /></span>
+                            <div>
+                                <strong>Realiza un conteo ciego</strong>
+                                <p>Cuenta únicamente el dinero físico. El valor esperado se mostrará después para mantener un arqueo confiable.</p>
+                            </div>
+                        </section>
+
+                        <section className="pos-close-section">
+                            <header>
+                                <div>
+                                    <span>CONTEO DE EFECTIVO</span>
+                                    <h3>Billetes y monedas en caja</h3>
+                                </div>
+                                <small>Ingresa únicamente cantidades</small>
+                            </header>
+                            <DenominationCounter
+                                rows={denominationRows}
+                                setRows={(updater) => {
+                                    setDenominationRows(updater);
+                                    setZeroCashConfirmed(false);
+                                    setValidationError("");
+                                }}
+                                currencySymbol={currencySymbol}
+                                onTotalChange={onCountedTotalChange}
+                                variant="compact"
+                                formatMoney={money}
                             />
-                        </button>
+                        </section>
 
-                        {showSummary && (
-                            <div className="p-3 pt-0">
-                                {/* Apertura */}
-                                <div className="pt-3" style={{ borderTop: "1px solid #f1f1f4" }}>
-                                    <div className="text-muted text-uppercase mb-2" style={{ fontSize: 11, letterSpacing: 0.4 }}>
-                                        Con qué abriste
-                                    </div>
-                                    {closeRegisterDetails?.opening_denominations?.length > 0 ? (
-                                        <div
-                                            className="d-grid mb-3"
-                                            style={{
-                                                gridTemplateColumns: "repeat(auto-fit, minmax(80px, 1fr))",
-                                                gap: 8,
-                                            }}
-                                        >
-                                            {closeRegisterDetails.opening_denominations.map((denom) => (
-                                                <div
-                                                    key={denom.value}
-                                                    className="text-center p-2 rounded"
-                                                    style={{ background: "#f9fafb" }}
-                                                >
-                                                    <div className="text-muted" style={{ fontSize: 11 }}>
-                                                        {currencySymbolHandling(allConfigData, currencySymbol, denom.value)}
-                                                    </div>
-                                                    <div style={{ fontWeight: 600 }}>×{denom.quantity}</div>
-                                                </div>
-                                            ))}
-                                        </div>
-                                    ) : (
-                                        <div className="text-muted fs-small mb-3">
-                                            No se registró un desglose de billetes/monedas para esta apertura.
-                                        </div>
-                                    )}
-                                </div>
+                        {countedCash === 0 && !hasCountInput && (
+                            <button
+                                type="button"
+                                className={`pos-close-zero ${zeroCashConfirmed ? "is-confirmed" : ""}`}
+                                onClick={() => {
+                                    setZeroCashConfirmed((current) => !current);
+                                    setValidationError("");
+                                }}
+                            >
+                                <span><i className={`bi ${zeroCashConfirmed ? "bi-check2-circle" : "bi-wallet"}`} /></span>
+                                <div><strong>{zeroCashConfirmed ? "Caja vacía confirmada" : "No hay efectivo físico"}</strong><small>Confirma un conteo total de {money(0)}</small></div>
+                                <i className="bi bi-chevron-right" />
+                            </button>
+                        )}
 
-                                {/* Ventas por método de pago */}
-                                <div className="text-muted text-uppercase mb-2" style={{ fontSize: 11, letterSpacing: 0.4 }}>
-                                    Ventas de hoy por método de pago
-                                </div>
-                                <div
-                                    className="d-grid mb-3"
-                                    style={{
-                                        gridTemplateColumns: "repeat(auto-fit, minmax(130px, 1fr))",
-                                        gap: 10,
-                                    }}
-                                >
-                                    {paymentMethods.map((method) => (
-                                        <div
-                                            key={method.key}
-                                            className="p-2 rounded d-flex align-items-center gap-2"
-                                            style={{ border: "1px solid #e5e7eb" }}
-                                        >
-                                            <div
-                                                className="d-flex align-items-center justify-content-center rounded-circle flex-shrink-0"
-                                                style={{
-                                                    width: 28,
-                                                    height: 28,
-                                                    background: `${method.accent}1a`,
-                                                    color: method.accent,
-                                                }}
-                                            >
-                                                <FontAwesomeIcon icon={method.icon} size="xs" />
-                                            </div>
-                                            <div>
-                                                <div className="text-muted" style={{ fontSize: 11 }}>
-                                                    {method.label}
-                                                </div>
-                                                <div style={{ fontWeight: 600 }}>
-                                                    {currencySymbolHandling(allConfigData, currencySymbol, method.amount)}
-                                                </div>
-                                            </div>
-                                        </div>
-                                    ))}
-                                </div>
-
-                                {/* Totales del día */}
-                                <div
-                                    className="d-flex rounded overflow-hidden"
-                                    style={{ border: "1px solid #e5e7eb" }}
-                                >
-                                    {totals.map((total, index) => (
-                                        <div
-                                            key={total.key}
-                                            className="flex-fill p-2 text-center"
-                                            style={{
-                                                borderLeft: index === 0 ? "none" : "1px solid #e5e7eb",
-                                            }}
-                                        >
-                                            <div className="text-muted text-uppercase" style={{ fontSize: 11, letterSpacing: 0.4 }}>
-                                                {total.label}
-                                            </div>
-                                            <div style={{ fontWeight: 600 }}>
-                                                {currencySymbolHandling(allConfigData, currencySymbol, total.amount)}
-                                            </div>
-                                        </div>
-                                    ))}
-                                </div>
+                        {validationError && (
+                            <div className="pos-close-inline-error">
+                                <i className="bi bi-exclamation-circle" /> {validationError}
                             </div>
                         )}
                     </div>
-
-                    {/* Lo único que el cajero realmente tiene que HACER acá:
-                        contar el efectivo físico. Va sin colapsar, con su
-                        propio encabezado destacado. */}
-                    <div className="d-flex align-items-center gap-2 mb-3">
-                        <FontAwesomeIcon icon={faCalculator} style={{ color: "#2F6FED" }} />
-                        <span style={{ fontWeight: 700, fontSize: 16 }}>
-                            {getFormattedMessage("globally.total-cash.label")}
-                        </span>
-                        <span className="required" />
-                    </div>
-                    <DenominationCounter
-                        rows={denominationRows}
-                        setRows={setDenominationRows}
-                        currencySymbol={currencySymbol}
-                        onTotalChange={onCountedTotalChange}
-                    />
-
-                    {/* Resultado del arqueo: lo segundo más importante después
-                        de contar -- el pago de todo este proceso. */}
-                    <div
-                        className="d-flex align-items-center justify-content-between rounded mt-3 mb-4 p-3"
-                        style={{
-                            background: toneStyles.bg,
-                            border: `1px solid ${toneStyles.ring}`,
-                        }}
-                    >
-                        <div className="d-flex align-items-center gap-3">
-                            <FontAwesomeIcon
-                                icon={closeStatus.icon}
-                                size="lg"
-                                style={{ color: toneStyles.fg }}
-                            />
-                            <div>
-                                <div style={{ color: toneStyles.fg, fontSize: 16, fontWeight: 700 }}>
-                                    {closeStatus.label}
-                                </div>
-                                <div className="text-muted fs-small">
-                                    Esperado {currencySymbolHandling(allConfigData, currencySymbol, expectedCash)}
-                                    {" · "}
-                                    Contado {currencySymbolHandling(allConfigData, currencySymbol, countedCash)}
-                                </div>
+                ) : (
+                    <div className="pos-close-review-step">
+                        <section className={`pos-close-result is-${closeStatus.tone}`}>
+                            <div className="pos-close-result__status">
+                                <span><i className={`bi ${closeStatus.icon}`} /></span>
+                                <div><strong>{closeStatus.label}</strong><p>{closeStatus.description}</p></div>
                             </div>
-                        </div>
-                        <div style={{ color: toneStyles.fg, fontSize: 20, fontWeight: 700 }}>
-                            {cashDifference !== 0 && (cashDifference > 0 ? "+" : "-")}
-                            {currencySymbolHandling(allConfigData, currencySymbol, Math.abs(cashDifference))}
-                        </div>
-                    </div>
+                            <div className="pos-close-result__amount">
+                                <small>DIFERENCIA</small>
+                                <strong>{cashDifference > 0 ? "+" : cashDifference < 0 ? "−" : ""}{money(Math.abs(cashDifference))}</strong>
+                            </div>
+                            <div className="pos-close-result__comparison">
+                                <div><small>Esperado</small><strong>{money(expectedCash)}</strong></div>
+                                <i className="bi bi-arrow-right" />
+                                <div><small>Contado</small><strong>{money(countedCash)}</strong></div>
+                            </div>
+                        </section>
 
-                    {/* Solo aparece si la caja NO cuadró -- documentar el
-                        motivo evita que alguien tenga que adivinar después,
-                        al revisar el reporte, por qué faltó o sobró plata. */}
-                    {cashDifference !== 0 && (
-                        <div className="mb-4">
-                            <label className="form-label">
-                                Motivo de la diferencia
-                                <span className="required" />
-                            </label>
-                            <select
-                                className="form-control"
-                                value={discrepancyReason}
-                                onChange={(e) => {
-                                    setDiscrepancyReason(e.target.value);
-                                    setMotivoError("");
-                                }}
-                            >
-                                <option value="">Selecciona un motivo</option>
-                                {discrepancyReasons.map((reason) => (
-                                    <option key={reason} value={reason}>
-                                        {reason}
-                                    </option>
+                        {cashDifference !== 0 && (
+                            <section className="pos-close-section pos-close-discrepancy">
+                                <header>
+                                    <div><span>JUSTIFICACIÓN</span><h3>Documenta la diferencia</h3></div>
+                                    <small>Información requerida</small>
+                                </header>
+                                <div className="pos-close-field-grid">
+                                    <label>
+                                        <span>Motivo de la diferencia *</span>
+                                        <select
+                                            className="form-select"
+                                            value={discrepancyReason}
+                                            onChange={(event) => {
+                                                setDiscrepancyReason(event.target.value);
+                                                setValidationError("");
+                                            }}
+                                        >
+                                            <option value="">Selecciona un motivo</option>
+                                            {discrepancyReasons.map((reason) => <option key={reason} value={reason}>{reason}</option>)}
+                                        </select>
+                                    </label>
+                                    {discrepancyReason === "Otro" && (
+                                        <label>
+                                            <span>Descripción *</span>
+                                            <input
+                                                type="text"
+                                                className="form-control"
+                                                placeholder="Describe brevemente qué ocurrió"
+                                                value={discrepancyNote}
+                                                maxLength={1000}
+                                                onChange={(event) => {
+                                                    setDiscrepancyNote(event.target.value);
+                                                    setValidationError("");
+                                                }}
+                                            />
+                                        </label>
+                                    )}
+                                </div>
+                            </section>
+                        )}
+
+                        <section className="pos-close-section">
+                            <header>
+                                <div><span>RESUMEN DEL TURNO</span><h3>Cómo ingresó el dinero</h3></div>
+                                <small>{paymentMethods.filter((method) => method.amount > 0).length} métodos utilizados</small>
+                            </header>
+                            <div className="pos-close-payments">
+                                {paymentMethods.map((method) => (
+                                    <article key={method.key} className={`is-${method.key}`}>
+                                        <span><i className={`bi ${method.icon}`} /></span>
+                                        <div><small>{method.label}</small><strong>{money(method.amount)}</strong></div>
+                                    </article>
                                 ))}
-                            </select>
-                            {motivoError && (
-                                <span className="text-danger d-block fw-400 fs-small mt-2">
-                                    {motivoError}
-                                </span>
-                            )}
-                            {discrepancyReason === "Otro" && (
-                                <input
-                                    type="text"
-                                    className="form-control mt-2"
-                                    placeholder="Cuéntanos qué pasó"
-                                    value={discrepancyNote}
-                                    onChange={(e) => setDiscrepancyNote(e.target.value)}
-                                />
-                            )}
-                        </div>
-                    )}
+                            </div>
+                            <div className="pos-close-totals">
+                                <div><span>Fondo inicial</span><strong>{money(value("cash_in_hand"))}</strong></div>
+                                <div><span>Movimientos manuales</span><strong>{money(value("manual_cash_net"))}</strong></div>
+                                <div><span>Ventas registradas</span><strong>{money(value("today_sales_amount"))}</strong></div>
+                                <div><span>Devoluciones</span><strong className="is-negative">−{money(value("today_sales_return_amount"))}</strong></div>
+                                <div className="is-total"><span>Total recibido</span><strong>{money(value("today_sales_payment_amount"))}</strong></div>
+                            </div>
+                        </section>
 
-                    <div>
-                        <label className="form-label text-muted">
-                            {getFormattedMessage("globally.input.note.label")}{" "}
-                            <span className="fs-small">(opcional)</span>
-                        </label>
-                        <textarea
-                            type="text"
-                            rows="3"
-                            cols="50"
-                            name="notes"
-                            className="form-control"
-                            placeholder={placeholderText(
-                                "globally.input.note.placeholder.label"
-                            )}
-                            onChange={(e) => onChangeInput(e)}
-                            value={formValue.notes}
-                        />
+                        <section className="pos-close-section pos-close-notes">
+                            <header>
+                                <div><span>OBSERVACIONES</span><h3>Nota del cierre</h3></div>
+                                <small>Opcional</small>
+                            </header>
+                            <textarea
+                                rows="3"
+                                name="notes"
+                                className="form-control"
+                                maxLength={1000}
+                                placeholder={placeholderText("globally.input.note.placeholder.label")}
+                                onChange={(event) => setFormsValue((current) => ({ ...current, notes: event.target.value }))}
+                                value={formValue.notes}
+                            />
+                        </section>
+
+                        {validationError && (
+                            <div className="pos-close-inline-error">
+                                <i className="bi bi-exclamation-circle" /> {validationError}
+                            </div>
+                        )}
                     </div>
-                </Modal.Body>
-                <Modal.Footer className="justify-content-end pt-2 pb-3">
-                    <button
-                        className="btn btn-secondary"
-                        onClick={() => setShowCloseDetailsModal(false)}
-                    >
-                        {getFormattedMessage("pos-close-btn.title")}
+                )}
+            </Modal.Body>
+
+            <Modal.Footer>
+                <span><i className="bi bi-shield-lock" /> El cierre quedará registrado para auditoría.</span>
+                <div>
+                    {step === "review" && (
+                        <button type="button" className="btn pos-close-back" disabled={isSubmitting} onClick={() => { setStep("count"); setValidationError(""); }}>
+                            <i className="bi bi-arrow-left" /> Volver a contar
+                        </button>
+                    )}
+                    <button type="button" className="btn pos-close-cancel" disabled={isSubmitting} onClick={closeModal}>
+                        Cancelar
                     </button>
-                    <button
-                        className="btn btn-primary"
-                        onClick={() => {
-                            // El campo se marcaba visualmente como
-                            // obligatorio (span "required") cuando hay
-                            // diferencia de efectivo, pero nada bloqueaba
-                            // cerrar la caja sin completarlo -- se podía
-                            // cerrar con un descuadre sin dejar registro
-                            // de por qué.
-                            if (cashDifference !== 0 && !discrepancyReason) {
-                                setMotivoError(
-                                    "Seleccioná un motivo para la diferencia antes de cerrar la caja."
-                                );
-                                return;
-                            }
-                            handleCloseRegisterDetails({
-                                ...formValue,
-                                closing_denominations: denominationRows
-                                    .filter((row) => Number(row.quantity) > 0)
-                                    .map((row) => ({
-                                        value: row.value,
-                                        quantity: Number(row.quantity),
-                                        subtotal:
-                                            Number(row.quantity) * row.value,
-                                    })),
-                                discrepancy_reason:
-                                    cashDifference !== 0 ? discrepancyReason : null,
-                                discrepancy_note:
-                                    cashDifference !== 0 &&
-                                    discrepancyReason === "Otro"
-                                        ? discrepancyNote
-                                        : null,
-                            });
-                        }}
-                    >
-                        {getFormattedMessage("globally.close-register.title")}
-                    </button>
-                </Modal.Footer>
-            </Modal>
-        </>
+                    {step === "count" ? (
+                        <button type="button" className="btn pos-close-primary" disabled={!detailsReady} onClick={onReviewCount}>
+                            Revisar arqueo <i className="bi bi-arrow-right" />
+                        </button>
+                    ) : (
+                        <button type="button" className={`btn pos-close-primary is-${closeStatus.tone}`} disabled={isSubmitting} onClick={onSubmit}>
+                            {isSubmitting ? <><span className="spinner-border spinner-border-sm" /> Cerrando caja...</> : <><i className="bi bi-lock-fill" /> {closeStatus.tone === "success" ? "Cerrar caja cuadrada" : closeStatus.tone === "warning" ? "Cerrar con sobrante" : "Cerrar con faltante"}</>}
+                        </button>
+                    )}
+                </div>
+            </Modal.Footer>
+        </Modal>
     );
 };
 

@@ -1,323 +1,192 @@
 import React, { useEffect } from "react";
+import Modal from "react-bootstrap/Modal";
+import { connect, useDispatch, useSelector } from "react-redux";
 import {
     currencySymbolHandling,
     getFormattedMessage,
 } from "../../../shared/sharedMethod";
-import Modal from "react-bootstrap/Modal";
-import Table from "react-bootstrap/Table";
-import { connect, useDispatch, useSelector } from "react-redux";
 import { getAllRegisterDetailsAction } from "../../../store/action/pos/posRegisterDetailsAction";
-import dayjs from 'dayjs';
-import utc from 'dayjs/plugin/utc';
-import localizedFormat from 'dayjs/plugin/localizedFormat';
-import isoWeek from 'dayjs/plugin/isoWeek';
-import relativeTime from 'dayjs/plugin/relativeTime';
-dayjs.extend(utc);
-dayjs.extend(localizedFormat);
-dayjs.extend(isoWeek);
-dayjs.extend(relativeTime);
+import "./register-details.scss";
 
-function RegisterDetailsModel(props) {
-    const {
-        lgShow,
-        setLgShow,
-        posAllTodaySaleOverAllReport,
-        printRegisterDetails,
-        frontSetting,
-        allConfigData,
-    } = props;
-    const { closeRegisterDetails } = useSelector((state) => state);
+const paymentIcons = {
+    cash: "bi-cash-stack",
+    transfer: "bi-bank",
+    cheque: "bi-receipt",
+    other: "bi-wallet2",
+};
+
+function RegisterDetailsModel({
+    lgShow,
+    setLgShow,
+    printRegisterDetails,
+    frontSetting,
+    allConfigData,
+}) {
+    const closeRegisterDetails = useSelector((state) => state.closeRegisterDetails);
     const dispatch = useDispatch();
+
     useEffect(() => {
         dispatch(getAllRegisterDetailsAction());
-    }, []);
+    }, [dispatch]);
 
-    const onsetLgShow = () => {
-        setLgShow(false);
-    };
+    const currencySymbol = frontSetting?.value?.currency_symbol;
+    const value = (key) => Number(closeRegisterDetails?.[key] || 0);
+    const money = (amount) => currencySymbolHandling(
+        allConfigData,
+        currencySymbol,
+        Number(amount || 0)
+    );
 
-    const currencySymbol =
-        frontSetting &&
-        frontSetting.value &&
-        frontSetting.value.currency_symbol;
-    const sumOfProductQuantity =
-        posAllTodaySaleOverAllReport?.today_total_products_sold?.reduce(
-            (acc, o) => acc + parseInt(o.total_quantity),
-            0
-        );
-    const sumOfBrandQuantity =
-        posAllTodaySaleOverAllReport?.today_brand_report?.reduce(
-            (acc, o) => acc + parseInt(o.total_quantity),
-            0
-        );
+    const paymentMethods = [
+        {
+            key: "cash",
+            label: getFormattedMessage("cash.label"),
+            helper: "Cobros que ingresaron físicamente a la caja",
+            amount: value("today_sales_cash_payment"),
+        },
+        {
+            key: "transfer",
+            label: getFormattedMessage("payment-type.filter.bank-transfer.label"),
+            helper: "Pagos acreditados mediante transferencia",
+            amount: value("today_sales_bank_transfer_payment"),
+        },
+        {
+            key: "cheque",
+            label: getFormattedMessage("payment-type.filter.cheque.label"),
+            helper: "Cobros registrados mediante cheque",
+            amount: value("today_sales_cheque_payment"),
+        },
+        {
+            key: "other",
+            label: getFormattedMessage("payment-type.filter.other.label"),
+            helper: "Otros métodos utilizados durante el turno",
+            amount: value("today_sales_other_payment"),
+        },
+    ];
+
+    const openingCash = value("cash_in_hand");
+    const expectedCash = value("total_cash_amount");
+    const manualCashNet = value("manual_cash_net");
+    const totalSales = value("today_sales_amount");
+    const totalPayments = value("today_sales_payment_amount");
+    const totalReturns = value("today_sales_return_amount");
+    const cashRefunds = value("refunded_cash");
+    const netSales = totalSales - totalReturns;
+    const detailsReady = Object.keys(closeRegisterDetails || {}).length > 0;
+
+    const currentDate = new Intl.DateTimeFormat("es-EC", {
+        weekday: "long",
+        day: "numeric",
+        month: "long",
+        year: "numeric",
+    }).format(new Date());
 
     return (
-        <div>
-            <Modal
-                size="lg"
-                aria-labelledby="example-custom-modal-styling-title"
-                show={lgShow}
-                onHide={() => onsetLgShow()}
-                className="registerModel-content"
-            >
-                <Modal.Header closeButton>
-                    <Modal.Title id="example-modal-sizes-title-lg">
-                        {getFormattedMessage("register.details.title")} (
-                        {dayjs(Date()).format("MMMM Do YYYY")})
-                    </Modal.Title>
-                </Modal.Header>
-                <Modal.Body>
-                    <Table
-                        responsive
-                        bordered
-                        hover
-                        className="mb-6 registerModel text-nowrap"
-                    >
-                        <tbody>
-                            <tr>
-                                {/* <th>#</th> */}
-                                <td>
-                                    {getFormattedMessage(
-                                        "select.payment-type.label"
-                                    )}
-                                </td>
-                                <td>
-                                    {getFormattedMessage(
-                                        "expense.input.amount.label"
-                                    )}
-                                </td>
-                            </tr>
-                            <tr>
-                                {/* <td>2</td> */}
-                                <td>
-                                    {getFormattedMessage(
-                                        "globally.input.cash-in-hand.label"
-                                    )}
-                                    :{" "}
-                                </td>
-                                <td>
-                                    {currencySymbolHandling(
-                                        allConfigData,
-                                        currencySymbol,
-                                        closeRegisterDetails?.cash_in_hand
-                                    )}
-                                </td>
-                            </tr>
-                            <tr>
-                                {/* <td>2</td> */}
-                                <td>{getFormattedMessage("cash.label")}: </td>
-                                <td>
-                                    {currencySymbolHandling(
-                                        allConfigData,
-                                        currencySymbol,
-                                        closeRegisterDetails?.today_sales_cash_payment
-                                    )}
-                                </td>
-                            </tr>
-                            <tr>
-                                {/* <td>3</td> */}
-                                <td>
-                                    {getFormattedMessage(
-                                        "payment-type.filter.cheque.label"
-                                    )}
-                                    :{" "}
-                                </td>
-                                <td>
-                                    {currencySymbolHandling(
-                                        allConfigData,
-                                        currencySymbol,
-                                        closeRegisterDetails?.today_sales_cheque_payment
-                                    )}
-                                </td>
-                            </tr>
-                            <tr>
-                                {/* <td>5</td> */}
-                                <td>
-                                    {getFormattedMessage(
-                                        "payment-type.filter.bank-transfer.label"
-                                    )}
-                                    :{" "}
-                                </td>
-                                <td>
-                                    {currencySymbolHandling(
-                                        allConfigData,
-                                        currencySymbol,
-                                        closeRegisterDetails?.today_sales_bank_transfer_payment
-                                    )}
-                                </td>
-                            </tr>
-                            <tr>
-                                {/* <td>4</td> */}
-                                <td>
-                                    {getFormattedMessage(
-                                        "payment-type.filter.other.label"
-                                    )}
-                                    :{" "}
-                                </td>
-                                <td>
-                                    {currencySymbolHandling(
-                                        allConfigData,
-                                        currencySymbol,
-                                        closeRegisterDetails?.today_sales_other_payment
-                                    )}
-                                </td>
-                            </tr>
-                        </tbody>
-                    </Table>
+        <Modal
+            size="lg"
+            centered
+            show={lgShow}
+            onHide={() => setLgShow(false)}
+            className="register-details-modal"
+            aria-labelledby="register-details-title"
+        >
+            <Modal.Header closeButton>
+                <div className="register-details-heading">
+                    <span className="register-details-heading__icon"><i className="bi bi-cash-register" /></span>
+                    <div>
+                        <span className="register-details-eyebrow">RESUMEN DEL TURNO</span>
+                        <Modal.Title id="register-details-title">Detalles del registro</Modal.Title>
+                        <p><i className="bi bi-calendar3" /> {currentDate}</p>
+                    </div>
+                </div>
+                <span className="register-details-status"><i /> Caja abierta</span>
+            </Modal.Header>
 
-                    <Table
-                        responsive
-                        bordered
-                        hover
-                        className="registerModel text-nowrap"
-                    >
-                        <tbody>
-                            <tr>
-                                <td>
-                                    {getFormattedMessage(
-                                        "register.total-sales.label"
-                                    )}
-                                    :
-                                </td>
-                                <td>
-                                    {currencySymbolHandling(
-                                        allConfigData,
-                                        currencySymbol,
-                                        closeRegisterDetails?.today_sales_amount
-                                    )}
-                                </td>
-                            </tr>
-                            <tr>
-                                <td>
-                                    {getFormattedMessage(
-                                        "register.total-refund.title"
-                                    )}
-                                    :
-                                </td>
-                                <td>
-                                    {currencySymbolHandling(
-                                        allConfigData,
-                                        currencySymbol,
-                                        closeRegisterDetails?.today_sales_return_amount
-                                    )}
-                                </td>
-                            </tr>
-                            <tr>
-                                <td>
-                                    {getFormattedMessage(
-                                        "register.total-payment.title"
-                                    )}
-                                    :
-                                </td>
-                                <td>
-                                    {currencySymbolHandling(
-                                        allConfigData,
-                                        currencySymbol,
-                                        closeRegisterDetails?.today_sales_payment_amount
-                                    )}
-                                </td>
-                            </tr>
-                            {/* <tr>
-                                <td>{getFormattedMessage( "register.total-sales.label" )}:</td>
-                                <td>{currencySymbolHandling( allConfigData, currencySymbol, closeRegisterDetails?.today_sales_total_amount )}</td>
-                            </tr>
-                            <tr>
-                                <td>{getFormattedMessage( "register.total-refund.title" )}:</td>
-                                <td>{currencySymbolHandling( allConfigData, currencySymbol, closeRegisterDetails?.today_sales_total_return_amount )}</td>
-                            </tr>
-                            <tr>
-                                <td>{getFormattedMessage( "register.total-payment.title" )}:</td>
-                                <td>{currencySymbolHandling( allConfigData, currencySymbol, closeRegisterDetails?.today_sales_payment_amount )}</td>
-                            </tr> */}
-                        </tbody>
-                    </Table>
-                    {/* <Modal.Title className='p-0 py-3' id="example-modal-sizes-title-lg">
-                        {getFormattedMessage("register.product.sold.title")}
-                    </Modal.Title>
-                    <Table responsive bordered hover className='m-0 registerModel text-nowrap'>
-                        <tbody>
-                            <tr>
-                                <th>#</th>
-                                <th>SKU</th>
-                                <th>{getFormattedMessage("product.title")}</th>
-                                <th>{getFormattedMessage("dashboard.stockAlert.quantity.label")}</th>
-                                <th>{getFormattedMessage("pos-total-amount.title")}</th>
-                            </tr>
-                            { posAllTodaySaleOverAllReport?.today_total_products_sold?.map((pro, index)=> {
-                                return (
-                                    <tr>
-                                        <td>{index + 1}</td>
-                                        <td>{pro.reference_code}</td>
-                                        <td>{pro.name}</td>
-                                        <td>{pro.total_quantity}</td>
-                                        <td>{currencySymbolHandling(allConfigData, currencySymbol, pro.grand_total)}</td>
-                                    </tr>
-                                )
-                            })}
-                            <tr className='p-sold'>
-                                <th colSpan={3}>#</th>
-                                <th>{sumOfProductQuantity}</th>
-                                <th><span>{getFormattedMessage("globally.detail.discount")}: (-) {currencySymbolHandling(allConfigData, currencySymbol, posAllTodaySaleOverAllReport?.all_discount_amount)}</span><br />
-                                    <span>{getFormattedMessage("globally.detail.tax")}: (+) {currencySymbolHandling(allConfigData, currencySymbol, posAllTodaySaleOverAllReport?.all_tax_amount)}</span><br />
-                                    <span>{getFormattedMessage("globally.detail.shipping")}: (+) {currencySymbolHandling(allConfigData, currencySymbol, posAllTodaySaleOverAllReport?.all_shipping_amount)}</span><br />
-                                <span>{getFormattedMessage("globally.detail.grand.total")}: {currencySymbolHandling(allConfigData, currencySymbol, posAllTodaySaleOverAllReport?.all_grand_total_amount)}</span></th>
-                            </tr>
-                        </tbody>
-                    </Table>
-                    <Modal.Title className='p-0 py-3' id="example-modal-sizes-title-lg">
-                        {getFormattedMessage("register.product.sold.by.brand.title")}
-                    </Modal.Title>
-                    <Table responsive bordered hover className='m-0 registerModel text-nowrap'>
-                        <tbody>
-                            <tr>
-                                <th>#</th>
-                                <th>{getFormattedMessage("brand.title")}</th>
-                                <th>{getFormattedMessage("dashboard.stockAlert.quantity.label")}</th>
-                                <th>{getFormattedMessage("pos-total-amount.title")}</th>
-                            </tr>
-                            { posAllTodaySaleOverAllReport?.today_brand_report?.map((pro, index)=> {
-                                return (
-                                    <tr>
-                                        <td>{index + 1}</td>
-                                        <td>{pro.name}</td>
-                                        <td>{pro.total_quantity}</td>
-                                        <td>{currencySymbolHandling(allConfigData, currencySymbol, pro.grand_total)}</td>
-                                    </tr>
-                                )
-                            })}
-                            <tr>
-                                <th colSpan={2}>#</th>
-                                <th>{sumOfBrandQuantity}</th>
-                                <th><span>{getFormattedMessage("globally.detail.discount")}: (-) {currencySymbolHandling(allConfigData, currencySymbol, posAllTodaySaleOverAllReport?.all_discount_amount)}</span><br />
-                                    <span>{getFormattedMessage("globally.detail.tax")}: (+) {currencySymbolHandling(allConfigData, currencySymbol, posAllTodaySaleOverAllReport?.all_tax_amount)}</span><br />
-                                    <span>{getFormattedMessage("globally.detail.shipping")}: (+) {currencySymbolHandling(allConfigData, currencySymbol, posAllTodaySaleOverAllReport?.all_shipping_amount)}</span><br />
-                                    <span>{getFormattedMessage("globally.detail.grand.total")}: {currencySymbolHandling(allConfigData, currencySymbol, posAllTodaySaleOverAllReport?.all_grand_total_amount)}</span></th>
-                            </tr>
-                        </tbody>
-                    </Table> */}
-                </Modal.Body>
-                <Modal.Footer className="justify-content-end pt-2 pb-3">
-                    <button
-                        className="btn btn-primary text-white"
-                        onClick={printRegisterDetails}
-                    >
-                        {getFormattedMessage("print.title")}
-                    </button>
-                    <button
-                        className="btn btn-secondary"
-                        onClick={() => setLgShow(false)}
-                    >
-                        {getFormattedMessage("pos-close-btn.title")}
-                    </button>
-                </Modal.Footer>
-            </Modal>
-        </div>
+            <Modal.Body>
+                {!detailsReady ? (
+                    <div className="register-details-loading">
+                        <span className="spinner-border spinner-border-sm" />
+                        <strong>Preparando el resumen de caja...</strong>
+                    </div>
+                ) : (
+                    <>
+                        <section className="register-details-hero">
+                            <div>
+                                <span>EFECTIVO ESPERADO EN CAJA</span>
+                                <strong>{money(expectedCash)}</strong>
+                                <p>Fondo inicial más los movimientos efectivos registrados durante el turno.</p>
+                            </div>
+                            <span className="register-details-hero__visual"><i className="bi bi-safe2" /></span>
+                        </section>
+
+                        <section className="register-details-quick">
+                            <article>
+                                <span className="is-blue"><i className="bi bi-box-arrow-in-right" /></span>
+                                <div><small>Fondo inicial</small><strong>{money(openingCash)}</strong></div>
+                            </article>
+                            <article>
+                                <span className="is-green"><i className="bi bi-cash-coin" /></span>
+                                <div><small>Efectivo cobrado</small><strong>{money(value("today_sales_cash_payment"))}</strong></div>
+                            </article>
+                            <article>
+                                <span className={manualCashNet < 0 ? "is-red" : "is-amber"}><i className="bi bi-arrow-left-right" /></span>
+                                <div><small>Movimiento manual neto</small><strong className={manualCashNet < 0 ? "is-negative" : ""}>{manualCashNet > 0 ? "+" : ""}{money(manualCashNet)}</strong></div>
+                            </article>
+                        </section>
+
+                        <section className="register-details-section">
+                            <header>
+                                <div><span>FORMAS DE PAGO</span><h3>Cómo ingresó el dinero</h3></div>
+                                <small>{paymentMethods.filter((method) => method.amount > 0).length} métodos utilizados</small>
+                            </header>
+                            <div className="register-payment-grid">
+                                {paymentMethods.map((method) => (
+                                    <article key={method.key} className={`is-${method.key}`}>
+                                        <span><i className={`bi ${paymentIcons[method.key]}`} /></span>
+                                        <div><small>{method.label}</small><strong>{money(method.amount)}</strong><p>{method.helper}</p></div>
+                                    </article>
+                                ))}
+                            </div>
+                        </section>
+
+                        <section className="register-details-section register-financial-summary">
+                            <header>
+                                <div><span>RESULTADO DEL TURNO</span><h3>Resumen financiero</h3></div>
+                                <small>Valores registrados por el sistema</small>
+                            </header>
+                            <div className="register-financial-summary__body">
+                                <div className="register-financial-list">
+                                    <div><span><i className="bi bi-receipt-cutoff" /> Ventas registradas</span><strong>{money(totalSales)}</strong></div>
+                                    <div><span><i className="bi bi-check2-circle" /> Pagos recibidos</span><strong className="is-positive">{money(totalPayments)}</strong></div>
+                                    <div><span><i className="bi bi-arrow-counterclockwise" /> Devoluciones totales</span><strong className="is-negative">-{money(totalReturns)}</strong></div>
+                                    <div><span><i className="bi bi-cash" /> Reembolsado en efectivo</span><strong className="is-negative">-{money(cashRefunds)}</strong></div>
+                                </div>
+                                <div className="register-net-result">
+                                    <span>VENTA NETA</span>
+                                    <strong>{money(netSales)}</strong>
+                                    <p>Ventas registradas menos devoluciones.</p>
+                                    <div><span>Total cobrado</span><b>{money(totalPayments)}</b></div>
+                                </div>
+                            </div>
+                        </section>
+                    </>
+                )}
+            </Modal.Body>
+
+            <Modal.Footer>
+                <span><i className="bi bi-info-circle" /> Los valores corresponden al turno abierto actual.</span>
+                <div>
+                    <button type="button" className="btn register-details-close" onClick={() => setLgShow(false)}>Cerrar</button>
+                    <button type="button" className="btn register-details-print" disabled={!detailsReady} onClick={printRegisterDetails}><i className="bi bi-printer" /> {getFormattedMessage("print.title")}</button>
+                </div>
+            </Modal.Footer>
+        </Modal>
     );
 }
 
 const mapStateToProps = (state) => {
-    const { posAllTodaySaleOverAllReport, allConfigData } = state;
-    return { posAllTodaySaleOverAllReport, allConfigData };
+    const { allConfigData } = state;
+    return { allConfigData };
 };
 
 export default connect(mapStateToProps, {})(RegisterDetailsModel);

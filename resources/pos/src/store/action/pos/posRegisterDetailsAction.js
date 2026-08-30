@@ -28,53 +28,57 @@ export const fetchTodaySaleOverAllReport = () => async (dispatch) => {
         });
 };
 
-export const registerCashInHandAction = (data, navigate) => (dispatch) => {
+export const registerCashInHandAction = (data, navigate) => async (dispatch) => {
     let url = apiBaseURL.REGISTER_CASH_IN_HAND;
-    apiConfig
-        .post(url, data)
-        .then((response) => {
-            dispatch(fetchConfig(navigate));
-            dispatch(
-                addToast({
-                    text: getFormattedMessage(
-                        "register.entry.added.successfully.message"
-                    ),
-                })
-            );
-        })
-        .catch((response) => {
-            dispatch(
-                addToast({
-                    text: response.response.data.message,
-                    type: toastType.ERROR,
-                })
-            );
-        });
+    try {
+        const response = await apiConfig.post(url, data);
+        dispatch(fetchConfig(navigate));
+        dispatch(
+            addToast({
+                text: getFormattedMessage(
+                    "register.entry.added.successfully.message"
+                ),
+            })
+        );
+        return response;
+    } catch (error) {
+        dispatch(
+            addToast({
+                text:
+                    error?.response?.data?.message ||
+                    "No fue posible abrir la caja. Inténtalo nuevamente.",
+                type: toastType.ERROR,
+            })
+        );
+        throw error;
+    }
 };
 
-export const closeRegisterAction = (data, navigate) => (dispatch) => {
+export const closeRegisterAction = (data, navigate) => async (dispatch) => {
     let url = apiBaseURL.CLOSE_REGISTER;
-    apiConfig
-        .post(url, data)
-        .then((response) => {
-            dispatch(fetchConfig());
-            dispatch(
-                addToast({
-                    text: getFormattedMessage(
-                        "register.closed.successfully.message"
-                    ),
-                })
-            );
-            navigate("/app/dashboard");
-        })
-        .catch((response) => {
-            dispatch(
-                addToast({
-                    text: response.response.data.message,
-                    type: toastType.ERROR,
-                })
-            );
-        });
+    try {
+        const response = await apiConfig.post(url, data);
+        dispatch(fetchConfig());
+        dispatch(
+            addToast({
+                text: getFormattedMessage(
+                    "register.closed.successfully.message"
+                ),
+            })
+        );
+        navigate("/app/dashboard");
+        return response;
+    } catch (error) {
+        dispatch(
+            addToast({
+                text:
+                    error?.response?.data?.message ||
+                    "No fue posible cerrar la caja. Inténtalo nuevamente.",
+                type: toastType.ERROR,
+            })
+        );
+        throw error;
+    }
 };
 
 export const getAllRegisterDetailsAction = () => async (dispatch) => {
