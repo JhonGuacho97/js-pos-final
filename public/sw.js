@@ -3,7 +3,7 @@
 // Las respuestas de /api/* siguen sin cachearse; los datos de productos,
 // precios y stock se guardan de forma explícita en IndexedDB desde la app.
 
-const CACHE_NAME = "ecuapos-v5";
+const CACHE_NAME = "ecuapos-v6";
 const CATALOG_ASSET_CACHE = "ecuapos-catalog-assets-v1";
 const OFFLINE_DB_NAME = "ecuapos-offline";
 const OFFLINE_DB_VERSION = 5;
@@ -475,6 +475,7 @@ const syncOfflineSalesInBackground = async () => {
                     electronicInvoiceQueued: Boolean(payload.requested_electronic_document),
                     error: null,
                     errorCode: null,
+                    diagnosis: null,
                     nextRetryAt: null,
                     leaseOwner: null,
                     leaseUntil: null,
@@ -497,10 +498,17 @@ const syncOfflineSalesInBackground = async () => {
                 throw new Error("temporary-server-error");
             }
 
+            let validationBody = {};
+            try {
+                validationBody = await response.json();
+            } catch (_) {
+                validationBody = {};
+            }
             await updateOfflineSaleRecord(sale.clientUuid, {
                 status: "requires_review",
-                error: await responseMessage(response),
-                errorCode: "VALIDATION",
+                error: validationBody?.message || "La venta requiere revisión manual.",
+                errorCode: validationBody?.error_code || "VALIDATION",
+                diagnosis: validationBody?.diagnosis || null,
                 nextRetryAt: null,
                 leaseOwner: null,
                 leaseUntil: null,

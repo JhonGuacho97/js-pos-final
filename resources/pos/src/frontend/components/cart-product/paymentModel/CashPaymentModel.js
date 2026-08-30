@@ -49,6 +49,7 @@ const CashPaymentModel = (props) => {
         creditLoading,
         creditTerms,
         onCreditTermsChange,
+        processing,
     } = props;
 
     const currencySymbol = settings.attributes && settings.attributes.currency_symbol;
@@ -80,7 +81,9 @@ const CashPaymentModel = (props) => {
     return (
         <Modal
             show={cashPayment}
-            onHide={handleCashPayment}
+            onHide={processing ? undefined : handleCashPayment}
+            backdrop={processing ? "static" : true}
+            keyboard={!processing}
             size="xl"
             centered
             scrollable
@@ -334,16 +337,17 @@ const CashPaymentModel = (props) => {
             </Modal.Body>
 
             <Modal.Footer>
-                <button type="button" className="pos-payment-cancel" onClick={handleCashPayment}>
+                <button type="button" className="pos-payment-cancel" disabled={processing} onClick={handleCashPayment}>
                     Cancelar
                 </button>
                 <button
                     type="button"
                     className="pos-payment-submit"
+                    disabled={processing}
                     onClick={(event) => onCashPayment(event)}
                 >
-                    <FontAwesomeIcon icon={faWallet} />
-                    {offlineMode ? "Guardar cobro offline" : "Confirmar cobro"}
+                    {processing ? <span className="spinner-border spinner-border-sm" /> : <FontAwesomeIcon icon={faWallet} />}
+                    {processing ? "Guardando venta…" : offlineMode ? "Guardar cobro offline" : "Confirmar cobro"}
                 </button>
             </Modal.Footer>
         </Modal>

@@ -97,6 +97,7 @@ export const syncOfflineSales = (callbacks = {}) => {
                     electronicInvoiceQueued: Boolean(payload.requested_electronic_document),
                     error: null,
                     errorCode: null,
+                    diagnosis: null,
                     nextRetryAt: null,
                     leaseOwner: null,
                     leaseUntil: null,
@@ -131,7 +132,10 @@ export const syncOfflineSales = (callbacks = {}) => {
                 await updateOfflineSale(claimedSale.clientUuid, {
                     status: "requires_review",
                     error: message,
-                    errorCode: responseStatus === 401 ? "AUTH" : "VALIDATION",
+                    errorCode: responseStatus === 401
+                        ? "AUTH"
+                        : error?.response?.data?.error_code || "VALIDATION",
+                    diagnosis: error?.response?.data?.diagnosis || null,
                     nextRetryAt: null,
                     leaseOwner: null,
                     leaseUntil: null,
@@ -150,4 +154,44 @@ export const syncOfflineSales = (callbacks = {}) => {
     });
 
     return activeSync;
+};
+
+export const diagnoseOfflineSale = async (sale, options = {}) => {
+    const credential = options.credential || await getOfflineSyncCredential().catch(() => null);
+    if (!credential?.token || new Date(credential.expires_at).getTime() <= Date.now()) {
+        throw new Error("No existe una credencial vigente para verificar esta venta.");
+    }
+
+    const response = await fetch("/api/offline-sync/sales/diagnose", {
+        method: "POST",
+        credentials: "same-origin",
+        headers: {
+            "Accept": "application/json",
+            "Content-Type": "application/json",
+            "Authorization": `Bearer ${credential.token}`,
+            "X-Store-Id": String(credential.store_id),
+        },
+        body: JSON.stringify({
+            warehouse_id: sale.payload?.warehouse_id,
+            sale_items: sale.payload?.sale_items || [],
+        }),
+    });
+
+    let body = {};
+    try {
+        body = await response.json();
+    } catch (_) {
+        body = {};
+    }
+    if (!response.ok) {
+        throw new Error(body?.message || "No se pudo verificar el inventario de esta venta.");
+    }
+
+    const diagnosis = body?.data || null;
+    await updateOfflineSale(sale.clientUuid, {
+        diagnosis,
+        diagnosedAt: diagnosis?.checked_at || new Date().toISOString(),
+    });
+
+    return diagnosis;
 };

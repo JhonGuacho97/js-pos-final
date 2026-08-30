@@ -71,7 +71,7 @@ import {
     reserveOfflineCatalogStock,
     resetOfflineCsrfFailures,
 } from "../../offline/catalogStorage";
-import { syncOfflineSales } from "../../offline/offlineSalesSync";
+import { diagnoseOfflineSale, syncOfflineSales } from "../../offline/offlineSalesSync";
 import { syncOfflineCustomers } from "../../offline/offlineCustomersSync";
 import {
     ensureOfflineSyncCredential,
@@ -143,6 +143,8 @@ const PosMainPage = (props) => {
     const [newCost, setNewCost] = useState("");
     const [paymentPrint, setPaymentPrint] = useState({});
     const [cashPayment, setCashPayment] = useState(false);
+    const [checkoutProcessing, setCheckoutProcessing] = useState(false);
+    const checkoutProcessingRef = useRef(false);
     const [modalShowPaymentSlip, setModalShowPaymentSlip] = useState(false);
     const [modalShowCustomer, setModalShowCustomer] = useState(false);
     const [deleteCartItem, setDeleteCartItem] = useState(null);
@@ -452,6 +454,14 @@ const PosMainPage = (props) => {
             }));
             await syncOfflineCatalog();
         }
+    };
+
+    const diagnoseQueuedSale = async (sale) => {
+        if (!navigator.onLine) {
+            throw new Error("Necesitas conexión para consultar el inventario actual.");
+        }
+        const credential = await ensureOfflineSyncCredential();
+        return diagnoseOfflineSale(sale, { credential });
     };
 
     useEffect(() => {
@@ -1034,8 +1044,7 @@ const PosMainPage = (props) => {
     };
 
     //cash payment method
-    const onCashPayment = async (event) => {
-        event.preventDefault();
+    const processCashPayment = async () => {
         if (!handleValidation()) return;
 
         const payload = prepareData(updateProducts);
@@ -1074,6 +1083,20 @@ const PosMainPage = (props) => {
         setPaymentPrint(mergeReceiptWithSale(receipt, result.sale));
         setModalShowPaymentSlip(true);
         finishCheckout();
+    };
+
+    const onCashPayment = async (event) => {
+        event.preventDefault();
+        if (checkoutProcessingRef.current) return;
+
+        checkoutProcessingRef.current = true;
+        setCheckoutProcessing(true);
+        try {
+            await processCashPayment();
+        } finally {
+            checkoutProcessingRef.current = false;
+            setCheckoutProcessing(false);
+        }
     };
 
     const printPaymentReceiptPdf = () => {
@@ -1463,6 +1486,7 @@ const PosMainPage = (props) => {
                     creditLoading={creditLoading}
                     creditTerms={creditTerms}
                     onCreditTermsChange={setCreditTerms}
+                    processing={checkoutProcessing}
                 />
             )}
             {lgShow && (
@@ -1508,6 +1532,8 @@ const PosMainPage = (props) => {
                 show={showOfflineSales}
                 onHide={() => setShowOfflineSales(false)}
                 onRetry={syncQueuedSales}
+                onDiagnose={diagnoseQueuedSale}
+                onDiscard={syncOfflineCatalog}
                 online={catalogStatus.online}
             />
             {deleteCartItem && (

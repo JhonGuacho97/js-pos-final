@@ -4,10 +4,13 @@ namespace App\Http\Controllers\API;
 
 use App\Http\Controllers\AppBaseController;
 use App\Http\Requests\OfflineCreateSaleRequest;
+use App\Http\Requests\OfflineSaleDiagnosisRequest;
 use App\Http\Resources\SaleResource;
 use App\Models\ElectronicInvoice;
 use App\Repositories\SaleRepository;
 use App\Services\ElectronicInvoiceRequestService;
+use App\Services\OfflineSaleStockDiagnosisService;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\DB;
 use Symfony\Component\HttpKernel\Exception\AccessDeniedHttpException;
 
@@ -15,20 +18,13 @@ class OfflineSaleSyncController extends AppBaseController
 {
     public function __construct(
         private readonly SaleRepository $saleRepository,
-        private readonly ElectronicInvoiceRequestService $invoiceRequests
+        private readonly ElectronicInvoiceRequestService $invoiceRequests,
+        private readonly OfflineSaleStockDiagnosisService $stockDiagnosis
     ) {}
 
-    public function store(OfflineCreateSaleRequest $request): SaleResource
+    public function store(OfflineCreateSaleRequest $request): SaleResource|JsonResponse
     {
-        $token = $request->user()?->currentAccessToken();
-        $storeId = $this->requireCurrentStoreId();
-
-        if (! $token || ! str_starts_with($token->name, 'offline-sync:')) {
-            throw new AccessDeniedHttpException('Esta ruta requiere una credencial de sincronización del dispositivo.');
-        }
-        if (! $request->user()->tokenCan("store:{$storeId}")) {
-            throw new AccessDeniedHttpException('La credencial no pertenece a la tienda activa.');
-        }
+        $storeId = $this->authorizeSyncCredential($request);
 
         $request->validate([
             'client_uuid' => ['required', 'uuid'],
@@ -56,9 +52,59 @@ class OfflineSaleSyncController extends AppBaseController
             abort(422, 'El cliente no pertenece a la tienda activa.');
         }
 
+        $diagnosis = $this->stockDiagnosis->diagnose(
+            $request->input('sale_items', []),
+            (int) $request->input('warehouse_id'),
+            $storeId
+        );
+        if (! $diagnosis['can_sync']) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Uno o más productos no tienen stock suficiente en el almacén seleccionado.',
+                'error_code' => 'INSUFFICIENT_STOCK',
+                'conflicts' => $diagnosis['conflicts'],
+                'diagnosis' => $diagnosis,
+            ], 422);
+        }
+
         $sale = $this->saleRepository->storeSale($request->all());
         $this->invoiceRequests->request($sale, $request->input('requested_electronic_document'));
 
         return new SaleResource($sale->fresh());
+    }
+
+    public function diagnose(OfflineSaleDiagnosisRequest $request): JsonResponse
+    {
+        $storeId = $this->authorizeSyncCredential($request);
+        $this->authorizeWarehouseAccess((int) $request->input('warehouse_id'));
+
+        $diagnosis = $this->stockDiagnosis->diagnose(
+            $request->input('sale_items', []),
+            (int) $request->input('warehouse_id'),
+            $storeId
+        );
+
+        return response()->json([
+            'success' => true,
+            'message' => $diagnosis['can_sync']
+                ? 'La venta tiene stock suficiente para sincronizarse.'
+                : 'La venta todavía tiene conflictos de inventario.',
+            'data' => $diagnosis,
+        ]);
+    }
+
+    private function authorizeSyncCredential($request): int
+    {
+        $token = $request->user()?->currentAccessToken();
+        $storeId = $this->requireCurrentStoreId();
+
+        if (! $token || ! str_starts_with($token->name, 'offline-sync:')) {
+            throw new AccessDeniedHttpException('Esta ruta requiere una credencial de sincronización del dispositivo.');
+        }
+        if (! $request->user()->tokenCan("store:{$storeId}")) {
+            throw new AccessDeniedHttpException('La credencial no pertenece a la tienda activa.');
+        }
+
+        return $storeId;
     }
 }

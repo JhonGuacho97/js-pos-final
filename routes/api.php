@@ -699,6 +699,14 @@ Route::middleware([
 
 Route::middleware([
     'auth:sanctum',
+    'abilities:offline-sales:sync',
+    'store.context',
+    'permission:manage_sale|manage_pos_screen',
+    'throttle:60,1',
+])->post('offline-sync/sales/diagnose', [OfflineSaleSyncController::class, 'diagnose']);
+
+Route::middleware([
+    'auth:sanctum',
     'abilities:offline-customers:sync',
     'store.context',
     'permission:manage_customers|manage_pos_screen',

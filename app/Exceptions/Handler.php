@@ -37,6 +37,16 @@ class Handler extends ExceptionHandler
 
     public function render($request, Throwable $exception)
     {
+        if ($exception instanceof InsufficientStockException && ($request->expectsJson() || $request->isXmlHttpRequest())) {
+            return response()->json([
+                'success' => false,
+                'message' => $exception->getMessage(),
+                'error_code' => 'INSUFFICIENT_STOCK',
+                'conflicts' => $exception->conflicts(),
+                'diagnosis' => $exception->diagnosis(),
+            ], ResponseAlias::HTTP_UNPROCESSABLE_ENTITY);
+        }
+
         $code = $exception->getCode();
         $message = $exception->getMessage();
         if ($code < 100 || $code >= 600) {

@@ -365,6 +365,25 @@ export const updateOfflineSale = async (clientUuid, changes) => {
     return updated;
 };
 
+export const discardOfflineSale = async (clientUuid, reason = "duplicate") => {
+    const sale = (await getOfflineSales()).find((item) => item.clientUuid === clientUuid);
+    if (!sale || sale.status === "synced") return null;
+
+    const discarded = {
+        ...sale,
+        status: "discarded",
+        discardReason: reason,
+        discardedAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+        nextRetryAt: null,
+        leaseOwner: null,
+        leaseUntil: null,
+    };
+    await runRequest("readwrite", (store) => store.put(discarded), OFFLINE_SALES_STORE);
+    await emitOfflineSalesStatus();
+    return discarded;
+};
+
 export const claimOfflineSale = async (clientUuid, owner, leaseMilliseconds = 60000) => {
     const database = await openDatabase();
 
@@ -502,7 +521,7 @@ export const deleteOfflineSale = async (clientUuid) => {
 
 export const clearSyncedOfflineSales = async () => {
     const sales = await getOfflineSales();
-    const syncedSales = sales.filter((sale) => sale.status === "synced");
+    const syncedSales = sales.filter((sale) => ["synced", "discarded"].includes(sale.status));
     await Promise.all(syncedSales.map((sale) =>
         runRequest("readwrite", (store) => store.delete(sale.clientUuid), OFFLINE_SALES_STORE)
     ));
@@ -513,8 +532,8 @@ export const pruneOfflineSalesHistory = async ({ maxItems = 100, maxAgeDays = 30
     const sales = await getOfflineSales();
     const cutoff = Date.now() - (maxAgeDays * 24 * 60 * 60 * 1000);
     const syncedSales = sales
-        .filter((sale) => sale.status === "synced")
-        .sort((a, b) => new Date(b.syncedAt || b.updatedAt) - new Date(a.syncedAt || a.updatedAt));
+        .filter((sale) => ["synced", "discarded"].includes(sale.status))
+        .sort((a, b) => new Date(b.syncedAt || b.discardedAt || b.updatedAt) - new Date(a.syncedAt || a.discardedAt || a.updatedAt));
     const expired = syncedSales.filter((sale, index) =>
         index >= maxItems || new Date(sale.syncedAt || sale.updatedAt).getTime() < cutoff
     );

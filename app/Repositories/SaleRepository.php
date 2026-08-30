@@ -2,6 +2,7 @@
 
 namespace App\Repositories;
 
+use App\Exceptions\InsufficientStockException;
 use App\Mail\MailSender;
 use App\Models\Customer;
 use App\Models\MailTemplate;
@@ -182,10 +183,21 @@ class SaleRepository extends BaseRepository
                             'quantity' => $totalQuantity,
                         ]);
                     } else {
-                        $detalleKit = $productModel && $productModel->is_kit
-                            ? " (falta stock de un componente del kit \"{$productModel->name}\")"
-                            : '';
-                        throw new UnprocessableEntityHttpException("Quantity must be less than Available quantity{$detalleKit}.");
+                        $stockProduct = Product::find($movimiento['product_id']);
+                        $required = (float) $movimiento['quantity'];
+                        $available = (float) ($product?->quantity ?? 0);
+                        $conflict = [
+                            'stock_product_id' => (int) $movimiento['product_id'],
+                            'stock_product_name' => $stockProduct?->name ?? $productModel?->name ?? 'Producto',
+                            'stock_product_code' => $stockProduct?->code,
+                            'requested_quantity' => round($required, 4),
+                            'available_quantity' => round($available, 4),
+                            'shortage_quantity' => round(max(0, $required - $available), 4),
+                            'unit_name' => $stockProduct?->getProductUnitName(),
+                            'is_kit_component' => (bool) ($productModel?->is_kit),
+                            'sources' => [],
+                        ];
+                        throw new InsufficientStockException([$conflict]);
                     }
                 }
 
@@ -208,6 +220,9 @@ class SaleRepository extends BaseRepository
                 if ($existingSale) {
                     return $existingSale;
                 }
+            }
+            if ($e instanceof InsufficientStockException) {
+                throw $e;
             }
             throw new UnprocessableEntityHttpException($e->getMessage());
         }
