@@ -177,7 +177,11 @@ const Sales = (props) => {
                 allConfigData && allConfigData
             ),
             // date_for_payment: sale.attributes.date,
-            time: dayjs(sale.attributes.created_at).format("LT"),
+            // En ventas protegidas por el outbox mostramos la hora real del
+            // cobro, no la hora posterior en que recuperaron conexión.
+            time: dayjs(
+                sale.attributes.offline_created_at || sale.attributes.created_at
+            ).format("LT"),
             reference_code: sale.attributes.reference_code,
             customer_name: sale.attributes.customer_name,
             warehouse_name: sale.attributes.warehouse_name,

@@ -702,6 +702,14 @@ Route::middleware([
     'abilities:offline-sales:sync',
     'store.context',
     'permission:manage_sale|manage_pos_screen',
+    'throttle:120,1',
+])->get('offline-sync/sales/{clientUuid}/status', [OfflineSaleSyncController::class, 'status']);
+
+Route::middleware([
+    'auth:sanctum',
+    'abilities:offline-sales:sync',
+    'store.context',
+    'permission:manage_sale|manage_pos_screen',
     'throttle:60,1',
 ])->post('offline-sync/sales/diagnose', [OfflineSaleSyncController::class, 'diagnose']);
 

@@ -28,14 +28,19 @@ export const posCashPaymentAction = ( detailsCash, setUpdateProducts, posAllProd
             if ( isLoading ) dispatch( fetchHoldLists() );
             return { success: true, sale: response.data.data };
     } catch ( error ) {
-        if ( isNetworkError(error) ) {
-            return { success: false, networkError: true };
+        const responseStatus = Number(error?.response?.status || 0);
+        // Un error de red, rate limit o 5xx es ambiguo: el servidor pudo
+        // confirmar la transacción y perder la respuesta después. El POS debe
+        // conservar el mismo client_uuid y reconciliar desde la cola en vez de
+        // permitir que el cajero cree otra venta con un segundo intento.
+        if ( isNetworkError(error) || responseStatus === 429 || responseStatus >= 500 ) {
+            return { success: false, networkError: true, responseStatus };
         }
         dispatch( addToast({
             text: error?.response?.data?.message || "No se pudo registrar la venta.",
             type: toastType.ERROR,
         }) );
-        return { success: false, networkError: false };
+        return { success: false, networkError: false, responseStatus };
     } finally {
         if ( isLoading ) dispatch( setLoading( false ) );
     }

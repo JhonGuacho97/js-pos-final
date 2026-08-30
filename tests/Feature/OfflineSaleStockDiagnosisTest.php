@@ -4,12 +4,14 @@ namespace Tests\Feature;
 
 use App\Models\BaseUnit;
 use App\Models\Brand;
+use App\Models\Customer;
 use App\Models\ManageStock;
 use App\Models\PresentationFamily;
 use App\Models\PresentationType;
 use App\Models\Product;
 use App\Models\ProductCategory;
 use App\Models\ProductPresentation;
+use App\Models\Sale;
 use App\Models\Store;
 use App\Models\User;
 use App\Models\Warehouse;
@@ -116,6 +118,89 @@ class OfflineSaleStockDiagnosisTest extends TestCase
             ->assertJsonPath('data.conflicts.0.shortage_quantity', 2);
 
         $this->assertSame($salesBefore, DB::table('sales')->count());
+    }
+
+    /** @test */
+    public function a_retry_returns_the_existing_sale_before_rechecking_the_stock_it_already_consumed(): void
+    {
+        [$store, $warehouse, $product] = $this->productWithStock(0);
+        $user = User::create([
+            'first_name' => 'Offline',
+            'last_name' => 'Retry',
+            'email' => Str::uuid() . '@example.test',
+            'phone' => '0987654321',
+            'password' => bcrypt('secret123'),
+            'status' => true,
+        ]);
+        $user->stores()->attach($store->id);
+        setPermissionsTeamId($store->id);
+        $user->givePermissionTo(Permission::firstOrCreate(['name' => 'manage_pos_screen', 'guard_name' => 'web']));
+        $customer = Customer::create([
+            'store_id' => $store->id,
+            'identification' => Str::random(13),
+            'tipo_identificacion' => Customer::TIPO_CONSUMIDOR_FINAL,
+            'es_consumidor_final' => true,
+            'name' => 'Consumidor final',
+            'email' => Str::uuid() . '@example.test',
+            'phone' => '0999999999',
+            'country' => 'Ecuador',
+            'city' => 'Manta',
+            'address' => 'Manta',
+        ]);
+        $clientUuid = (string) Str::uuid();
+        $existing = Sale::create([
+            'client_uuid' => $clientUuid,
+            'customer_id' => $customer->id,
+            'warehouse_id' => $warehouse->id,
+            'user_id' => $user->id,
+            'date' => now()->toDateString(),
+            'grand_total' => 2,
+            'paid_amount' => 2,
+            'payment_type' => 1,
+            'status' => 1,
+            'payment_status' => 1,
+        ]);
+        $token = $user->createToken('offline-sync:phpunit', [
+            'offline-sales:sync',
+            "store:{$store->id}",
+        ], now()->addDay())->plainTextToken;
+        $salesBefore = Sale::count();
+
+        $headers = [
+            'X-Store-Id' => $store->id,
+            'Origin' => rtrim(config('app.url'), '/'),
+            'Referer' => rtrim(config('app.url'), '/') . '/',
+        ];
+
+        $this->withToken($token)->withHeaders($headers)
+            ->getJson("/api/offline-sync/sales/{$clientUuid}/status")
+            ->assertOk()
+            ->assertJsonPath('data.exists', true)
+            ->assertJsonPath('data.sale.id', $existing->id);
+
+        $this->withToken($token)->withHeaders($headers)
+            ->getJson('/api/offline-sync/sales/' . Str::uuid() . '/status')
+            ->assertOk()
+            ->assertJsonPath('data.exists', false)
+            ->assertJsonPath('data.sale', null);
+
+        $this->withToken($token)->withHeaders($headers)->postJson('/api/offline-sync/sales', [
+            'client_uuid' => $clientUuid,
+            'created_offline' => true,
+            'offline_created_at' => now()->subMinute()->toIso8601String(),
+            'date' => now()->toDateString(),
+            'customer_id' => $customer->id,
+            'warehouse_id' => $warehouse->id,
+            'sale_items' => [['product_id' => $product->id, 'quantity' => 1]],
+            'grand_total' => 2,
+            'payment_type' => 1,
+            'status' => 1,
+            'payment_status' => 1,
+        ])->assertOk()->assertJsonPath('data.id', $existing->id);
+
+        $this->assertSame($salesBefore, Sale::count());
+        $this->assertSame(0.0, (float) ManageStock::where('warehouse_id', $warehouse->id)
+            ->where('product_id', $product->id)->value('quantity'));
     }
 
     private function productWithStock(float $quantity, bool $presentations = false): array

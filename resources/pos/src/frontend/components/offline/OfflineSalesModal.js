@@ -116,6 +116,7 @@ const OfflineSalesModal = ({ show, onHide, onRetry, onDiagnose, onDiscard, onlin
         if (sale.status === "discarded") return "Descartada como duplicada";
         if (sale.status === "syncing") return "Sincronizando";
         if (sale.status === "requires_review") return "Requiere revisión";
+        if (sale.confirmationRequired) return "Confirmación pendiente";
         return sale.nextRetryAt ? "Reintento programado" : "Pendiente";
     };
 
@@ -149,6 +150,7 @@ const OfflineSalesModal = ({ show, onHide, onRetry, onDiagnose, onDiscard, onlin
                                 {sale.postSyncError && <p>{sale.postSyncError}</p>}
                                 {sale.status === "synced" && <div className="offline-sale-card__meta"><i className="bi bi-check-circle-fill" /> Sincronizada {dayjs(sale.syncedAt).format("DD/MM/YYYY HH:mm")}{sale.serverReference && ` · ${sale.serverReference}`}{sale.electronicInvoiceQueued && " · Comprobante electrónico en cola"}</div>}
                                 {sale.status === "discarded" && <div className="offline-sale-card__meta"><i className="bi bi-shield-check" /> Descartada en este dispositivo {dayjs(sale.discardedAt).format("DD/MM/YYYY HH:mm")}</div>}
+                                {sale.status === "pending" && sale.confirmationRequired && <div className="offline-sale-card__meta"><i className="bi bi-shield-check" /> Antes de reenviar, EcuaPos comprobará si esta venta ya existe en el servidor.</div>}
                                 {sale.status === "pending" && sale.nextRetryAt && <div className="offline-sale-card__meta"><i className="bi bi-clock" /> Próximo intento {dayjs(sale.nextRetryAt).format("HH:mm:ss")}</div>}
 
                                 <div className="offline-sale-card__actions">

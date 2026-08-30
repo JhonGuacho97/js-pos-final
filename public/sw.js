@@ -3,7 +3,7 @@
 // Las respuestas de /api/* siguen sin cachearse; los datos de productos,
 // precios y stock se guardan de forma explícita en IndexedDB desde la app.
 
-const CACHE_NAME = "ecuapos-v6";
+const CACHE_NAME = "ecuapos-v7";
 const CATALOG_ASSET_CACHE = "ecuapos-catalog-assets-v1";
 const OFFLINE_DB_NAME = "ecuapos-offline";
 const OFFLINE_DB_VERSION = 5;
@@ -452,30 +452,76 @@ const syncOfflineSalesInBackground = async () => {
                 requested_electronic_document:
                     sale.payload.requested_electronic_document || sale.sriType || null,
             };
-            const response = await fetch("/api/offline-sync/sales", {
-                method: "POST",
-                credentials: "same-origin",
-                headers: {
-                    "Accept": "application/json",
-                    "Content-Type": "application/json",
-                    "Authorization": `Bearer ${credential.token}`,
-                    "X-Store-Id": String(credential.store_id),
-                },
-                body: JSON.stringify(payload),
-            });
+            let createdSale = null;
 
-            if (response.ok) {
-                const body = await response.json();
-                const createdSale = body?.data;
+            // Si el intento anterior terminó sin respuesta, primero
+            // reconciliamos por UUID. Nunca reenviamos una venta ambigua a
+            // ciegas porque el servidor pudo haberla confirmado ya.
+            if (sale.confirmationRequired) {
+                const statusResponse = await fetch(
+                    `/api/offline-sync/sales/${encodeURIComponent(sale.clientUuid)}/status`,
+                    {
+                        method: "GET",
+                        credentials: "same-origin",
+                        headers: {
+                            "Accept": "application/json",
+                            "Authorization": `Bearer ${credential.token}`,
+                            "X-Store-Id": String(credential.store_id),
+                        },
+                        cache: "no-store",
+                    }
+                );
+                if (statusResponse.status === 401 || statusResponse.status === 403) {
+                    await updateOfflineSaleRecord(sale.clientUuid, {
+                        status: "requires_review",
+                        error: "La credencial de sincronización venció. Abre EcuaPos con conexión para renovarla.",
+                        errorCode: "AUTH",
+                        leaseOwner: null,
+                        leaseUntil: null,
+                    });
+                    continue;
+                }
+                if (statusResponse.status === 429 || statusResponse.status >= 500) {
+                    throw new Error("temporary-server-error");
+                }
+                if (!statusResponse.ok) {
+                    throw Object.assign(new Error(await responseMessage(statusResponse)), { permanent: true });
+                }
+                const statusBody = await statusResponse.json();
+                createdSale = statusBody?.data?.exists ? statusBody.data.sale : null;
+            }
+
+            let response = null;
+            if (!createdSale) {
+                response = await fetch("/api/offline-sync/sales", {
+                    method: "POST",
+                    credentials: "same-origin",
+                    headers: {
+                        "Accept": "application/json",
+                        "Content-Type": "application/json",
+                        "Authorization": `Bearer ${credential.token}`,
+                        "X-Store-Id": String(credential.store_id),
+                    },
+                    body: JSON.stringify(payload),
+                });
+            }
+
+            if (createdSale || response?.ok) {
+                if (!createdSale) {
+                    const body = await response.json();
+                    createdSale = body?.data;
+                }
                 await updateOfflineSaleRecord(sale.clientUuid, {
                     status: "synced",
                     syncedAt: new Date().toISOString(),
                     serverSaleId: createdSale?.id || null,
                     serverReference: createdSale?.attributes?.reference_code || null,
+                    serverSale: createdSale || null,
                     electronicInvoiceQueued: Boolean(payload.requested_electronic_document),
                     error: null,
                     errorCode: null,
                     diagnosis: null,
+                    confirmationRequired: false,
                     nextRetryAt: null,
                     leaseOwner: null,
                     leaseUntil: null,
@@ -509,6 +555,7 @@ const syncOfflineSalesInBackground = async () => {
                 error: validationBody?.message || "La venta requiere revisión manual.",
                 errorCode: validationBody?.error_code || "VALIDATION",
                 diagnosis: validationBody?.diagnosis || null,
+                confirmationRequired: false,
                 nextRetryAt: null,
                 leaseOwner: null,
                 leaseUntil: null,
@@ -520,6 +567,7 @@ const syncOfflineSalesInBackground = async () => {
                 status: "pending",
                 error: "No se pudo conectar con el servidor. EcuaPos volverá a intentarlo automáticamente.",
                 errorCode: "NETWORK",
+                confirmationRequired: true,
                 nextRetryAt: new Date(Date.now() + retryDelay).toISOString(),
                 leaseOwner: null,
                 leaseUntil: null,

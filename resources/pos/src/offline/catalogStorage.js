@@ -168,7 +168,7 @@ export const emitOfflineCatalogStatus = (detail) => {
     window.dispatchEvent(new CustomEvent(OFFLINE_CATALOG_EVENT, { detail }));
 };
 
-const createClientUuid = () => {
+export const createClientUuid = () => {
     if (globalThis.crypto?.randomUUID) return globalThis.crypto.randomUUID();
     return "xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx".replace(/[xy]/g, (character) => {
         const random = Math.floor(Math.random() * 16);
@@ -191,8 +191,13 @@ const emitOfflineSalesStatus = async () => {
 };
 
 export const enqueueOfflineSale = async (payload, receipt, sriType = "") => {
-    const clientUuid = createClientUuid();
+    // El UUID nace antes del primer intento de cobro y debe sobrevivir al
+    // cambio online -> offline. Si el servidor guardó la venta pero su
+    // respuesta se perdió, el reintento con el mismo UUID recupera esa venta
+    // en vez de crear una segunda.
+    const clientUuid = payload.client_uuid || createClientUuid();
     const now = new Date().toISOString();
+    const offlineCreatedAt = payload.offline_created_at || now;
     const { user, storeId } = getOfflineScope();
     const sale = {
         clientUuid,
@@ -201,15 +206,16 @@ export const enqueueOfflineSale = async (payload, receipt, sriType = "") => {
         payload: {
             ...payload,
             client_uuid: clientUuid,
-            offline_created_at: now,
+            offline_created_at: offlineCreatedAt,
             created_offline: true,
         },
         receipt,
         sriType,
-        createdAt: now,
+        createdAt: offlineCreatedAt,
         updatedAt: now,
         attempts: 0,
         error: null,
+        confirmationRequired: false,
         nextRetryAt: null,
         syncedAt: null,
         serverSaleId: null,
@@ -355,6 +361,10 @@ export const getOfflineSales = async () => {
         .filter((sale) => sale.scope === scope)
         .sort((a, b) => new Date(a.createdAt) - new Date(b.createdAt));
 };
+
+export const getOfflineSale = async (clientUuid) => (
+    (await runRequest("readonly", (store) => store.get(clientUuid), OFFLINE_SALES_STORE)) || null
+);
 
 export const updateOfflineSale = async (clientUuid, changes) => {
     const current = await runRequest("readonly", (store) => store.get(clientUuid), OFFLINE_SALES_STORE);

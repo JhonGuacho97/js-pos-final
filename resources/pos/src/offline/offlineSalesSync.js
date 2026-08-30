@@ -11,6 +11,31 @@ import {
 let activeSync = null;
 const foregroundOwner = `foreground-${Math.random().toString(36).slice(2)}`;
 
+const findConfirmedSale = async (clientUuid, credential) => {
+    const response = await fetch(`/api/offline-sync/sales/${encodeURIComponent(clientUuid)}/status`, {
+        method: "GET",
+        credentials: "same-origin",
+        headers: {
+            "Accept": "application/json",
+            "Authorization": `Bearer ${credential.token}`,
+            "X-Store-Id": String(credential.store_id),
+        },
+        cache: "no-store",
+    });
+    let body = {};
+    try {
+        body = await response.json();
+    } catch (_) {
+        body = {};
+    }
+    if (!response.ok) {
+        const error = new Error(body?.message || "No se pudo confirmar el estado de la venta.");
+        error.response = { status: response.status, data: body };
+        throw error;
+    }
+    return body?.data?.exists ? body.data.sale : null;
+};
+
 export const syncOfflineSales = (callbacks = {}) => {
     if (activeSync) return activeSync;
 
@@ -19,6 +44,7 @@ export const syncOfflineSales = (callbacks = {}) => {
         const now = Date.now();
         const sales = (await getOfflineSales()).filter((sale) => {
             if (!["pending", "syncing"].includes(sale.status)) return false;
+            if (callbacks.onlyClientUuid && sale.clientUuid !== callbacks.onlyClientUuid) return false;
             if (callbacks.force || sale.status === "syncing") return true;
             return !sale.nextRetryAt || new Date(sale.nextRetryAt).getTime() <= now;
         });
@@ -66,38 +92,47 @@ export const syncOfflineSales = (callbacks = {}) => {
                     payload.customer_id = offlineCustomer.serverCustomerId;
                     delete payload.offline_customer_uuid;
                 }
-                const response = await fetch("/api/offline-sync/sales", {
-                    method: "POST",
-                    credentials: "same-origin",
-                    headers: {
-                        "Accept": "application/json",
-                        "Content-Type": "application/json",
-                        "Authorization": `Bearer ${credential.token}`,
-                        "X-Store-Id": String(credential.store_id),
-                    },
-                    body: JSON.stringify(payload),
-                });
-                let responseBody = null;
-                try {
-                    responseBody = await response.json();
-                } catch (_) {
-                    responseBody = {};
+                // Después de una respuesta perdida no reenviamos a ciegas.
+                // Primero preguntamos si el UUID ya fue confirmado.
+                let createdSale = claimedSale.confirmationRequired
+                    ? await findConfirmedSale(claimedSale.clientUuid, credential)
+                    : null;
+                if (!createdSale) {
+                    const response = await fetch("/api/offline-sync/sales", {
+                        method: "POST",
+                        credentials: "same-origin",
+                        headers: {
+                            "Accept": "application/json",
+                            "Content-Type": "application/json",
+                            "Authorization": `Bearer ${credential.token}`,
+                            "X-Store-Id": String(credential.store_id),
+                        },
+                        body: JSON.stringify(payload),
+                    });
+                    let responseBody = null;
+                    try {
+                        responseBody = await response.json();
+                    } catch (_) {
+                        responseBody = {};
+                    }
+                    if (!response.ok) {
+                        const requestError = new Error(responseBody?.message || "La venta requiere revisión manual.");
+                        requestError.response = { status: response.status, data: responseBody };
+                        throw requestError;
+                    }
+                    createdSale = responseBody?.data;
                 }
-                if (!response.ok) {
-                    const requestError = new Error(responseBody?.message || "La venta requiere revisión manual.");
-                    requestError.response = { status: response.status, data: responseBody };
-                    throw requestError;
-                }
-                const createdSale = responseBody?.data;
                 await updateOfflineSale(claimedSale.clientUuid, {
                     status: "synced",
                     syncedAt: new Date().toISOString(),
                     serverSaleId: createdSale?.id || null,
                     serverReference: createdSale?.attributes?.reference_code || null,
+                    serverSale: createdSale || null,
                     electronicInvoiceQueued: Boolean(payload.requested_electronic_document),
                     error: null,
                     errorCode: null,
                     diagnosis: null,
+                    confirmationRequired: false,
                     nextRetryAt: null,
                     leaseOwner: null,
                     leaseUntil: null,
@@ -121,6 +156,8 @@ export const syncOfflineSales = (callbacks = {}) => {
                     await updateOfflineSale(claimedSale.clientUuid, {
                         status: "pending",
                         error: "No se pudo conectar con el servidor. EcuaPos volverá a intentarlo automáticamente.",
+                        errorCode: "NETWORK",
+                        confirmationRequired: true,
                         nextRetryAt: new Date(Date.now() + retryDelay).toISOString(),
                         leaseOwner: null,
                         leaseUntil: null,
@@ -136,6 +173,7 @@ export const syncOfflineSales = (callbacks = {}) => {
                         ? "AUTH"
                         : error?.response?.data?.error_code || "VALIDATION",
                     diagnosis: error?.response?.data?.diagnosis || null,
+                    confirmationRequired: false,
                     nextRetryAt: null,
                     leaseOwner: null,
                     leaseUntil: null,

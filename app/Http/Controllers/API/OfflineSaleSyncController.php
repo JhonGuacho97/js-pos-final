@@ -7,11 +7,14 @@ use App\Http\Requests\OfflineCreateSaleRequest;
 use App\Http\Requests\OfflineSaleDiagnosisRequest;
 use App\Http\Resources\SaleResource;
 use App\Models\ElectronicInvoice;
+use App\Models\Sale;
 use App\Repositories\SaleRepository;
 use App\Services\ElectronicInvoiceRequestService;
 use App\Services\OfflineSaleStockDiagnosisService;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Str;
 use Symfony\Component\HttpKernel\Exception\AccessDeniedHttpException;
 
 class OfflineSaleSyncController extends AppBaseController
@@ -33,6 +36,20 @@ class OfflineSaleSyncController extends AppBaseController
             'requested_electronic_document' => ['nullable', 'in:' . ElectronicInvoice::FACTURA],
         ]);
         $this->authorizeWarehouseAccess((int) $request->input('warehouse_id'));
+
+        // La respuesta de un checkout online puede perderse después de que la
+        // transacción ya hizo commit. En ese caso el frontend encola el mismo
+        // UUID. Resolver la identidad ANTES del diagnóstico de stock evita
+        // interpretar como falta de inventario el stock que esta misma venta
+        // ya descontó y, sobre todo, impide registrarla una segunda vez.
+        $existingSale = Sale::query()
+            ->where('client_uuid', $request->input('client_uuid'))
+            ->where('user_id', $request->user()->id)
+            ->whereHas('warehouse', fn ($query) => $query->where('store_id', $storeId))
+            ->first();
+        if ($existingSale) {
+            return new SaleResource($existingSale);
+        }
 
         if ($offlineCustomerUuid = $request->input('offline_customer_uuid')) {
             $customerId = DB::table('offline_customer_identities')
@@ -90,6 +107,26 @@ class OfflineSaleSyncController extends AppBaseController
                 ? 'La venta tiene stock suficiente para sincronizarse.'
                 : 'La venta todavía tiene conflictos de inventario.',
             'data' => $diagnosis,
+        ]);
+    }
+
+    public function status(Request $request, string $clientUuid): JsonResponse
+    {
+        $storeId = $this->authorizeSyncCredential($request);
+        abort_unless(Str::isUuid($clientUuid), 422, 'El identificador de la venta no es válido.');
+
+        $sale = Sale::query()
+            ->where('client_uuid', $clientUuid)
+            ->where('user_id', $request->user()->id)
+            ->whereHas('warehouse', fn ($query) => $query->where('store_id', $storeId))
+            ->first();
+
+        return response()->json([
+            'success' => true,
+            'data' => [
+                'exists' => (bool) $sale,
+                'sale' => $sale ? (new SaleResource($sale))->resolve($request)['data'] : null,
+            ],
         ]);
     }
 

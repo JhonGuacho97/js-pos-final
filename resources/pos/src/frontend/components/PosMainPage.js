@@ -23,7 +23,6 @@ import { prepareCartArray } from "../shared/PrepareCartArray";
 import ProductDetailsModel from "../shared/ProductDetailsModel";
 import CartItemMainCalculation from "./cart-product/CartItemMainCalculation";
 import PosHeader from "./header/PosHeader";
-import { posCashPaymentAction } from "../../store/action/pos/posCashPaymentAction";
 import PaymentButton from "./cart-product/PaymentButton";
 import CashPaymentModel from "./cart-product/paymentModel/CashPaymentModel";
 import PaymentSlipModal from "./paymentSlipModal/PaymentSlipModal";
@@ -47,7 +46,7 @@ import {
     getFormattedMessage,
     getFormattedOptions,
 } from "../../shared/sharedMethod";
-import { paymentMethodOptions, posCashPaymentActionType, toastType } from "../../constants";
+import { paymentMethodOptions, posCashPaymentActionType, productActionType, toastType } from "../../constants";
 import TopProgressBar from "../../shared/components/loaders/TopProgressBar";
 import CustomerForm from "./customerModel/CustomerForm";
 import HoldListModal from "./holdListModal/HoldListModal";
@@ -61,7 +60,10 @@ import OfflineCatalogStatus from "./offline/OfflineCatalogStatus";
 import OfflineSalesModal from "./offline/OfflineSalesModal";
 import {
     enqueueOfflineSale,
+    createClientUuid,
+    filterCatalogProducts,
     getOfflineCustomers,
+    getOfflineSale,
     getOfflineSales,
     getOfflineSnapshot,
     getOfflineSyncCredential,
@@ -112,7 +114,6 @@ const PosMainPage = (props) => {
         onClickFullScreen,
         posAllProducts,
         customCart,
-        posCashPaymentAction,
         frontSetting,
         fetchFrontSetting,
         settings,
@@ -999,12 +1000,54 @@ const PosMainPage = (props) => {
         setCartProductIds("");
     };
 
-    const saveOfflineCheckout = async (payload, receipt, sriType) => {
+    const saveLocalFirstCheckout = async (payload, receipt, sriType) => {
         try {
             const queuedSale = await enqueueOfflineSale(payload, receipt, sriType);
+            const reservedSnapshot = await reserveOfflineCatalogStock(
+                payload.warehouse_id,
+                payload.sale_items
+            ).catch(() => null);
+
+            // Reflejar de inmediato la reserva local. No volvemos a consultar
+            // el catálogo del servidor hasta saber si este UUID quedó
+            // confirmado; hacerlo antes podría reponer visualmente el stock
+            // que la venta protegida acaba de reservar.
+            if (reservedSnapshot?.payload) {
+                dispatch({
+                    type: productActionType.FETCH_BRAND_CLICKABLE,
+                    payload: filterCatalogProducts(reservedSnapshot.payload, { brandId, categoryId }),
+                });
+            }
+
+            let serverSale = null;
+            if (catalogStatus.online && !payload.offline_customer_uuid) {
+                const credential = await ensureOfflineSyncCredential().catch(() => null);
+                if (credential?.token) {
+                    await syncOfflineSales({
+                        force: true,
+                        credential,
+                        onlyClientUuid: queuedSale.clientUuid,
+                        onSynced: (createdSale, syncedQueueItem) => {
+                            if (syncedQueueItem.clientUuid === queuedSale.clientUuid) {
+                                serverSale = createdSale;
+                            }
+                        },
+                        onReview: (_queuedSale, message) => {
+                            dispatch(addToast({
+                                text: `La venta quedó protegida, pero requiere revisión: ${message}`,
+                                type: toastType.WARNING,
+                            }));
+                        },
+                    }).catch(() => null);
+
+                    // Si otra sincronización ya tenía el lock, recuperamos el
+                    // resultado persistido en lugar de reenviar el checkout.
+                    const storedSale = await getOfflineSale(queuedSale.clientUuid).catch(() => null);
+                    serverSale = serverSale || storedSale?.serverSale || null;
+                }
+            }
+
             await requestOfflineSaleBackgroundSync().catch(() => null);
-            await reserveOfflineCatalogStock(payload.warehouse_id, payload.sale_items).catch(() => null);
-            await fetchBrandClickable(brandId, categoryId, payload.warehouse_id);
             const localReference = `OFF-${queuedSale.clientUuid.slice(0, 8).toUpperCase()}`;
             const customer = { name: selectedCustomerOption?.label || "Consumidor final" };
             const provisionalReceipt = {
@@ -1018,7 +1061,7 @@ const PosMainPage = (props) => {
 
             dispatch({
                 type: posCashPaymentActionType.POS_CASH_PAYMENT,
-                payload: {
+                payload: serverSale || {
                     attributes: {
                         reference_code: localReference,
                         customer,
@@ -1027,16 +1070,21 @@ const PosMainPage = (props) => {
                     },
                 },
             });
-            setPaymentPrint(provisionalReceipt);
+            setPaymentPrint(serverSale
+                ? mergeReceiptWithSale(receipt, serverSale)
+                : provisionalReceipt);
             setUpdateProducts([]);
             setModalShowPaymentSlip(true);
             dispatch(addToast({
-                text: "Venta guardada en el dispositivo. Se sincronizará al recuperar conexión.",
+                text: serverSale
+                    ? "Venta registrada y confirmada correctamente."
+                    : "Venta protegida en este dispositivo. EcuaPos confirmará el mismo cobro al recuperar conexión.",
             }));
+            if (serverSale) await syncOfflineCatalog().catch(() => null);
             return true;
         } catch (_) {
             dispatch(addToast({
-                text: "No se pudo guardar la venta offline. El carrito se conservó.",
+                text: "No se pudo proteger la venta en este dispositivo. El carrito se conservó y no se envió ningún cobro.",
                 type: toastType.ERROR,
             }));
             return false;
@@ -1048,41 +1096,19 @@ const PosMainPage = (props) => {
         if (!handleValidation()) return;
 
         const payload = prepareData(updateProducts);
+        // Identidad estable para todo el ciclo del cobro. También se envía en
+        // ventas online: si el servidor confirma pero la respuesta se pierde,
+        // la copia que queda en IndexedDB reutiliza este UUID y el backend la
+        // reconoce como la misma venta.
+        payload.client_uuid = createClientUuid();
         const receipt = preparePrintData();
         const requestedSriType = tipoComprobanteSri;
         payload.requested_electronic_document = requestedSriType || null;
 
-        // Un cliente temporal necesita pasar primero por la cola de clientes,
-        // incluso si la conexión regresó justo antes de cobrar.
-        if (!catalogStatus.online || payload.offline_customer_uuid) {
-            if (await saveOfflineCheckout(payload, receipt, requestedSriType)) finishCheckout();
-            return;
-        }
-
-        const result = await posCashPaymentAction(
-                payload,
-                setUpdateProducts,
-                posAllProduct,
-                {
-                    brandId,
-                    categoryId,
-                    selectedOption,
-                }
-            );
-
-        if (result?.networkError) {
-            setCatalogStatus((current) => ({ ...current, online: false, status: "offline" }));
-            if (await saveOfflineCheckout(payload, receipt, requestedSriType)) finishCheckout();
-            return;
-        }
-
-        if (!result?.success) return;
-        // El modal se abre únicamente después de unir los datos locales del
-        // ticket con la venta confirmada por el servidor. Antes se abría desde
-        // el thunk y este set reemplazaba cliente, referencia y vendedor.
-        setPaymentPrint(mergeReceiptWithSale(receipt, result.sale));
-        setModalShowPaymentSlip(true);
-        finishCheckout();
+        // Toda venta usa el mismo outbox local, haya o no conexión. El
+        // servidor deja de ser el primer paso y pasa a confirmar un UUID que
+        // ya quedó guardado de forma durable en el dispositivo.
+        if (await saveLocalFirstCheckout(payload, receipt, requestedSriType)) finishCheckout();
     };
 
     const onCashPayment = async (event) => {
@@ -1576,7 +1602,6 @@ export default connect(mapStateToProps, {
     fetchSetting,
     fetchFrontSetting,
     posSearchNameProduct,
-    posCashPaymentAction,
     posSearchCodeProduct,
     posAllProduct,
     fetchBrandClickable,
