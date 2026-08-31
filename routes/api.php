@@ -209,6 +209,7 @@ Route::middleware(['auth:sanctum', 'store.context'])->group(function () {
     // desde reportes/otras pantallas que no deberían necesitar el
     // permiso de administración del catálogo solo para consultar).
     Route::middleware('permission:manage_products')->group(function () {
+        Route::post('main-products/bulk-delete', [MainProductAPIController::class, 'bulkDestroy']);
         Route::resource('products', ProductAPIController::class)->only(['store', 'update', 'destroy']);
         Route::resource('main-products', MainProductAPIController::class)->only(['store', 'update', 'destroy']);
         Route::post(

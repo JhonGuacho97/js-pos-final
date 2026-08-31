@@ -12,13 +12,14 @@ import {getFormattedMessage} from "../../shared/sharedMethod";
 const CreatePurchase = (props) => {
     const {addPurchase, warehouses, fetchAllWarehouses, fetchAllSuppliers, suppliers} = props;
     const navigate = useNavigate();
-    // Prellenado opcional desde el botón "Reponer" del dashboard
-    // (Insights de catálogo, stock bajo) -- solo pone el almacén y el
-    // texto de búsqueda, el usuario igual tiene que elegir el producto
-    // de la lista para agregarlo, no se agrega nada automático.
+    // Prellenado opcional desde los avisos de reposición o la selección
+    // múltiple de Productos. La compra sigue requiriendo almacén,
+    // proveedor, costos y confirmación manual del usuario.
     const [searchParams] = useSearchParams();
     const initialWarehouseId = searchParams.get('warehouse_id');
     const initialSearchCode = searchParams.get('product_code');
+    const initialProductIds = (searchParams.get('product_ids') || '')
+        .split(',').map((id) => Number(id)).filter(Boolean);
 
     useEffect(() => {
         fetchAllWarehouses();
@@ -34,7 +35,7 @@ const CreatePurchase = (props) => {
             <HeaderTitle title={getFormattedMessage("purchase.create.title")} to='/app/purchases'/>
             <PurchaseForm addPurchaseData={addPurchaseData} warehouses={warehouses}
                           suppliers={suppliers} initialWarehouseId={initialWarehouseId}
-                          initialSearchCode={initialSearchCode}/>
+                          initialSearchCode={initialSearchCode} initialProductIds={initialProductIds}/>
         </MasterLayout>
     );
 };

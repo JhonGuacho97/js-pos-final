@@ -228,4 +228,54 @@ class MainProductAPIController extends AppBaseController
 
         return $this->sendSuccess('Product deleted successfully');
     }
+
+    /**
+     * Elimina productos principales en bloque solamente si TODOS se pueden
+     * borrar. Así una selección nunca queda parcialmente eliminada.
+     */
+    public function bulkDestroy(Request $request): JsonResponse
+    {
+        $data = $request->validate([
+            'ids' => ['required', 'array', 'min:1', 'max:100'],
+            'ids.*' => ['integer', 'distinct'],
+        ]);
+
+        $query = MainProduct::query()->with('products');
+        if ($storeId = $this->currentStoreId()) {
+            $query->where('store_id', $storeId);
+        }
+        $mainProducts = $query->whereIn('id', $data['ids'])->get();
+
+        if ($mainProducts->count() !== count($data['ids'])) {
+            return $this->sendError('Uno o más productos no pertenecen a la tienda activa.');
+        }
+
+        $blocked = $mainProducts->filter(function (MainProduct $mainProduct) {
+            return $mainProduct->products->contains(function (Product $product) {
+                return PurchaseItem::where('product_id', $product->id)->exists()
+                    || SaleItem::where('product_id', $product->id)->exists();
+            });
+        })->pluck('name')->values();
+
+        if ($blocked->isNotEmpty()) {
+            return $this->sendError(
+                'No se eliminó ningún producto. Tienen movimientos registrados: '.$blocked->implode(', ').'.'
+            );
+        }
+
+        DB::transaction(function () use ($mainProducts) {
+            foreach ($mainProducts as $mainProduct) {
+                foreach ($mainProduct->products as $product) {
+                    if (File::exists(Storage::path('product_barcode/barcode-PR_'.$product->id.'.png'))) {
+                        File::delete(Storage::path('product_barcode/barcode-PR_'.$product->id.'.png'));
+                    }
+                    $product->delete();
+                }
+                VariationProduct::where('main_product_id', $mainProduct->id)->delete();
+                $mainProduct->delete();
+            }
+        });
+
+        return $this->sendSuccess($mainProducts->count().' productos eliminados correctamente.');
+    }
 }

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { connect, useDispatch } from 'react-redux';
 import { useNavigate } from 'react-router-dom';
 import dayjs from 'dayjs';
@@ -41,6 +41,7 @@ const PurchaseForm = ( props ) => {
         products, frontSetting, allConfigData,
         initialWarehouseId,
         initialSearchCode,
+        initialProductIds = [],
     } = props;
     const navigate = useNavigate();
     const dispatch = useDispatch();
@@ -59,6 +60,7 @@ const PurchaseForm = ( props ) => {
     // luego de la primera vez, así que no interfiere con que el usuario
     // cambie el almacén a mano.
     const [ warehousePrefilled, setWarehousePrefilled ] = useState( false );
+    const initialProductsApplied = useRef(false);
 
     const [ purchaseValue, setPurchaseValue ] = useState( {
         date: singlePurchase ? toLocalDateObject( singlePurchase.date ) : new Date(),
@@ -93,8 +95,16 @@ const PurchaseForm = ( props ) => {
     }, [ updateProducts, quantity, newCost, newDiscount, newTax, subTotal, newPurchaseUnit ] );
 
     useEffect( () => {
-        updateProducts.length >= 1 ? dispatch( { type: 'DISABLE_OPTION', payload: true } ) : dispatch( { type: 'DISABLE_OPTION', payload: false } )
-    }, [ updateProducts ] )
+        const warehouse = purchaseValue.warehouse_id;
+        const hasWarehouse = Boolean(
+            warehouse && (typeof warehouse !== 'object' || warehouse.value)
+        );
+
+        dispatch( {
+            type: 'DISABLE_OPTION',
+            payload: updateProducts.length >= 1 && hasWarehouse,
+        } );
+    }, [ updateProducts.length, purchaseValue.warehouse_id ] )
 
     useEffect( () => {
         if ( singlePurchase ) {
@@ -125,8 +135,16 @@ const PurchaseForm = ( props ) => {
         // "Valores" se encarga de mostrar el stock correcto de cada
         // almacén por separado, leyendo el desglose que ya trae cada
         // producto (product.attributes.warehouse).
-        purchaseValue.warehouse_id.value ? fetchAllProducts() : null
-    }, [ purchaseValue.warehouse_id ] )
+        if (purchaseValue.warehouse_id.value || initialProductIds.length) fetchAllProducts();
+    }, [ purchaseValue.warehouse_id, initialProductIds.length ] )
+
+    useEffect(() => {
+        if (singlePurchase || initialProductsApplied.current || !initialProductIds.length || !customProducts.length) return;
+        const selected = customProducts.filter((product) => initialProductIds.includes(Number(product.product_id)));
+        if (!selected.length) return;
+        initialProductsApplied.current = true;
+        setUpdateProducts(selected);
+    }, [customProducts, initialProductIds, singlePurchase]);
 
     const handleValidation = () => {
         let errorss = {};

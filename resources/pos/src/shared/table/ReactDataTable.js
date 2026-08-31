@@ -51,6 +51,9 @@ const ReactDataTable = (props) => {
         isSelectableRows,
         onSelectedRowsChange,
         clearSelectedRows,
+        selectableRowSelected,
+        paginationServerOptions,
+        onPageChangeStart,
         isExport,
         customerId,
         onReportPdfClick,
@@ -349,6 +352,9 @@ const ReactDataTable = (props) => {
     };
 
     const handlePageChange = (page) => {
+        if (currentPage !== page && onPageChangeStart) {
+            onPageChangeStart(page);
+        }
         if (currentPage !== page) {
             setCurrentPage(page);
         }
@@ -391,6 +397,8 @@ const ReactDataTable = (props) => {
                 selectableRows={isSelectableRows}
                 onSelectedRowsChange={onSelectedRowsChange}
                 clearSelectedRows={clearSelectedRows}
+                selectableRowSelected={selectableRowSelected}
+                paginationServerOptions={paginationServerOptions}
                 selectableRowsHighlight
             />
         </div>

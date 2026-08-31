@@ -178,3 +178,17 @@ export const editMainProduct = (productId, product, navigate) => async (dispatch
     );
     dispatch(setSavingButton(false));
 };
+
+export const bulkDeleteMainProducts = (ids, onSuccess) => async (dispatch) => {
+    const formData = new FormData();
+    ids.forEach((id) => formData.append('ids[]', id));
+
+    await apiRequest(dispatch,
+        () => apiConfig.post(`${apiBaseURL.MAIN_PRODUCTS}/bulk-delete`, formData),
+        (response) => {
+            dispatch(addToast({ text: response.data.message || 'Productos eliminados correctamente.' }));
+            dispatch(fetchAllMainProducts({}, true));
+            onSuccess?.();
+        }
+    );
+};

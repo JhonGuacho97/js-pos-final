@@ -1,4 +1,5 @@
-import React, { useEffect, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { connect } from "react-redux";
 import dayjs from 'dayjs';
 import utc from 'dayjs/plugin/utc';
@@ -11,7 +12,7 @@ dayjs.extend(isoWeek);
 dayjs.extend(relativeTime);
 import { Button, Image } from "react-bootstrap-v5";
 import MasterLayout from "../MasterLayout";
-import { fetchAllMainProducts } from "../../store/action/productAction";
+import { bulkDeleteMainProducts, fetchAllMainProducts } from "../../store/action/productAction";
 import ReactDataTable from "../../shared/table/ReactDataTable";
 import DeleteMainProduct from "./DeleteMainProduct";
 import TabTitle from "../../shared/tab-title/TabTitle";
@@ -29,6 +30,7 @@ import TopProgressBar from "../../shared/components/loaders/TopProgressBar";
 import ImportProductModel from "./ImportProductModel";
 import { downloadExcel } from "../../store/action/downloadReportAction";
 import ResourceListHeader from "../../shared/components/ResourceListHeader";
+import BulkProductActionsModal from "./BulkProductActionsModal";
 import "../../assets/scss/custom/pages/resource-list.scss";
 
 const Product = (props) => {
@@ -42,11 +44,19 @@ const Product = (props) => {
         downloadExcel,
         productUnitId,
         allConfigData,
+        config,
+        bulkDeleteMainProducts,
     } = props;
+    const navigate = useNavigate();
     const [deleteModel, setDeleteModel] = useState(false);
     const [isDelete, setIsDelete] = useState(null);
     const [isOpen, setIsOpen] = useState(false);
     const [lightBoxImage, setLightBoxImage] = useState([]);
+    const [selectedProducts, setSelectedProducts] = useState([]);
+    const [clearSelection, setClearSelection] = useState(false);
+    const [bulkModal, setBulkModal] = useState(false);
+    const [bulkModalMode, setBulkModalMode] = useState("manage");
+    const tablePageChanging = useRef(false);
 
     const [importProduct, setimportProduct] = useState(false);
     const handleClose = () => {
@@ -91,18 +101,20 @@ const Product = (props) => {
         frontSetting.value &&
         frontSetting.value.currency_symbol;
 
-    const formattedPrice = (product_price) => {
+    const formattedPrice = useCallback((product_price) => {
         return currencySymbolHandling(
             allConfigData,
             currencySymbol,
             product_price
         )
-    }
+    }, [allConfigData, currencySymbol]);
 
-    const itemsValue =
-        currencySymbol &&
-        products.length >= 0 &&
-        products.map((product) => {
+    const itemsValue = useMemo(() => {
+        if (!currencySymbol || !Array.isArray(products)) {
+            return [];
+        }
+
+        return products.map((product) => {
             let product_price = product.attributes.min_price == product.attributes.max_price ? formattedPrice(product.attributes.min_price) : formattedPrice(product.attributes.min_price) + " - " + formattedPrice(product.attributes.max_price);
             const productData = product?.attributes?.products?.length > 0
                 ? product.attributes.products[0]
@@ -131,8 +143,63 @@ const Product = (props) => {
                 images: product?.attributes.images,
                 id: product.id,
                 currency: currencySymbol,
+                products: product?.attributes?.products || [],
             };
         });
+    }, [currencySymbol, formattedPrice, products]);
+
+    const canManagePurchase = Array.isArray(config) && config.includes("manage_purchase");
+    const syncSelectedRows = useCallback(({ selectedRows }) => {
+        setSelectedProducts((current) => {
+            if (tablePageChanging.current && selectedRows.length === 0) {
+                return current;
+            }
+            if (selectedRows.length > 0) {
+                tablePageChanging.current = false;
+            }
+
+            const visibleIds = new Set(itemsValue.map((product) => product.id));
+            const merged = [
+                ...current.filter((product) => !visibleIds.has(product.id)),
+                ...selectedRows,
+            ];
+            const next = Array.from(new Map(merged.map((product) => [product.id, product])).values());
+            const currentIds = current.map((product) => Number(product.id)).sort((a, b) => a - b);
+            const nextIds = next.map((product) => Number(product.id)).sort((a, b) => a - b);
+
+            return currentIds.length === nextIds.length
+                && currentIds.every((id, index) => id === nextIds[index])
+                ? current
+                : next;
+        });
+    }, [itemsValue]);
+    const handleTablePageChange = useCallback(() => {
+        tablePageChanging.current = true;
+    }, []);
+    const selectedProductIds = useMemo(
+        () => new Set(selectedProducts.map((product) => product.id)),
+        [selectedProducts]
+    );
+    const isProductSelected = useCallback(
+        (row) => selectedProductIds.has(row.id),
+        [selectedProductIds]
+    );
+    const clearBulkSelection = () => {
+        setSelectedProducts([]);
+        setClearSelection((current) => !current);
+        setBulkModal(false);
+    };
+    const openBulkModal = (mode) => {
+        setBulkModalMode(mode);
+        setBulkModal(true);
+    };
+    const createBulkPurchase = (productIds) => {
+        setBulkModal(false);
+        navigate(`/app/purchases/create?product_ids=${productIds.join(",")}`);
+    };
+    const deleteBulkProducts = () => {
+        bulkDeleteMainProducts(selectedProducts.map((product) => product.id), clearBulkSelection);
+    };
 
     const columns = [
         {
@@ -311,6 +378,11 @@ const Product = (props) => {
                     stats={productStats}
                 />
                 <div className="resource-list-table-shell product_table">
+                    {selectedProducts.length > 0 && <div className="product-bulk-toolbar">
+                        <span className="product-bulk-toolbar__icon"><i className="bi bi-check2-square" /></span>
+                        <div className="product-bulk-toolbar__copy"><small>SELECCIÓN ACTIVA</small><strong>{selectedProducts.length} {selectedProducts.length === 1 ? "producto" : "productos"}</strong><p>Prepara una compra o administra los artículos marcados.</p></div>
+                        <div className="product-bulk-toolbar__actions"><Button className="product-bulk-toolbar__clear" onClick={clearBulkSelection}>Limpiar</Button><Button className="product-bulk-toolbar__delete" onClick={() => openBulkModal("delete")}><i className="bi bi-trash3" /> Eliminar</Button>{canManagePurchase && <Button className="product-bulk-toolbar__manage" onClick={() => openBulkModal("manage")}><i className="bi bi-box-seam" /> Gestionar selección</Button>}</div>
+                    </div>}
                     <ReactDataTable
                         columns={columns}
                         items={itemsValue}
@@ -327,6 +399,11 @@ const Product = (props) => {
                         importBtnTitle={"product.import.title"}
                         isExport
                         onExcelClick={onExcelClick}
+                        isSelectableRows
+                        onSelectedRowsChange={syncSelectedRows}
+                        clearSelectedRows={clearSelection}
+                        selectableRowSelected={isProductSelected}
+                        onPageChangeStart={handleTablePageChange}
                     />
                 </div>
             </div>
@@ -348,6 +425,8 @@ const Product = (props) => {
                     show={importProduct}
                 />
             )}
+            <BulkProductActionsModal show={bulkModal} initialMode={bulkModalMode} products={selectedProducts} canManagePurchase={canManagePurchase} onClose={() => setBulkModal(false)}
+                onCreatePurchase={createBulkPurchase} onDelete={deleteBulkProducts} />
         </MasterLayout>
     );
 };
@@ -360,6 +439,7 @@ const mapStateToProps = (state) => {
         frontSetting,
         productUnitId,
         allConfigData,
+        config,
     } = state;
     return {
         products,
@@ -368,6 +448,7 @@ const mapStateToProps = (state) => {
         frontSetting,
         productUnitId,
         allConfigData,
+        config,
     };
 };
 
@@ -375,4 +456,5 @@ export default connect(mapStateToProps, {
     fetchAllMainProducts,
     fetchFrontSetting,
     downloadExcel,
+    bulkDeleteMainProducts,
 })(Product);
