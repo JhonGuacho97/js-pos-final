@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import ReactDOM from "react-dom";
 import "./catalog.scss";
 
@@ -42,6 +42,11 @@ function ProductImage({ src, alt }) {
 }
 
 function ProductModal({ product, onClose, onAdd }) {
+    const images = (product.images || []).filter(Boolean);
+    const [activeImage, setActiveImage] = useState(0);
+    const [zoomOpen, setZoomOpen] = useState(false);
+    const [pan, setPan] = useState({ x: 0, y: 0 });
+    const dragStart = useRef(null);
     const availableOptions = product.options.filter((option) => option.available);
     const [optionId, setOptionId] = useState(availableOptions[0]?.product_id);
     const option = product.options.find((item) => item.product_id === optionId) || availableOptions[0];
@@ -57,6 +62,29 @@ function ProductModal({ product, onClose, onAdd }) {
         setQty(1);
     }, [optionId]);
 
+    useEffect(() => {
+        setActiveImage(0);
+        setZoomOpen(false);
+        setPan({ x: 0, y: 0 });
+    }, [product.id]);
+
+    useEffect(() => {
+        setPan({ x: 0, y: 0 });
+    }, [activeImage]);
+
+    const startPan = (event) => {
+        event.currentTarget.setPointerCapture?.(event.pointerId);
+        dragStart.current = { clientX: event.clientX, clientY: event.clientY, pan };
+    };
+    const movePan = (event) => {
+        if (!dragStart.current) return;
+        setPan({
+            x: dragStart.current.pan.x + event.clientX - dragStart.current.clientX,
+            y: dragStart.current.pan.y + event.clientY - dragStart.current.clientY,
+        });
+    };
+    const endPan = () => { dragStart.current = null; };
+
     const presentation = option?.presentations?.find((item) => item.id === presentationId);
     const price = presentation?.price ?? option?.price ?? 0;
     const maxQty = presentation?.stock ?? option?.stock ?? null;
@@ -68,7 +96,25 @@ function ProductModal({ product, onClose, onAdd }) {
         <div className="catalog-overlay" onMouseDown={(event) => event.target === event.currentTarget && onClose()}>
             <section className="catalog-product-modal" role="dialog" aria-modal="true">
                 <button className="catalog-close" onClick={onClose} aria-label="Cerrar">×</button>
-                <div className="catalog-product-modal__media"><ProductImage src={product.images[0]} alt={product.name} /></div>
+                <div className="catalog-product-modal__media">
+                    <div className="catalog-product-gallery">
+                        <ProductImage src={images[activeImage]} alt={`${product.name}${images.length > 1 ? ` · imagen ${activeImage + 1}` : ""}`} />
+                        {images.length > 0 && <button className="catalog-gallery-zoom" type="button" aria-label="Ampliar imagen"
+                            onClick={() => { setPan({ x: 0, y: 0 }); setZoomOpen(true); }}>⌕ <span>Ampliar</span></button>}
+                        {images.length > 1 && <>
+                            <button className="catalog-gallery-nav catalog-gallery-nav--previous" type="button" aria-label="Imagen anterior"
+                                onClick={() => setActiveImage((current) => (current - 1 + images.length) % images.length)}>‹</button>
+                            <button className="catalog-gallery-nav catalog-gallery-nav--next" type="button" aria-label="Imagen siguiente"
+                                onClick={() => setActiveImage((current) => (current + 1) % images.length)}>›</button>
+                            <span className="catalog-gallery-count">{activeImage + 1} / {images.length}</span>
+                            <div className="catalog-gallery-thumbnails" aria-label="Galería de imágenes">
+                                {images.map((image, index) => <button key={`${image}-${index}`} type="button"
+                                    className={index === activeImage ? "active" : ""} aria-label={`Ver imagen ${index + 1}`}
+                                    onClick={() => setActiveImage(index)}><img src={image} alt="" /></button>)}
+                            </div>
+                        </>}
+                    </div>
+                </div>
                 <div className="catalog-product-modal__content">
                     <span className="catalog-eyebrow">{product.category?.name || "Producto"}</span>
                     <h2>{product.name}</h2>
@@ -112,6 +158,10 @@ function ProductModal({ product, onClose, onAdd }) {
                     </div>
                     {!canAdd && <div className="catalog-inline-error">No hay existencia suficiente para esta selección.</div>}
                 </div>
+                {zoomOpen && <div className="catalog-image-zoom" role="dialog" aria-modal="true" aria-label={`Imagen ampliada de ${product.name}`}>
+                    <div className="catalog-image-zoom__toolbar"><span>Arrastra la imagen para ver los detalles</span><div><button type="button" onClick={() => setPan({ x: 0, y: 0 })}>Centrar</button><button type="button" aria-label="Cerrar vista ampliada" onClick={() => setZoomOpen(false)}>×</button></div></div>
+                    <div className="catalog-image-zoom__canvas" onPointerDown={startPan} onPointerMove={movePan} onPointerUp={endPan} onPointerCancel={endPan} title="Arrastra la imagen con el cursor"><img src={images[activeImage]} alt={`${product.name} ampliado`} style={{ transform: `translate(${pan.x}px, ${pan.y}px) scale(1.85)` }} /></div>
+                </div>}
             </section>
         </div>
     );
@@ -452,10 +502,10 @@ function CatalogApp() {
     return <div className="catalog-app">
         <header className="catalog-header"><div className="catalog-shell catalog-header__inner"><a className="catalog-logo" href="#"><img src={data.store.logo} alt={data.store.name} /><div><strong>{data.store.name}</strong><small>Catálogo virtual</small></div></a><div className="catalog-header__actions"><button className="catalog-account-button" onClick={() => setAccountOpen(true)}><span>{session.authenticated ? session.customer.name?.trim().charAt(0).toUpperCase() : "👤"}</span><strong>{session.authenticated ? session.customer.name?.split(" ")[0] : "Mi cuenta"}</strong></button><button className="catalog-cart-button" onClick={() => setCartOpen(true)}>🛒 <span>{count}</span><strong>{money(total)}</strong></button></div></div></header>
         <main>
-            <section className="catalog-hero"><div className="catalog-shell"><div className="catalog-hero__copy"><span className="catalog-eyebrow">Compra fácil y directo</span><h1>{data.settings.headline}</h1><p>{data.settings.description || "Explora nuestros productos, arma tu pedido y coordina la entrega por WhatsApp."}</p></div><div className="catalog-search"><span>⌕</span><input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Buscar productos…" />{search && <button onClick={() => setSearch("")}>×</button>}</div></div></section>
+            <section className="catalog-hero"><div className="catalog-shell catalog-hero__layout"><div className="catalog-hero__copy"><span className="catalog-eyebrow">Compra fácil y directo</span><h1>{data.settings.headline}</h1><p>{data.settings.description || "Explora nuestros productos, arma tu pedido y coordina la entrega por WhatsApp."}</p><div className="catalog-search"><span>⌕</span><input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Buscar productos…" />{search && <button onClick={() => setSearch("")}>×</button>}</div></div><aside className="catalog-shopping-guide" aria-label="Información de compra"><span className="catalog-shopping-guide__icon">🛍</span><div><span className="catalog-eyebrow">Tu pedido, a tu ritmo</span><h2>Compra en pocos pasos</h2></div><ul><li><span>1</span> Elige tus productos y presentación.</li><li><span>2</span> Confirma tus datos de contacto.</li><li><span>3</span> Coordinamos por WhatsApp.</li></ul>{data.settings.minimum_order > 0 && <small>Pedido mínimo: <strong>{money(data.settings.minimum_order)}</strong></small>}</aside></div></section>
             <section className="catalog-shell catalog-products-section"><div className="catalog-categories"><button className={category === "all" ? "active" : ""} onClick={() => setCategory("all")}>Todos <span>{data.products.length}</span></button>{data.categories.map((item) => <button key={item.id} className={String(category) === String(item.id) ? "active" : ""} onClick={() => setCategory(item.id)}>{item.name}</button>)}</div>
                 <div className="catalog-section-title"><div><span className="catalog-eyebrow">Explora</span><h2>{category === "all" ? "Todos los productos" : data.categories.find((item) => String(item.id) === String(category))?.name}</h2></div><span>{filtered.length} productos</span></div>
-                <div className="catalog-product-grid">{filtered.map((product) => <article key={product.id} className={`catalog-product-card${!product.available ? " is-sold-out" : ""}`} onClick={() => product.available && setSelectedProduct(product)}><div className="catalog-product-card__image"><ProductImage src={product.images[0]} alt={product.name} />{product.featured && <span className="catalog-featured">Destacado</span>}{!product.available && <span className="catalog-sold-out">Agotado</span>}</div><div className="catalog-product-card__body"><small>{product.category?.name || product.brand || "Producto"}</small><h3>{product.name}</h3><div><strong>{product.min_price === product.max_price ? money(product.min_price) : `Desde ${money(product.min_price)}`}</strong><button aria-label="Ver producto">+</button></div></div></article>)}</div>
+                <div className="catalog-product-grid">{filtered.map((product) => <article key={product.id} className={`catalog-product-card${!product.available ? " is-sold-out" : ""}`} onClick={() => product.available && setSelectedProduct(product)}><div className="catalog-product-card__image"><ProductImage src={product.images[0]} alt={product.name} />{product.featured && <span className="catalog-featured">Destacado</span>}{!product.available && <span className="catalog-sold-out">Agotado</span>}{product.images.length > 1 && <span className="catalog-image-count" title={`${product.images.length} imágenes`}>▧ {product.images.length}</span>}</div><div className="catalog-product-card__body"><small>{product.category?.name || product.brand || "Producto"}</small><h3>{product.name}</h3><div><strong>{product.min_price === product.max_price ? money(product.min_price) : `Desde ${money(product.min_price)}`}</strong><button aria-label={`Ver ${product.name}`}>+</button></div></div></article>)}</div>
                 {!filtered.length && <div className="catalog-empty catalog-empty--products"><Icon>⌕</Icon><h3>No encontramos productos</h3><p>Prueba con otra categoría o término de búsqueda.</p></div>}
             </section>
         </main>
