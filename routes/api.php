@@ -646,6 +646,7 @@ Route::middleware(['auth:sanctum', 'store.context'])->group(function () {
     Route::post('register-entry', [POSRegisterAPIController::class, 'entry']);
     Route::get('available-cash-registers', [POSRegisterAPIController::class, 'availableCashRegisters']);
     Route::post('register-close', [POSRegisterAPIController::class, 'closeRegister']);
+    Route::get('register-report/{session}/movements', [POSRegisterAPIController::class, 'registerReportMovements']);
     Route::get('register-report', [POSRegisterAPIController::class, 'registerReport']);
     Route::middleware('permission:manage_cash_control|view_own_cash_session|create_cash_income|create_cash_expense|withdraw_cash|view_cash_supervision|view_cash_closures|manage_cash_registers|reverse_cash_movement|transfer_cash|review_cash_closure')
         ->prefix('cash-control')->group(function () {

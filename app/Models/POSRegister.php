@@ -136,6 +136,17 @@ class POSRegister extends BaseModel implements JsonResourceful
             'user' => $this->user,
             'warehouse_id' => $this->warehouse_id,
             'cash_register' => $this->cashRegister,
+            'warehouse' => $this->warehouse,
+            'closed_by' => $this->closedBy,
+            'bank_transfer' => $this->bank_transfer,
+            'cheque' => $this->cheque,
+            'other' => $this->other,
+            'total_sale' => $this->total_sale,
+            'total_return' => $this->total_return,
+            'total_amount' => $this->total_amount,
+            'duration_minutes' => $this->closed_at && $this->created_at
+                ? $this->created_at->diffInMinutes($this->closed_at)
+                : null,
         ];
 
         return $fields;

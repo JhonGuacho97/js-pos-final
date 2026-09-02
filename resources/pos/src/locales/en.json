@@ -982,7 +982,7 @@
     "globally.total-cash.label": "Total Cash",
     "globally.input.note.label": "Note",
     "globally.input.note.placeholder.label": "Enter Note",
-    "register.report.title": "Register Report",
+    "register.report.title": "Cash register report",
     "user-details.table.opened-on.row.label": "Opened On",
     "user-details.table.closde-on.row.label": "Closed On",
     "globally.input.cash-in-hand-while-closing.label": "Cash In Hand While Closing",

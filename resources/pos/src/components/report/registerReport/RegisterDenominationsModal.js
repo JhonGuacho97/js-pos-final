@@ -1,232 +1,104 @@
-import React from "react";
+import React, { useCallback, useEffect, useState } from "react";
+import dayjs from "dayjs";
 import Modal from "react-bootstrap/Modal";
-import Button from "react-bootstrap/Button";
-import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import {
-    faCircleCheck,
-    faTriangleExclamation,
-    faCashRegister,
-} from "@fortawesome/free-solid-svg-icons";
+import apiConfig from "../../../config/apiConfig";
 import { currencySymbolHandling, getAvatarName } from "../../../shared/sharedMethod";
 
-/**
- * Solo lectura: muestra cómo quedó un registro de caja ya cerrado --
- * quién lo cerró, si cuadró, y el desglose de billetes/monedas de
- * apertura y cierre. Mismo lenguaje visual que el modal de cierre en vivo
- * (PosCloseRegisterDetailsModel), para que se sientan como la misma
- * pantalla en dos momentos distintos.
- */
-const RegisterDenominationsModal = ({
-    show,
-    onHide,
-    register,
-    currencySymbol,
-    allConfigData,
-}) => {
-    if (!register) {
-        return null;
-    }
+const movementLabels = {
+    OPENING: "Apertura", MANUAL_INCOME: "Ingreso manual", MANUAL_EXPENSE: "Egreso manual", WITHDRAWAL: "Retiro",
+    SALE_PAYMENT: "Venta en efectivo", EXPENSE_PAYMENT: "Gasto desde caja", CASH_REFUND: "Reembolso",
+    REVERSAL: "Reversión", TRANSFER_IN: "Transferencia recibida", TRANSFER_OUT: "Transferencia enviada",
+};
 
-    const hasExpectedCash =
-        register.expected_cash !== null && register.expected_cash !== undefined;
-    const difference = hasExpectedCash
-        ? Math.round(
-              (Number(register.cash_in_hand_while_closing) -
-                  Number(register.expected_cash)) *
-                  100
-          ) / 100
-        : null;
+const RegisterDenominationsModal = ({ show, onHide, register, currencySymbol, allConfigData }) => {
+    const [movements, setMovements] = useState([]);
+    const [movementSummary, setMovementSummary] = useState({});
+    const [movementMeta, setMovementMeta] = useState({ current_page: 1, last_page: 1, total: 0 });
+    const [movementPage, setMovementPage] = useState(1);
+    const [movementType, setMovementType] = useState("");
+    const [movementSearch, setMovementSearch] = useState("");
+    const [loading, setLoading] = useState(false);
+    const [loadError, setLoadError] = useState("");
 
-    const status = !hasExpectedCash
-        ? null
-        : difference === 0
-        ? { label: "Caja cuadrada", tone: "success", icon: faCircleCheck }
-        : difference > 0
-        ? { label: "Sobrante — revisar", tone: "warning", icon: faTriangleExclamation }
-        : { label: "Faltante", tone: "danger", icon: faTriangleExclamation };
+    const loadMovements = useCallback(async () => {
+        if (!show || !register?.id) return;
+        setLoading(true); setLoadError("");
+        try {
+            const response = await apiConfig.get(`register-report/${register.id}/movements`, { params: { "page[number]": movementPage, per_page: 8, type: movementType || undefined, search: movementSearch || undefined } });
+            setMovements(response.data?.data || []);
+            setMovementSummary(response.data?.summary || {});
+            setMovementMeta({ current_page: response.data?.current_page || 1, last_page: response.data?.last_page || 1, total: response.data?.total || 0 });
+        } catch (error) { setLoadError(error?.response?.data?.message || "No fue posible cargar los movimientos."); }
+        finally { setLoading(false); }
+    }, [show, register?.id, movementPage, movementType, movementSearch]);
 
-    const toneStyles = status && {
-        success: { bg: "#ecfdf5", fg: "#059669", ring: "#a7f3d0" },
-        warning: { bg: "#fffbeb", fg: "#b45309", ring: "#fde68a" },
-        danger: { bg: "#fef2f2", fg: "#dc2626", ring: "#fecaca" },
-    }[status.tone];
+    useEffect(() => { const timer = setTimeout(loadMovements, movementSearch ? 300 : 0); return () => clearTimeout(timer); }, [loadMovements]);
+    useEffect(() => { setMovementPage(1); setMovementType(""); setMovementSearch(""); }, [register?.id]);
 
-    const renderDenominationGrid = (title, denominations) => {
-        const total = (denominations || []).reduce(
-            (sum, d) => sum + Number(d.subtotal || 0),
-            0
-        );
-
-        return (
-            <div className="flex-fill">
-                <div
-                    className="d-flex align-items-center justify-content-between mb-2"
-                >
-                    <span
-                        className="text-muted text-uppercase"
-                        style={{ fontSize: 11, letterSpacing: 0.4 }}
-                    >
-                        {title}
-                    </span>
-                    <span style={{ fontWeight: 600 }}>
-                        {currencySymbolHandling(allConfigData, currencySymbol, total)}
-                    </span>
-                </div>
-                {denominations && denominations.length > 0 ? (
-                    <div
-                        className="d-grid"
-                        style={{
-                            gridTemplateColumns: "repeat(auto-fit, minmax(80px, 1fr))",
-                            gap: 8,
-                        }}
-                    >
-                        {denominations.map((d, index) => (
-                            <div
-                                key={index}
-                                className="text-center p-2 rounded"
-                                style={{ background: "#f9fafb" }}
-                            >
-                                <div className="text-muted" style={{ fontSize: 11 }}>
-                                    {currencySymbolHandling(allConfigData, currencySymbol, d.value)}
-                                </div>
-                                <div style={{ fontWeight: 600 }}>×{d.quantity}</div>
-                            </div>
-                        ))}
-                    </div>
-                ) : (
-                    <div className="text-muted fs-small">
-                        No se registró un desglose de efectivo para este momento.
-                    </div>
-                )}
-            </div>
-        );
-    };
-
+    if (!register) return null;
+    const money = (value) => currencySymbolHandling(allConfigData, currencySymbol, Number(value || 0));
+    const difference = Number(register.cash_difference ?? (Number(register.cash_in_hand_while_closing) - Number(register.expected_cash)));
+    const status = Math.abs(difference) <= 0.009 ? { label: "Caja cuadrada", tone: "success", icon: "bi-check-circle" } : difference > 0 ? { label: "Sobrante registrado", tone: "warning", icon: "bi-exclamation-triangle" } : { label: "Faltante registrado", tone: "danger", icon: "bi-exclamation-triangle" };
     const fullName = `${register.user_first_name || ""} ${register.user_last_name || ""}`.trim();
+    const duration = Number(register.duration_minutes || 0);
+    const durationLabel = duration ? `${Math.floor(duration / 60)} h ${duration % 60} min` : "Sin duración";
+    const denominations = (list) => ({ rows: list || [], total: (list || []).reduce((sum, item) => sum + Number(item.subtotal ?? Number(item.value) * Number(item.quantity)), 0) });
+    const opening = denominations(register.opening_denominations);
+    const closing = denominations(register.closing_denominations);
+    const paymentMethods = [
+        ["Efectivo recibido", Number(register.total_amount || 0) - Number(register.bank_transfer || 0) - Number(register.cheque || 0) - Number(register.other || 0), "bi-cash-stack"],
+        ["Transferencias", register.bank_transfer, "bi-bank"], ["Cheques", register.cheque, "bi-receipt"], ["Otros", register.other, "bi-grid"],
+    ];
 
-    return (
-        <Modal show={show} onHide={onHide} size="lg" centered>
+    const renderDenominations = (title, data) => <section className="report-denomination-card">
+        <header><div><span>{title}</span><small>{data.rows.length ? `${data.rows.length} denominaciones` : "Sin desglose"}</small></div><strong>{money(data.total)}</strong></header>
+        {data.rows.length ? <div className="report-denomination-grid">{data.rows.map((item, index) => <div key={`${item.value}-${index}`}><b>{money(item.value)}</b><span>× {item.quantity}</span><strong>{money(item.subtotal ?? Number(item.value) * Number(item.quantity))}</strong></div>)}</div> : <p>No se registraron billetes o monedas para este momento.</p>}
+    </section>;
+
+    return <Modal show={show} onHide={onHide} size="xl" centered dialogClassName="register-detail-dialog">
+        <div className="register-detail-modal">
             <Modal.Header closeButton>
-                <Modal.Title>
-                    <div className="d-flex align-items-center gap-2">
-                        {register.user_image ? (
-                            <img
-                                src={register.user_image}
-                                height="34"
-                                width="34"
-                                alt={fullName}
-                                className="image image-circle"
-                            />
-                        ) : (
-                            <span className="custom-user-avatar">
-                                {getAvatarName(fullName)}
-                            </span>
-                        )}
-                        <div>
-                            <div>{fullName}</div>
-                            <div className="text-muted fs-small" style={{ fontWeight: 400 }}>
-                                {register.open_date} {register.open_time} → {register.close_date} {register.close_time}
-                            </div>
-                        </div>
-                    </div>
-                </Modal.Title>
+                <div className="register-detail-title"><span className="report-title-icon"><i className="bi bi-safe2" /></span><div><small>CIERRE DE TURNO</small><h2>{register.cash_register?.name || "Caja sin asignar"}</h2><p>{register.cash_register?.code || `Turno #${register.id}`} · {register.warehouse?.name || "Sin almacén"}</p></div></div>
             </Modal.Header>
             <Modal.Body>
-                {status && (
-                    <div
-                        className="d-flex align-items-center justify-content-between rounded mb-4 p-3"
-                        style={{
-                            background: toneStyles.bg,
-                            border: `1px solid ${toneStyles.ring}`,
-                        }}
-                    >
-                        <div className="d-flex align-items-center gap-3">
-                            <FontAwesomeIcon
-                                icon={status.icon}
-                                size="lg"
-                                style={{ color: toneStyles.fg }}
-                            />
-                            <div>
-                                <div style={{ color: toneStyles.fg, fontSize: 16, fontWeight: 700 }}>
-                                    {status.label}
-                                </div>
-                                <div className="text-muted fs-small">
-                                    Esperado{" "}
-                                    {currencySymbolHandling(allConfigData, currencySymbol, register.expected_cash)}
-                                    {" · "}
-                                    Contado{" "}
-                                    {currencySymbolHandling(allConfigData, currencySymbol, register.cash_in_hand_while_closing)}
-                                </div>
-                            </div>
-                        </div>
-                        <div style={{ color: toneStyles.fg, fontSize: 20, fontWeight: 700 }}>
-                            {difference !== 0 && (difference > 0 ? "+" : "-")}
-                            {currencySymbolHandling(allConfigData, currencySymbol, Math.abs(difference))}
-                        </div>
-                    </div>
-                )}
+                <section className="register-detail-identity">
+                    <div className="report-user report-user-large"><span>{register.user_image ? <img src={register.user_image} alt={fullName} /> : getAvatarName(fullName)}</span><div><small>Responsable del turno</small><b>{fullName || "Usuario"}</b><p>{register.user_email}</p></div></div>
+                    <div><small>Apertura</small><b>{register.open_date} · {register.open_time}</b></div><i className="bi bi-arrow-right" /><div><small>Cierre</small><b>{register.close_date} · {register.close_time}</b></div><span className="report-duration"><i className="bi bi-clock" /> {durationLabel}</span>
+                </section>
 
-                {register.discrepancy_reason && (
-                    <div
-                        className="rounded mb-3 p-3"
-                        style={{ background: "#fffbeb", border: "1px solid #fde68a" }}
-                    >
-                        <div
-                            className="text-uppercase mb-1"
-                            style={{ fontSize: 11, letterSpacing: 0.4, color: "#b45309" }}
-                        >
-                            Motivo de la diferencia
-                        </div>
-                        <div style={{ fontWeight: 600 }}>{register.discrepancy_reason}</div>
-                        {register.discrepancy_note && (
-                            <div className="text-muted fs-small mt-1">
-                                {register.discrepancy_note}
-                            </div>
-                        )}
-                    </div>
-                )}
+                <section className={`register-detail-result ${status.tone}`}>
+                    <div><span><i className={`bi ${status.icon}`} /></span><div><small>RESULTADO DEL ARQUEO</small><h3>{status.label}</h3><p>Esperado {money(register.expected_cash)} · Contado {money(register.cash_in_hand_while_closing)}</p></div></div>
+                    <strong>{difference > 0 ? "+" : ""}{money(difference)}</strong>
+                </section>
 
-                {register.reconciliation_status && register.reconciliation_status !== "BALANCED" && (
-                    <div className="rounded mb-3 p-3" style={{ background: "#f8fafc", border: "1px solid #e2e8f0" }}>
-                        <div className="text-uppercase mb-1" style={{ fontSize: 11, letterSpacing: 0.4, color: "#64748b" }}>
-                            Revisión de supervisión
-                        </div>
-                        <div style={{ fontWeight: 600 }}>
-                            {register.reconciliation_status === "APPROVED" ? "Cierre aprobado" : register.reconciliation_status === "REJECTED" ? "Cierre rechazado" : "Pendiente de revisión"}
-                        </div>
-                        {register.reviewed_by && <div className="text-muted fs-small mt-1">Revisado por {register.reviewed_by.first_name} {register.reviewed_by.last_name}</div>}
-                        {register.review_note && <div className="text-muted fs-small mt-1">{register.review_note}</div>}
-                    </div>
-                )}
-
-                <div className="d-flex align-items-center gap-2 mb-3">
-                    <FontAwesomeIcon icon={faCashRegister} className="text-muted" />
-                    <span style={{ fontWeight: 700 }}>Desglose de efectivo</span>
-                </div>
-                <div className="d-flex flex-column flex-md-row gap-4 mb-3">
-                    {renderDenominationGrid("Apertura", register.opening_denominations)}
-                    {renderDenominationGrid("Cierre", register.closing_denominations)}
+                <div className="register-detail-grid">
+                    <section className="register-detail-card report-equation"><header><i className="bi bi-calculator" /><div><h3>Resumen de efectivo</h3><p>Cómo quedó compuesto el arqueo.</p></div></header><div><span>Fondo de apertura<b>{money(register.cash_in_hand)}</b></span><span>Efectivo esperado<b>{money(register.expected_cash)}</b></span><span>Efectivo contado<b>{money(register.cash_in_hand_while_closing)}</b></span><span className={status.tone}>Diferencia<b>{difference > 0 ? "+" : ""}{money(difference)}</b></span></div></section>
+                    <section className="register-detail-card"><header><i className="bi bi-credit-card" /><div><h3>Medios de pago</h3><p>Valores consolidados al cierre.</p></div></header><div className="report-payment-grid">{paymentMethods.map(([label, value, icon]) => <div key={label}><i className={`bi ${icon}`} /><span>{label}<b>{money(value)}</b></span></div>)}</div></section>
                 </div>
 
-                {register.notes && (
-                    <div className="mt-4 pt-3" style={{ borderTop: "1px solid #f1f1f4" }}>
-                        <div
-                            className="text-muted text-uppercase mb-1"
-                            style={{ fontSize: 11, letterSpacing: 0.4 }}
-                        >
-                            Notas
-                        </div>
-                        <div>{register.notes}</div>
+                <div className="register-denominations-layout">{renderDenominations("Apertura", opening)}{renderDenominations("Cierre", closing)}</div>
+
+                {(register.discrepancy_reason || register.notes || register.review_note) && <section className="register-detail-notes">
+                    {register.discrepancy_reason && <div><span>Motivo de diferencia</span><b>{register.discrepancy_reason}</b><p>{register.discrepancy_note}</p></div>}
+                    {register.notes && <div><span>Nota del cierre</span><p>{register.notes}</p></div>}
+                    {register.review_note && <div><span>Revisión de supervisión</span><b>{register.reconciliation_status === "APPROVED" ? "Aprobada" : "Rechazada"}</b><p>{register.review_note}</p></div>}
+                </section>}
+
+                <section className="register-movements-card">
+                    <header><div><span className="report-card-icon"><i className="bi bi-list-ul" /></span><div><h3>Movimientos del turno</h3><p>{movementMeta.total || 0} registros vinculados a este cierre.</p></div></div><div className="register-movement-filters"><label><i className="bi bi-search" /><input value={movementSearch} onChange={(event) => { setMovementPage(1); setMovementSearch(event.target.value); }} placeholder="Buscar referencia…" /></label><select value={movementType} onChange={(event) => { setMovementPage(1); setMovementType(event.target.value); }}><option value="">Todos los tipos</option>{Object.entries(movementLabels).map(([value, label]) => <option key={value} value={value}>{label}</option>)}</select></div></header>
+                    <div className="report-movement-summary"><span>Ventas en efectivo <b>{money(movementSummary.cash_sales)}</b></span><span>Ingresos manuales <b>{money(movementSummary.manual_income)}</b></span><span>Salidas <b>{money(movementSummary.total_out)}</b></span><span>Reembolsos <b>{money(movementSummary.refunds)}</b></span></div>
+                    <div className="report-movement-list">
+                        {loading && <div className="report-movement-empty"><span className="spinner-border spinner-border-sm" /> Cargando movimientos…</div>}
+                        {!loading && loadError && <div className="report-movement-empty text-danger">{loadError}</div>}
+                        {!loading && !loadError && !movements.length && <div className="report-movement-empty">No hay movimientos para estos filtros.</div>}
+                        {!loading && movements.map((movement) => <article key={movement.id}><span className={`movement-direction ${movement.direction === "IN" ? "in" : "out"}`}><i className={`bi bi-arrow-${movement.direction === "IN" ? "down-left" : "up-right"}`} /></span><div><b>{movementLabels[movement.type] || movement.type}</b><p>{movement.description || "Sin descripción"}</p><small>{dayjs(movement.created_at).format("DD/MM/YYYY · HH:mm")} {movement.reference ? `· Ref. ${movement.reference}` : ""}</small></div><strong className={movement.direction === "IN" ? "in" : "out"}>{movement.direction === "IN" ? "+" : "−"}{money(movement.amount)}</strong></article>)}
                     </div>
-                )}
+                    {movementMeta.last_page > 1 && <footer className="register-movement-pagination"><button disabled={movementPage <= 1 || loading} onClick={() => setMovementPage((page) => page - 1)}><i className="bi bi-chevron-left" /></button><span>Página {movementPage} de {movementMeta.last_page}</span><button disabled={movementPage >= movementMeta.last_page || loading} onClick={() => setMovementPage((page) => page + 1)}><i className="bi bi-chevron-right" /></button></footer>}
+                </section>
             </Modal.Body>
-            <Modal.Footer>
-                <Button variant="light" onClick={onHide}>
-                    Cerrar
-                </Button>
-            </Modal.Footer>
-        </Modal>
-    );
+            <Modal.Footer><button className="btn report-print-button" onClick={() => window.print()}><i className="bi bi-printer" /> Imprimir cierre</button><button className="btn report-close-button" onClick={onHide}>Cerrar</button></Modal.Footer>
+        </div>
+    </Modal>;
 };
 
 export default RegisterDenominationsModal;

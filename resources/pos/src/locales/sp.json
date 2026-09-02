@@ -958,7 +958,7 @@
     "globally.total-cash.label": "Efectivo total",
     "globally.input.note.label": "Nota",
     "globally.input.note.placeholder.label": "Ingresar nota",
-    "register.report.title": "Registrar Informe",
+    "register.report.title": "Informe de cajas",
     "user-details.table.opened-on.row.label": "Abierto el",
     "user-details.table.closde-on.row.label": "Cerrado el",
     "globally.input.cash-in-hand-while-closing.label": "Efectivo en mano mientras se cierra",
