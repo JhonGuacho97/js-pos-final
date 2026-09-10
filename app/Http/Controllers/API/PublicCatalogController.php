@@ -5,6 +5,7 @@ namespace App\Http\Controllers\API;
 use App\Http\Controllers\Controller;
 use App\Models\CatalogOrder;
 use App\Models\CatalogSetting;
+use App\Models\Customer;
 use App\Models\ManageStock;
 use App\Models\Product;
 use App\Models\ProductPresentation;
@@ -12,10 +13,8 @@ use App\Models\Setting;
 use App\Models\Store;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
-use Illuminate\Auth\AuthenticationException;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
 
@@ -86,13 +85,14 @@ class PublicCatalogController extends Controller
     public function storeOrder(Request $request, Store $store): JsonResponse
     {
         $setting = $this->activeSetting($store);
-        $account = Auth::guard('catalog_customer')->user();
-        if (!$account || !$account->is_active || (int) $account->store_id !== (int) $store->id) {
-            throw new AuthenticationException('Debes iniciar sesión para realizar un pedido.', ['catalog_customer']);
-        }
         $data = $request->validate([
             'customer_name' => 'required|string|max:255',
             'customer_phone' => 'required|string|max:30',
+            'customer_email' => 'required|email|max:255',
+            'customer_identification' => 'nullable|string|max:30',
+            'customer_identification_type' => 'nullable|in:04,05,06,08',
+            'customer_city' => 'required|string|max:100',
+            'privacy_consent' => 'accepted',
             'fulfillment_type' => 'required|in:pickup,delivery',
             'delivery_address' => 'required_if:fulfillment_type,delivery|nullable|string|max:1000',
             'payment_method' => 'nullable|string|max:50',
@@ -104,6 +104,18 @@ class PublicCatalogController extends Controller
             'items.*.notes' => 'nullable|string|max:500',
         ]);
 
+        $data['customer_name'] = trim($data['customer_name']);
+        $data['customer_phone'] = $this->normalizeCustomerPhone($data['customer_phone']);
+        $data['customer_email'] = Str::lower(trim($data['customer_email']));
+        $data['customer_identification'] = trim((string) ($data['customer_identification'] ?? '')) ?: null;
+        $data['customer_city'] = trim($data['customer_city']);
+
+        if (!preg_match('/^09\d{8}$/', $data['customer_phone'])) {
+            throw ValidationException::withMessages([
+                'customer_phone' => 'Ingresa un número celular ecuatoriano válido.',
+            ]);
+        }
+
         if ($data['fulfillment_type'] === 'pickup' && !$setting->allow_pickup) {
             throw ValidationException::withMessages(['fulfillment_type' => 'El retiro en tienda no está habilitado.']);
         }
@@ -112,8 +124,7 @@ class PublicCatalogController extends Controller
         }
 
         $warehouseId = (int) $setting->warehouse_id;
-        $customerId = (int) $account->customer_id;
-        $order = DB::transaction(function () use ($data, $store, $setting, $warehouseId, $customerId) {
+        $order = DB::transaction(function () use ($data, $store, $setting, $warehouseId) {
             $resolvedItems = [];
             $subtotal = 0;
 
@@ -173,11 +184,12 @@ class PublicCatalogController extends Controller
                 throw ValidationException::withMessages(['items' => 'El pedido mínimo es $'.number_format($setting->minimum_order, 2).'.']);
             }
 
+            $customer = $this->resolveCatalogCustomer($store, $data);
             $deliveryFee = $data['fulfillment_type'] === 'delivery' ? (float) $setting->delivery_fee : 0;
             $order = CatalogOrder::create([
                 'store_id' => $store->id,
                 'warehouse_id' => $warehouseId,
-                'customer_id' => $customerId,
+                'customer_id' => $customer->id,
                 'status' => 'pending',
                 'customer_name' => $data['customer_name'],
                 'customer_phone' => $data['customer_phone'],
@@ -212,6 +224,101 @@ class PublicCatalogController extends Controller
                 'whatsapp_url' => 'https://wa.me/'.$phone.'?text='.rawurlencode($message),
             ],
         ], 201);
+    }
+
+    private function resolveCatalogCustomer(Store $store, array $data): Customer
+    {
+        $phone = $data['customer_phone'];
+        $internationalPhone = '593'.substr($phone, 1);
+        $email = $data['customer_email'];
+        $identification = $data['customer_identification'];
+
+        $customers = Customer::query()
+            ->where('store_id', $store->id)
+            ->where(function ($query) use ($phone, $internationalPhone, $email, $identification) {
+                $query->whereRaw('LOWER(email) = ?', [$email])
+                    ->orWhereRaw(
+                        "REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(phone, ' ', ''), '-', ''), '(', ''), ')', ''), '+', '') IN (?, ?)",
+                        [$phone, $internationalPhone]
+                    );
+
+                if ($identification) {
+                    $query->orWhere('identification', $identification);
+                }
+            })
+            ->lockForUpdate()
+            ->get();
+
+        if ($customers->count() > 1) {
+            throw ValidationException::withMessages([
+                'customer_email' => 'El correo, teléfono o identificación pertenecen a clientes diferentes. Verifica los datos.',
+            ]);
+        }
+
+        $customer = $customers->first();
+        if ($customer && $identification && $customer->identification && $customer->identification !== $identification) {
+            throw ValidationException::withMessages([
+                'customer_identification' => 'La identificación no coincide con el cliente registrado.',
+            ]);
+        }
+
+        $address = trim((string) ($data['delivery_address'] ?? ''));
+        $attributes = [
+            'name' => $data['customer_name'],
+            'email' => $email,
+            'phone' => $phone,
+            'country' => 'Ecuador',
+            'city' => $data['customer_city'],
+            'address' => $address ?: ($customer?->address ?: 'Retiro en tienda'),
+        ];
+
+        if ($identification) {
+            $attributes['identification'] = $identification;
+            $attributes['tipo_identificacion'] = $data['customer_identification_type']
+                ?? $this->inferIdentificationType($identification);
+        }
+
+        if ($customer) {
+            $customer->fill($attributes)->save();
+
+            return $customer;
+        }
+
+        return Customer::create(array_merge($attributes, [
+            'store_id' => $store->id,
+            'identification' => $identification,
+            'tipo_identificacion' => $identification
+                ? ($data['customer_identification_type'] ?? $this->inferIdentificationType($identification))
+                : null,
+            'es_consumidor_final' => false,
+            'credit_enabled' => false,
+            'credit_limit' => 0,
+            'default_payment_terms_days' => 0,
+        ]));
+    }
+
+    private function normalizeCustomerPhone(string $phone): string
+    {
+        $digits = preg_replace('/\D+/', '', $phone) ?: '';
+
+        if (str_starts_with($digits, '593') && strlen($digits) === 12) {
+            return '0'.substr($digits, 3);
+        }
+
+        if (strlen($digits) === 9 && str_starts_with($digits, '9')) {
+            return '0'.$digits;
+        }
+
+        return $digits;
+    }
+
+    private function inferIdentificationType(string $identification): string
+    {
+        return match (strlen($identification)) {
+            13 => Customer::TIPO_RUC,
+            10 => Customer::TIPO_CEDULA,
+            default => Customer::TIPO_PASAPORTE,
+        };
     }
 
     private function activeSetting(Store $store): CatalogSetting
