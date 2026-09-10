@@ -15,6 +15,7 @@ use App\Models\Sale;
 use App\Models\Store;
 use App\Models\User;
 use App\Models\Warehouse;
+use App\Http\Middleware\VerifyCsrfToken;
 use App\Services\OfflineSaleStockDiagnosisService;
 use Illuminate\Foundation\Testing\DatabaseTransactions;
 use Illuminate\Support\Facades\DB;
@@ -25,6 +26,15 @@ use Tests\TestCase;
 class OfflineSaleStockDiagnosisTest extends TestCase
 {
     use DatabaseTransactions;
+
+    /** @test */
+    public function the_bearer_authenticated_diagnosis_endpoint_does_not_require_a_session_csrf_token(): void
+    {
+        $middleware = new \ReflectionClass(VerifyCsrfToken::class);
+        $except = $middleware->getProperty('except')->getDefaultValue();
+
+        $this->assertContains('api/offline-sync/sales/diagnose', $except);
+    }
 
     /** @test */
     public function it_reports_every_line_that_collectively_exceeds_available_stock(): void

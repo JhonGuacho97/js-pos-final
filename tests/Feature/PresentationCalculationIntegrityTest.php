@@ -4,6 +4,7 @@ namespace Tests\Feature;
 
 use App\Models\BaseUnit;
 use App\Models\Brand;
+use App\Models\Customer;
 use App\Models\Product;
 use App\Models\ProductCategory;
 use App\Models\ProductPresentation;
@@ -15,6 +16,7 @@ use App\Models\Sale;
 use App\Models\Store;
 use App\Models\Variation;
 use App\Models\VariationType;
+use App\Models\Warehouse;
 use App\Repositories\PurchaseRepository;
 use App\Repositories\SaleRepository;
 use Illuminate\Foundation\Testing\DatabaseTransactions;
@@ -57,6 +59,58 @@ class PresentationCalculationIntegrityTest extends TestCase
         $this->assertSame(5.0, (float) $item['presentation_quantity']);
         $this->assertSame(120.0, (float) $item['quantity']);
         $this->assertSame(150.0, (float) $item['sub_total']);
+    }
+
+    public function test_sale_quantity_limit_counts_presentations_without_confusing_them_with_stock_units(): void
+    {
+        [$product, $presentation] = $this->presentationProduct(21, 30, 24);
+        $product->update(['quantity_limit' => 5]);
+        $store = Store::findOrFail($product->store_id);
+        $suffix = Str::lower(Str::random(10));
+        $warehouse = Warehouse::create([
+            'store_id' => $store->id,
+            'name' => "Warehouse {$suffix}",
+            'email' => "warehouse-{$suffix}@example.test",
+            'phone' => '0999999999',
+            'country' => 'Ecuador',
+            'city' => 'Manabi',
+            'is_active' => true,
+        ]);
+        $customer = Customer::create([
+            'store_id' => $store->id,
+            'name' => "Customer {$suffix}",
+            'email' => "customer-{$suffix}@example.test",
+            'phone' => '0999999999',
+            'country' => 'Ecuador',
+            'city' => 'Manabi',
+            'address' => 'Manta',
+        ]);
+        $sale = Sale::create([
+            'date' => now()->toDateString(),
+            'customer_id' => $customer->id,
+            'warehouse_id' => $warehouse->id,
+            'status' => Sale::COMPLETED,
+            'payment_status' => Sale::UNPAID,
+            'payment_type' => 1,
+        ]);
+
+        app(SaleRepository::class)->storeSaleItems($sale, [
+            'warehouse_id' => $warehouse->id,
+            'sale_items' => [$this->line($product, $presentation, 2, [
+                'product_price' => 30,
+                'sale_unit' => (int) $product->product_unit,
+            ])],
+            'discount' => 0,
+            'tax_rate' => 0,
+            'shipping' => 0,
+            'payment_status' => Sale::UNPAID,
+            'paid_amount' => 0,
+            'payment_type' => 1,
+        ]);
+
+        $item = $sale->saleItems()->firstOrFail();
+        $this->assertSame(2.0, (float) $item->presentation_quantity);
+        $this->assertSame(48.0, (float) $item->quantity);
     }
 
     public function test_purchase_item_exposes_presentation_traceability_to_the_frontend(): void

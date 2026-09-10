@@ -86,14 +86,9 @@ const ProductTableBody = (props) => {
                   updateProducts.map((item) => {
                       if (item.id === singleProduct.id) {
                           const newQuantity = Number(item.quantity) + 1;
-                          // Si la línea es una presentación (ej. Six Pack),
-                          // el límite del producto está definido en unidades
-                          // sueltas, así que hay que convertir antes de comparar.
-                          const equivalence = item.presentation_equivalence || 1;
-                          const newQuantityInBaseUnits = newQuantity * equivalence;
                           if (
                               item.quantity_limit &&
-                              newQuantityInBaseUnits > item.quantity_limit
+                              newQuantity > item.quantity_limit
                           ) {
                               dispatch(
                                   addToast({

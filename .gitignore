@@ -6,3 +6,5 @@ nixpacks.toml
 docker-compose.yml
 public/uploads/
 *.zip
+.phpunit.result.cache
+/tmp/

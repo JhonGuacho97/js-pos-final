@@ -441,13 +441,15 @@ class SaleRepository extends BaseRepository
         foreach ($input['sale_items'] as $saleItem) {
             $product = Product::whereId($saleItem['product_id'])->first();
 
-            $equivalence = ! empty($saleItem['product_presentation_id'])
-                ? ($saleItem['presentation_equivalence'] ?? 1)
-                : 1;
-            $quantityInBaseUnits = $saleItem['quantity'] * $equivalence;
-
-            if (!empty($product) && isset($product->quantity_limit) && $quantityInBaseUnits > $product->quantity_limit) {
-                throw new UnprocessableEntityHttpException('Please enter less than ' . $product->quantity_limit . ' quantity of ' . $product->name . ' product.');
+            // quantity_limit es un límite comercial por línea de venta, no
+            // inventario expresado en unidades base. Una caja de 24 cuenta
+            // como una presentación vendida para este límite; el descuento
+            // de stock sí se convierte a 24 más abajo.
+            if (! empty($product) && is_numeric($product->quantity_limit) && (float) $product->quantity_limit > 0
+                && (float) $saleItem['quantity'] > (float) $product->quantity_limit) {
+                throw new UnprocessableEntityHttpException(
+                    'No puedes vender más de '.$product->quantity_limit.' unidades o presentaciones de '.$product->name.' en una misma venta.'
+                );
             }
             $item = $this->calculationSaleItems($saleItem, $input['warehouse_id'] ?? null);
             $saleItem = new SaleItem($item);
@@ -573,17 +575,11 @@ class SaleRepository extends BaseRepository
             foreach ($input['sale_items'] as $key => $saleItem) {
                 $product = Product::whereId($saleItem['product_id'])->first();
 
-                // quantity_limit está definido en unidades base; si la línea
-                // es una presentación (ej. Six Pack), 'quantity' que llega
-                // aquí todavía es la cantidad de presentaciones, así que hay
-                // que convertir antes de comparar contra el límite.
-                $equivalence = ! empty($saleItem['product_presentation_id'])
-                    ? ($saleItem['presentation_equivalence'] ?? 1)
-                    : 1;
-                $quantityInBaseUnits = $saleItem['quantity'] * $equivalence;
-
-                if (!empty($product) && isset($product->quantity_limit) && $quantityInBaseUnits > $product->quantity_limit) {
-                    throw new UnprocessableEntityHttpException('Please enter less than ' . $product->quantity_limit . ' quantity of ' . $product->name . ' product.');
+                if (! empty($product) && is_numeric($product->quantity_limit) && (float) $product->quantity_limit > 0
+                    && (float) $saleItem['quantity'] > (float) $product->quantity_limit) {
+                    throw new UnprocessableEntityHttpException(
+                        'No puedes vender más de '.$product->quantity_limit.' unidades o presentaciones de '.$product->name.' en una misma venta.'
+                    );
                 }
 
                 //get different ids & update

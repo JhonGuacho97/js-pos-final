@@ -17,5 +17,6 @@ class VerifyCsrfToken extends Middleware
         // El service worker no puede leer la cookie XSRF-TOKEN del documento.
         'api/offline-sync/customers',
         'api/offline-sync/sales',
+        'api/offline-sync/sales/diagnose',
     ];
 }
