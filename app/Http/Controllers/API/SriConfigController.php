@@ -11,6 +11,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Support\Facades\Crypt;
+use Illuminate\Support\Facades\DB;
 
 class SriConfigController extends AppBaseController
 {
@@ -440,9 +441,17 @@ class SriConfigController extends AppBaseController
             'sri_provider_ruc',
         ];
 
-        foreach ($campos as $campo) {
-            $this->guardarSetting($campo, $request->input($campo, ''));
-        }
+        DB::transaction(function () use ($campos, $request): void {
+            foreach ($campos as $campo) {
+                // input($campo, '') conserva null cuando la clave sí existe.
+                // Los campos opcionales se normalizan a texto vacío porque
+                // Setting::value y guardarSetting trabajan con strings.
+                $this->guardarSetting(
+                    $campo,
+                    (string) ($request->input($campo) ?? '')
+                );
+            }
+        });
 
         // Limpiar caché de config para que config/sri.php tome los nuevos valores
         \Illuminate\Support\Facades\Artisan::call('config:clear');
