@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { Modal } from "react-bootstrap";
 import apiConfig from "../../config/apiConfig";
+import { downloadProtectedFile, openProtectedPdf } from "../../utils/protectedFile";
 
 const ESTADO_BADGE = {
     completado: { texto: "Completado", color: "#28a745" },
@@ -142,22 +143,22 @@ const RutaEmisionPanel = ({ electronicInvoiceId, show, onHide, onReintentar }) =
 
                         <div className="d-flex flex-column gap-2">
                             {datos.puede_ver_pdf && (
-                                <a
+                                <button
+                                    type="button"
                                     className="btn btn-outline-secondary btn-sm"
-                                    href={`/api/electronic-invoices/${electronicInvoiceId}/ride`}
-                                    target="_blank"
-                                    rel="noreferrer"
+                                    onClick={() => openProtectedPdf(`/electronic-invoices/${electronicInvoiceId}/ride`)}
                                 >
                                     📄 Ver PDF
-                                </a>
+                                </button>
                             )}
                             {datos.tiene_xml && (
-                                <a
+                                <button
+                                    type="button"
                                     className="btn btn-outline-secondary btn-sm"
-                                    href={`/api/electronic-invoices/${electronicInvoiceId}/xml`}
+                                    onClick={() => downloadProtectedFile(`/electronic-invoices/${electronicInvoiceId}/xml`, `${datos.clave_acceso}.xml`)}
                                 >
                                     ⬇ Descargar XML
-                                </a>
+                                </button>
                             )}
                             {datos.puede_reintentar && (
                                 <button

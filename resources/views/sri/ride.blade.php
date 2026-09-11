@@ -231,7 +231,7 @@
             </td>
             <td style="width: 40%;">
                 <div class="doc-box">
-                    <div class="box-title">Factura</div>
+                    <div class="box-title">{{ $notaDebitoData ? 'Nota de Débito' : 'Factura' }}</div>
                     <div class="label-line">N° de comprobante</div>
                     <div class="value-line">{{ $factura->numeroComprobante() }}</div>
 
@@ -278,10 +278,24 @@
         </tr>
     </table>
 
+    @if ($notaDebitoData)
+        <div class="box" style="margin-top: 8px;">
+            <div class="box-title">Documento que modifica</div>
+            Factura: <strong>{{ $notaDebitoData['numero_documento_modificado'] }}</strong>
+            &nbsp; · &nbsp; Fecha de emisión: <strong>{{ $notaDebitoData['fecha_documento_modificado'] }}</strong>
+        </div>
+    @endif
+
     <br>
 
     <table class="detalle-table">
         <thead>
+            @if ($notaDebitoData)
+            <tr>
+                <th>Motivo</th>
+                <th style="width: 22%; text-align:right;">Valor</th>
+            </tr>
+            @else
             <tr>
                 <th style="width: 8%;">Cód.</th>
                 <th style="width: 32%;">Descripción</th>
@@ -291,8 +305,17 @@
                 <th style="width: 12%; text-align:right;">% IVA</th>
                 <th style="width: 18%; text-align:right;">Precio Total</th>
             </tr>
+            @endif
         </thead>
         <tbody>
+            @if ($notaDebitoData)
+                @foreach ($notaDebitoData['motivos'] as $motivo)
+                    <tr>
+                        <td>{{ $motivo['razon'] }}</td>
+                        <td style="text-align:right;">${{ number_format($motivo['valor'], 2) }}</td>
+                    </tr>
+                @endforeach
+            @else
             @foreach ($venta->saleItems as $item)
                 <tr>
                     <td>{{ $item->codigoPrincipalSri() }}</td>
@@ -304,6 +327,7 @@
                     <td style="text-align:right;">${{ number_format($item->precioTotalSinImpuestoSri(), 2) }}</td>
                 </tr>
             @endforeach
+            @endif
         </tbody>
     </table>
 
@@ -314,13 +338,32 @@
             <td style="width: 55%; vertical-align: top;">
                 <div class="box">
                     <div class="box-title">Información adicional</div>
+                    @if (!empty($sri['provider_ruc']))
+                        <div>RUC Proveedor: {{ $sri['provider_ruc'] }}</div>
+                    @endif
                     <div>Email: {{ $venta->customer->email }}</div>
                     <div>Teléfono: {{ $venta->customer->phone }}</div>
-                    <div>Forma de pago: {{ $formaPagoTexto }}</div>
+                    @if (!$notaDebitoData)
+                        <div>Forma de pago: {{ $formaPagoTexto }}</div>
+                    @endif
                 </div>
             </td>
             <td style="width: 45%; vertical-align: top;">
                 <table class="totales-table" style="width:100%;">
+                    @if ($notaDebitoData)
+                    <tr>
+                        <td class="label">Subtotal sin impuestos</td>
+                        <td class="value">${{ number_format($notaDebitoData['subtotal'], 2) }}</td>
+                    </tr>
+                    <tr>
+                        <td class="label">IVA {{ number_format($notaDebitoData['tarifa'], 0) }}%</td>
+                        <td class="value">${{ number_format($notaDebitoData['iva'], 2) }}</td>
+                    </tr>
+                    <tr class="total-row">
+                        <td class="label">Valor total</td>
+                        <td class="value">${{ number_format($notaDebitoData['total'], 2) }}</td>
+                    </tr>
+                    @else
                     <tr>
                         <td class="label">Subtotal sin impuestos</td>
                         <td class="value">${{ number_format($venta->subtotalSinIvaSri(), 2) }}</td>
@@ -347,6 +390,7 @@
                         <td class="label">Valor total</td>
                         <td class="value">${{ number_format($venta->grand_total ?? 0, 2) }}</td>
                     </tr>
+                    @endif
                 </table>
             </td>
         </tr>

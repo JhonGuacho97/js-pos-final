@@ -28,8 +28,14 @@ class SriRideService
         $qrBase64 = 'data:image/svg+xml;base64,' . base64_encode($qrSvg);
 
         $formaPagoTexto = self::FORMAS_PAGO_TEXTO[$venta->formaPagoSri()] ?? 'OTROS';
+        $notaDebitoData = $factura->tipo_comprobante === ElectronicInvoice::NOTA_DEBITO
+            ? $this->extraerNotaDebitoData($factura)
+            : null;
 
         $sriConfig = SriConfigService::get($factura->store_id);
+        // El comprobante conserva la identidad utilizada al emitirse. No se
+        // reemplaza con la configuración actual porque podría haber cambiado.
+        $sriConfig['provider_ruc'] = $factura->provider_ruc;
         $logoBase64 = $this->obtenerLogoBase64($sriConfig, $factura->store_id);
 
         $pdf = Pdf::loadView('sri.ride', [
@@ -39,6 +45,7 @@ class SriRideService
             'qrBase64' => $qrBase64,
             'logoBase64' => $logoBase64,
             'formaPagoTexto' => $formaPagoTexto,
+            'notaDebitoData' => $notaDebitoData,
         ])->setPaper('a4', 'portrait')->setOption([
             'tempDir' => public_path(),
             'chroot' => public_path(),
@@ -77,6 +84,7 @@ class SriRideService
         $qrBase64 = 'data:image/svg+xml;base64,' . base64_encode($qrSvg);
 
         $sriConfig = SriConfigService::get($comprobante->store_id);
+        $sriConfig['provider_ruc'] = $comprobante->provider_ruc;
         $logoBase64 = $this->obtenerLogoBase64($sriConfig, $comprobante->store_id);
 
         $conceptoTexto = match ($creditNote->concepto) {
@@ -137,5 +145,41 @@ class SriRideService
         $logoData = base64_encode(file_get_contents($logoPath));
 
         return "data:{$logoMime};base64,{$logoData}";
+    }
+
+    /**
+     * La nota de débito conserva sus motivos dentro del XML firmado y
+     * autorizado. Se leen desde ese documento para producir un RIDE fiel,
+     * sin confundirlos con las líneas originales de la venta.
+     */
+    private function extraerNotaDebitoData(ElectronicInvoice $comprobante): array
+    {
+        $xml = $comprobante->xml_autorizado ?: $comprobante->xml_firmado;
+        $dom = new \DOMDocument();
+
+        if (!$xml || !@$dom->loadXML($xml, LIBXML_NONET)) {
+            throw new \RuntimeException('No fue posible leer el XML de la nota de débito.');
+        }
+
+        $xpath = new \DOMXPath($dom);
+        $value = static fn (string $expression): string => trim((string) $xpath->evaluate("string({$expression})"));
+        $motivos = [];
+
+        foreach ($xpath->query('//*[local-name()="motivos"]/*[local-name()="motivo"]') as $motivo) {
+            $motivos[] = [
+                'razon' => trim((string) $xpath->evaluate('string(*[local-name()="razon"])', $motivo)),
+                'valor' => (float) $xpath->evaluate('string(*[local-name()="valor"])', $motivo),
+            ];
+        }
+
+        return [
+            'numero_documento_modificado' => $value('//*[local-name()="infoNotaDebito"]/*[local-name()="numDocModificado"]'),
+            'fecha_documento_modificado' => $value('//*[local-name()="infoNotaDebito"]/*[local-name()="fechaEmisionDocSustento"]'),
+            'subtotal' => (float) $value('//*[local-name()="infoNotaDebito"]/*[local-name()="totalSinImpuestos"]'),
+            'iva' => (float) $xpath->evaluate('sum(//*[local-name()="infoNotaDebito"]/*[local-name()="impuestos"]/*[local-name()="impuesto"]/*[local-name()="valor"])'),
+            'tarifa' => (float) $value('(//*[local-name()="infoNotaDebito"]/*[local-name()="impuestos"]/*[local-name()="impuesto"]/*[local-name()="tarifa"])[1]'),
+            'total' => (float) $value('//*[local-name()="infoNotaDebito"]/*[local-name()="valorTotal"]'),
+            'motivos' => $motivos,
+        ];
     }
 }

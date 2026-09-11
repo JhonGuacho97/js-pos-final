@@ -14,6 +14,7 @@ import RutaEmisionPanel from "../sri/RutaEmisionPanel";
 import ResourceListHeader from "../../shared/components/ResourceListHeader";
 import "../../assets/scss/custom/pages/resource-list.scss";
 import "../../assets/scss/custom/pages/fiscal-documents.scss";
+import { openProtectedPdf } from "../../utils/protectedFile";
 
 const ESTADOS_SRI = [
     { value: "TODOS", label: "Todos" },
@@ -409,15 +410,14 @@ const ElectronicInvoices = () => {
                                             </button>
                                         )}
                                         {doc.estado === "AUTORIZADA" && (
-                                            <a
-                                                href={`/api/electronic-invoices/${doc.id}/ride`}
-                                                target="_blank"
-                                                rel="noopener noreferrer"
+                                            <button
+                                                type="button"
+                                                onClick={() => openProtectedPdf(`/electronic-invoices/${doc.id}/ride`)}
                                                 className="btn btn-sm btn-outline-success fiscal-action-button"
                                                 title="Descargar RIDE"
                                             >
                                                 <FontAwesomeIcon icon={faFileInvoice} />
-                                            </a>
+                                            </button>
                                         )}
                                     </td>
                                 </tr>

@@ -80,6 +80,7 @@ class EmitirFacturaJob implements ShouldQueue
                 'estab'            => $sriCfg['estab'] ?? null,
                 'pto_emi'          => $sriCfg['pto_emi'] ?? null,
                 'ambiente'         => $sriCfg['ambiente'] ?? null,
+                'provider_ruc'     => $sriCfg['provider_ruc'] ?? null,
                 'mensajes_sri'     => [[
                     'identificador'        => 'GENERACION_XML_ERROR',
                     'mensaje'              => 'Error al generar el comprobante electrónico',
@@ -109,6 +110,7 @@ class EmitirFacturaJob implements ShouldQueue
             'estab'            => $result['estab'],
             'pto_emi'          => $result['pto_emi'],
             'ambiente'         => $result['ambiente'],
+            'provider_ruc'     => $result['provider_ruc'],
         ]);
 
         // Firmar

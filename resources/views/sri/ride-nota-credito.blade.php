@@ -336,6 +336,9 @@
             <td style="width: 55%; vertical-align: top;">
                 <div class="box">
                     <div class="box-title">Información adicional</div>
+                    @if (!empty($sri['provider_ruc']))
+                        <div>RUC Proveedor: {{ $sri['provider_ruc'] }}</div>
+                    @endif
                     <div>Email: {{ $creditNote->customer->email }}</div>
                     <div>Teléfono: {{ $creditNote->customer->phone }}</div>
                     <div>Concepto: {{ $conceptoTexto }}</div>

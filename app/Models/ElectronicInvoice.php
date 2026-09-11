@@ -76,6 +76,7 @@ class ElectronicInvoice extends BaseModel
         'estab',
         'pto_emi',
         'ambiente',
+        'provider_ruc',
         'tipo_comprobante',
         'clave_acceso',
         'numero_autorizacion',

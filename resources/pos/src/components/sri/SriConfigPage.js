@@ -23,6 +23,8 @@ const SriConfigPage = () => {
         sri_ambiente: "1",
         sri_obligado_contabilidad: "SI",
         sri_regimen_rimpe: "",
+        sri_software_origin: "PROPIO",
+        sri_provider_ruc: "",
     });
 
     const [certInfo, setCertInfo] = useState(null);
@@ -579,6 +581,62 @@ const SriConfigPage = () => {
                     </div>
 
                     <div className="row g-3">
+
+                        <div className="col-12">
+                            <label className="form-label">Origen del sistema de facturación <span className="text-danger">*</span></label>
+                            <div className="sri-origin-options">
+                                <label className={`sri-origin-option ${config.sri_software_origin === "PROPIO" ? "is-selected" : ""}`}>
+                                    <input
+                                        type="radio"
+                                        name="sri_software_origin"
+                                        value="PROPIO"
+                                        checked={config.sri_software_origin === "PROPIO"}
+                                        onChange={handleChange}
+                                    />
+                                    <span className="sri-origin-option__icon"><i className="fas fa-code" /></span>
+                                    <span>
+                                        <strong>Sistema propio</strong>
+                                        <small>El sistema fue desarrollado y es utilizado por la propia empresa.</small>
+                                    </span>
+                                    <i className="fas fa-check-circle sri-origin-option__check" />
+                                </label>
+                                <label className={`sri-origin-option ${config.sri_software_origin === "TERCERO" ? "is-selected" : ""}`}>
+                                    <input
+                                        type="radio"
+                                        name="sri_software_origin"
+                                        value="TERCERO"
+                                        checked={config.sri_software_origin === "TERCERO"}
+                                        onChange={handleChange}
+                                    />
+                                    <span className="sri-origin-option__icon"><i className="fas fa-building" /></span>
+                                    <span>
+                                        <strong>Proporcionado por un tercero</strong>
+                                        <small>El sistema fue provisto o licenciado por otro proveedor tecnológico.</small>
+                                    </span>
+                                    <i className="fas fa-check-circle sri-origin-option__check" />
+                                </label>
+                            </div>
+                            <div className="form-text mt-2">
+                                Esta elección se aplica únicamente al emisor y tienda actuales.
+                            </div>
+                        </div>
+
+                        {config.sri_software_origin === "TERCERO" && (
+                            <div className="col-md-6">
+                                <label className="form-label">RUC del proveedor tecnológico <span className="text-danger">*</span></label>
+                                <input
+                                    type="text"
+                                    name="sri_provider_ruc"
+                                    className="form-control"
+                                    inputMode="numeric"
+                                    maxLength={13}
+                                    value={config.sri_provider_ruc}
+                                    onChange={handleChange}
+                                    placeholder="Ej. 1790012345001"
+                                />
+                                <div className="form-text">Se incluirá como “RUC Proveedor” en el XML y el RIDE.</div>
+                            </div>
+                        )}
 
                         <div className="col-md-4">
                             <label className="form-label">RUC <span className="text-danger">*</span></label>

@@ -51,6 +51,19 @@ class SriConfigService
         }
         $settings = $query->get()->pluck('value', 'key');
 
+        // El origen pertenece al emisor/tienda: una misma instalación puede
+        // facturar para contribuyentes que usan software propio o de terceros.
+        // Por seguridad y compatibilidad, una configuración antigua sin esta
+        // decisión explícita se considera sistema propio.
+        $softwareOrigin = (string) ($settings['sri_software_origin'] ?? 'PROPIO');
+        if (!in_array($softwareOrigin, ['PROPIO', 'TERCERO'], true)) {
+            $softwareOrigin = 'PROPIO';
+        }
+
+        $providerRuc = $softwareOrigin === 'TERCERO'
+            ? preg_replace('/\D/', '', (string) ($settings['sri_provider_ruc'] ?? ''))
+            : '';
+
         $ambiente = (int) ($settings['sri_ambiente'] ?? 1);
 
         return [
@@ -66,6 +79,8 @@ class SriConfigService
             // no estén bajo RIMPE, en cuyo caso esto simplemente no aplica y
             // no se agrega ninguna etiqueta al XML.
             'regimen_rimpe' => $settings['sri_regimen_rimpe'] ?? '',
+            'software_origin' => $softwareOrigin,
+            'provider_ruc' => $providerRuc,
             'certificado_path' => $settings['sri_certificado_path'] ?? null,
             // Logo específico para el RIDE, subido desde la propia
             // pantalla de Configuración SRI -- ver SriRideService, que

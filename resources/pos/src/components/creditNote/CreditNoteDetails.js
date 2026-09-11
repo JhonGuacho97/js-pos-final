@@ -3,6 +3,7 @@ import { useParams, Link } from "react-router-dom";
 import SweetAlert from "react-bootstrap-sweetalert";
 import apiConfig from "../../config/apiConfig";
 import MasterLayout from "../MasterLayout";
+import { openProtectedPdf } from "../../utils/protectedFile";
 
 const CONCEPTO_LABEL = {
     POR_DEVOLUCION: "Por Devolución (ajustó stock)",
@@ -227,16 +228,15 @@ const CreditNoteDetails = () => {
                                 )}
 
                                 {estado === 'AUTORIZADA' && creditNote.electronic_invoice_id && (
-                                    <a
-                                        href={`/api/electronic-invoices/${creditNote.electronic_invoice_id}/ride`}
-                                        target="_blank"
-                                        rel="noreferrer"
-                                        className="d-inline-flex align-items-center gap-1 mt-2 text-decoration-none"
+                                    <button
+                                        type="button"
+                                        onClick={() => openProtectedPdf(`/electronic-invoices/${creditNote.electronic_invoice_id}/ride`)}
+                                        className="btn btn-link d-inline-flex align-items-center gap-1 mt-2 p-0 text-decoration-none"
                                         style={{ fontSize: 13 }}
                                     >
                                         <i className="bi bi-file-earmark-pdf" style={{ fontSize: 16 }} />
                                         Ver PDF
-                                    </a>
+                                    </button>
                                 )}
                             </div>
                         </div>

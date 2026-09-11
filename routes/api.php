@@ -82,8 +82,6 @@ Route::get('/sri/lookup', [SriController::class, 'lookup']);
 Route::prefix('catalog/{store:slug}')->middleware('throttle:60,1')->group(function () {
     Route::get('/', [PublicCatalogController::class, 'show']);
 });
-Route::get('electronic-invoices/{electronicInvoice}/ride', [ElectronicInvoiceController::class, 'ride']);
-Route::get('electronic-invoices/{electronicInvoice}/xml', [ElectronicInvoiceController::class, 'descargarXml']);
 Route::middleware(['auth:sanctum', 'store.context'])->group(function () {
     Route::middleware(['abilities:*', 'permission:manage_sale|manage_pos_screen'])->prefix('offline-sync')->group(function () {
         Route::post('device-token', [OfflineSyncTokenController::class, 'store']);
@@ -95,7 +93,8 @@ Route::middleware(['auth:sanctum', 'store.context'])->group(function () {
         Route::get('/', [ElectronicInvoiceController::class, 'index']);
         Route::get('/{electronicInvoice}', [ElectronicInvoiceController::class, 'show']);
         Route::get('/{electronicInvoice}/ruta', [ElectronicInvoiceController::class, 'ruta']);
-        // Route::get('/{electronicInvoice}/xml', [ElectronicInvoiceController::class, 'descargarXml']);
+        Route::get('/{electronicInvoice}/ride', [ElectronicInvoiceController::class, 'ride']);
+        Route::get('/{electronicInvoice}/xml', [ElectronicInvoiceController::class, 'descargarXml']);
     });
 
     Route::prefix('sri-config')->middleware('permission:manage_sri_config')->group(function () {
