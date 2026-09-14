@@ -293,7 +293,8 @@ class SaleRepository extends BaseRepository
             getSettingValue('company_name'),
         ];
 
-        if (!empty($mailTemplate) && $mailTemplate->status == MailTemplate::ACTIVE) {
+        if (!empty($mailTemplate) && $mailTemplate->status == MailTemplate::ACTIVE
+            && filter_var($customer->email, FILTER_VALIDATE_EMAIL)) {
             $data['data'] = str_replace($search, $replace, $mailTemplate->content);
 
             Mail::to($customer->email)

@@ -37,8 +37,8 @@ class SendRideEmailJob implements ShouldQueue
 
         $customer = $factura->sale?->customer;
 
-        if (!$customer || empty($customer->email)) {
-            Log::info("SendRideEmailJob: factura {$factura->id} sin cliente o sin correo registrado, no se envía.");
+        if (!$customer || ! filter_var($customer->email, FILTER_VALIDATE_EMAIL)) {
+            Log::info("SendRideEmailJob: factura {$factura->id} sin un correo válido, no se envía.");
             return;
         }
 

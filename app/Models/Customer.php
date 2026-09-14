@@ -17,8 +17,8 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
  * @property string|null $tipo_identificacion
  * @property bool $es_consumidor_final
  * @property string $name
- * @property string $email
- * @property string $phone
+ * @property string|null $email
+ * @property string|null $phone
  * @property string|null $dob
  * @property string $country
  * @property string $city
@@ -96,8 +96,8 @@ class Customer extends BaseModel
         'credit_limit' => 'nullable|numeric|min:0|max:9999999999999.99',
         'default_payment_terms_days' => 'nullable|integer|min:0|max:3650',
         'name' => 'required',
-        'email' => 'required|email|unique:customers',
-        'phone' => 'required|numeric',
+        'email' => 'nullable|string|max:255',
+        'phone' => 'nullable|string|max:50',
         'country' => 'required',
         'city' => 'required',
         'address' => 'required',

@@ -183,13 +183,13 @@ const VariationsSection = ({
                         {/* Tipo de impuesto — siempre renderizado */}
                         <div className="col-md-3 mb-3">
                             <ReactSelect
-                                title={getFormattedMessage("product.input.tax-type.label")}
+                                title={getFormattedMessage("product.input.price-includes-iva.label")}
                                 multiLanguageOption={taxTypeFilterOptions}
                                 value={variation.tax_type}
                                 onChange={(data) => onTaxTypeChange(data, variation.variation_type_id)}
                                 errors={errors[`${variation.variation_type_id}_tax_type`]}
                                 defaultValue={defaultTaxType}
-                                placeholder={placeholderText("product.input.tax-type.placeholder.label")}
+                                placeholder={placeholderText("product.input.price-includes-iva.placeholder")}
                             />
                         </div>
 

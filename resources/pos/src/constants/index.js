@@ -847,8 +847,8 @@ export const paymentTypeOptions = [
 ];
 
 export const taxMethodOptions = [
-    { id: 1, name: "tax-type.filter.exclusive.label" },
-    { id: 2, name: "tax-type.filter.inclusive.label" },
+    { id: 1, name: "tax-type.price-add-iva.label" },
+    { id: 2, name: "tax-type.price-includes-iva.label" },
 ];
 
 export const productTypesOptions = [

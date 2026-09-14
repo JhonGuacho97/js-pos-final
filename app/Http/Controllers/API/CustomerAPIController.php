@@ -89,8 +89,8 @@ class CustomerAPIController extends AppBaseController
     {
         $this->authorizeStoreOwnership($customer);
 
-        if ($customer->es_consumidor_final || !$customer->email) {
-            return $this->sendError('Este cliente no puede utilizar una cuenta del catálogo.');
+        if ($customer->es_consumidor_final || ! filter_var($customer->email, FILTER_VALIDATE_EMAIL)) {
+            return $this->sendError('Para crear una cuenta del catálogo, el cliente debe tener un correo electrónico válido.');
         }
 
         $email = Str::lower(trim($customer->email));
@@ -148,7 +148,7 @@ class CustomerAPIController extends AppBaseController
         }
         $customer = DB::transaction(function () use ($input, $id, $existingCustomer) {
             $updated = $this->customerRepository->update($input, $id);
-            if ($existingCustomer->account) {
+            if ($existingCustomer->account && filter_var($updated->email, FILTER_VALIDATE_EMAIL)) {
                 $existingCustomer->account->update([
                     'email' => Str::lower(trim($updated->email)),
                 ]);

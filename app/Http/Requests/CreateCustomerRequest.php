@@ -11,6 +11,17 @@ use Illuminate\Validation\Rule;
  */
 class CreateCustomerRequest extends FormRequest
 {
+    protected function prepareForValidation(): void
+    {
+        $email = trim((string) $this->input('email', ''));
+
+        if ($email === '' || in_array(strtoupper($email), ['N/A', 'NA', 'NO APLICA', 'SIN CORREO', '-'], true)) {
+            $email = null;
+        }
+
+        $this->merge(['email' => $email]);
+    }
+
     /**
      * Determine if the user is authorized to make this request.
      */
@@ -26,10 +37,12 @@ class CreateCustomerRequest extends FormRequest
     {
         $rules = Customer::$rules;
         $rules['email'] = [
-            'required',
-            'email',
+            'nullable',
+            'string',
+            'max:255',
             Rule::unique('customers', 'email')->where(fn ($query) => $query->where('store_id', currentStoreId())),
         ];
+        $rules['phone'] = ['nullable', 'string', 'max:50'];
         $rules['identification'] = [
             'nullable',
             Rule::unique('customers', 'identification')->where(fn ($query) => $query->where('store_id', currentStoreId())),
