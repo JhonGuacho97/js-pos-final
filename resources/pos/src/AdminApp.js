@@ -27,14 +27,16 @@ function AdminApp(props) {
     };
 
     if (config.length === 0 && token !== null) {
-        return <TopProgressBar />;
+        return <TopProgressBar global force />;
     }
 
     const routes = config && prepareRoutes(config);
 
     return (
-        <Suspense fallback={<TopProgressBar />}>
-            <Routes>
+        <>
+            <TopProgressBar global />
+            <Suspense fallback={<TopProgressBar global force />}>
+                <Routes>
                 {routes.map((route, index) => {
                     return route.ele ? (
                         <Route
@@ -57,8 +59,9 @@ function AdminApp(props) {
                     ) : null;
                 })}
                 <Route path="*" element={<Navigate replace to={"/"} />} />
-            </Routes>
-        </Suspense>
+                </Routes>
+            </Suspense>
+        </>
     );
 }
 

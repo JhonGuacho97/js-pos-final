@@ -104,25 +104,31 @@ export const logoutAction = (token, navigate) => async (dispatch) => {
 };
 
 export const forgotPassword = (user) => async (dispatch) => {
-    await apiConfig.post(apiBaseURL.ADMIN_FORGOT_PASSWORD, user).then((response) => {
+    return apiConfig.post(apiBaseURL.ADMIN_FORGOT_PASSWORD, user).then((response) => {
         dispatch({ type: authActionType.ADMIN_FORGOT_PASSWORD, payload: response.data.message });
         dispatch(addToast({ text: getFormattedMessage('forgot-password-form.success.reset-link.label') }));
-    }).catch(({ response }) => {
-        dispatch({ type: toastType.ERROR, payload: response.data.message });
+        return true;
+    }).catch((error) => {
+        const message = error?.response?.data?.message || 'No fue posible enviar el enlace. Inténtalo nuevamente.';
+        dispatch({ type: toastType.ERROR, payload: message });
         dispatch(
-            addToast({ text: response.data.message, type: toastType.ERROR }));
+            addToast({ text: message, type: toastType.ERROR }));
+        return false;
     });
 };
 
 export const resetPassword = (user, navigate) => async (dispatch) => {
-    await apiConfig.post(apiBaseURL.ADMIN_RESET_PASSWORD, user).then((response) => {
+    return apiConfig.post(apiBaseURL.ADMIN_RESET_PASSWORD, user).then((response) => {
         dispatch({ type: authActionType.ADMIN_RESET_PASSWORD, payload: user });
         dispatch(addToast(
             { text: getFormattedMessage('reset-password.success.update.message') }));
         navigate('/login');
-    }).catch(({ response }) => {
+        return true;
+    }).catch((error) => {
+        const message = error?.response?.data?.message || 'No fue posible restablecer la contraseña.';
         dispatch(
-            addToast({ text: response.data.message, type: toastType.ERROR }))
+            addToast({ text: message, type: toastType.ERROR }));
+        return false;
     });
 };
 

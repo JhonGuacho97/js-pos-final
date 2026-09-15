@@ -1,172 +1,134 @@
-import React, { useEffect, useState } from 'react';
-import TabTitle from '../../shared/tab-title/TabTitle';
-import * as EmailValidator from 'email-validator';
-import { forgotPassword } from '../../store/action/authAction';
-import { useDispatch, useSelector } from 'react-redux';
-import { fetchFrontSetting } from '../../store/action/frontSettingAction';
-import { getFormattedMessage, placeholderText } from '../../shared/sharedMethod';
-import { Image } from 'react-bootstrap-v5';
-import { Link } from 'react-router-dom';
-import { ForgotPasswordStyles } from './styles/LoginStyles';
-import { LockIcon, MailIcon } from './styles/icons';
+import React, { useState } from "react";
+import TabTitle from "../../shared/tab-title/TabTitle";
+import * as EmailValidator from "email-validator";
+import { forgotPassword } from "../../store/action/authAction";
+import { useDispatch } from "react-redux";
+import { getFormattedMessage, placeholderText } from "../../shared/sharedMethod";
+import { Link } from "react-router-dom";
+import { loginStyles } from "./styles/LoginStyles";
+import { LockIcon, MailIcon } from "./styles/icons";
+import AuthLayout from "./AuthLayout";
+
+const SuccessIcon = () => (
+    <svg viewBox="0 0 24 24" aria-hidden="true">
+        <path d="M20 11.1V12a8 8 0 1 1-4.7-7.3" />
+        <path d="m9 11 3 3L22 4" />
+    </svg>
+);
 
 const ForgotPassword = () => {
-    const { loginUser, frontSetting } = useSelector((state) => state);
-    const [disable, setDisable] = useState(true);
-    const Dispatch = useDispatch();
-    const [forgotValue, setForgotValue] = useState({ email: '' });
-    const [errors, setErrors] = useState({ email: '' });
+    const dispatch = useDispatch();
+    const [email, setEmail] = useState("");
+    const [submittedEmail, setSubmittedEmail] = useState("");
+    const [error, setError] = useState("");
     const [loading, setLoading] = useState(false);
 
-    useEffect(() => {
-        clearEmail();
-        Dispatch(fetchFrontSetting());
-        if (!loginUser.errorMessage) {
-            if (loginUser) {
-                setLoading(false);
-                setForgotValue({ email: '' });
-            }
-        } else {
-            setLoading(false);
+    const validate = () => {
+        if (!email.trim()) {
+            setError(getFormattedMessage("globally.input.email.validate.label"));
+            return false;
         }
-    }, [loginUser, forgotPassword]);
-
-    const handleChange = (e) => {
-        e.persist();
-        setForgotValue((inputs) => ({ ...inputs, [e.target.name]: e.target.value }));
-        setDisable(e.target.value.trim() === '');
-        setErrors('');
-    };
-
-    const prepareFormData = () => {
-        const formData = new FormData();
-        formData.append('email', forgotValue.email);
-        return formData;
-    };
-
-    const handleValidation = () => {
-        let errorss = {};
-        let isValid = false;
-        if (!EmailValidator.validate(forgotValue['email'])) {
-            if (!forgotValue['email']) {
-                errorss['email'] = getFormattedMessage('globally.input.email.validate.label');
-            } else {
-                errorss['email'] = getFormattedMessage('globally.input.email.valid.validate.label');
-            }
-        } else {
-            isValid = true;
+        if (!EmailValidator.validate(email.trim())) {
+            setError(getFormattedMessage("globally.input.email.valid.validate.label"));
+            return false;
         }
-        setErrors(errorss);
-        return isValid;
+        setError("");
+        return true;
     };
 
-    const clearEmail = () => {
-        if (loginUser && loginUser === 'We have emailed your password reset link!') {
-            setForgotValue({ email: '' });
-        }
-    };
+    const submit = async (event) => {
+        event.preventDefault();
+        if (!validate()) return;
 
-    const onSubmit = (e) => {
-        e.preventDefault();
         setLoading(true);
-        const valid = handleValidation();
-        if (!valid) {
-            setLoading(false);
-            return;
-        }
-        Dispatch(forgotPassword(prepareFormData(forgotValue)));
-        setDisable(true);
+        const formData = new FormData();
+        formData.append("email", email.trim());
+        const sent = await dispatch(forgotPassword(formData));
+        setLoading(false);
+        if (sent) setSubmittedEmail(email.trim());
     };
 
-    const successMessage =
-        loginUser && loginUser === 'We have emailed your password reset link!';
+    const startAgain = () => {
+        setSubmittedEmail("");
+        setError("");
+    };
 
     return (
-        <div className="forgot-page">
-            <style>{ForgotPasswordStyles}</style>
-            <TabTitle title="Forgot Password" />
-
-            {/* Logo */}
-            <div className="forgot-logo-wrap">
-                {frontSetting?.value?.logo && (
-                    <Image
-                        className="login-company-logo"
-                        src={frontSetting.value.logo}
-                        alt="logo"
-                    />
-                )}
-            </div>
-
-            {/* Card */}
-            <div className="forgot-card">
-                {/* Ícono */}
-                <div className="forgot-icon-circle">
-                    <LockIcon />
-                </div>
-
-                <h1 className="forgot-title">
-                    {getFormattedMessage('login-form.forgot-password.label')}
-                </h1>
-                <p className="forgot-subtitle">
-                    Ingresa tu correo y te enviaremos un enlace para restablecer tu contraseña.
-                </p>
-
-                {/* Mensaje de éxito */}
-                {successMessage && (
-                    <div className="forgot-success-box">
-                        ¡Te enviamos el enlace de recuperación! Revisa tu bandeja de entrada.
-                    </div>
-                )}
-
-                <form onSubmit={onSubmit}>
-                    {/* Label + link */}
-                    <div className="forgot-field-label">
-                        <span>
-                            {getFormattedMessage('globally.input.email.label')}
-                            <span className="required" />
-                        </span>
-                        <Link to="/login" className="forgot-back-link">
-                            {getFormattedMessage('login-form.go-to-sign-in.label')}
+        <>
+            <style>{loginStyles}</style>
+            <TabTitle title="Recuperar contraseña" />
+            <AuthLayout page="recovery">
+                {submittedEmail ? (
+                    <div className="auth-success" role="status">
+                        <span className="auth-success__icon"><SuccessIcon /></span>
+                        <span className="auth-card__eyebrow">Correo enviado</span>
+                        <h2>Revisa tu bandeja de entrada</h2>
+                        <p>
+                            Si existe una cuenta asociada a <strong>{submittedEmail}</strong>, recibirás un enlace para crear una nueva contraseña.
+                        </p>
+                        <div className="auth-notice">
+                            El mensaje puede tardar unos minutos. Revisa también las carpetas de spam o correo no deseado.
+                        </div>
+                        <Link to="/login" className="auth-primary-button auth-primary-button--link">
+                            Volver a iniciar sesión <span aria-hidden="true">→</span>
                         </Link>
+                        <button type="button" className="auth-secondary-button" onClick={startAgain}>
+                            Usar otro correo
+                        </button>
                     </div>
+                ) : (
+                    <>
+                        <div className="auth-icon-box"><LockIcon /></div>
+                        <div className="auth-card__intro">
+                            <span className="auth-card__eyebrow">Recuperación de acceso</span>
+                            <h2>Recupera tu contraseña</h2>
+                            <p>Escribe el correo de tu cuenta y te enviaremos un enlace seguro para restablecerla.</p>
+                        </div>
 
-                    {/* Input */}
-                    <div className="forgot-input-wrap">
-                        <MailIcon />
-                        <input
-                            placeholder={placeholderText('globally.input.email.placeholder.label')}
-                            required
-                            value={forgotValue.email}
-                            type="text"
-                            name="email"
-                            autoComplete="on"
-                            onChange={handleChange}
-                        />
-                    </div>
+                        <form onSubmit={submit} noValidate>
+                            <div className="auth-field">
+                                <div className="auth-field__header">
+                                    <label htmlFor="recovery-email">{getFormattedMessage("globally.input.email.label")}</label>
+                                    <Link to="/login" className="auth-inline-link">Volver al acceso</Link>
+                                </div>
+                                <div className="auth-input-wrap">
+                                    <MailIcon />
+                                    <input
+                                        id="recovery-email"
+                                        className={error ? "is-invalid" : ""}
+                                        type="email"
+                                        name="email"
+                                        value={email}
+                                        autoFocus
+                                        autoComplete="email"
+                                        placeholder={placeholderText("globally.input.email.placeholder.label")}
+                                        aria-invalid={Boolean(error)}
+                                        aria-describedby={error ? "recovery-email-error" : undefined}
+                                        onChange={(event) => {
+                                            setEmail(event.target.value);
+                                            if (error) setError("");
+                                        }}
+                                    />
+                                </div>
+                                {error && <span id="recovery-email-error" className="auth-error" role="alert">{error}</span>}
+                            </div>
 
-                    {/* Error */}
-                    <p className="forgot-error">
-                        {errors['email'] || null}
-                    </p>
+                            <button type="submit" className="auth-primary-button" disabled={loading || !email.trim()}>
+                                <span className="auth-button__content">
+                                    {loading && <span className="auth-spinner" />}
+                                    <span className="auth-button__label">{loading ? "Enviando enlace..." : "Enviar enlace de recuperación"}</span>
+                                    {!loading && <span className="auth-button__arrow" aria-hidden="true">→</span>}
+                                </span>
+                            </button>
+                        </form>
 
-                    {/* Botón */}
-                    <button
-                        className="forgot-btn"
-                        type="submit"
-                        disabled={disable}
-                    >
-                        {loading ? (
-                            <>
-                                <span className="forgot-spinner" />
-                                {getFormattedMessage('globally.loading.label')}
-                            </>
-                        ) : (
-                            getFormattedMessage('forgot-password-form.reset-link-btn.label')
-                        )}
-                    </button>
-                </form>
-            </div>
-        </div>
+                        <p className="auth-help-copy">
+                            Por seguridad, el enlace tendrá un tiempo limitado de validez.
+                        </p>
+                    </>
+                )}
+            </AuthLayout>
+        </>
     );
 };
 

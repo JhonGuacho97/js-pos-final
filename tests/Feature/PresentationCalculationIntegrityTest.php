@@ -19,6 +19,7 @@ use App\Models\VariationType;
 use App\Models\Warehouse;
 use App\Repositories\PurchaseRepository;
 use App\Repositories\SaleRepository;
+use App\Repositories\VariationRepository;
 use Illuminate\Foundation\Testing\DatabaseTransactions;
 use Illuminate\Support\Str;
 use Tests\TestCase;
@@ -172,6 +173,46 @@ class PresentationCalculationIntegrityTest extends TestCase
         $this->assertSame('Cajetilla', $attributes['name']);
         $this->assertSame($family->id, $attributes['presentation_family_id']);
         $this->assertSame(20.0, (float) $attributes['equivalence']);
+    }
+
+    public function test_variation_marked_for_sales_is_available_in_the_presentation_catalog(): void
+    {
+        $suffix = Str::upper(Str::random(8));
+        $store = Store::create([
+            'name' => "Presentation bridge {$suffix}",
+            'slug' => 'presentation-bridge-'.Str::lower($suffix),
+            'is_active' => true,
+        ]);
+
+        $variation = app(VariationRepository::class)->store([
+            'store_id' => $store->id,
+            'name' => 'Empaques',
+            'is_presentation' => true,
+            'variation_types' => [
+                ['name' => 'Unidad'],
+                ['name' => 'Caja x12'],
+            ],
+        ]);
+
+        $family = PresentationFamily::where('store_id', $store->id)
+            ->where('slug', 'legacy-'.$variation->id)
+            ->firstOrFail();
+
+        $this->assertTrue($family->is_active);
+        $this->assertSame(['Unidad', 'Caja x12'], $family->types()->pluck('name')->all());
+        $this->assertTrue($family->types()->where('is_active', true)->count() === 2);
+
+        app(VariationRepository::class)->update([
+            'name' => 'Empaques',
+            'is_presentation' => false,
+            'variation_types' => $variation->fresh('variation_types')->variation_types
+                ->map(fn (VariationType $type) => ['id' => $type->id, 'name' => $type->name])
+                ->all(),
+            'deleted_variation_types' => [],
+        ], $variation->id);
+
+        $this->assertFalse($family->fresh()->is_active);
+        $this->assertSame(0, $family->types()->where('is_active', true)->count());
     }
 
     private function line(Product $product, ProductPresentation $presentation, float $quantity, array $overrides): array

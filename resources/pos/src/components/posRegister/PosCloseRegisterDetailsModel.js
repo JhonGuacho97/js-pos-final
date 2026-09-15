@@ -367,11 +367,14 @@ const PosCloseRegisterDetailsModel = ({
                             </div>
                             <div className="pos-close-totals">
                                 <div><span>Fondo inicial</span><strong>{money(value("cash_in_hand"))}</strong></div>
-                                <div><span>Movimientos manuales</span><strong>{money(value("manual_cash_net"))}</strong></div>
-                                <div><span>Ventas registradas</span><strong>{money(value("today_sales_amount"))}</strong></div>
-                                <div><span>Devoluciones</span><strong className="is-negative">−{money(value("today_sales_return_amount"))}</strong></div>
-                                <div className="is-total"><span>Total recibido</span><strong>{money(value("today_sales_payment_amount"))}</strong></div>
+                                <div><span>Ventas cobradas en efectivo</span><strong>{money(value("cash_sales_movement_amount"))}</strong></div>
+                                <div><span>Otros movimientos netos</span><strong>{value("manual_cash_net") > 0 ? "+" : ""}{money(value("manual_cash_net"))}</strong></div>
+                                <div><span>Reembolsos en efectivo</span><strong className="is-negative">−{money(value("cash_refund_movement_amount"))}</strong></div>
+                                <div className="is-total"><span>Efectivo esperado</span><strong>{money(expectedCash)}</strong></div>
                             </div>
+                            <small className="text-muted d-block mt-2">
+                                Las transferencias, cheques y otros métodos se informan arriba, pero no forman parte del dinero físico contado.
+                            </small>
                         </section>
 
                         <section className="pos-close-section pos-close-notes">

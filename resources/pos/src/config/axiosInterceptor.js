@@ -1,6 +1,10 @@
 import {Tokens, errorMessage} from '../constants';
 import {environment} from './environment'
 
+const notifyRequestProgress = (delta) => {
+    window.dispatchEvent(new CustomEvent('ecuapos:request-progress', {detail: delta}));
+};
+
 export default {
     // El parámetro `isToken` (siempre true en los 3 call sites reales:
     // apiConfig.js, apiConfigWithoutToken.js, apiConfigWthFormData.js)
@@ -16,6 +20,10 @@ export default {
     // transpilación.
     setupInterceptors: (axios, isToken = false, isFormData = false) => {
         axios.interceptors.request.use((config) => {
+                if (config.showProgress !== false) {
+                    config.ecuaposProgressTracked = true;
+                    notifyRequestProgress(1);
+                }
                 const token = localStorage.getItem(Tokens.ADMIN);
                 if (token) {
                     config.headers['Authorization'] = `Bearer ${token}`;
@@ -37,6 +45,7 @@ export default {
                 return config;
             },
             (error) => {
+                if (error?.config?.ecuaposProgressTracked) notifyRequestProgress(-1);
                 return Promise.reject(error);
             }
         );
@@ -45,6 +54,7 @@ export default {
             error => errorHandler(error)
         );
         const errorHandler = (error) => {
+            if (error?.config?.ecuaposProgressTracked) notifyRequestProgress(-1);
             // Cuando no hay internet Axios no recibe una respuesta HTTP.
             // Antes se intentaba leer error.response.status igualmente y
             // el POS terminaba lanzando otro TypeError, ocultando la causa
@@ -82,6 +92,7 @@ export default {
             }
         };
         const successHandler = (response) => {
+            if (response?.config?.ecuaposProgressTracked) notifyRequestProgress(-1);
             return response;
         };
     }

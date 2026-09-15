@@ -258,6 +258,24 @@ class PrintRegisterDetailsData extends React.PureComponent {
                                 {/*<span>{(productName.quantity * (calculateProductCost(productName))).toFixed(2)}</span>*/}
                             </td>
                         </tr>
+                        <tr
+                            style={{
+                                width: "100%",
+                                borderBottom: "1px solid #DEE2E6",
+                                background: "#F8F9FA",
+                            }}
+                        >
+                            <td style={{ fontSize: "12px", border: "none", padding: "8px 15px", fontWeight: "bold" }}>
+                                Efectivo esperado en caja
+                            </td>
+                            <td style={{ fontSize: "12px", border: "none", padding: "8px 15px", fontWeight: "bold" }}>
+                                {currencySymbolHandling(
+                                    allConfigData,
+                                    currencySymbol,
+                                    closeRegisterDetails?.total_cash_amount
+                                )}
+                            </td>
+                        </tr>
                     </tbody>
                 </Table>
 

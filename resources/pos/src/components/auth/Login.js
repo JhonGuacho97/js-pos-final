@@ -1,26 +1,17 @@
 import React, { useEffect, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { useDispatch, useSelector } from "react-redux";
-import { Image } from "react-bootstrap-v5";
+import { useDispatch } from "react-redux";
 import * as EmailValidator from "email-validator";
 import { loginAction } from "../../store/action/authAction";
 import TabTitle from "../../shared/tab-title/TabTitle";
-import { fetchFrontSetting } from "../../store/action/frontSettingAction";
 import { Tokens } from "../../constants";
-import { createBrowserHistory } from "history";
 import {
     getFormattedMessage,
     placeholderText,
 } from "../../shared/sharedMethod";
 import { loginStyles } from "./styles/LoginStyles";
-import { EyeIcon, EyeOffIcon } from "./styles/icons";
-
-/* Small inline icons kept local so styles/icons.js doesn't need changes */
-const CheckIcon = () => (
-    <svg width="11" height="11" viewBox="0 0 12 12" fill="none">
-        <path d="M2.5 6.2L4.8 8.5L9.5 3.5" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
-    </svg>
-);
+import { EyeIcon, EyeOffIcon, LockIcon, MailIcon } from "./styles/icons";
+import AuthLayout from "./AuthLayout";
 
 const ShieldIcon = () => (
     <svg width="13" height="13" viewBox="0 0 14 14" fill="none">
@@ -32,8 +23,6 @@ const ShieldIcon = () => (
 const Login = () => {
     const navigate = useNavigate();
     const dispatch = useDispatch();
-    const history = createBrowserHistory();
-    const { frontSetting } = useSelector((state) => state);
     const [loading, setLoading] = useState(false);
     const [showPw, setShowPw] = useState(false);
     const token = localStorage.getItem(Tokens.ADMIN);
@@ -42,24 +31,23 @@ const Login = () => {
     const [errors, setErrors] = useState({ email: "", password: "" });
 
     useEffect(() => {
-        dispatch(fetchFrontSetting());
-        if (token) history.push(window.location.pathname);
+        if (token) navigate("/", { replace: true });
     }, []);
 
     const handleValidation = () => {
         let errorss = {};
-        let isValid = false;
+        let isValid = true;
         if (!EmailValidator.validate(loginInputs["email"])) {
             errorss["email"] = !loginInputs["email"]
                 ? getFormattedMessage("globally.input.email.validate.label")
                 : getFormattedMessage("globally.input.email.valid.validate.label");
-        } else if (!loginInputs["password"]) {
+            isValid = false;
+        }
+        if (!loginInputs["password"]) {
             errorss["password"] = getFormattedMessage("user.input.password.validate.label");
-        } else {
-            isValid = true;
+            isValid = false;
         }
         setErrors(errorss);
-        setLoading(false);
         return isValid;
     };
 
@@ -77,191 +65,118 @@ const Login = () => {
         if (valid) {
             setLoading(true);
             dispatch(loginAction(prepareFormData(loginInputs), navigate, setLoading));
-            setLoginInputs({ email: "", password: "" });
         }
     };
 
     const handleChange = (e) => {
         e.persist();
         setLoginInputs((inputs) => ({ ...inputs, [e.target.name]: e.target.value }));
-        setErrors("");
+        setErrors((current) => ({ ...current, [e.target.name]: "" }));
     };
-
-    const logoSrc = frontSetting?.value?.logo;
 
     return (
         <>
             <style>{loginStyles}</style>
             <TabTitle title={placeholderText("login-form.login-btn.label")} />
 
-            <div className="lp-root">
-                {/* ── Panel izquierdo ── */}
-                <aside className="lp-aside">
-                    {/* <div className="lp-aside-top">
-                        {logoSrc
-                            ? <Image src={logoSrc} className="lp-aside-logo" alt="logo" />
-                            : <span className="lp-brand-name">EcuaPos</span>
-                        }
-                    </div> */}
-
-                    <div className="lp-hero">
-                        <span className="lp-hero-eyebrow">Panel administrativo</span>
-                        <h1 className="lp-hero-title">
-                            Gestiona tu negocio<br />
-                            con <span>total control</span>
-                        </h1>
-                        <p className="lp-hero-sub">
-                            Ventas, compras, inventario y reportes en una sola plataforma —
-                            rápida, confiable y siempre disponible.
-                        </p>
-
-                        {/* Signature element: SRI e-invoicing trust card */}
-                        <div className="lp-seal" aria-hidden="true">
-                            <div className="lp-seal-head">
-                                <span className="lp-seal-title">Factura electrónica</span>
-                                <span className="lp-seal-badge">
-                                    <CheckIcon />
-                                    Autorizado SRI
-                                </span>
-                            </div>
-                            <div className="lp-seal-body">
-                                <div className="lp-seal-rows">
-                                    <div className="lp-seal-row">
-                                        <span className="lp-seal-row-label">Ambiente</span>
-                                        <span className="lp-seal-row-value">Producción</span>
-                                    </div>
-                                    <div className="lp-seal-row">
-                                        <span className="lp-seal-row-label">Comprobante</span>
-                                        <span className="lp-seal-row-value">Factura 001-001</span>
-                                    </div>
-                                    <div className="lp-seal-row">
-                                        <span className="lp-seal-row-label">Emisión</span>
-                                        <span className="lp-seal-row-value">Automática</span>
-                                    </div>
-                                </div>
-                                <div className="lp-seal-qr" />
-                            </div>
+            <AuthLayout page="login">
+                        <div className="auth-card__intro">
+                            <span className="auth-card__eyebrow">Acceso al sistema</span>
+                            <h2>{getFormattedMessage("login-form.title")}</h2>
+                            <p>Ingresa tus credenciales para continuar con la gestión de tu negocio.</p>
                         </div>
-                    </div>
-
-                    <div className="lp-stats">
-                        <div className="lp-stat">
-                            <div className="lp-stat-num">360°</div>
-                            <div className="lp-stat-label">Gestión total</div>
-                        </div>
-                        <div className="lp-stat">
-                            <div className="lp-stat-num">POS</div>
-                            <div className="lp-stat-label">Punto de venta</div>
-                        </div>
-                        <div className="lp-stat">
-                            <div className="lp-stat-num">SRI</div>
-                            <div className="lp-stat-label">Facturación e.</div>
-                        </div>
-                    </div>
-                </aside>
-
-                {/* ── Panel derecho ── */}
-                <main className="lp-main">
-                    <div className="lp-card">
-
-                        {/* {logoSrc && (
-                            <Image src={logoSrc} className="lp-card-logo" alt="logo" />
-                        )} */}
-
-                        <span className="lp-card-badge-mobile">
-                            <CheckIcon />
-                            Facturación electrónica SRI
-                        </span>
-
-                        <h2 className="lp-heading">
-                            {getFormattedMessage("login-form.title")}
-                        </h2>
-                        <p className="lp-sub">Ingresa tus credenciales para continuar</p>
 
                         <form onSubmit={onLogin} noValidate>
 
                             {/* Email */}
-                            <div className="lp-field">
-                                <div className="lp-field-header">
-                                    <label className="lp-label" htmlFor="lp-email">
+                            <div className="auth-field">
+                                <div className="auth-field__header">
+                                    <label htmlFor="login-email">
                                         {getFormattedMessage("globally.input.email.label")}
                                     </label>
                                 </div>
-                                <div className="lp-input-wrap">
+                                <div className="auth-input-wrap">
+                                    <MailIcon />
                                     <input
-                                        id="lp-email"
-                                        className={`lp-input${errors["email"] ? " lp-input--error" : ""}`}
-                                        type="text"
+                                        id="login-email"
+                                        className={errors["email"] ? "is-invalid" : ""}
+                                        type="email"
                                         name="email"
                                         placeholder={placeholderText("globally.input.email.placeholder.label")}
                                         required
+                                        autoFocus
+                                        autoComplete="email"
+                                        aria-invalid={Boolean(errors["email"])}
+                                        aria-describedby={errors["email"] ? "login-email-error" : undefined}
                                         value={loginInputs.email}
                                         onChange={handleChange}
                                     />
                                 </div>
                                 {errors["email"] && (
-                                    <span className="lp-error-msg">{errors["email"]}</span>
+                                    <span id="login-email-error" className="auth-error" role="alert">{errors["email"]}</span>
                                 )}
                             </div>
 
                             {/* Password */}
-                            <div className="lp-field">
-                                <div className="lp-field-header">
-                                    <label className="lp-label" htmlFor="lp-password">
+                            <div className="auth-field">
+                                <div className="auth-field__header">
+                                    <label htmlFor="login-password">
                                         {getFormattedMessage("user.input.password.label")}
                                     </label>
-                                    <Link to="/forgot-password" className="lp-forgot">
+                                    <Link to="/forgot-password" className="auth-inline-link">
                                         {getFormattedMessage("login-form.forgot-password.label")}
                                     </Link>
                                 </div>
-                                <div className="lp-input-wrap">
+                                <div className="auth-input-wrap">
+                                    <LockIcon className="auth-input-icon" />
                                     <input
-                                        id="lp-password"
-                                        className={`lp-input${errors["password"] ? " lp-input--error" : ""}`}
+                                        id="login-password"
+                                        className={errors["password"] ? "is-invalid" : ""}
                                         type={showPw ? "text" : "password"}
                                         name="password"
                                         placeholder={placeholderText("user.input.password.placeholder.label")}
                                         required
-                                        autoComplete="off"
+                                        autoComplete="current-password"
+                                        aria-invalid={Boolean(errors["password"])}
+                                        aria-describedby={errors["password"] ? "login-password-error" : undefined}
                                         value={loginInputs.password}
                                         onChange={handleChange}
-                                        style={{ paddingRight: 44 }}
                                     />
                                     <button
                                         type="button"
-                                        className="lp-pw-toggle"
+                                        className="auth-password-toggle"
                                         onClick={() => setShowPw((v) => !v)}
                                         aria-label={showPw ? "Ocultar contraseña" : "Mostrar contraseña"}
+                                        aria-pressed={showPw}
                                     >
                                         {showPw ? <EyeOffIcon /> : <EyeIcon />}
                                     </button>
                                 </div>
                                 {errors["password"] && (
-                                    <span className="lp-error-msg">{errors["password"]}</span>
+                                    <span id="login-password-error" className="auth-error" role="alert">{errors["password"]}</span>
                                 )}
                             </div>
 
                             {/* Submit */}
-                            <button type="submit" className="lp-btn" disabled={loading}>
-                                <span className="lp-btn-inner">
-                                    {loading && <span className="lp-spinner" />}
-                                    <span>
+                            <button type="submit" className="auth-primary-button" disabled={loading}>
+                                <span className="auth-button__content">
+                                    {loading && <span className="auth-spinner" />}
+                                    <span className="auth-button__label">
                                         {loading
                                             ? getFormattedMessage("globally.loading.label")
                                             : getFormattedMessage("login-form.login-btn.label")
                                         }
                                     </span>
+                                    {!loading && <span className="auth-button__arrow" aria-hidden="true">→</span>}
                                 </span>
                             </button>
                         </form>
 
-                        <div className="lp-card-foot">
+                        <div className="auth-card__trust">
                             <ShieldIcon />
-                            <span>Conexión segura · Datos protegidos</span>
+                            <span>Tu sesión está protegida. Nunca compartas tu contraseña.</span>
                         </div>
-                    </div>
-                </main>
-            </div>
+            </AuthLayout>
         </>
     );
 };

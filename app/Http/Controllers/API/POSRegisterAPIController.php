@@ -404,6 +404,22 @@ class POSRegisterAPIController extends AppBaseController
             ->where('payment_type', SalesPayment::OTHER)
             ->sum('amount');
 
+        // Desglose contable del efectivo basado en el libro de movimientos.
+        // A diferencia del resumen comercial por formas de pago, estas cifras
+        // sí reconstruyen exactamente el saldo físico esperado del turno.
+        $data['cash_sales_movement_amount'] = $register
+            ? (float) $register->movements()
+                ->where('type', CashMovement::SALE_PAYMENT)
+                ->where('direction', CashMovement::IN)
+                ->sum('amount')
+            : (float) $data['today_sales_cash_payment'];
+        $data['cash_refund_movement_amount'] = $register
+            ? (float) $register->movements()
+                ->where('type', CashMovement::CASH_REFUND)
+                ->where('direction', CashMovement::OUT)
+                ->sum('amount')
+            : 0.0;
+
         $data['today_sales_amount'] = $totalGrandTotalAmount;
 
         $returns = SaleReturn::query();

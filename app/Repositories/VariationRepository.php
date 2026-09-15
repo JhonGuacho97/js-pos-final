@@ -4,6 +4,7 @@ namespace App\Repositories;
 
 use App\Models\Variation;
 use App\Models\VariationType;
+use App\Services\PresentationCatalogSyncService;
 use Exception;
 use Illuminate\Support\Facades\DB;
 use Symfony\Component\HttpKernel\Exception\UnprocessableEntityHttpException;
@@ -53,6 +54,7 @@ class VariationRepository extends BaseRepository
                     ]);
                 }
             }
+            app(PresentationCatalogSyncService::class)->sync($variation->fresh('variation_types'));
             DB::commit();
         } catch (Exception $e) {
             DB::rollBack();
@@ -100,6 +102,8 @@ class VariationRepository extends BaseRepository
                     ]);
                 }
             }
+
+            app(PresentationCatalogSyncService::class)->sync($variation->fresh('variation_types'));
 
             DB::commit();
         } catch (Exception $e) {
