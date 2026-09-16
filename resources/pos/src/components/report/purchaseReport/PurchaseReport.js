@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import { connect } from "react-redux";
 import dayjs from 'dayjs';
 import utc from 'dayjs/plugin/utc';
@@ -23,6 +23,7 @@ import { fetchAllSuppliers } from "../../../store/action/supplierAction";
 import { fetchFrontSetting } from "../../../store/action/frontSettingAction";
 import { downloadExcel } from "../../../store/action/downloadReportAction";
 import TopProgressBar from "../../../shared/components/loaders/TopProgressBar";
+import "../report-workspace.scss";
 
 const PurchaseReport = (props) => {
     const {
@@ -207,22 +208,84 @@ const PurchaseReport = (props) => {
         setIsWarehouseValue(true);
     };
 
+    const visibleSummary = useMemo(() => {
+        const rows = itemsValue || [];
+
+        return rows.reduce(
+            (summary, purchase) => ({
+                amount: summary.amount + Number(purchase.grand_total || 0),
+                received: summary.received + (purchase.status === 1 ? 1 : 0),
+                inProgress: summary.inProgress + ([2, 3].includes(purchase.status) ? 1 : 0),
+                suppliers: purchase.supplier
+                    ? summary.suppliers.add(purchase.supplier)
+                    : summary.suppliers,
+            }),
+            { amount: 0, received: 0, inProgress: 0, suppliers: new Set() }
+        );
+    }, [itemsValue]);
+
+    const money = (value) =>
+        currencySymbolHandling(allConfigData, currencySymbol || "$", Number(value || 0));
+
     return (
         <MasterLayout>
             <TopProgressBar />
             <TabTitle title={placeholderText("purchase.reports.title")} />
-            <ReactDataTable
-                columns={columns}
-                items={itemsValue}
-                onChange={onChange}
-                isLoading={isLoading}
-                totalRows={totalRecord}
-                isShowDateRangeField
-                isEXCEL
-                isShowFilterField
-                isStatus
-                onExcelClick={onExcelClick}
-            />
+            <main className="report-workspace report-workspace--purchase">
+                <header className="report-workspace__header">
+                    <div>
+                        <span className="report-workspace__eyebrow">CONTROL DE ABASTECIMIENTO</span>
+                        <h1>Informe de compras</h1>
+                        <p>Revisa tus compras, proveedores y estados de recepción en una vista ordenada.</p>
+                    </div>
+                    <button
+                        type="button"
+                        className="report-workspace__action"
+                        onClick={onExcelClick}
+                        disabled={isWarehouseValue || isLoading}
+                    >
+                        <i className="bi bi-file-earmark-spreadsheet" />
+                        {isWarehouseValue ? "Preparando..." : "Exportar Excel"}
+                    </button>
+                </header>
+
+                <section className="report-workspace__kpis" aria-label="Resumen de compras de la página actual">
+                    <article>
+                        <span className="report-workspace-kpi__icon is-blue"><i className="bi bi-bag-check" /></span>
+                        <div><small>Compras registradas</small><strong>{totalRecord || 0}</strong><p>{(itemsValue || []).length} visibles en esta página</p></div>
+                    </article>
+                    <article>
+                        <span className="report-workspace-kpi__icon is-purple"><i className="bi bi-cash-stack" /></span>
+                        <div><small>Total visible</small><strong>{money(visibleSummary.amount)}</strong><p>Suma de la página actual</p></div>
+                    </article>
+                    <article>
+                        <span className="report-workspace-kpi__icon is-green"><i className="bi bi-check2-circle" /></span>
+                        <div><small>Recibidas</small><strong>{visibleSummary.received}</strong><p>Compras completadas visibles</p></div>
+                    </article>
+                    <article className={visibleSummary.inProgress > 0 ? "has-attention" : ""}>
+                        <span className="report-workspace-kpi__icon is-amber"><i className="bi bi-hourglass-split" /></span>
+                        <div><small>En proceso</small><strong>{visibleSummary.inProgress}</strong><p>{visibleSummary.suppliers.size} proveedores visibles</p></div>
+                    </article>
+                </section>
+
+                <section className="report-workspace__panel">
+                    <div className="report-workspace__panel-heading">
+                        <div><span>HISTORIAL DE COMPRAS</span><h2>Movimientos de abastecimiento</h2><p>Busca, filtra por estado o acota el periodo para encontrar una compra.</p></div>
+                        <small><i className="bi bi-info-circle" /> Los importes del resumen corresponden a la página actual.</small>
+                    </div>
+                    <ReactDataTable
+                        columns={columns}
+                        items={itemsValue}
+                        onChange={onChange}
+                        isLoading={isLoading}
+                        totalRows={totalRecord}
+                        isShowDateRangeField
+                        isShowFilterField
+                        isStatus
+                        searchPlaceholder="Buscar por referencia o proveedor"
+                    />
+                </section>
+            </main>
         </MasterLayout>
     );
 };

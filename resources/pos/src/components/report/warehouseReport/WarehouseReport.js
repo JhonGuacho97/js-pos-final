@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { connect } from "react-redux";
-import { Col, Row, Tab, Tabs } from "react-bootstrap";
+import { Tab, Tabs } from "react-bootstrap";
 import MasterLayout from "../../MasterLayout";
 import TabTitle from "../../../shared/tab-title/TabTitle";
 import {
@@ -9,20 +9,13 @@ import {
 } from "../../../shared/sharedMethod";
 import ReactSelect from "../../../shared/select/reactSelect";
 import { fetchAllWarehouses } from "../../../store/action/warehouseAction";
-import Widget from "../../../shared/Widget/Widget";
 import SaleReturnTab from "./SaleReturnTab";
 import SalesTab from "./SalesTab";
 import PurchaseReturnTab from "./PurchaseReturnTab";
 import ExpensesTab from "./ExpensesTab";
 import { fetchWarehouseReport } from "../../../store/action/warehouseReportAction";
-import {
-    faArrowLeft,
-    faArrowRight,
-    faCartPlus,
-    faShoppingCart,
-} from "@fortawesome/free-solid-svg-icons";
-import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import TopProgressBar from "../../../shared/components/loaders/TopProgressBar";
+import "../report-workspace.scss";
 
 const WarehouseReport = (props) => {
     const {
@@ -56,126 +49,68 @@ const WarehouseReport = (props) => {
         id: null,
     };
     const newArray = [newFirstElement].concat(array);
+    const selectedWarehouseName = warehouseValue?.label || getFormattedMessage("report-all.warehouse.label");
+    const summaryCards = [
+        { label: "Ventas", value: warehouseReportData?.sale_count, helper: "Operaciones comerciales", icon: "bi-cart-check", tone: "is-blue" },
+        { label: "Compras", value: warehouseReportData?.purchase_count, helper: "Entradas registradas", icon: "bi-bag-check", tone: "is-purple" },
+        { label: "Devoluciones de venta", value: warehouseReportData?.sale_return_count, helper: "Retornos de clientes", icon: "bi-arrow-return-left", tone: "is-amber" },
+        { label: "Devoluciones de compra", value: warehouseReportData?.purchase_return_count, helper: "Retornos a proveedores", icon: "bi-arrow-return-right", tone: "is-green" },
+    ];
 
     return (
         <MasterLayout>
             <TopProgressBar />
             <TabTitle title={placeholderText("warehouse.reports.title")} />
-            <Col md={4} className="mx-auto mb-5 col-12">
-                {newArray && (
-                    <ReactSelect
-                        data={newArray}
-                        onChange={onWarehouseChange}
-                        defaultValue={
-                            newArray[0]
-                                ? {
-                                      label: newArray[0].attributes.name,
-                                      value: newArray[0].id,
-                                  }
-                                : ""
-                        }
-                        title={getFormattedMessage("warehouse.title")}
-                        errors={""}
-                        isRequired
-                        placeholder={placeholderText(
-                            "purchase.select.warehouse.placeholder.label"
+            <main className="report-workspace report-workspace--warehouse">
+                <header className="report-workspace__header">
+                    <div>
+                        <span className="report-workspace__eyebrow">VISIÓN OPERATIVA</span>
+                        <h1>Informe de almacén</h1>
+                        <p>Compara la actividad de ventas, compras, devoluciones y gastos por ubicación.</p>
+                    </div>
+                    <div className="report-workspace__warehouse-filter">
+                        <span>Almacén analizado</span>
+                        {newArray && (
+                            <ReactSelect
+                                data={newArray}
+                                onChange={onWarehouseChange}
+                                defaultValue={newArray[0] ? { label: newArray[0].attributes.name, value: newArray[0].id } : ""}
+                                errors={""}
+                                placeholder={placeholderText("purchase.select.warehouse.placeholder.label")}
+                            />
                         )}
-                    />
-                )}
-            </Col>
-            <Row className="g-4">
-                <Widget
-                    title={getFormattedMessage("sales.title")}
-                    icon={
-                        <FontAwesomeIcon
-                            icon={faShoppingCart}
-                            className="fs-1-xl text-white"
-                        />
-                    }
-                    currency={""}
-                    className="bg-primary"
-                    iconClass="bg-cyan-300"
-                    value={
-                        warehouseReportData?.sale_count
-                            ? parseFloat(
-                                  warehouseReportData?.sale_count
-                              ).toFixed(2)
-                            : "0.00"
-                    }
-                />
+                    </div>
+                </header>
 
-                <Widget
-                    title={getFormattedMessage("purchases.title")}
-                    className="bg-success"
-                    iconClass="bg-green-300"
-                    icon={
-                        <FontAwesomeIcon
-                            icon={faCartPlus}
-                            className="fs-1-xl text-white"
-                        />
-                    }
-                    currency={""}
-                    value={
-                        warehouseReportData?.purchase_count
-                            ? parseFloat(
-                                  warehouseReportData?.purchase_count
-                              ).toFixed(2)
-                            : "0.00"
-                    }
-                />
+                <section className="report-workspace__scope">
+                    <span className="report-workspace__scope-icon"><i className="bi bi-shop" /></span>
+                    <div><small>Alcance actual</small><strong>{selectedWarehouseName}</strong><p>Los indicadores y movimientos se actualizan con esta selección.</p></div>
+                </section>
 
-                <Widget
-                    title={getFormattedMessage("dashboard.salesReturn.title")}
-                    className="bg-info"
-                    iconClass="bg-blue-300"
-                    icon={
-                        <FontAwesomeIcon
-                            icon={faArrowRight}
-                            className="fs-1-xl text-white"
-                        />
-                    }
-                    currency={""}
-                    value={
-                        warehouseReportData?.sale_return_count
-                            ? parseFloat(
-                                  warehouseReportData?.sale_return_count
-                              ).toFixed(2)
-                            : "0.00"
-                    }
-                />
+                <section className="report-workspace__kpis" aria-label="Resumen operativo del almacén">
+                    {summaryCards.map((card) => (
+                        <article key={card.label}>
+                            <span className={`report-workspace-kpi__icon ${card.tone}`}><i className={`bi ${card.icon}`} /></span>
+                            <div><small>{card.label}</small><strong>{Number(card.value || 0).toLocaleString()}</strong><p>{card.helper}</p></div>
+                        </article>
+                    ))}
+                </section>
 
-                <Widget
-                    title={getFormattedMessage(
-                        "dashboard.purchaseReturn.title"
-                    )}
-                    className="bg-warning"
-                    iconClass="bg-yellow-300"
-                    icon={
-                        <FontAwesomeIcon
-                            icon={faArrowLeft}
-                            className="fs-1-xl text-white"
-                        />
-                    }
-                    currency={""}
-                    value={
-                        warehouseReportData?.purchase_return_count
-                            ? parseFloat(
-                                  warehouseReportData?.purchase_return_count
-                              ).toFixed(2)
-                            : "0.00"
-                    }
-                />
-            </Row>
-            <Tabs
-                defaultActiveKey="sales"
-                id="uncontrolled-tab-example"
-                onSelect={(k) => setKey(k)}
-                className="mt-7 mb-5"
-            >
+                <section className="report-workspace__panel report-workspace__panel--tabs">
+                    <div className="report-workspace__panel-heading">
+                        <div><span>DETALLE OPERATIVO</span><h2>Movimientos del almacén</h2><p>Cambia de categoría y aplica filtros para revisar cada tipo de operación.</p></div>
+                        <small><i className="bi bi-arrow-repeat" /> La información corresponde a {selectedWarehouseName}.</small>
+                    </div>
+                    <Tabs
+                        defaultActiveKey="sales"
+                        id="warehouse-report-tabs"
+                        onSelect={(k) => setKey(k)}
+                        className="report-workspace__tabs"
+                    >
                 <Tab
                     eventKey="sales"
                     title={getFormattedMessage("sales.title")}
-                    tabClassName="position-relative mb-3 me-7"
+                    tabClassName="report-workspace__tab"
                 >
                     <div className="w-100 mx-auto">
                         {key === "sales" && (
@@ -189,7 +124,7 @@ const WarehouseReport = (props) => {
                 <Tab
                     eventKey="sales-return"
                     title={getFormattedMessage("sales-return.title")}
-                    tabClassName="position-relative mb-3 me-7"
+                    tabClassName="report-workspace__tab"
                 >
                     <div className="w-100 mx-auto">
                         {key === "sales-return" && (
@@ -203,7 +138,7 @@ const WarehouseReport = (props) => {
                 <Tab
                     eventKey="purchase-return"
                     title={getFormattedMessage("purchases.return.title")}
-                    tabClassName="position-relative mb-3 me-7"
+                    tabClassName="report-workspace__tab"
                 >
                     <div className="w-100 mx-auto">
                         {key === "purchase-return" && (
@@ -217,7 +152,7 @@ const WarehouseReport = (props) => {
                 <Tab
                     eventKey="expenses"
                     title={getFormattedMessage("expenses.title")}
-                    tabClassName="position-relative mb-3"
+                    tabClassName="report-workspace__tab"
                 >
                     <div className="w-100 mx-auto">
                         {key === "expenses" && (
@@ -228,7 +163,9 @@ const WarehouseReport = (props) => {
                         )}
                     </div>
                 </Tab>
-            </Tabs>
+                    </Tabs>
+                </section>
+            </main>
         </MasterLayout>
     );
 };
