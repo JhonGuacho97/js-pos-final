@@ -159,6 +159,7 @@ const CustomersReport = ({
                         onChange={(filter) => fetchCustomersReport(filter, true)}
                         isLoading={isLoading}
                         totalRows={totalRecord}
+                        searchPlaceholder="Buscar por nombre, correo o teléfono"
                     />
                 </section>
             </main>

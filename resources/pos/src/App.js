@@ -46,6 +46,11 @@ function App() {
         // Cargamos el lenguaje visual actual al final para que Toastify,
         // SweetAlert y las alertas inline mantengan la misma apariencia.
         require("./assets/scss/custom/alerts-modern.scss");
+
+        // La tabla compartida usa su fuente SCSS actualizada después del CSS
+        // legado. Así evitamos que `overflow: overlay` vuelva a dibujar franjas
+        // sobre la paginación en resoluciones de escritorio intermedias.
+        require("./assets/scss/custom/components/_react-datatable.scss");
     }, [location.pathname]);
 
     // ─── Soporte RTL ─────────────────────────────────────────────────────────

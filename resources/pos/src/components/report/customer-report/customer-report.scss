@@ -110,6 +110,43 @@
 .customer-report__panel-heading h2 { margin: 3px 0 4px; font-size: 19px; font-weight: 800; letter-spacing: -.025em; }
 .customer-report__panel-heading > small { display: flex; align-items: center; gap: 6px; max-width: 300px; color: #8793a6; font-size: 10px; line-height: 1.4; }
 .customer-report__panel .data-table { background: #fff; }
+.customer-report__panel .data-table header {
+    display: flex;
+    min-height: 68px;
+    align-items: center !important;
+    justify-content: flex-start;
+    padding: 12px 20px;
+    border-bottom: 1px solid var(--customer-border);
+    background: #fff;
+}
+.customer-report__panel .data-table header > .searchBox {
+    flex: 0 1 390px;
+    width: 100%;
+    max-width: 390px;
+    margin: 0 !important;
+    padding: 0;
+}
+.customer-report__panel .data-table header > .searchBox > div {
+    width: 100% !important;
+}
+.customer-report__panel .data-table header > .searchBox .form-control {
+    height: 43px;
+    padding-right: 14px;
+    border: 1px solid #dde5ef;
+    border-radius: 11px;
+    background: #f8faff;
+    color: #2d384c;
+    font-size: 12px;
+    box-shadow: none;
+    transition: .18s ease;
+}
+.customer-report__panel .data-table header > .searchBox .form-control:focus {
+    border-color: #8eb2ff;
+    background: #fff;
+    box-shadow: 0 0 0 3px rgba(36, 99, 235, .09);
+}
+.customer-report__panel .data-table header > .searchBox svg { color: #8794a8; font-size: 12px; }
+.customer-report__panel .data-table header > .col-12:last-child:empty { display: none !important; }
 .customer-report__panel .rdt_TableHeadRow { min-height: 48px; border-bottom-color: #e8edf4; background: #f7f9fc; color: #768398; font-size: 10px; font-weight: 800; letter-spacing: .045em; text-transform: uppercase; }
 .customer-report__panel .rdt_TableRow { min-height: 70px; border-bottom-color: #edf1f6; color: #2d384c; }
 .customer-report__panel .rdt_TableRow:hover { background: #fbfdff; }
@@ -175,6 +212,8 @@
     .customer-report__kpis { grid-template-columns: 1fr; gap: 9px; }
     .customer-report__kpis article { min-height: 92px; }
     .customer-report__panel-heading { padding: 16px; }
+    .customer-report__panel .data-table header { min-height: 64px; padding: 10px 13px; }
+    .customer-report__panel .data-table header > .searchBox { flex-basis: 100%; max-width: none; }
     .customer-report-detail__progress { grid-column: span 1; }
     .customer-report-detail__tabs .nav-tabs { flex-wrap: nowrap; overflow-x: auto; padding-left: 10px; }
     .customer-report-detail__tabs .nav-link { white-space: nowrap; }
