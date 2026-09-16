@@ -73,10 +73,10 @@ const CustomerForm = (props) => {
                         />
 
                         {field("name", getFormattedMessage('globally.input.name.label'))}
-                        {field("email", `${getFormattedMessage('globally.input.email.label')} (opcional)`, "text", {
+                        {field("email", <>{getFormattedMessage('globally.input.email.label')} <span className="text-muted fw-normal">(opcional)</span></>, "text", {
                             placeholder: "Déjalo vacío o escribe N/A",
                         })}
-                        {field("phone", `${getFormattedMessage('globally.input.phone-number.label')} (opcional)`, "text", {
+                        {field("phone", <>{getFormattedMessage('globally.input.phone-number.label')} <span className="text-muted fw-normal">(opcional)</span></>, "text", {
                             placeholder: "Déjalo vacío o escribe N/A",
                         })}
                         {field("city", getFormattedMessage('globally.input.city.label'))}

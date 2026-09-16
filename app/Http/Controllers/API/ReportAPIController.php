@@ -761,7 +761,17 @@ class ReportAPIController extends AppBaseController
     {
         $this->authorizeStoreOwnership($customer);
 
+        $customer->loadMissing('sales.payments');
+
         $salesData = [];
+
+        $salesData['customer'] = [
+            'id' => $customer->id,
+            'name' => $customer->name,
+            'identification' => $customer->identification,
+            'phone' => $customer->phone,
+            'email' => $customer->email,
+        ];
 
         $salesData['totalSale'] = $customer->sales->count();
 

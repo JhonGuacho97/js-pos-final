@@ -1,89 +1,103 @@
-import React, {useEffect, useState} from 'react';
-import {Row, Tab, Tabs} from 'react-bootstrap';
-import MasterLayout from '../../MasterLayout';
-import TabTitle from '../../../shared/tab-title/TabTitle';
-import {getFormattedMessage, placeholderText} from '../../../shared/sharedMethod';
-import {useParams} from 'react-router-dom';
-import HeaderTitle from '../../header/HeaderTitle';
-import {useDispatch, useSelector} from 'react-redux';
+import React, { useEffect, useState } from "react";
+import { Tab, Tabs } from "react-bootstrap";
+import { useNavigate, useParams } from "react-router-dom";
+import { useDispatch, useSelector } from "react-redux";
+import MasterLayout from "../../MasterLayout";
+import TabTitle from "../../../shared/tab-title/TabTitle";
+import { currencySymbolHandling, placeholderText } from "../../../shared/sharedMethod";
 import TopProgressBar from "../../../shared/components/loaders/TopProgressBar";
-import Widget from "../../../shared/Widget/Widget";
-import {FontAwesomeIcon} from "@fortawesome/react-fontawesome";
-import {faArrowLeft, faArrowRight, faCartPlus} from "@fortawesome/free-solid-svg-icons";
-import {fetchFrontSetting} from "../../../store/action/frontSettingAction";
-import SalesTab from './customer-tab/SalesTab';
-import QuotationsTeb from './customer-tab/QuotationsTeb';
-import SaleReturnTabs from './customer-tab/SaleReturnTabs';
-import SalePayment from './customer-tab/SalePayment';
-import { fetchCustomerReportWidget } from '../../../store/action/customerReportWidgetAction';
+import { fetchFrontSetting } from "../../../store/action/frontSettingAction";
+import { fetchCustomerReportWidget } from "../../../store/action/customerReportWidgetAction";
+import SalesTab from "./customer-tab/SalesTab";
+import QuotationsTeb from "./customer-tab/QuotationsTeb";
+import SaleReturnTabs from "./customer-tab/SaleReturnTabs";
+import SalePayment from "./customer-tab/SalePayment";
+import "./customer-report.scss";
 
-const CustomerReportDetails = (props) => {
-    const [key, setKey] = useState('sale');
-    const {id} = useParams();
-    const dispatch = useDispatch()
-    const {frontSetting, customerReportWidgetData, allConfigData} = useSelector(state => state)
-    const currencySymbol = frontSetting && frontSetting.value && frontSetting.value.currency_symbol
+const CustomerReportDetails = () => {
+    const [activeTab, setActiveTab] = useState("sale");
+    const { id } = useParams();
+    const navigate = useNavigate();
+    const dispatch = useDispatch();
+    const { frontSetting, customerReportWidgetData = {}, allConfigData } = useSelector((state) => state);
+    const customer = customerReportWidgetData.customer || {};
+    const currency = frontSetting?.value?.currency_symbol || "$";
+    const totalAmount = Number(customerReportWidgetData.totalAmount || 0);
+    const totalPaid = Number(customerReportWidgetData.totalPaid || 0);
+    const totalDue = Math.max(0, Number(customerReportWidgetData.totalSalesDue || 0));
+    const collectionRate = totalAmount > 0 ? Math.min(100, (totalPaid / totalAmount) * 100) : 0;
+    const money = (value) => currencySymbolHandling(allConfigData, currency, Number(value || 0));
+    const initials = (customer.name || `Cliente ${id}`).split(/\s+/).slice(0, 2).map((part) => part.charAt(0)).join("").toUpperCase();
 
     useEffect(() => {
-        id && dispatch(fetchCustomerReportWidget(id))
-        dispatch(fetchFrontSetting())
-    }, [])
+        if (id) dispatch(fetchCustomerReportWidget(id));
+        dispatch(fetchFrontSetting());
+    }, [id]);
+
+    const kpis = [
+        { label: "Ventas registradas", value: Number(customerReportWidgetData.totalSale || 0), help: "Transacciones históricas", icon: "bi-receipt", tone: "is-blue", isMoney: false },
+        { label: "Total facturado", value: totalAmount, help: "Valor comercial acumulado", icon: "bi-graph-up-arrow", tone: "is-purple", isMoney: true },
+        { label: "Total cobrado", value: totalPaid, help: `${collectionRate.toFixed(1)}% recuperado`, icon: "bi-check2-circle", tone: "is-green", isMoney: true },
+        { label: "Saldo pendiente", value: totalDue, help: totalDue > 0 ? "Requiere seguimiento" : "Cliente al día", icon: "bi-clock-history", tone: "is-amber", isMoney: true },
+    ];
 
     return (
         <MasterLayout>
-            <TopProgressBar/>
-            <HeaderTitle title={getFormattedMessage('customer.report.details.title')} to='/app/report/customers'/>
-            <TabTitle title={placeholderText('customer.report.details.title')}/>
-            <Row className='g-4 justify-content-center'>
-                <Widget title={getFormattedMessage('sale.title')}
-                        className='bg-success' iconClass='bg-green-300'
-                        icon={<FontAwesomeIcon icon={faCartPlus} className='fs-1-xl text-white'/>}   currency={''}
-                        value={customerReportWidgetData?.totalSale ? parseFloat(customerReportWidgetData?.totalSale).toFixed(2) : '0.00'}/>
-                <Widget title={getFormattedMessage('pos-total-amount.title')}
-                        className='bg-info' iconClass='bg-blue-300' allConfigData={allConfigData}
-                        icon={<FontAwesomeIcon icon={faArrowRight} className='fs-1-xl text-white'/>}
-                        currency={currencySymbol}
-                        value={customerReportWidgetData?.totalAmount ? parseFloat(customerReportWidgetData?.totalAmount).toFixed(2) : '0.00'}/>
-                <Widget title={getFormattedMessage('sale-paid.total.amount.title')}
-                        className='bg-warning' iconClass='bg-yellow-300' allConfigData={allConfigData}
-                        icon={<FontAwesomeIcon icon={faArrowLeft} className='fs-1-xl text-white'/>}
-                        currency={currencySymbol}
-                        value={customerReportWidgetData?.totalPaid ? parseFloat(customerReportWidgetData?.totalPaid).toFixed(2) : '0.00'}/>
-                <Widget title={getFormattedMessage('sale-Due.total.amount.title')}
-                        className='bg-info' iconClass='bg-blue-300' allConfigData={allConfigData}
-                        icon={<FontAwesomeIcon icon={faArrowRight} className='fs-1-xl text-white'/>}
-                        currency={currencySymbol}
-                        value={customerReportWidgetData?.totalSalesDue ? parseFloat(customerReportWidgetData?.totalSalesDue).toFixed(2) : '0.00'}/>
-            </Row>
-            <Tabs defaultActiveKey='sale' id='uncontrolled-tab-example' onSelect={(k) => setKey(k)}
-                  className='mt-7 mb-5'>
-                <Tab eventKey='sale' title={getFormattedMessage('sale.title')}
-                     tabClassName='position-relative mb-3 me-7'>
-                    <div className='w-100 mx-auto'>
-                        {key === 'sale' && <SalesTab allConfigData={allConfigData} customerId={id}/>}
+            <TopProgressBar />
+            <TabTitle title={placeholderText("customer.report.details.title")} />
+            <main className="customer-report customer-report-detail">
+                <button type="button" className="customer-report-detail__back" onClick={() => navigate("/app/report/customers")}>
+                    <i className="bi bi-arrow-left" /> Volver al informe de clientes
+                </button>
+
+                <header className="customer-report__header">
+                    <div className="customer-report-detail__identity">
+                        <span className="customer-report-detail__avatar">{initials}</span>
+                        <div>
+                            <span className="customer-report__eyebrow">HISTORIAL DEL CLIENTE</span>
+                            <h1>{customer.name || "Detalle comercial"}</h1>
+                            <p>
+                                <span><i className="bi bi-person-vcard" /> {customer.identification || `Cliente #${id}`}</span>
+                                {customer.phone && <span><i className="bi bi-telephone" /> {customer.phone}</span>}
+                                {customer.email && <span><i className="bi bi-envelope" /> {customer.email}</span>}
+                            </p>
+                        </div>
                     </div>
-                </Tab>
-                <Tab eventKey='Sale-return' title={getFormattedMessage('dashboard.salesReturn.title')}
-                     tabClassName='position-relative mb-3 me-7'>
-                    <div className='w-100 mx-auto'>
-                        {key === 'Sale-return' && <SaleReturnTabs allConfigData={allConfigData} customerId={id}/>}
+                    <span className="customer-report-detail__status"><i className="bi bi-circle-fill" /> Historial actualizado</span>
+                </header>
+
+                <section className="customer-report__kpis">
+                    {kpis.map((item) => (
+                        <article key={item.label} className={item.label === "Saldo pendiente" && totalDue > 0 ? "has-balance" : ""}>
+                            <span className={`customer-report-kpi__icon ${item.tone}`}><i className={`bi ${item.icon}`} /></span>
+                            <div><small>{item.label}</small><strong>{item.isMoney ? money(item.value) : item.value}</strong><p>{item.help}</p></div>
+                        </article>
+                    ))}
+                    <div className="customer-report-detail__progress">
+                        <div><i style={{ width: `${collectionRate}%` }} /></div>
+                        <span>{collectionRate.toFixed(1)}% del total ha sido cobrado</span>
                     </div>
-                </Tab>
-                <Tab eventKey='Quotations' title={getFormattedMessage('quotations.title')}
-                     tabClassName='position-relative mb-3 me-7'>
-                    <div className='w-100 mx-auto'>
-                        {key === 'Quotations' && <QuotationsTeb allConfigData={allConfigData} customerId={id}/>}
-                    </div>
-                </Tab>
-                <Tab eventKey='Sale-payment' title={getFormattedMessage("sale.payment.report.title")}
-                     tabClassName='position-relative mb-3 me-7'>
-                    <div className='w-100 mx-auto'>
-                        {key === 'Sale-payment' && <SalePayment allConfigData={allConfigData} customerId={id}/>}
-                    </div>
-                </Tab>
-            </Tabs>
+                </section>
+
+                <section className="customer-report-detail__tabs">
+                    <Tabs activeKey={activeTab} onSelect={(key) => setActiveTab(key || "sale")}>
+                        <Tab eventKey="sale" title={<><i className="bi bi-cart-check" /> Ventas</>}>
+                            {activeTab === "sale" && <SalesTab allConfigData={allConfigData} customerId={id} />}
+                        </Tab>
+                        <Tab eventKey="Sale-payment" title={<><i className="bi bi-wallet2" /> Pagos</>}>
+                            {activeTab === "Sale-payment" && <SalePayment allConfigData={allConfigData} customerId={id} />}
+                        </Tab>
+                        <Tab eventKey="Quotations" title={<><i className="bi bi-file-earmark-text" /> Cotizaciones</>}>
+                            {activeTab === "Quotations" && <QuotationsTeb allConfigData={allConfigData} customerId={id} />}
+                        </Tab>
+                        <Tab eventKey="Sale-return" title={<><i className="bi bi-arrow-return-left" /> Devoluciones</>}>
+                            {activeTab === "Sale-return" && <SaleReturnTabs allConfigData={allConfigData} customerId={id} />}
+                        </Tab>
+                    </Tabs>
+                </section>
+            </main>
         </MasterLayout>
-    )
-}
+    );
+};
 
 export default CustomerReportDetails;
