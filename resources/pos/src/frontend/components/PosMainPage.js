@@ -146,6 +146,7 @@ const PosMainPage = (props) => {
     const [checkoutProcessing, setCheckoutProcessing] = useState(false);
     const [checkoutStage, setCheckoutStage] = useState("");
     const checkoutProcessingRef = useRef(false);
+    const pendingReceiptRef = useRef(false);
     const [modalShowPaymentSlip, setModalShowPaymentSlip] = useState(false);
     const [modalShowCustomer, setModalShowCustomer] = useState(false);
     const [productMsg, _] = useState(0);
@@ -1048,6 +1049,13 @@ const PosMainPage = (props) => {
         setCartProductIds("");
     };
 
+    const handlePaymentModalExited = () => {
+        if (!pendingReceiptRef.current) return;
+
+        pendingReceiptRef.current = false;
+        setModalShowPaymentSlip(true);
+    };
+
     const saveLocalFirstCheckout = async (payload, receipt, sriType) => {
         try {
             setCheckoutStage("Protegiendo la venta en este dispositivo…");
@@ -1124,7 +1132,9 @@ const PosMainPage = (props) => {
                 ? mergeReceiptWithSale(receipt, serverSale)
                 : provisionalReceipt);
             setUpdateProducts([]);
-            setModalShowPaymentSlip(true);
+            // El ticket se abre desde onExited del modal de cobro. Así no se
+            // superponen ambos modales mientras termina la animación de cierre.
+            pendingReceiptRef.current = true;
             setCheckoutStage(serverSale ? "Venta confirmada" : "Venta guardada para sincronizar");
             dispatch(addToast({
                 text: serverSale
@@ -1535,8 +1545,7 @@ const PosMainPage = (props) => {
                     canOverridePrice={Array.isArray(config) && config.includes('override_pos_price')}
                 />
             )}
-            {cashPayment && (
-                <CashPaymentModel
+            <CashPaymentModel
                     cashPayment={cashPayment}
                     totalQty={totalQty}
                     cartItemValue={cartItemValue}
@@ -1569,8 +1578,8 @@ const PosMainPage = (props) => {
                     onCreditSaleEnabledChange={setCreditSaleEnabled}
                     processing={checkoutProcessing}
                     processingLabel={checkoutStage}
+                    onExited={handlePaymentModalExited}
                 />
-            )}
             {lgShow && (
                 <RegisterDetailsModel
                     printRegisterDetails={printRegisterDetails}

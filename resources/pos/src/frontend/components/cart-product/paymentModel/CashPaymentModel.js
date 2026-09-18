@@ -54,6 +54,7 @@ const CashPaymentModel = (props) => {
         onCreditSaleEnabledChange,
         processing,
         processingLabel,
+        onExited,
     } = props;
 
     const currencySymbol = settings.attributes && settings.attributes.currency_symbol;
@@ -100,6 +101,7 @@ const CashPaymentModel = (props) => {
             onHide={processing ? undefined : handleCashPayment}
             backdrop={processing ? "static" : true}
             keyboard={!processing}
+            onExited={onExited}
             size="xl"
             centered
             scrollable
