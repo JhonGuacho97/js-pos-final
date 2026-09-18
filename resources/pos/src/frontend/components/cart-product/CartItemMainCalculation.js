@@ -51,7 +51,7 @@ const CartItemMainCalculation = (props) => {
             {showAdjustments && (
                 <div className="pos-adjustments-panel">
                     <Form.Group className="calculation__filed-grp">
-                        <Form.Label>Impuesto</Form.Label>
+                        <Form.Label>Impuesto adicional al pedido</Form.Label>
                         <InputGroup>
                             <FormControl
                                 type="text"
@@ -75,6 +75,7 @@ const CartItemMainCalculation = (props) => {
                                 %
                             </InputGroup.Text>
                         </InputGroup>
+                        <Form.Text>Úsalo solo para un recargo general autorizado. El IVA de cada producto ya se calcula por separado.</Form.Text>
                     </Form.Group>
                     <Form.Group className="calculation__filed-grp">
                         <Form.Label>Descuento</Form.Label>

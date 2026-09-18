@@ -187,7 +187,17 @@ class AccountsReceivableService
 
     public function assertCreditAvailable(Customer $customer, float $newBalance, ?int $excludeSaleId = null): void
     {
-        if (! $customer->credit_enabled || $newBalance <= 0) {
+        if ($newBalance <= 0) {
+            return;
+        }
+
+        if ($customer->es_consumidor_final) {
+            throw new \Symfony\Component\HttpKernel\Exception\UnprocessableEntityHttpException(
+                'Consumidor final no puede mantener saldos pendientes. Selecciona un cliente identificado o completa el cobro.'
+            );
+        }
+
+        if (! $customer->credit_enabled) {
             return;
         }
 

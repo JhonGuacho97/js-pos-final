@@ -24,6 +24,7 @@ const CustomerDropDown = (props) => {
             credit_enabled: Boolean(customer.attributes?.credit_enabled),
             credit_limit: Number(customer.attributes?.credit_limit || 0),
             default_payment_terms_days: Number(customer.attributes?.default_payment_terms_days || 0),
+            es_consumidor_final: Boolean(customer.attributes?.es_consumidor_final),
         }
     });
 

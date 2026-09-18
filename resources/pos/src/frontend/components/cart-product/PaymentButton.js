@@ -48,13 +48,13 @@ const PaymentButton = (props) => {
     //cash model open onClick
     const openPaymentModel = () => {
         if (
-            !updateProducts.length > 0 ||
+            updateProducts.length === 0 ||
             qtyCart.length > 0 ||
             cartItemValue.tax > 100 ||
             // Number(cartItemValue.discount) > grandTotal ||
             Number(cartItemValue.shipping) > Number(subTotal)
         ) {
-            !updateProducts.length > 0 &&
+            updateProducts.length === 0 &&
                 dispatch(
                     addToast({
                         text: getFormattedMessage(
@@ -108,13 +108,7 @@ const PaymentButton = (props) => {
     };
 
     const resetPaymentModel = () => {
-        if (
-            updateProducts.length > 0 ||
-            qtyCart.length < 0 ||
-            cartItemValue.tax > 100 ||
-            Number(cartItemValue.discount) > grandTotal ||
-            Number(cartItemValue.shipping) > Number(subTotal)
-        ) {
+        if (updateProducts.length > 0) {
             setIsReset(true);
         }
     };
@@ -128,16 +122,10 @@ const PaymentButton = (props) => {
             return;
         }
 
-        if (
-            updateProducts.length > 0 ||
-            qtyCart.length < 0 ||
-            cartItemValue.tax > 100 ||
-            Number(cartItemValue.discount) > grandTotal ||
-            Number(cartItemValue.shipping) > Number(subTotal)
-        ) {
+        if (updateProducts.length > 0) {
             setIsHold(true);
         } else {
-            !updateProducts.length > 0 &&
+            updateProducts.length === 0 &&
                 dispatch(
                     addToast({
                         text: getFormattedMessage(
@@ -151,9 +139,13 @@ const PaymentButton = (props) => {
 
     // handle what happens on key press
     const handleKeyPress = (event) => {
+        const target = event.target;
+        if (target?.matches?.('input, textarea, select, [contenteditable="true"]')) return;
         if (event.altKey && event.code === "KeyR") {
+            event.preventDefault();
             return resetPaymentModel();
         } else if (event.altKey && event.code === "KeyS") {
+            event.preventDefault();
             return openPaymentModel();
         } else if (event.altKey && event.code === "KeyH") {
             event.preventDefault();
@@ -287,7 +279,8 @@ const PaymentButton = (props) => {
                 <ResetCartConfirmationModal
                     onConfirm={onConfirm}
                     onCancel={onCancel}
-                    itemName={getFormattedMessage("globally.detail.product")}
+                    itemCount={updateProducts.length}
+                    total={`$${grandTotal}`}
                 />
             )}
             {isHold && (
@@ -295,7 +288,8 @@ const PaymentButton = (props) => {
                     onChangeInput={onChangeInput}
                     onConfirm={onConfirmHoldList}
                     onCancel={onCancel}
-                    itemName={getFormattedMessage("globally.detail.product")}
+                    itemCount={updateProducts.length}
+                    total={`$${grandTotal}`}
                 />
             )}
         </div>

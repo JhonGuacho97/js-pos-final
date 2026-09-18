@@ -635,6 +635,7 @@ export const Permissions = {
     MANAGE_PURCHASE: "manage_purchase",
     MANAGE_PURCHASE_RETURN: "manage_purchase_return",
     MANAGE_POS_SCREEN: "manage_pos_screen",
+    OVERRIDE_POS_PRICE: "override_pos_price",
     MANAGE_SALE: "manage_sale",
     MANAGE_SALE_RETURN: "manage_sale_return",
     MANAGE_REPORT: "manage_report",

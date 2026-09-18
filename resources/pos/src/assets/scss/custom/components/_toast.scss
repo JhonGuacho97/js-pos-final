@@ -139,6 +139,18 @@
     }
 }
 
+.toast-card__action {
+    align-self: flex-start;
+    margin-top: 9px;
+    padding: 6px 11px;
+    border: 1px solid color-mix(in srgb, var(--toast-accent) 30%, transparent);
+    border-radius: 8px;
+    background: var(--toast-soft);
+    color: var(--toast-icon);
+    font-size: 12px;
+    font-weight: 800;
+}
+
 .Toastify__toast-container--top-right {
     top: 12px !important;
     right: 12px !important;

@@ -41,6 +41,7 @@ const CashPaymentModel = (props) => {
         onRemovePaymentRow,
         onPaymentRowAmountChange,
         onPaymentRowTypeChange,
+        onPaymentRowReferenceChange,
         tipoComprobanteSri,
         onTipoComprobanteChange,
         offlineMode,
@@ -49,7 +50,10 @@ const CashPaymentModel = (props) => {
         creditLoading,
         creditTerms,
         onCreditTermsChange,
+        creditSaleEnabled,
+        onCreditSaleEnabledChange,
         processing,
+        processingLabel,
     } = props;
 
     const currencySymbol = settings.attributes && settings.attributes.currency_symbol;
@@ -59,6 +63,18 @@ const CashPaymentModel = (props) => {
     );
     const liveDifference = totalPaid - grandTotal;
     const pendingBalance = Math.max(0, Number(grandTotal) - Math.min(Number(grandTotal), totalPaid));
+    const isFinalCustomer = Boolean(selectedCustomer?.es_consumidor_final);
+    const paymentRowsValid = paymentRows
+        .filter((row) => Number(row.amount) > 0)
+        .every((row) => row.payment_type?.value && (Number(row.payment_type.value) === 1 || row.reference?.trim()));
+    const canSubmit = paymentRowsValid && (
+        totalPaid >= Number(grandTotal)
+        || (creditSaleEnabled && !isFinalCustomer && Boolean(selectedCustomer?.value))
+    );
+    const remainingForRow = (rowId) => Math.max(0, Number(grandTotal) - paymentRows.reduce(
+        (sum, row) => row.id === rowId ? sum : sum + (Number(row.amount) || 0),
+        0
+    ));
     const status =
         totalPaid <= 0
             ? {
@@ -89,7 +105,7 @@ const CashPaymentModel = (props) => {
             scrollable
             className="pos-modal pos-payment-modal"
         >
-            <Modal.Header closeButton>
+            <Modal.Header closeButton={!processing}>
                 <div className="pos-payment-title">
                     <span className="pos-payment-title__icon">
                         <FontAwesomeIcon icon={faMoneyBillWave} />
@@ -106,6 +122,7 @@ const CashPaymentModel = (props) => {
             </Modal.Header>
 
             <Modal.Body>
+                {processing && <div className="pos-checkout-progress" role="status"><span className="spinner-border spinner-border-sm" /><div><strong>{processingLabel || 'Guardando venta…'}</strong><small>No cierres esta ventana hasta terminar.</small></div></div>}
                 <div className="pos-payment-layout">
                     <section className="pos-payment-main">
                         <div className="pos-payment-section">
@@ -140,9 +157,26 @@ const CashPaymentModel = (props) => {
                                 </button>
                             </div>
 
+                            {paymentRows.length === 1 && (
+                                <div className="pos-payment-method-presets" aria-label="Métodos de pago frecuentes">
+                                    {paymentTypeFilterOptions.filter((option) => [1, 3].includes(Number(option.id))).map((option) => (
+                                        <button
+                                            type="button"
+                                            key={option.id}
+                                            className={Number(paymentRows[0]?.payment_type?.value) === Number(option.id) ? 'active' : ''}
+                                            onClick={() => onPaymentRowTypeChange(paymentRows[0].id, {value: option.id, label: option.name})}
+                                        >
+                                            <i className={`bi ${Number(option.id) === 1 ? 'bi-cash-stack' : 'bi-bank'}`} />
+                                            <span>{Number(option.id) === 1 ? 'Efectivo' : 'Transferencia'}</span>
+                                            <small>{Number(option.id) === 1 ? 'Calcula el cambio' : 'Solicita referencia'}</small>
+                                        </button>
+                                    ))}
+                                </div>
+                            )}
+
                             <div className="pos-payment-rows">
                                 {paymentRows.map((row, index) => (
-                                    <div key={row.id} className="pos-payment-row">
+                                    <div key={row.id} className={`pos-payment-row ${errors.payment ? 'has-error' : ''}`}>
                                         <div className="pos-payment-row__number">{index + 1}</div>
                                         <div className="pos-payment-field">
                                             <Form.Label>
@@ -150,6 +184,7 @@ const CashPaymentModel = (props) => {
                                             </Form.Label>
                                             <Form.Control
                                                 type="text"
+                                                autoFocus={index === 0}
                                                 autoComplete="off"
                                                 placeholder={amountPlaceholder}
                                                 value={row.amount}
@@ -195,21 +230,21 @@ const CashPaymentModel = (props) => {
                                                     onClick={() =>
                                                         onPaymentRowAmountChange(
                                                             row.id,
-                                                            Number(grandTotal).toFixed(2)
+                                                            remainingForRow(row.id).toFixed(2)
                                                         )
                                                     }
                                                 >
                                                     Monto exacto
                                                 </button>
                                                 {[
-                                                    Math.ceil(grandTotal / 5) * 5,
-                                                    Math.ceil(grandTotal / 10) * 10,
-                                                    Math.ceil(grandTotal / 20) * 20,
+                                                    Math.ceil(remainingForRow(row.id) / 5) * 5,
+                                                    Math.ceil(remainingForRow(row.id) / 10) * 10,
+                                                    Math.ceil(remainingForRow(row.id) / 20) * 20,
                                                 ]
                                                     .filter(
                                                         (value, itemIndex, values) =>
                                                             values.indexOf(value) === itemIndex &&
-                                                            value >= grandTotal
+                                                            value >= remainingForRow(row.id)
                                                     )
                                                     .slice(0, 3)
                                                     .map((amount) => (
@@ -226,6 +261,19 @@ const CashPaymentModel = (props) => {
                                                             {formatMoney(amount)}
                                                         </button>
                                                     ))}
+                                            </div>
+                                        )}
+                                        {Number(row.payment_type?.value) !== 1 && (
+                                            <div className="pos-payment-reference">
+                                                <Form.Label>Referencia del pago</Form.Label>
+                                                <Form.Control
+                                                    type="text"
+                                                    value={row.reference || ''}
+                                                    maxLength={100}
+                                                    placeholder={Number(row.payment_type?.value) === 3 ? 'Ej. número de transferencia' : 'Ej. número de comprobante'}
+                                                    onChange={(event) => onPaymentRowReferenceChange(row.id, event.target.value)}
+                                                />
+                                                <small>Ayuda a conciliar el cobro al cerrar caja.</small>
                                             </div>
                                         )}
                                     </div>
@@ -253,8 +301,16 @@ const CashPaymentModel = (props) => {
                             </div>
                         )}
 
-                        {pendingBalance > 0 && <div className={`pos-credit-checkout ${creditProfile?.credit_enabled ? 'is-controlled' : ''}`}>
+                        {pendingBalance > 0 && !creditSaleEnabled && (
+                            <div className={`pos-credit-choice ${isFinalCustomer ? 'is-blocked' : ''}`}>
+                                <div><i className={`bi ${isFinalCustomer ? 'bi-exclamation-triangle' : 'bi-calendar2-check'}`} /><span><strong>{isFinalCustomer ? 'No se puede dejar saldo a consumidor final' : `Quedan ${formatMoney(pendingBalance)} por cobrar`}</strong><small>{isFinalCustomer ? 'Selecciona un cliente identificado o completa el pago.' : 'Si el cliente pagará después, activa una venta a crédito.'}</small></span></div>
+                                {!isFinalCustomer && selectedCustomer?.value && <button type="button" onClick={() => onCreditSaleEnabledChange(true)}>Dejar saldo a crédito</button>}
+                            </div>
+                        )}
+
+                        {pendingBalance > 0 && creditSaleEnabled && !isFinalCustomer && <div className={`pos-credit-checkout ${creditProfile?.credit_enabled ? 'is-controlled' : ''}`}>
                             <div className="pos-credit-checkout__heading"><span><i className="bi bi-calendar2-check" /></span><div><small>VENTA A CRÉDITO</small><h3>Saldo pendiente {formatMoney(pendingBalance)}</h3><p>{selectedCustomer?.label || 'Cliente seleccionado'}</p></div>{creditLoading && <i className="spinner-border spinner-border-sm" />}</div>
+                            <button type="button" className="pos-credit-checkout__cancel" onClick={() => onCreditSaleEnabledChange(false)}>No dejar saldo pendiente</button>
                             <div className="pos-credit-checkout__metrics">
                                 <div><span>Deuda actual</span><strong>{formatMoney(creditProfile?.outstanding_balance || 0)}</strong></div>
                                 <div><span>Cupo disponible</span><strong>{creditProfile?.available_credit === null || creditProfile?.available_credit === undefined ? 'Sin límite' : formatMoney(creditProfile.available_credit)}</strong></div>
@@ -272,11 +328,13 @@ const CashPaymentModel = (props) => {
                                 rows={2}
                                 value={cashPaymentValue.notes}
                                 name="notes"
+                                maxLength={100}
                                 onChange={onChangeInput}
                                 placeholder={placeholderText(
                                     "globally.input.notes.placeholder.label"
                                 )}
                             />
+                            <small className="pos-payment-notes__count">{cashPaymentValue.notes?.length || 0}/100</small>
                             {errors.notes && <span className="text-danger">{errors.notes}</span>}
                         </div>
                     </section>
@@ -343,11 +401,11 @@ const CashPaymentModel = (props) => {
                 <button
                     type="button"
                     className="pos-payment-submit"
-                    disabled={processing}
+                    disabled={processing || !canSubmit}
                     onClick={(event) => onCashPayment(event)}
                 >
                     {processing ? <span className="spinner-border spinner-border-sm" /> : <FontAwesomeIcon icon={faWallet} />}
-                    {processing ? "Guardando venta…" : offlineMode ? "Guardar cobro offline" : "Confirmar cobro"}
+                    {processing ? (processingLabel || "Guardando venta…") : offlineMode ? "Guardar cobro offline" : totalPaid >= Number(grandTotal) ? `Cobrar ${formatMoney(grandTotal)}` : "Confirmar venta a crédito"}
                 </button>
             </Modal.Footer>
         </Modal>

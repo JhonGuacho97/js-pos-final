@@ -25,7 +25,7 @@ class SalePaymentAllocatorTest extends TestCase
 
         (new SalePaymentAllocator())->allocate([
             ['payment_type' => SalesPayment::CASH, 'amount' => 2],
-            ['payment_type' => SalesPayment::BANK_TRANSFER, 'amount' => 33],
+            ['payment_type' => SalesPayment::BANK_TRANSFER, 'amount' => 33, 'reference' => 'TRX-1'],
         ], 30);
     }
 
@@ -33,11 +33,21 @@ class SalePaymentAllocatorTest extends TestCase
     {
         $payments = (new SalePaymentAllocator())->allocate([
             ['payment_type' => SalesPayment::CASH, 'amount' => 5],
-            ['payment_type' => SalesPayment::BANK_TRANSFER, 'amount' => 30],
+            ['payment_type' => SalesPayment::BANK_TRANSFER, 'amount' => 30, 'reference' => 'TRX-2'],
         ], 30);
 
         $this->assertSame(30.0, collect($payments)->sum('amount'));
         $this->assertCount(1, $payments);
         $this->assertSame(SalesPayment::BANK_TRANSFER, $payments[0]['payment_type']);
     }
+
+    public function test_payment_reference_is_preserved_for_reconciliation(): void
+    {
+        $payments = (new SalePaymentAllocator())->allocate([
+            ['payment_type' => SalesPayment::BANK_TRANSFER, 'amount' => 30, 'reference' => ' TRX-1024 '],
+        ], 30);
+
+        $this->assertSame('TRX-1024', $payments[0]['reference']);
+    }
+
 }

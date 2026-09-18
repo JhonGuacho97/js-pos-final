@@ -17,11 +17,15 @@ use App\Models\Store;
 use App\Models\Variation;
 use App\Models\VariationType;
 use App\Models\Warehouse;
+use App\Models\User;
 use App\Repositories\PurchaseRepository;
 use App\Repositories\SaleRepository;
 use App\Repositories\VariationRepository;
 use Illuminate\Foundation\Testing\DatabaseTransactions;
 use Illuminate\Support\Str;
+use Illuminate\Support\Facades\Auth;
+use Spatie\Permission\Models\Permission;
+use Symfony\Component\HttpKernel\Exception\UnprocessableEntityHttpException;
 use Tests\TestCase;
 
 class PresentationCalculationIntegrityTest extends TestCase
@@ -45,21 +49,55 @@ class PresentationCalculationIntegrityTest extends TestCase
         $this->assertSame(105.0, (float) $item['sub_total']);
     }
 
-    public function test_sale_uses_authoritative_presentation_price_without_mixing_base_units(): void
+    public function test_sale_rejects_an_unauthorized_presentation_price_override(): void
     {
         [$product, $presentation] = $this->presentationProduct(21, 30, 24);
 
-        $item = app(SaleRepository::class)->calculationSaleItems($this->line(
+        $this->expectException(UnprocessableEntityHttpException::class);
+        app(SaleRepository::class)->calculationSaleItems($this->line(
             $product,
             $presentation,
             5,
             ['product_price' => 999]
         ));
+    }
 
-        $this->assertSame(30.0, (float) $item['product_price']);
+    public function test_authorized_price_override_is_calculated_and_audited(): void
+    {
+        [$product, $presentation] = $this->presentationProduct(21, 30, 24);
+        $store = Store::findOrFail($product->store_id);
+        $suffix = Str::lower(Str::random(8));
+        $user = User::create([
+            'first_name' => 'Supervisor',
+            'last_name' => 'POS',
+            'email' => "supervisor-{$suffix}@example.test",
+            'phone' => '0999999999',
+            'password' => bcrypt('secret123'),
+            'status' => true,
+        ]);
+        $user->stores()->attach($store->id);
+        setPermissionsTeamId($store->id);
+        $user->givePermissionTo(Permission::firstOrCreate([
+            'name' => 'override_pos_price',
+            'guard_name' => 'web',
+        ], ['display_name' => 'Modificar precio en el POS']));
+        Auth::login($user);
+
+        $item = app(SaleRepository::class)->calculationSaleItems($this->line(
+            $product,
+            $presentation,
+            5,
+            ['product_price' => 27, 'price_override_reason' => 'Precio acordado']
+        ));
+
+        $this->assertSame(30.0, (float) $item['catalog_price']);
+        $this->assertSame(27.0, (float) $item['product_price']);
+        $this->assertSame('Precio acordado', $item['price_override_reason']);
+        $this->assertSame($user->id, $item['price_overridden_by']);
         $this->assertSame(5.0, (float) $item['presentation_quantity']);
         $this->assertSame(120.0, (float) $item['quantity']);
-        $this->assertSame(150.0, (float) $item['sub_total']);
+        $this->assertSame(135.0, (float) $item['sub_total']);
+        Auth::logout();
     }
 
     public function test_sale_quantity_limit_counts_presentations_without_confusing_them_with_stock_units(): void

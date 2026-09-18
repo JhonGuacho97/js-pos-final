@@ -1,41 +1,25 @@
-import React, {useCallback, useEffect} from 'react';
-import SweetAlert from 'react-bootstrap-sweetalert';
-import remove from "../../../assets/images/reset.png"
-import {getFormattedMessage} from "../../../shared/sharedMethod";
+import React from 'react';
+import {Button, Modal} from 'react-bootstrap';
 
-const ResetCartConfirmationModal = (props) => {
-    const {onCancel, onConfirm, itemName} = props;
+const ResetCartConfirmationModal = ({onCancel, onConfirm, itemCount, total}) => (
+    <Modal show onHide={onCancel} centered className="pos-modal pos-confirmation-modal">
+        <Modal.Header closeButton>
+            <div>
+                <span className="pos-confirmation-modal__eyebrow">ACCIÓN IRREVERSIBLE</span>
+                <Modal.Title>¿Vaciar el pedido actual?</Modal.Title>
+            </div>
+        </Modal.Header>
+        <Modal.Body>
+            <div className="pos-confirmation-modal__warning">
+                <i className="bi bi-cart-x" aria-hidden="true"/>
+                <div><strong>Se quitarán {itemCount} productos</strong><p>El pedido por {total} no podrá recuperarse después de confirmar.</p></div>
+            </div>
+        </Modal.Body>
+        <Modal.Footer>
+            <Button variant="light" onClick={onCancel}>Conservar pedido</Button>
+            <Button variant="danger" onClick={onConfirm}>Sí, vaciar pedido</Button>
+        </Modal.Footer>
+    </Modal>
+);
 
-    const escFunction = useCallback((event) => {
-        if (event.keyCode === 27) {
-            // User for Close the model on Escape
-            onCancel(false);
-        }
-    }, []);
-
-    useEffect(() => {
-        document.addEventListener('keydown', escFunction, false);
-        return () => {
-            document.removeEventListener('keydown', escFunction, false);
-        };
-    }, []);
-
-    return (
-        <SweetAlert
-            custom
-            confirmBtnBsStyle='danger mb-3 fs-5 rounded'
-            cancelBtnBsStyle='secondary mb-3 fs-5 rounded text-white'
-            confirmBtnText={getFormattedMessage("reset.yes.title")}
-            cancelBtnText={getFormattedMessage('delete-modal.no-btn')}
-            title={getFormattedMessage("reset.title")}
-            onConfirm={onConfirm}
-            onCancel={onCancel}
-            showCancel
-            focusCancelBtn
-            customIcon={remove}
-        >
-            <span className='sweet-text'>{getFormattedMessage("reset.modal.msg")} {itemName} ?</span>
-        </SweetAlert>
-    )
-};
 export default ResetCartConfirmationModal;

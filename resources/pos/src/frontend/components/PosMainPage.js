@@ -1,5 +1,5 @@
 import _, { useState, useEffect, useRef } from "react";
-import { Col, Container, Row, Table } from "react-bootstrap-v5";
+import { Button, Col, Container, Modal, Row, Table } from "react-bootstrap-v5";
 import { connect, useDispatch, useSelector } from "react-redux";
 import dayjs from 'dayjs';
 import utc from 'dayjs/plugin/utc';
@@ -54,7 +54,6 @@ import { fetchHoldLists } from "../../store/action/pos/HoldListAction";
 import { useNavigate } from "react-router";
 import apiConfig from "../../config/apiConfig";
 import PosCloseRegisterDetailsModel from "../../components/posRegister/PosCloseRegisterDetailsModel.js";
-import DeleteModel from "../../shared/action-buttons/DeleteModel";
 import { addToast } from "../../store/action/toastAction";
 import OfflineCatalogStatus from "./offline/OfflineCatalogStatus";
 import OfflineSalesModal from "./offline/OfflineSalesModal";
@@ -124,6 +123,7 @@ const PosMainPage = (props) => {
         posAllTodaySaleOverAllReport,
         fetchHoldLists,
         holdListData,
+        config,
     } = props;
     // 1. Agrega los refs
     const brandIdRef = useRef();
@@ -141,19 +141,19 @@ const PosMainPage = (props) => {
         useState(false);
     const [product, setProduct] = useState(null);
     const [cartProductIds, setCartProductIds] = useState([]);
-    const [newCost, setNewCost] = useState("");
     const [paymentPrint, setPaymentPrint] = useState({});
     const [cashPayment, setCashPayment] = useState(false);
     const [checkoutProcessing, setCheckoutProcessing] = useState(false);
+    const [checkoutStage, setCheckoutStage] = useState("");
     const checkoutProcessingRef = useRef(false);
     const [modalShowPaymentSlip, setModalShowPaymentSlip] = useState(false);
     const [modalShowCustomer, setModalShowCustomer] = useState(false);
-    const [deleteCartItem, setDeleteCartItem] = useState(null);
     const [productMsg, _] = useState(0);
     const [brandId, setBrandId] = useState();
     const [categoryId, setCategoryId] = useState();
     const [selectedCustomerOption, setSelectedCustomerOption] = useState(null);
     const [selectedOption, setSelectedOption] = useState(null);
+    const [pendingWarehouse, setPendingWarehouse] = useState(null);
     const [updateHolList, setUpdateHoldList] = useState(false);
     const [hold_ref_no, setHold_ref_no] = useState("");
     const [cartItemValue, setCartItemValue] = useState({
@@ -173,6 +173,7 @@ const PosMainPage = (props) => {
     const [creditProfile, setCreditProfile] = useState(null);
     const [creditLoading, setCreditLoading] = useState(false);
     const [creditTerms, setCreditTerms] = useState({ payment_terms_days: 0, payment_due_date: dayjs().format('YYYY-MM-DD') });
+    const [creditSaleEnabled, setCreditSaleEnabled] = useState(false);
     const [catalogStatus, setCatalogStatus] = useState({
         status: navigator.onLine ? "idle" : "checking",
         online: navigator.onLine,
@@ -242,6 +243,7 @@ const PosMainPage = (props) => {
             settings.attributes && {
                 value: Number(settings.attributes.default_customer),
                 label: settings.attributes.customer_name,
+                es_consumidor_final: true,
             }
         );
         // Si este usuario tiene un almacén propio asignado (Usuarios ->
@@ -291,8 +293,7 @@ const PosMainPage = (props) => {
             cashPaymentValue["notes"] &&
             cashPaymentValue["notes"].length > 100
         ) {
-            errors["notes"] =
-                "The notes must not be greater than 100 characters";
+            errors["notes"] = "Las notas no pueden superar los 100 caracteres.";
             isValid = false;
         }
 
@@ -314,12 +315,25 @@ const PosMainPage = (props) => {
             errors["payment"] = "Selecciona el método de cada pago ingresado.";
             isValid = false;
         }
+        if (paymentRows.some((row) => Number(row.amount) > 0 && Number(row.payment_type?.value) !== 1 && !row.reference?.trim())) {
+            errors["payment"] = "Agrega una referencia para los pagos que no son en efectivo.";
+            isValid = false;
+        }
         const newBalance = Math.max(0, Number(grandTotal) - Math.min(Number(grandTotal), totalTendered));
+        const customer = Array.isArray(selectedCustomerOption) ? selectedCustomerOption[0] : selectedCustomerOption;
+        if (newBalance > 0 && !creditSaleEnabled) {
+            errors["payment"] = "Falta dinero para completar el cobro. Registra el saldo o activa la venta a crédito.";
+            isValid = false;
+        }
+        if (newBalance > 0 && customer?.es_consumidor_final) {
+            errors["payment"] = "Consumidor final no puede mantener saldos pendientes. Selecciona un cliente identificado o completa el cobro.";
+            isValid = false;
+        }
         if (catalogStatus.online && creditProfile?.credit_enabled && newBalance > Number(creditProfile.available_credit || 0)) {
             errors["payment"] = `El saldo pendiente supera el cupo disponible del cliente ($${Number(creditProfile.available_credit || 0).toFixed(2)}).`;
             isValid = false;
         }
-        if (newBalance > 0 && !creditTerms.payment_due_date) {
+        if (newBalance > 0 && creditSaleEnabled && !creditTerms.payment_due_date) {
             errors["payment"] = "Selecciona la fecha de vencimiento del saldo pendiente.";
             isValid = false;
         }
@@ -701,12 +715,15 @@ const PosMainPage = (props) => {
 
     const handleWarehouseChangeWithConfirm = (newOption) => {
         if (updateProducts.length > 0 && newOption?.value !== selectedOption?.value) {
-            const confirmar = window.confirm(
-                "Cambiar de almacén vaciará el carrito actual. ¿Deseas continuar?"
-            );
-            if (!confirmar) return;
+            setPendingWarehouse(newOption);
+            return;
         }
         setSelectedOption(newOption);
+    };
+
+    const confirmWarehouseChange = () => {
+        setSelectedOption(pendingWarehouse);
+        setPendingWarehouse(null);
     };
 
     const onChangeInput = (e) => {
@@ -730,7 +747,7 @@ const PosMainPage = (props) => {
     // pueden agregar más para dividir el cobro entre varias formas de
     // pago (ej. $20 efectivo + $10 transferencia).
     const [paymentRows, setPaymentRows] = useState([
-        { id: 1, amount: "", payment_type: paymentTypeDefaultValue[0] },
+        { id: 1, amount: "", payment_type: paymentTypeDefaultValue[0], reference: "" },
     ]);
 
     const onAddPaymentRow = () => {
@@ -746,6 +763,7 @@ const PosMainPage = (props) => {
                     id: Date.now(),
                     amount: saldoRestante > 0 ? saldoRestante.toFixed(2) : "",
                     payment_type: paymentTypeDefaultValue[0],
+                    reference: "",
                 },
             ];
         });
@@ -758,16 +776,25 @@ const PosMainPage = (props) => {
     };
 
     const onPaymentRowAmountChange = (id, value) => {
+        setErrors((current) => ({...current, payment: ""}));
         setPaymentRows((prev) =>
             prev.map((row) => (row.id === id ? { ...row, amount: value } : row))
         );
     };
 
     const onPaymentRowTypeChange = (id, obj) => {
+        setErrors((current) => ({...current, payment: ""}));
         setPaymentRows((prev) =>
             prev.map((row) =>
                 row.id === id ? { ...row, payment_type: obj } : row
             )
+        );
+    };
+
+    const onPaymentRowReferenceChange = (id, value) => {
+        setErrors((current) => ({...current, payment: ""}));
+        setPaymentRows((prev) =>
+            prev.map((row) => row.id === id ? {...row, reference: value} : row)
         );
     };
 
@@ -817,6 +844,8 @@ const PosMainPage = (props) => {
                 value: 1,
             },
         });
+        setErrors({notes: ""});
+        setCreditSaleEnabled(false);
         setCashPayment(!cashPayment);
     };
 
@@ -831,6 +860,7 @@ const PosMainPage = (props) => {
                     id: Date.now(),
                     amount: grandTotal,
                     payment_type: paymentTypeDefaultValue[0],
+                    reference: "",
                 },
             ]);
         }
@@ -859,10 +889,6 @@ const PosMainPage = (props) => {
         return () => { active = false; };
     }, [cashPayment, selectedCustomerOption, catalogStatus.online]);
 
-    const updateCost = (item) => {
-        setNewCost(item);
-    };
-
     //product details model onChange
     const openProductDetailModal = () => {
         setIsOpenCartItemUpdateModel(!isOpenCartItemUpdateModel);
@@ -874,9 +900,10 @@ const PosMainPage = (props) => {
         setIsOpenCartItemUpdateModel(true);
     };
 
-    const onProductUpdateInCart = () => {
-        const localCart = updateProducts.slice();
-        updateCart(localCart);
+    const onProductUpdateInCart = (updatedProduct) => {
+        setUpdateProducts((products) => products.map((item) =>
+            item.id === updatedProduct.id ? {...updatedProduct} : item
+        ));
     };
 
     //updated Qty function
@@ -892,6 +919,22 @@ const PosMainPage = (props) => {
     const onDeleteCartItem = (productId) => {
         const existingCart = updateProducts.filter((e) => e.id !== productId);
         updateCart(existingCart);
+    };
+
+    const removeCartItemWithUndo = (cartItem) => {
+        const removedIndex = updateProducts.findIndex((item) => item.id === cartItem.id);
+        onDeleteCartItem(cartItem.id);
+        dispatch(addToast({
+            text: `${cartItem.name} se quitó del pedido.`,
+            type: toastType.WARNING,
+            actionLabel: "Deshacer",
+            onAction: () => setUpdateProducts((current) => {
+                if (current.some((item) => item.id === cartItem.id)) return current;
+                const restored = [...current];
+                restored.splice(Math.max(0, removedIndex), 0, cartItem);
+                return restored;
+            }),
+        }));
     };
 
     //product add to cart function
@@ -926,6 +969,9 @@ const PosMainPage = (props) => {
             changeReturn: Math.max(0, totalPaid - grandTotal),
             payment_status: totalPaidAmount(),
             tipoComprobanteSri: tipoComprobanteSri,
+            payments: paymentRows
+                .filter((row) => Number(row.amount) > 0)
+                .map((row) => ({label: row.payment_type?.label, amount: Number(row.amount), reference: row.reference || null})),
         };
         return formValue;
     };
@@ -956,6 +1002,7 @@ const PosMainPage = (props) => {
                 .map((row) => ({
                     amount: Number(row.amount),
                     payment_type: row.payment_type?.value,
+                    reference: row.reference?.trim() || null,
                 })),
             payment_type: paymentRows[0]?.payment_type?.value,
             discount: cartItemValue.discount,
@@ -996,12 +1043,14 @@ const PosMainPage = (props) => {
         });
         resetPaymentRows();
         setCreditProfile(null);
+        setCreditSaleEnabled(false);
         setCreditTerms({ payment_terms_days: 0, payment_due_date: dayjs().format('YYYY-MM-DD') });
         setCartProductIds("");
     };
 
     const saveLocalFirstCheckout = async (payload, receipt, sriType) => {
         try {
+            setCheckoutStage("Protegiendo la venta en este dispositivo…");
             const queuedSale = await enqueueOfflineSale(payload, receipt, sriType);
             const reservedSnapshot = await reserveOfflineCatalogStock(
                 payload.warehouse_id,
@@ -1021,6 +1070,7 @@ const PosMainPage = (props) => {
 
             let serverSale = null;
             if (catalogStatus.online && !payload.offline_customer_uuid) {
+                setCheckoutStage("Confirmando el cobro con el servidor…");
                 const credential = await ensureOfflineSyncCredential().catch(() => null);
                 if (credential?.token) {
                     await syncOfflineSales({
@@ -1075,6 +1125,7 @@ const PosMainPage = (props) => {
                 : provisionalReceipt);
             setUpdateProducts([]);
             setModalShowPaymentSlip(true);
+            setCheckoutStage(serverSale ? "Venta confirmada" : "Venta guardada para sincronizar");
             dispatch(addToast({
                 text: serverSale
                     ? "Venta registrada y confirmada correctamente."
@@ -1117,11 +1168,13 @@ const PosMainPage = (props) => {
 
         checkoutProcessingRef.current = true;
         setCheckoutProcessing(true);
+        setCheckoutStage("Validando el cobro…");
         try {
             await processCashPayment();
         } finally {
             checkoutProcessingRef.current = false;
             setCheckoutProcessing(false);
+            setCheckoutStage("");
         }
     };
 
@@ -1162,7 +1215,7 @@ const PosMainPage = (props) => {
 
     const resetPaymentRows = () => {
         setPaymentRows([
-            { id: Date.now(), amount: "", payment_type: paymentTypeDefaultValue[0] },
+            { id: Date.now(), amount: "", payment_type: paymentTypeDefaultValue[0], reference: "" },
         ]);
     };
 
@@ -1183,6 +1236,7 @@ const PosMainPage = (props) => {
                     .map((row) => ({
                         label: row.payment_type?.label,
                         amount: Number(row.amount),
+                        reference: row.reference || null,
                     }))}
                 paymentTypeDefaultValue={paymentTypeDefaultValue}
                 tipoComprobanteSri={paymentPrint?.tipoComprobanteSri || ""}
@@ -1324,7 +1378,7 @@ const PosMainPage = (props) => {
                         <PosHeader
                             setSelectedCustomerOption={setSelectedCustomerOption}
                             selectedCustomerOption={selectedCustomerOption}
-                            setSelectedOption={setSelectedOption}
+                            setSelectedOption={handleWarehouseChangeWithConfirm}
                             selectedOption={selectedOption}
                             customerModel={customerModel}
                             updateCustomer={modalShowCustomer}
@@ -1383,15 +1437,13 @@ const PosMainPage = (props) => {
                                                             onClickUpdateItemInCart
                                                         }
                                                         updatedQty={updatedQty}
-                                                        updateCost={updateCost}
                                                         onRequestDeleteCartItem={
-                                                            setDeleteCartItem
+                                                            removeCartItemWithUndo
                                                         }
                                                         quantity={quantity}
                                                         frontSetting={
                                                             frontSetting
                                                         }
-                                                        newCost={newCost}
                                                         allConfigData={
                                                             allConfigData
                                                         }
@@ -1405,12 +1457,12 @@ const PosMainPage = (props) => {
                                     ) : (
                                         <tr>
                                             <td
-                                                colSpan={4}
-                                                className="custom-text-center text-gray-900 fw-bold py-5"
+                                                colSpan={5}
+                                                className="pos-cart-empty"
                                             >
-                                                {getFormattedMessage(
-                                                    "sale.product.table.no-data.label"
-                                                )}
+                                                <i className="bi bi-upc-scan" aria-hidden="true" />
+                                                <strong>Tu pedido está vacío</strong>
+                                                <span>Busca, escanea o selecciona un producto para comenzar.</span>
                                             </td>
                                         </tr>
                                     )}
@@ -1477,10 +1529,10 @@ const PosMainPage = (props) => {
                     openProductDetailModal={openProductDetailModal}
                     productModelId={product.id}
                     onProductUpdateInCart={onProductUpdateInCart}
-                    updateCost={updateCost}
                     cartProduct={product}
                     isOpenCartItemUpdateModel={isOpenCartItemUpdateModel}
                     frontSetting={frontSetting}
+                    canOverridePrice={Array.isArray(config) && config.includes('override_pos_price')}
                 />
             )}
             {cashPayment && (
@@ -1504,6 +1556,7 @@ const PosMainPage = (props) => {
                     onRemovePaymentRow={onRemovePaymentRow}
                     onPaymentRowAmountChange={onPaymentRowAmountChange}
                     onPaymentRowTypeChange={onPaymentRowTypeChange}
+                    onPaymentRowReferenceChange={onPaymentRowReferenceChange}
                     tipoComprobanteSri={tipoComprobanteSri}
                     onTipoComprobanteChange={setTipoComprobanteSri}
                     offlineMode={!catalogStatus.online}
@@ -1512,7 +1565,10 @@ const PosMainPage = (props) => {
                     creditLoading={creditLoading}
                     creditTerms={creditTerms}
                     onCreditTermsChange={setCreditTerms}
+                    creditSaleEnabled={creditSaleEnabled}
+                    onCreditSaleEnabledChange={setCreditSaleEnabled}
                     processing={checkoutProcessing}
+                    processingLabel={checkoutStage}
                 />
             )}
             {lgShow && (
@@ -1562,16 +1618,22 @@ const PosMainPage = (props) => {
                 onDiscard={syncOfflineCatalog}
                 online={catalogStatus.online}
             />
-            {deleteCartItem && (
-                <DeleteModel
-                    onClickDeleteModel={() => setDeleteCartItem(null)}
-                    deleteUserClick={() => {
-                        onDeleteCartItem(deleteCartItem.id);
-                        setDeleteCartItem(null);
-                    }}
-                    name={deleteCartItem.name}
-                />
-            )}
+            <Modal show={Boolean(pendingWarehouse)} onHide={() => setPendingWarehouse(null)} centered className="pos-modal pos-confirmation-modal">
+                <Modal.Header closeButton>
+                    <div>
+                        <span className="pos-confirmation-modal__eyebrow">CAMBIO DE ALMACÉN</span>
+                        <Modal.Title>¿Cambiar a {pendingWarehouse?.label}?</Modal.Title>
+                    </div>
+                </Modal.Header>
+                <Modal.Body>
+                    <div className="pos-confirmation-modal__warning"><i className="bi bi-cart-x" /><div><strong>El pedido actual se vaciará</strong><p>Se quitarán {updateProducts.length} productos con un total de {frontSetting.value?.currency_symbol || '$'}{Number(grandTotal).toFixed(2)}.</p></div></div>
+                    <p className="mb-0">Si necesitas conservarlo, cancela y usa la opción <strong>Retener venta</strong> antes de cambiar de almacén.</p>
+                </Modal.Body>
+                <Modal.Footer>
+                    <Button variant="light" onClick={() => setPendingWarehouse(null)}>Conservar pedido</Button>
+                    <Button variant="danger" onClick={confirmWarehouseChange}>Cambiar y vaciar</Button>
+                </Modal.Footer>
+            </Modal>
         </Container>
     );
 };
@@ -1585,6 +1647,7 @@ const mapStateToProps = (state) => {
         allConfigData,
         posAllTodaySaleOverAllReport,
         holdListData,
+        config,
     } = state;
     return {
         holdListData,
@@ -1595,6 +1658,7 @@ const mapStateToProps = (state) => {
         customCart: prepareCartArray(posAllProducts),
         allConfigData,
         posAllTodaySaleOverAllReport,
+        config,
     };
 };
 

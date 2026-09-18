@@ -44,6 +44,9 @@ class SalePaymentAllocator
                     'payment_type' => $type,
                     'amount' => $applied,
                     'received_amount' => $tendered,
+                    'reference' => isset($payment['reference']) && trim((string) $payment['reference']) !== ''
+                        ? trim((string) $payment['reference'])
+                        : null,
                 ];
             }
         }

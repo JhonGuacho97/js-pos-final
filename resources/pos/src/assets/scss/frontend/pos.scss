@@ -3184,3 +3184,537 @@
         }
     }
 }
+
+// Flujos críticos del POS: edición de precio, confirmaciones y estados locales.
+.pos-price-modal,
+.pos-confirmation-modal {
+    --pos-flow-text: #172033;
+    --pos-flow-muted: #718096;
+    --pos-flow-border: #e3e9f2;
+    --pos-flow-primary: #155eef;
+
+    .modal-content {
+        overflow: hidden;
+        border: 0;
+        border-radius: 20px;
+        box-shadow: 0 30px 90px rgba(15, 23, 42, .28);
+    }
+
+    .modal-header {
+        align-items: flex-start;
+        padding: 22px 24px 18px;
+        border-bottom: 1px solid var(--pos-flow-border);
+    }
+
+    .modal-header p {
+        margin: 6px 32px 0 0;
+        color: var(--pos-flow-muted);
+        font-size: 12px;
+    }
+
+    .modal-title {
+        color: var(--pos-flow-text);
+        font-size: 21px;
+        font-weight: 800;
+    }
+
+    .modal-body {
+        padding: 22px 24px;
+    }
+
+    .modal-footer {
+        padding: 15px 24px 20px;
+        border-top: 1px solid var(--pos-flow-border);
+    }
+
+    .modal-footer .btn {
+        min-height: 43px;
+        padding: 0 18px;
+        border-radius: 11px;
+        font-size: 13px;
+        font-weight: 750;
+    }
+
+    .form-label {
+        color: #46536a;
+        font-size: 12px;
+        font-weight: 750;
+    }
+
+    .form-control,
+    .form-select,
+    .input-group-text {
+        min-height: 43px;
+        border-color: #dbe2ed;
+        font-size: 13px;
+    }
+}
+
+.pos-price-modal__eyebrow,
+.pos-confirmation-modal__eyebrow {
+    display: block;
+    margin-bottom: 5px;
+    color: #1765f3;
+    font-size: 10px;
+    font-weight: 850;
+    letter-spacing: .1em;
+}
+
+.pos-price-comparison {
+    display: grid;
+    grid-template-columns: 1fr auto 1fr;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 20px;
+    padding: 15px;
+    border: 1px solid #e2e9f3;
+    border-radius: 14px;
+    background: #f7f9fc;
+}
+
+.pos-price-comparison div {
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+}
+
+.pos-price-comparison span,
+.pos-price-result span {
+    color: #7b8799;
+    font-size: 10px;
+    font-weight: 700;
+}
+
+.pos-price-comparison strong {
+    color: #364258;
+    font-size: 18px;
+}
+
+.pos-price-comparison .is-final {
+    text-align: right;
+}
+
+.pos-price-comparison .is-final strong {
+    color: #155eef;
+    font-size: 22px;
+}
+
+.pos-price-restore {
+    border: 0;
+    background: transparent;
+    color: #155eef;
+    font-size: 11px;
+    font-weight: 750;
+}
+
+.pos-price-discount-grid,
+.pos-price-advanced {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
+}
+
+.pos-segmented-control {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    min-height: 43px;
+    padding: 3px;
+    border: 1px solid #dbe2ed;
+    border-radius: 11px;
+    background: #f4f6fa;
+}
+
+.pos-segmented-control button {
+    border: 0;
+    border-radius: 8px;
+    background: transparent;
+    color: #718096;
+    font-size: 11px;
+    font-weight: 700;
+}
+
+.pos-segmented-control button.active {
+    background: #fff;
+    color: #155eef;
+    box-shadow: 0 2px 7px rgba(15, 23, 42, .1);
+}
+
+.pos-price-quick-discounts {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 7px;
+    margin-top: 11px;
+}
+
+.pos-price-quick-discounts button {
+    padding: 6px 10px;
+    border: 1px solid #d8e4fb;
+    border-radius: 9px;
+    background: #f6f9ff;
+    color: #3e6198;
+    font-size: 11px;
+    font-weight: 700;
+}
+
+.pos-price-advanced-toggle {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    width: 100%;
+    margin-top: 17px;
+    padding: 12px 0;
+    border: 0;
+    border-top: 1px solid #e7ebf2;
+    border-bottom: 1px solid #e7ebf2;
+    background: transparent;
+    color: #4f5e74;
+    font-size: 12px;
+    font-weight: 750;
+}
+
+.pos-price-advanced {
+    padding-top: 14px;
+}
+
+.pos-price-unit {
+    grid-column: 1 / -1;
+}
+
+.pos-price-result {
+    display: grid;
+    gap: 8px;
+    margin-top: 17px;
+    padding: 15px;
+    border-radius: 14px;
+    background: #f3f7ff;
+}
+
+.pos-price-result > div {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+}
+
+.pos-price-result strong {
+    color: #334155;
+    font-size: 13px;
+}
+
+.pos-price-result .is-total {
+    padding-top: 9px;
+    border-top: 1px solid #dbe7fb;
+}
+
+.pos-price-result .is-total strong {
+    color: #155eef;
+    font-size: 19px;
+}
+
+.pos-confirmation-modal__warning {
+    display: flex;
+    align-items: center;
+    gap: 13px;
+    padding: 15px;
+    border: 1px solid #fed7dc;
+    border-radius: 14px;
+    background: #fff4f5;
+}
+
+.pos-confirmation-modal__warning > i {
+    display: grid;
+    place-items: center;
+    width: 42px;
+    height: 42px;
+    flex: 0 0 42px;
+    border-radius: 12px;
+    background: #ffe2e5;
+    color: #d73547;
+    font-size: 18px;
+}
+
+.pos-confirmation-modal__warning strong,
+.pos-confirmation-modal__warning p {
+    display: block;
+}
+
+.pos-confirmation-modal__warning p {
+    margin: 3px 0 0;
+    color: #7b5160;
+    font-size: 12px;
+}
+
+.pos-confirmation-modal__summary {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+    margin-bottom: 18px;
+}
+
+.pos-confirmation-modal__summary > div {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 13px;
+    border: 1px solid #e3e9f2;
+    border-radius: 12px;
+    background: #f8fafd;
+}
+
+.pos-v2 .pos-order-card .edit-icon {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 3px 7px;
+    border: 0;
+    border-radius: 7px;
+    background: #eef4ff;
+    color: #155eef;
+    font-size: 10px;
+    font-weight: 750;
+}
+
+.pos-v2 .pos-order-card .price-override-badge {
+    padding: 3px 7px;
+    border-radius: 999px;
+    background: #fff2cc;
+    color: #8c6500;
+    font-size: 9px;
+    font-weight: 800;
+}
+
+.pos-v2 .pos-order-card .qty-container.has-error {
+    border-color: #e5484d;
+    box-shadow: 0 0 0 3px rgba(229, 72, 77, .1);
+}
+
+.pos-v2 .pos-order-card .qty-error {
+    display: block;
+    max-width: 130px;
+    margin-top: 5px;
+    color: #cf3038;
+    font-size: 9px;
+    line-height: 1.25;
+}
+
+.pos-cart-empty {
+    padding: 42px 20px !important;
+    text-align: center;
+}
+
+.pos-cart-empty i,
+.pos-cart-empty strong,
+.pos-cart-empty span {
+    display: block;
+}
+
+.pos-cart-empty i {
+    margin-bottom: 10px;
+    color: #91a0b7;
+    font-size: 27px;
+}
+
+.pos-cart-empty strong {
+    color: #344054;
+    font-size: 14px;
+}
+
+.pos-cart-empty span {
+    margin-top: 4px;
+    color: #8490a3;
+    font-size: 11px;
+}
+
+.pos-payment-reference {
+    grid-column: 2 / -1;
+}
+
+.pos-payment-method-presets {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 9px;
+    margin-bottom: 11px;
+}
+
+.pos-payment-method-presets button {
+    display: grid;
+    grid-template-columns: 34px 1fr;
+    grid-template-rows: auto auto;
+    column-gap: 9px;
+    padding: 10px 12px;
+    border: 1px solid #dce3ed;
+    border-radius: 12px;
+    background: #fff;
+    color: #536176;
+    text-align: left;
+}
+
+.pos-payment-method-presets button > i {
+    display: grid;
+    grid-row: 1 / 3;
+    place-items: center;
+    width: 34px;
+    height: 34px;
+    border-radius: 9px;
+    background: #f1f5fb;
+    color: #65758c;
+}
+
+.pos-payment-method-presets span {
+    font-size: 12px;
+    font-weight: 800;
+}
+
+.pos-payment-method-presets small {
+    color: #8a95a8;
+    font-size: 9px;
+}
+
+.pos-payment-method-presets button.active {
+    border-color: #9cbcff;
+    background: #f2f6ff;
+    color: #155eef;
+    box-shadow: 0 0 0 3px rgba(21, 94, 239, .08);
+}
+
+.pos-payment-method-presets button.active > i {
+    background: #dfeaff;
+    color: #155eef;
+}
+
+.pos-payment-reference .form-label {
+    margin-bottom: 5px;
+    color: #455066;
+    font-size: 11px;
+    font-weight: 700;
+}
+
+.pos-payment-reference small {
+    display: block;
+    margin-top: 4px;
+    color: #8a95a8;
+    font-size: 10px;
+}
+
+.pos-payment-row.has-error {
+    border-color: #ffd3d8;
+}
+
+.pos-credit-choice {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 14px;
+    margin-top: 14px;
+    padding: 14px;
+    border: 1px solid #f3d58b;
+    border-radius: 13px;
+    background: #fffaf0;
+}
+
+.pos-credit-choice > div {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.pos-credit-choice > div > i {
+    color: #a56d00;
+    font-size: 18px;
+}
+
+.pos-credit-choice span,
+.pos-credit-choice strong,
+.pos-credit-choice small {
+    display: block;
+}
+
+.pos-credit-choice strong {
+    color: #59451e;
+    font-size: 12px;
+}
+
+.pos-credit-choice small {
+    margin-top: 2px;
+    color: #8a7448;
+    font-size: 10px;
+}
+
+.pos-credit-choice button,
+.pos-credit-checkout__cancel {
+    flex: 0 0 auto;
+    padding: 8px 11px;
+    border: 1px solid #d8b75b;
+    border-radius: 9px;
+    background: #fff;
+    color: #74530a;
+    font-size: 10px;
+    font-weight: 800;
+}
+
+.pos-credit-choice.is-blocked {
+    border-color: #f3c7cc;
+    background: #fff4f5;
+}
+
+.pos-credit-checkout__cancel {
+    margin-top: 11px;
+    border-color: #cddaf1;
+    color: #49638d;
+}
+
+.pos-payment-submit:disabled {
+    cursor: not-allowed;
+    opacity: .52;
+    transform: none;
+}
+
+.pos-checkout-progress {
+    display: flex;
+    align-items: center;
+    gap: 11px;
+    margin: 16px 22px 0;
+    padding: 12px 14px;
+    border: 1px solid #bfd3fb;
+    border-radius: 12px;
+    background: #f2f6ff;
+    color: #155eef;
+}
+
+.pos-checkout-progress strong,
+.pos-checkout-progress small {
+    display: block;
+}
+
+.pos-payment-notes__count {
+    display: block;
+    margin-top: 4px;
+    color: #8a95a8;
+    font-size: 9px;
+    text-align: right;
+}
+
+.pos-checkout-progress strong {
+    font-size: 12px;
+}
+
+.pos-checkout-progress small {
+    margin-top: 2px;
+    color: #6980a8;
+    font-size: 10px;
+}
+
+@media (max-width: 575px) {
+    .pos-price-discount-grid,
+    .pos-price-advanced {
+        grid-template-columns: 1fr;
+    }
+
+    .pos-price-unit {
+        grid-column: auto;
+    }
+
+    .pos-credit-choice {
+        align-items: stretch;
+        flex-direction: column;
+    }
+}
