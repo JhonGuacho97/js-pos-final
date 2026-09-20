@@ -128,7 +128,7 @@ class AccountsReceivableAPIController extends AppBaseController
             'payment_date' => ['required', 'date'],
             'payment_type' => ['required', 'integer', 'in:1,2,3,4'],
             'amount' => ['required', 'numeric', 'min:0.01'],
-            'reference' => ['nullable', 'string', 'max:255'],
+            'reference' => ['nullable', 'string', 'max:255', 'required_if:payment_type,3'],
         ]);
 
         $documents = $this->scopedQuery($request)

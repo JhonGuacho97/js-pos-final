@@ -667,11 +667,14 @@ export const Permissions = {
     VIEW_ACCOUNTS_RECEIVABLE: "view_accounts_receivable",
     COLLECT_ACCOUNTS_RECEIVABLE: "collect_accounts_receivable",
     MANAGE_ACCOUNTS_RECEIVABLE: "manage_accounts_receivable",
+    VIEW_BANK_TRANSFER_PAYMENTS: "view_bank_transfer_payments",
+    RECONCILE_BANK_TRANSFER_PAYMENTS: "reconcile_bank_transfer_payments",
     VIEW_INVENTORY_COUNTS: "view_inventory_counts",
     PERFORM_INVENTORY_COUNTS: "perform_inventory_counts",
     APPROVE_INVENTORY_COUNTS: "approve_inventory_counts",
     INVENTORY_COUNTS_ACCESS: "view_inventory_counts|perform_inventory_counts|approve_inventory_counts",
     ACCOUNTS_RECEIVABLE_ACCESS: "view_accounts_receivable|collect_accounts_receivable|manage_accounts_receivable",
+    BANK_TRANSFER_PAYMENTS_ACCESS: "view_bank_transfer_payments|reconcile_bank_transfer_payments|manage_sale",
     CASH_CONTROL_ACCESS: "manage_cash_control|view_own_cash_session|create_cash_income|create_cash_expense|withdraw_cash|view_cash_supervision|view_cash_closures|manage_cash_registers|reverse_cash_movement|transfer_cash|review_cash_closure",
 };
 

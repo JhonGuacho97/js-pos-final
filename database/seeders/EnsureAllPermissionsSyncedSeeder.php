@@ -69,6 +69,8 @@ class EnsureAllPermissionsSyncedSeeder extends Seeder
             'view_accounts_receivable' => 'Ver cuentas por cobrar',
             'collect_accounts_receivable' => 'Registrar cobros de cartera',
             'manage_accounts_receivable' => 'Gestionar condiciones de crédito',
+            'view_bank_transfer_payments' => 'Ver cobros por transferencia',
+            'reconcile_bank_transfer_payments' => 'Conciliar cobros por transferencia',
         ];
 
         foreach ($permissions as $name => $displayName) {

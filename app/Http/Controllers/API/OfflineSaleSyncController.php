@@ -121,11 +121,18 @@ class OfflineSaleSyncController extends AppBaseController
             ->whereHas('warehouse', fn ($query) => $query->where('store_id', $storeId))
             ->first();
 
+        $saleResource = $sale ? (new SaleResource($sale))->resolve($request) : null;
+
         return response()->json([
             'success' => true,
             'data' => [
                 'exists' => (bool) $sale,
-                'sale' => $sale ? (new SaleResource($sale))->resolve($request)['data'] : null,
+                // BaseJsonResource conserva un indicador estático cuando se
+                // usó antes dentro de una colección. En procesos largos y en
+                // suites de pruebas el recurso puede venir envuelto en `data`
+                // o directamente como JSON:API; aceptar ambos evita que el
+                // estado de una petición anterior rompa este endpoint.
+                'sale' => $sale ? ($saleResource['data'] ?? $saleResource) : null,
             ],
         ]);
     }

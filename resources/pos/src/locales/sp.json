@@ -458,6 +458,8 @@
     "role.permission.manage_expenses": "Gestionar gastos",
     "role.permission.manage_expense_categories": "Gestionar categorías de gastos",
     "role.permission.manage_cash_control": "Acceso total al control de cajas",
+    "role.permission.view_bank_transfer_payments": "Ver cobros por transferencia",
+    "role.permission.reconcile_bank_transfer_payments": "Conciliar cobros por transferencia",
     "role.permission.view_own_cash_session": "Ver mi turno de caja",
     "role.permission.create_cash_income": "Registrar ingresos en mi caja",
     "role.permission.create_cash_expense": "Registrar egresos en mi caja",

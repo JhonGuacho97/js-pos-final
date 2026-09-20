@@ -476,6 +476,8 @@
     "role.permission.manage_expenses": "Manage Expenses",
     "role.permission.manage_expense_categories": "Manage Expense Categories",
     "role.permission.manage_cash_control": "Full cash control access",
+    "role.permission.view_bank_transfer_payments": "View bank transfer payments",
+    "role.permission.reconcile_bank_transfer_payments": "Reconcile bank transfer payments",
     "role.permission.view_own_cash_session": "View my cash session",
     "role.permission.create_cash_income": "Record income in my cash session",
     "role.permission.create_cash_expense": "Record expenses in my cash session",

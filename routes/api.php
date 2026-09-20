@@ -23,6 +23,7 @@ use App\Http\Controllers\API\PermissionController;
 use App\Http\Controllers\API\POSRegisterAPIController;
 use App\Http\Controllers\API\CashControlAPIController;
 use App\Http\Controllers\API\AccountsReceivableAPIController;
+use App\Http\Controllers\API\BankTransferPaymentAPIController;
 use App\Http\Controllers\API\ProductAPIController;
 use App\Http\Controllers\API\ProductCategoryAPIController;
 use App\Http\Controllers\API\PurchaseAPIController;
@@ -684,6 +685,14 @@ Route::middleware(['auth:sanctum', 'store.context'])->group(function () {
             ->middleware('permission:collect_accounts_receivable|manage_accounts_receivable');
         Route::patch('{sale}/terms', [AccountsReceivableAPIController::class, 'updateTerms'])
             ->middleware('permission:manage_accounts_receivable');
+    });
+
+    Route::middleware('permission:view_bank_transfer_payments|reconcile_bank_transfer_payments|manage_sale')
+        ->prefix('bank-transfer-payments')->group(function () {
+        Route::get('/', [BankTransferPaymentAPIController::class, 'index']);
+        Route::get('{salesPayment}', [BankTransferPaymentAPIController::class, 'show']);
+        Route::patch('{salesPayment}/reconciliation', [BankTransferPaymentAPIController::class, 'reconcile'])
+            ->middleware('permission:reconcile_bank_transfer_payments|manage_sale');
     });
 
     // Coupon Code Routes

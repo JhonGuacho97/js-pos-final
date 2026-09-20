@@ -189,6 +189,7 @@ const Sales = (props) => {
             payment_status: sale.attributes.payment_status,
             payment_type: sale.attributes.payment_type,
             payments_count: sale.attributes.payments_count,
+            payments: Array.isArray(sale.attributes.payments) ? sale.attributes.payments : [],
             grand_total: sale.attributes.grand_total,
             paid_amount: sale.attributes.paid_amount
                 ? sale.attributes.paid_amount
@@ -343,7 +344,24 @@ const Sales = (props) => {
             sortField: "payment_type",
             sortable: false,
             cell: (row) => {
-                const extraPayments = (row.payments_count || 0) - 1;
+                const paymentLabels = {
+                    1: getFormattedMessage("cash.label"),
+                    2: getFormattedMessage("payment-type.filter.cheque.label"),
+                    3: getFormattedMessage("payment-type.filter.bank-transfer.label"),
+                    4: getFormattedMessage("payment-type.filter.other.label"),
+                };
+                if (row.reference_code === "Total") return null;
+                if (row.payments?.length) {
+                    return <span className="d-flex flex-wrap gap-1">{row.payments.map((payment, index) => (
+                        <span
+                            key={`${row.id}-payment-${payment.id || index}`}
+                            className={`badge ${Number(payment.payment_type) === 3 ? 'bg-light-info' : 'bg-light-primary'}`}
+                            title={payment.reference ? `Comprobante: ${payment.reference}` : ''}
+                        >
+                            {paymentLabels[Number(payment.payment_type)] || 'Otro'} {currencySymbolHandling(allConfigData, currencySymbol, Number(payment.amount || 0).toFixed(2))}
+                        </span>
+                    ))}</span>;
+                }
                 return (
                     <span>
                         {(row.payment_type === 1 && (
@@ -378,14 +396,6 @@ const Sales = (props) => {
                                     </span>
                                 </span>
                             ))}
-                        {extraPayments > 0 && (
-                            <span
-                                className="badge bg-light-warning ms-1"
-                                title="Se pagó con más de una forma de pago"
-                            >
-                                +{extraPayments}
-                            </span>
-                        )}
                     </span>
                 );
             },

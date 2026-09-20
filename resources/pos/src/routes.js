@@ -112,6 +112,7 @@ const CustomersReport = lazyWithRetry(() => import(/* webpackChunkName: "reports
 const RegisterReport = lazyWithRetry(() => import(/* webpackChunkName: "reports" */ "./components/report/registerReport/RegisterReport"), "RegisterReport");
 const CashControl = lazyWithRetry(() => import(/* webpackChunkName: "cash-control" */ "./components/cashControl/CashControl"), "CashControl");
 const AccountsReceivable = lazyWithRetry(() => import(/* webpackChunkName: "accounts-receivable" */ "./components/accountsReceivable/AccountsReceivable"), "AccountsReceivable");
+const BankTransferPayments = lazyWithRetry(() => import(/* webpackChunkName: "bank-transfer-payments" */ "./components/bankTransferPayments/BankTransferPayments"), "BankTransferPayments");
 
 // Impresión de códigos de barra: chunk propio, poco uso.
 const PrintBarcode = lazyWithRetry(() => import(/* webpackChunkName: "print-barcode" */ "./components/printBarcode/PrintBarcode"), "PrintBarcode");
@@ -669,6 +670,11 @@ export const route = [
         path: "accounts-receivable",
         ele: <AccountsReceivable />,
         permission: Permissions.ACCOUNTS_RECEIVABLE_ACCESS,
+    },
+    {
+        path: "bank-transfer-payments",
+        ele: <BankTransferPayments />,
+        permission: Permissions.BANK_TRANSFER_PAYMENTS_ACCESS,
     },
     {
         path: "sms-api",
