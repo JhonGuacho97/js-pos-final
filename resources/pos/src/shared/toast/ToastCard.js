@@ -6,7 +6,7 @@ import {FontAwesomeIcon} from '@fortawesome/react-fontawesome';
 import {placeholderText} from "../sharedMethod";
 
 const ToastCard = (props) => {
-    const {type, text, closeToast} = props;
+    const {type, text, closeToast, actionLabel, onAction} = props;
     const variant = type === toastType.ERROR
         ? 'error'
         : (type === toastType.WARNING ? 'warning' : 'success');
@@ -29,6 +29,11 @@ const ToastCard = (props) => {
                         {titulo}
                     </h2>
                     <p className='toast-card__toast-message'>{text}</p>
+                    {actionLabel && onAction && (
+                        <button type='button' className='toast-card__action' onClick={() => { onAction(); closeToast(); }}>
+                            {actionLabel}
+                        </button>
+                    )}
                 </div>
             </div>
         );
@@ -57,6 +62,8 @@ ToastCard.propTypes = {
     ]),
     type: PropTypes.string,
     closeToast: PropTypes.func,
+    actionLabel: PropTypes.string,
+    onAction: PropTypes.func,
 };
 
 export default ToastCard;

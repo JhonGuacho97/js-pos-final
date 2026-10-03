@@ -70,6 +70,9 @@ class SaleItem extends BaseModel implements JsonResourceful
         'presentation_quantity',
         'presentation_equivalence',
         'product_price',
+        'catalog_price',
+        'price_override_reason',
+        'price_overridden_by',
         'unit_cost',
         'total_cost',
         'cost_is_estimated',
@@ -88,6 +91,9 @@ class SaleItem extends BaseModel implements JsonResourceful
     public static $rules = [
         'product_id' => 'required|exists:products,id',
         'product_price' => 'nullable|numeric',
+        'catalog_price' => 'nullable|numeric',
+        'price_override_reason' => 'nullable|string|max:120',
+        'price_overridden_by' => 'nullable|integer|exists:users,id',
         'tax_type' => 'nullable|numeric',
         'tax_value' => 'nullable|numeric',
         'tax_amount' => 'nullable|numeric',
@@ -101,6 +107,7 @@ class SaleItem extends BaseModel implements JsonResourceful
 
     public $casts = [
         'product_price' => 'double',
+        'catalog_price' => 'double',
         'unit_cost' => 'double',
         'total_cost' => 'double',
         'cost_is_estimated' => 'boolean',
@@ -140,6 +147,9 @@ class SaleItem extends BaseModel implements JsonResourceful
             'presentation_equivalence' => $this->presentation_equivalence,
             'net_unit_price' => $this->net_unit_price,
             'product_price' => $this->product_price,
+            'catalog_price' => $this->catalog_price,
+            'price_override_reason' => $this->price_override_reason,
+            'price_overridden_by' => $this->price_overridden_by,
             'unit_cost' => $this->unit_cost,
             'total_cost' => $this->total_cost,
             'cost_is_estimated' => $this->cost_is_estimated,

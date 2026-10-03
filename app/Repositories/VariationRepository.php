@@ -4,6 +4,7 @@ namespace App\Repositories;
 
 use App\Models\Variation;
 use App\Models\VariationType;
+use App\Services\PresentationCatalogSyncService;
 use Exception;
 use Illuminate\Support\Facades\DB;
 use Symfony\Component\HttpKernel\Exception\UnprocessableEntityHttpException;
@@ -42,7 +43,7 @@ class VariationRepository extends BaseRepository
     {
         try {
             DB::beginTransaction();
-            $input['store_id'] = $input['store_id'] ?? requireCurrentStoreId();
+            $input['store_id'] = currentStoreId() ?? ($input['store_id'] ?? requireCurrentStoreId());
             $variation = $this->create($input);
             if (isset($input['variation_types'])) {
                 foreach ($input['variation_types'] as $type) {
@@ -53,6 +54,7 @@ class VariationRepository extends BaseRepository
                     ]);
                 }
             }
+            app(PresentationCatalogSyncService::class)->sync($variation->fresh('variation_types'));
             DB::commit();
         } catch (Exception $e) {
             DB::rollBack();
@@ -77,7 +79,7 @@ class VariationRepository extends BaseRepository
             $input['deleted_variation_types'] = $input['deleted_variation_types'] ?? [];
             foreach ($input['deleted_variation_types'] as $type) {
                 if (isset($type['id'])) {
-                    $variationType = VariationType::withCount('variationProducts')->findOrFail($type['id']);
+                    $variationType = $variation->variation_types()->withCount('variationProducts')->findOrFail($type['id']);
                     if ($variationType->variation_products_count) {
                         throw new UnprocessableEntityHttpException('Variation Type "' . $variationType->name .
                             '" is already in use');
@@ -89,7 +91,7 @@ class VariationRepository extends BaseRepository
 
             foreach ($input['variation_types'] as $type) {
                 if (isset($type['id'])) {
-                    VariationType::where('id', $type['id'])->update([
+                    $variation->variation_types()->findOrFail($type['id'])->update([
                         'name' => $type['name'],
                     ]);
                 } else {
@@ -100,6 +102,8 @@ class VariationRepository extends BaseRepository
                     ]);
                 }
             }
+
+            app(PresentationCatalogSyncService::class)->sync($variation->fresh('variation_types'));
 
             DB::commit();
         } catch (Exception $e) {

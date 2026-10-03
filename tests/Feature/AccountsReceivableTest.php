@@ -211,6 +211,20 @@ class AccountsReceivableTest extends TestCase
         $service->assertCreditAvailable($customer, 40.01);
     }
 
+    public function test_final_consumer_cannot_keep_an_outstanding_balance(): void
+    {
+        $sale = $this->sale(20, now()->addDay()->toDateString());
+        $customer = $sale->customer;
+        $customer->update([
+            'es_consumidor_final' => true,
+            'tipo_identificacion' => Customer::TIPO_CONSUMIDOR_FINAL,
+            'identification' => '9999999999999',
+        ]);
+
+        $this->expectException(UnprocessableEntityHttpException::class);
+        app(AccountsReceivableService::class)->assertCreditAvailable($customer->fresh(), 0.01);
+    }
+
     public function test_advance_credit_note_does_not_reduce_invoice_receivable(): void
     {
         $sale = $this->sale(50, now()->addDay()->toDateString());
@@ -253,6 +267,8 @@ class AccountsReceivableTest extends TestCase
             'country' => 'Ecuador',
             'city' => 'Manta',
             'address' => 'Test',
+            'identification' => '1312345678',
+            'tipo_identificacion' => Customer::TIPO_CEDULA,
         ]);
 
         return Sale::create([

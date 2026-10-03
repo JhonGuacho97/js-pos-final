@@ -82,6 +82,11 @@ Los datos fiscales sensibles no se heredan de otra organización. El RUC,
 ambiente SRI, firma electrónica, claves, secuenciales y datos legales deben ser
 configurados expresamente por el propietario después del primer acceso.
 
+El origen del software y el RUC de su proveedor pueden tener valores de
+plataforma (`SAAS_SRI_SOFTWARE_ORIGIN` y `SAAS_SRI_PROVIDER_RUC`). No son el RUC
+del emisor ni credenciales fiscales de otra tienda. La configuración
+explícita de cada tienda prevalece.
+
 El registro puede deshabilitarse sin cambiar código mediante
 `SAAS_SELF_REGISTRATION_ENABLED=false`.
 
@@ -114,3 +119,10 @@ superadministrador aprueba el pago.
 El detalle de qué pasa exactamente al vencer —el corte sin gracia, los tres
 modos de acceso y qué sigue funcionando— está en
 [`vencimiento-y-modo-consulta.md`](vencimiento-y-modo-consulta.md).
+
+## Mejoras operativas portadas desde el POS
+
+La integración de clientes, presentaciones, cobros mixtos, transferencias,
+ticket, reportes, acceso, catálogo invitado y SRI se detalla en
+[`port-mejoras-pos.md`](port-mejoras-pos.md), con las migraciones, permisos,
+configuración y resultados de las pruebas.

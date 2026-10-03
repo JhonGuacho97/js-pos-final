@@ -77,6 +77,8 @@ const SLUG_TO_GROUP = {
     reverse_cash_movement: 'cash',
     transfer_cash: 'cash',
     review_cash_closure: 'cash',
+    view_bank_transfer_payments: 'cash',
+    reconcile_bank_transfer_payments: 'cash',
 
     manage_suppliers: 'people',
     manage_customers: 'people',

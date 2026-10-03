@@ -58,6 +58,10 @@ class SalesPayment extends BaseModel implements JsonResourceful
 
     public const OTHER = 4;
 
+    public const RECONCILIATION_PENDING = 'PENDING';
+    public const RECONCILIATION_VERIFIED = 'VERIFIED';
+    public const RECONCILIATION_OBSERVED = 'OBSERVED';
+
     /**
      * @var string[]
      */
@@ -69,6 +73,14 @@ class SalesPayment extends BaseModel implements JsonResourceful
         'payment_type',
         'amount',
         'received_amount',
+        'reconciliation_status',
+        'reconciliation_note',
+        'reconciled_at',
+        'reconciled_by',
+    ];
+
+    protected $casts = [
+        'reconciled_at' => 'datetime',
     ];
 
     /**
@@ -105,6 +117,10 @@ class SalesPayment extends BaseModel implements JsonResourceful
             'payment_type' => $this->payment_type,
             'amount' => $this->amount,
             'received_amount' => $this->received_amount,
+            'reconciliation_status' => $this->reconciliation_status,
+            'reconciliation_note' => $this->reconciliation_note,
+            'reconciled_at' => $this->reconciled_at,
+            'reconciled_by' => $this->reconciled_by,
         ];
 
         return $fields;
@@ -140,6 +156,11 @@ class SalesPayment extends BaseModel implements JsonResourceful
     public function posRegister(): BelongsTo
     {
         return $this->belongsTo(POSRegister::class, 'pos_register_id');
+    }
+
+    public function reconciledBy(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'reconciled_by');
     }
 
     public function scopeUser(Builder $builder, $userId)

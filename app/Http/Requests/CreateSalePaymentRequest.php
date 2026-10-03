@@ -20,6 +20,8 @@ class CreateSalePaymentRequest extends FormRequest
      */
     public function rules(): array
     {
-        return SalesPayment::$rules;
+        return array_merge(SalesPayment::$rules, [
+            'reference' => ['nullable', 'string', 'max:100', 'required_if:payment_type,3'],
+        ]);
     }
 }

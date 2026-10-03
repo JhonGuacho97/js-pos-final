@@ -9,6 +9,7 @@ import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { Permissions } from '../../constants';
 import { useSelector } from 'react-redux';
 import useReadOnlyMode, { READ_ONLY_MESSAGE } from '../../hooks/useReadOnlyMode';
+import { openProtectedPdf } from '../../utils/protectedFile';
 
 const ActionDropDownButton = (props) => {
     const {
@@ -79,11 +80,10 @@ const ActionDropDownButton = (props) => {
 
                 {isRideDownload && rideUrl ?
                     <Dropdown.Item
-                        as='a'
-                        href={rideUrl}
-                        target='_blank'
-                        rel='noopener noreferrer'
-                        onClick={(e) => e.stopPropagation()}
+                        onClick={(e) => {
+                            e.stopPropagation();
+                            openProtectedPdf(rideUrl.replace(/^\/api/, ''));
+                        }}
                         eventKey='ride'
                         className='py-3 px-4 d-flex align-items-center fs-6 text-danger'
                     >

@@ -109,6 +109,10 @@ const AccountsReceivable = () => {
             dispatch(addToast({ text: 'El abono debe ser mayor a cero y no superar el saldo pendiente.', type: toastType.ERROR }));
             return;
         }
+        if (Number(payment.payment_type) === 3 && !payment.reference.trim()) {
+            dispatch(addToast({ text: 'Ingresa el número de comprobante de la transferencia.', type: toastType.ERROR }));
+            return;
+        }
         setSaving(true);
         try {
             await apiConfig.post(`accounts-receivable/${selected.id}/payments`, payment);
@@ -179,6 +183,10 @@ const AccountsReceivable = () => {
         const amount = Number(customerPayment.amount);
         if (amount <= 0 || amount > Number(selectedCustomer.summary.total_receivable)) {
             dispatch(addToast({ text: 'El cobro debe ser mayor a cero y no superar la deuda consolidada.', type: toastType.ERROR }));
+            return;
+        }
+        if (Number(customerPayment.payment_type) === 3 && !customerPayment.reference.trim()) {
+            dispatch(addToast({ text: 'Ingresa el número de comprobante de la transferencia.', type: toastType.ERROR }));
             return;
         }
         setSaving(true);

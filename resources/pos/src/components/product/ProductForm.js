@@ -391,23 +391,23 @@ const ProductForm = (props) => {
         ? singleProduct[0].tax_type === "1"
             ? {
                 value: 1,
-                label: getFormattedMessage("tax-type.filter.exclusive.label"),
+                label: getFormattedMessage("tax-type.price-add-iva.label"),
             }
             : {
                 value: 2,
-                label: getFormattedMessage("tax-type.filter.inclusive.label"),
+                label: getFormattedMessage("tax-type.price-includes-iva.label"),
             } || singleProduct[0].tax_type === "2"
                 ? {
                     value: 2,
-                    label: getFormattedMessage("tax-type.filter.inclusive.label"),
+                    label: getFormattedMessage("tax-type.price-includes-iva.label"),
                 }
                 : {
                     value: 1,
-                    label: getFormattedMessage("tax-type.filter.exclusive.label"),
+                    label: getFormattedMessage("tax-type.price-add-iva.label"),
                 }
         : {
             value: 1,
-            label: getFormattedMessage("tax-type.filter.exclusive.label"),
+            label: getFormattedMessage("tax-type.price-add-iva.label"),
         };
 
     const onTaxTypeChange = (obj, variation_type_id) => {
@@ -1642,7 +1642,7 @@ const ProductForm = (props) => {
                                 <div className="col-md-3 mb-3">
                                     <ReactSelect
                                         title={getFormattedMessage(
-                                            "product.input.tax-type.label"
+                                            "product.input.price-includes-iva.label"
                                         )}
                                         multiLanguageOption={
                                             taxTypeFilterOptions
@@ -1654,14 +1654,14 @@ const ProductForm = (props) => {
                                         errors={errors["tax_type"]}
                                         defaultValue={defaultTaxType}
                                         placeholder={placeholderText(
-                                            "product.input.tax-type.placeholder.label"
+                                            "product.input.price-includes-iva.placeholder"
                                         )}
                                     />
                                     <details className="product-tax-help">
-                                        <summary><i className="bi bi-info-circle" /> ¿Cómo elegir el tipo de IVA?</summary>
+                                        <summary><i className="bi bi-info-circle" /> ¿Cómo se aplicará el IVA?</summary>
                                         <div>
-                                            <p><strong>Exclusivo:</strong> el precio no incluye IVA; se suma al cobrar.</p>
-                                            <p><strong>Inclusivo:</strong> el precio ya contiene el IVA.</p>
+                                            <p><strong>No, agregar IVA:</strong> el valor indicado es el precio antes de IVA y el sistema lo sumará al cobrar.</p>
+                                            <p><strong>Sí, ya incluye IVA:</strong> el valor indicado es el precio final; el sistema separará la base y el IVA.</p>
                                             <small>Esta elección afecta el cálculo de la factura electrónica.</small>
                                         </div>
                                     </details>
@@ -1930,7 +1930,7 @@ const ProductForm = (props) => {
                                     <div className="col-md-3 mb-3">
                                         <ReactSelect
                                             title={getFormattedMessage(
-                                                "product.input.tax-type.label"
+                                                "product.input.price-includes-iva.label"
                                             )}
                                             multiLanguageOption={
                                                 taxTypeFilterOptions
@@ -1949,7 +1949,7 @@ const ProductForm = (props) => {
                                             }
                                             defaultValue={defaultTaxType}
                                             placeholder={placeholderText(
-                                                "product.input.tax-type.placeholder.label"
+                                                "product.input.price-includes-iva.placeholder"
                                             )}
                                         />
                                     </div>

@@ -130,7 +130,7 @@ function RegisterDetailsModel({
                             </article>
                             <article>
                                 <span className={manualCashNet < 0 ? "is-red" : "is-amber"}><i className="bi bi-arrow-left-right" /></span>
-                                <div><small>Movimiento manual neto</small><strong className={manualCashNet < 0 ? "is-negative" : ""}>{manualCashNet > 0 ? "+" : ""}{money(manualCashNet)}</strong></div>
+                                <div><small>Otros movimientos netos</small><strong className={manualCashNet < 0 ? "is-negative" : ""}>{manualCashNet > 0 ? "+" : ""}{money(manualCashNet)}</strong></div>
                             </article>
                         </section>
 

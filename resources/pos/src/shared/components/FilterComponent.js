@@ -4,7 +4,7 @@ import {faSearch} from '@fortawesome/free-solid-svg-icons';
 import {FontAwesomeIcon} from '@fortawesome/react-fontawesome';
 
 const FilterComponent = (props) => {
-    const {handleSearch} = props;
+    const {handleSearch, placeholder} = props;
     const [typingTimeout, setTypingTimeout] = useState(0);
 
     const sendToParent = (searchText) => {
@@ -22,7 +22,7 @@ const FilterComponent = (props) => {
         <div className='d-flex position-relative col-12 col-xxl-4 col-md-3 col-lg-4 mb-lg-0 mb-md-0 mb-3 searchBox'>
             <div className='position-relative d-flex width-320'>
                 <input className='form-control ps-8' type='search' id='search'
-                       placeholder={placeholderText('react-data-table.searchbar.placeholder')} aria-label='Search'
+                       placeholder={placeholder || placeholderText('react-data-table.searchbar.placeholder')} aria-label='Search'
                        onChange={(e) => onChangeName(e)}/>
                 <span
                     className='position-absolute d-flex align-items-center top-0 bottom-0 left-0 text-gray-600 ms-3'>

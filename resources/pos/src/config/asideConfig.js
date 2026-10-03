@@ -41,6 +41,7 @@ import {
     faGlobe,
     faBagShopping,
     faHandHoldingDollar,
+    faMoneyBillTransfer,
 } from "@fortawesome/free-solid-svg-icons";
 import { getFormattedMessage } from "../shared/sharedMethod";
 
@@ -114,6 +115,14 @@ export default [
         to: "/app/accounts-receivable",
         class: "d-flex",
         permission: Permissions.ACCOUNTS_RECEIVABLE_ACCESS,
+    },
+    {
+        title: "Cobros por transferencia",
+        name: "bank transfer payments",
+        fontIcon: <FontAwesomeIcon icon={faMoneyBillTransfer} />,
+        to: "/app/bank-transfer-payments",
+        class: "d-flex",
+        permission: Permissions.BANK_TRANSFER_PAYMENTS_ACCESS,
     },
     {
         title: "quotations.title",

@@ -118,13 +118,13 @@ const PricingSection = ({
             {/* Tipo de impuesto */}
             <div className="col-md-3 mb-3">
                 <ReactSelect
-                    title={getFormattedMessage("product.input.tax-type.label")}
+                    title={getFormattedMessage("product.input.price-includes-iva.label")}
                     multiLanguageOption={taxTypeFilterOptions}
                     value={singleProductTypeData.tax_type}
                     onChange={(data) => onTaxTypeChange(data)}
                     errors={errors["tax_type"]}
                     defaultValue={defaultTaxType}
-                    placeholder={placeholderText("product.input.tax-type.placeholder.label")}
+                    placeholder={placeholderText("product.input.price-includes-iva.placeholder")}
                 />
             </div>
 

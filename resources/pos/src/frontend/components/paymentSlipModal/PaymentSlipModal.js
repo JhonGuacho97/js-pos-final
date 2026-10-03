@@ -347,13 +347,16 @@ const PaymentSlipModal = (props) => {
                                 paymentDetails?.attributes?.payments?.map((payment) => ({
                                     label: paymentTypeLabels[payment.payment_type],
                                     amount: payment.amount,
+                                    reference: payment.reference,
                                 })) || [];
-                            const rows = serverPayments.length > 0 ? serverPayments : payments;
+                            const rows = serverPayments.length > 0
+                                ? serverPayments
+                                : (updateProducts?.payments?.length ? updateProducts.payments : payments);
 
                             return rows && rows.length > 0 ? (
                                 rows.map((payment, index) => (
                                     <div style={rowStyle} key={index}>
-                                        <span>{payment.label}</span>
+                                        <span>{payment.label}{payment.reference ? ` · ${payment.reference}` : ''}</span>
                                         <span>
                                             {currencySymbolHandling(allConfigData, currency, payment.amount)}
                                         </span>

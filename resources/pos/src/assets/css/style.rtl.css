@@ -16319,7 +16319,6 @@ tbody tr:last-child td {
 }
 .nav-tabs .nav-item .nav-link:after {
   content: "";
-  position: absolute;
   border-bottom: 0.125rem solid transparent;
   width: 100%;
   display: inline-block;

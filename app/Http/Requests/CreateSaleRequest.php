@@ -28,6 +28,18 @@ class CreateSaleRequest extends FormRequest
             'payments' => ['nullable', 'array'],
             'payments.*.amount' => ['required_with:payments', 'numeric', 'min:0.01'],
             'payments.*.payment_type' => ['required_with:payments', 'integer', 'in:1,2,3,4'],
+            'payments.*.reference' => ['nullable', 'string', 'max:100'],
         ]);
+    }
+
+    public function withValidator($validator): void
+    {
+        $validator->after(function ($validator) {
+            foreach ((array) $this->input('payments', []) as $index => $payment) {
+                if ((int) ($payment['payment_type'] ?? 0) === 3 && trim((string) ($payment['reference'] ?? '')) === '') {
+                    $validator->errors()->add("payments.$index.reference", 'El número de comprobante es obligatorio para transferencias.');
+                }
+            }
+        });
     }
 }

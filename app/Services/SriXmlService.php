@@ -213,43 +213,7 @@ class SriXmlService
 
         $factura->appendChild($detalles);
 
-        // ── infoAdicional ─────────────────────────
-        // Importante: createElement($tag, $valor) escapa MENOS
-        // caracteres que createTextNode() (así lo advierte la propia
-        // documentación de PHP) -- si el correo/teléfono/dirección del
-        // cliente tuviera un "&" suelto, podía romper el XML igual que
-        // pasó con la dirección de la empresa. Se arma con
-        // createTextNode(), el mismo patrón seguro que usa nodo().
-        $infoAdicional = $dom->createElement('infoAdicional');
-        $hasAdicional = false;
-
-        if ($customer->email) {
-            $campo = $dom->createElement('campoAdicional');
-            $campo->setAttribute('nombre', 'Email');
-            $campo->appendChild($dom->createTextNode((string) $customer->email));
-            $infoAdicional->appendChild($campo);
-            $hasAdicional = true;
-        }
-
-        if ($customer->phone) {
-            $campo = $dom->createElement('campoAdicional');
-            $campo->setAttribute('nombre', 'Telefono');
-            $campo->appendChild($dom->createTextNode((string) $customer->phone));
-            $infoAdicional->appendChild($campo);
-            $hasAdicional = true;
-        }
-
-        if ($customer->address) {
-            $campo = $dom->createElement('campoAdicional');
-            $campo->setAttribute('nombre', 'Direccion');
-            $campo->appendChild($dom->createTextNode((string) $customer->address));
-            $infoAdicional->appendChild($campo);
-            $hasAdicional = true;
-        }
-
-        if ($hasAdicional) {
-            $factura->appendChild($infoAdicional);
-        }
+        $this->agregarInformacionAdicional($dom, $factura, $customer, $cfg);
 
         return [
             'xml' => $dom->saveXML(),
@@ -259,6 +223,7 @@ class SriXmlService
             'ambiente' => (int) $cfg['ambiente'],
             'estab' => $cfg['estab'],
             'pto_emi' => $cfg['pto_emi'],
+            'provider_ruc' => $cfg['provider_ruc'],
         ];
     }
 
@@ -377,6 +342,8 @@ class SriXmlService
         }
         $notaDebito->appendChild($motivosNode);
 
+        $this->agregarInformacionAdicional($dom, $notaDebito, $customer, $cfg);
+
         return [
             'xml' => $dom->saveXML(),
             'clave_acceso' => $claveAcceso,
@@ -385,6 +352,7 @@ class SriXmlService
             'ambiente' => (int) $cfg['ambiente'],
             'estab' => $cfg['estab'],
             'pto_emi' => $cfg['pto_emi'],
+            'provider_ruc' => $cfg['provider_ruc'],
         ];
     }
 
@@ -508,37 +476,7 @@ class SriXmlService
 
         $notaCredito->appendChild($detalles);
 
-        // ── infoAdicional ─────────────────────────
-        $infoAdicional = $dom->createElement('infoAdicional');
-        $hasAdicional = false;
-
-        if ($customer->email) {
-            $campo = $dom->createElement('campoAdicional');
-            $campo->setAttribute('nombre', 'Email');
-            $campo->appendChild($dom->createTextNode((string) $customer->email));
-            $infoAdicional->appendChild($campo);
-            $hasAdicional = true;
-        }
-
-        if ($customer->phone) {
-            $campo = $dom->createElement('campoAdicional');
-            $campo->setAttribute('nombre', 'Telefono');
-            $campo->appendChild($dom->createTextNode((string) $customer->phone));
-            $infoAdicional->appendChild($campo);
-            $hasAdicional = true;
-        }
-
-        if ($customer->address) {
-            $campo = $dom->createElement('campoAdicional');
-            $campo->setAttribute('nombre', 'Direccion');
-            $campo->appendChild($dom->createTextNode((string) $customer->address));
-            $infoAdicional->appendChild($campo);
-            $hasAdicional = true;
-        }
-
-        if ($hasAdicional) {
-            $notaCredito->appendChild($infoAdicional);
-        }
+        $this->agregarInformacionAdicional($dom, $notaCredito, $customer, $cfg);
 
         return [
             'xml' => $dom->saveXML(),
@@ -548,12 +486,59 @@ class SriXmlService
             'ambiente' => (int) $cfg['ambiente'],
             'estab' => $cfg['estab'],
             'pto_emi' => $cfg['pto_emi'],
+            'provider_ruc' => $cfg['provider_ruc'],
         ];
     }
 
     // ─────────────────────────────────────────────
     // HELPERS PRIVADOS
     // ─────────────────────────────────────────────
+
+    /**
+     * Añade la información adicional común a todos los comprobantes. El RUC
+     * del proveedor solo aplica cuando el emisor declara usar un sistema
+     * proporcionado por un tercero.
+     */
+    private function agregarInformacionAdicional(
+        \DOMDocument $dom,
+        \DOMElement $comprobante,
+        $customer,
+        array $cfg
+    ): void {
+        $softwareOrigin = (string) ($cfg['software_origin'] ?? 'PROPIO');
+        $providerRuc = preg_replace('/\D/', '', (string) ($cfg['provider_ruc'] ?? ''));
+
+        if ($softwareOrigin === 'TERCERO' && strlen($providerRuc) !== 13) {
+            throw new \RuntimeException(
+                'Configura el RUC de 13 dígitos del proveedor tecnológico antes de emitir comprobantes electrónicos.'
+            );
+        }
+
+        $campos = [
+            'RUC Proveedor' => $softwareOrigin === 'TERCERO' ? $providerRuc : null,
+            'Email' => $customer?->email,
+            'Telefono' => $customer?->phone,
+            'Direccion' => $customer?->address,
+        ];
+
+        $infoAdicional = $dom->createElement('infoAdicional');
+
+        foreach ($campos as $nombre => $valor) {
+            if ($valor === null || trim((string) $valor) === '') {
+                continue;
+            }
+
+            $campo = $dom->createElement('campoAdicional');
+            $campo->setAttribute('nombre', $nombre);
+            // createTextNode escapa correctamente caracteres como "&".
+            $campo->appendChild($dom->createTextNode((string) $valor));
+            $infoAdicional->appendChild($campo);
+        }
+
+        if ($infoAdicional->hasChildNodes()) {
+            $comprobante->appendChild($infoAdicional);
+        }
+    }
 
     /**
      * Verifica que cantidad × precio − descuento coincida con lo que se

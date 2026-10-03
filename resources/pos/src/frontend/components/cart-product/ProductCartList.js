@@ -1,13 +1,11 @@
-import React from "react";
-import { connect, useDispatch } from "react-redux";
+import React, {useState} from "react";
+import { connect } from "react-redux";
 import {
     currencySymbolHandling,
     decimalValidate,
     getFormattedMessage,
 } from "../../../shared/sharedMethod";
 import { calculateProductCost } from "../../shared/SharedMethod";
-import { addToast } from "../../../store/action/toastAction";
-import { toastType } from "../../../constants";
 
 const ProductCartList = (props) => {
     const {
@@ -20,7 +18,7 @@ const ProductCartList = (props) => {
         posAllProducts,
         allConfigData,
     } = props;
-    const dispatch = useDispatch();
+    const [quantityError, setQuantityError] = useState('');
     const equivalence = singleProduct.presentation_equivalence || 1;
     const stockInBaseUnits = posAllProducts
         .filter((product) => product.id === singleProduct.product_id)
@@ -35,17 +33,11 @@ const ProductCartList = (props) => {
             updateProducts.map((item) => {
                 if (item.id === singleProduct.id) {
                     if (item.quantity >= totalQty[0]) {
-                        dispatch(
-                            addToast({
-                                text: getFormattedMessage(
-                                    "pos.product-quantity-error.message"
-                                ),
-                                type: toastType.ERROR,
-                            })
-                        );
+                        setQuantityError(getFormattedMessage("pos.product-quantity-error.message"));
                         return item;
                     } else {
-                        return { ...item, quantity: item.quantity++ + 1 };
+                        setQuantityError('');
+                        return { ...item, quantity: Number(item.quantity) + 1 };
                     }
                 } else {
                     return item;
@@ -59,7 +51,7 @@ const ProductCartList = (props) => {
             setUpdateProducts((updateProducts) =>
                 updateProducts.map((item) =>
                     item.id === singleProduct.id
-                        ? { ...item, quantity: item.quantity-- - 1 }
+                        ? { ...item, quantity: Number(item.quantity) - 1 }
                         : item
                 )
             );
@@ -84,16 +76,10 @@ const ProductCartList = (props) => {
             updateProducts.map((item) => {
                 if (item.id === singleProduct.id) {
                     if (totalQty[0] < Number(e.target.value)) {
-                        dispatch(
-                            addToast({
-                                text: getFormattedMessage(
-                                    "pos.product-quantity-error.message"
-                                ),
-                                type: toastType.ERROR,
-                            })
-                        );
+                        setQuantityError(getFormattedMessage("pos.product-quantity-error.message"));
                         return { ...item, quantity: totalQty[0] };
                     } else {
+                        setQuantityError(Number(e.target.value) <= 0 ? 'La cantidad debe ser mayor a cero.' : '');
                         return {
                             ...item,
                             quantity: Number(e.target.value),
@@ -120,17 +106,24 @@ const ProductCartList = (props) => {
                             {singleProduct.code}
                         </span>
 
-                        <i
-                            className="bi bi-pencil edit-icon"
+                        <button
+                            type="button"
+                            className="edit-icon"
+                            title="Modificar precio, descuento o unidad para esta venta"
+                            aria-label={`Modificar ${singleProduct.name}`}
                             onClick={() => onClickUpdateItemInCart(singleProduct)}
-                        />
+                        >
+                            <i className="bi bi-pencil" aria-hidden="true" />
+                            <span>Editar</span>
+                        </button>
+                        {singleProduct.price_overridden && <span className="price-override-badge" title={singleProduct.price_override_reason || ''}>Precio modificado</span>}
                     </div>
                 </div>
             </td>
 
             {/* 🔢 CANTIDAD */}
             <td>
-                <div className="qty-container">
+                <div className={`qty-container ${quantityError ? 'has-error' : ''}`}>
                     <button
                         onClick={handleDecrement}
                         className="qty-btn"
@@ -153,6 +146,7 @@ const ProductCartList = (props) => {
                         +
                     </button>
                 </div>
+                {quantityError && <small className="qty-error" role="alert">{quantityError}</small>}
             </td>
 
             {/* 💰 PRECIO */}
@@ -177,6 +171,9 @@ const ProductCartList = (props) => {
             <td className="text-end pe-3">
                 <button
                     className="delete-btn"
+                    type="button"
+                    title="Quitar producto"
+                    aria-label={`Quitar ${singleProduct.name} del pedido`}
                     onClick={() => onRequestDeleteCartItem(singleProduct)}
                 >
                     <i className="bi bi-trash3" />

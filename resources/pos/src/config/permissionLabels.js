@@ -52,6 +52,8 @@ const SLUG_TO_LABEL_KEY = {
     reverse_cash_movement: 'role.permission.reverse_cash_movement',
     transfer_cash: 'role.permission.transfer_cash',
     review_cash_closure: 'role.permission.review_cash_closure',
+    view_bank_transfer_payments: 'role.permission.view_bank_transfer_payments',
+    reconcile_bank_transfer_payments: 'role.permission.reconcile_bank_transfer_payments',
 
     manage_suppliers: 'role.permission.manage_suppliers',
     manage_customers: 'role.permission.manage_customers',

@@ -17,7 +17,6 @@
         window.__ECUAPOS_CATALOG__ = {{ Illuminate\Support\Js::from([
             'slug' => $store->slug,
             'apiUrl' => url('/api/catalog/'.$store->slug),
-            'accountUrl' => url('/catalogo/'.$store->slug.'/cuenta'),
             'orderUrl' => url('/catalogo/'.$store->slug.'/pedidos'),
         ]) }};
     </script>

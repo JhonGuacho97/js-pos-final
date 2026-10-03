@@ -1,7 +1,6 @@
 import { useState } from "react";
 import { useDispatch } from "react-redux";
 import { useNavigate } from "react-router-dom";
-import * as EmailValidator from "email-validator";
 import dayjs from 'dayjs';
 import utc from 'dayjs/plugin/utc';
 import localizedFormat from 'dayjs/plugin/localizedFormat';
@@ -55,9 +54,6 @@ export const useCustomerForm = ({ singleCustomer, addCustomerData, editCustomer,
         const e = {};
 
         if (!customerValue.name) e.name = "El nombre es obligatorio";
-        if (!customerValue.email) e.email = "El email es obligatorio";
-        else if (!EmailValidator.validate(customerValue.email)) e.email = "Email inválido";
-        if (!customerValue.phone) e.phone = "El teléfono es obligatorio";
         if (!customerValue.country) e.country = "El país es obligatorio";
         if (!customerValue.city) e.city = "La ciudad es obligatoria";
         if (!customerValue.address) e.address = "La dirección es obligatoria";

@@ -51,6 +51,17 @@ class SriConfigService
         }
         $settings = $query->get()->pluck('value', 'key');
 
+        // El SaaS usa su identidad de plataforma cuando la tienda aún no
+        // hizo una elección explícita; nunca hereda el RUC de otra tienda.
+        $softwareOrigin = (string) ($settings['sri_software_origin'] ?? config('saas.sri_software_origin', 'TERCERO'));
+        if (!in_array($softwareOrigin, ['PROPIO', 'TERCERO'], true)) {
+            $softwareOrigin = 'TERCERO';
+        }
+
+        $providerRuc = $softwareOrigin === 'TERCERO'
+            ? preg_replace('/\D/', '', (string) ($settings['sri_provider_ruc'] ?? config('saas.sri_provider_ruc', '')))
+            : '';
+
         $ambiente = (int) ($settings['sri_ambiente'] ?? 1);
 
         return [
@@ -66,6 +77,8 @@ class SriConfigService
             // no estén bajo RIMPE, en cuyo caso esto simplemente no aplica y
             // no se agrega ninguna etiqueta al XML.
             'regimen_rimpe' => $settings['sri_regimen_rimpe'] ?? '',
+            'software_origin' => $softwareOrigin,
+            'provider_ruc' => $providerRuc,
             'certificado_path' => $settings['sri_certificado_path'] ?? null,
             // Logo específico para el RIDE, subido desde la propia
             // pantalla de Configuración SRI -- ver SriRideService, que

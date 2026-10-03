@@ -10,6 +10,7 @@ import TableButton from "../action-buttons/TableButton";
 import useReadOnlyMode, { READ_ONLY_MESSAGE } from "../../hooks/useReadOnlyMode";
 import EmptyComponent from "../../components/empty-component/EmptyComponent";
 import { getFormattedMessage } from "../sharedMethod";
+import DataTablePagination from "./DataTablePagination";
 import DateRangePicker from "../datepicker/DateRangePicker";
 import FilterDropdown from "../filterMenu/FilterDropdown";
 import { setProductUnitId } from "../../store/action/productUnitIdAction";
@@ -60,7 +61,8 @@ const ReactDataTable = (props) => {
         onReportPdfClick,
         importBtnTitle,
         isLoginStatus,
-        loginStatusOptions
+        loginStatusOptions,
+        searchPlaceholder
     } = props;
     const [perPage, setPerPages] = useState(defaultLimit);
     const [pageSize, setPageSize] = useState(Filters.OBJ.pageSize);
@@ -186,7 +188,7 @@ const ReactDataTable = (props) => {
                 {isShowSearch ? (
                     ""
                 ) : (
-                    <FilterComponent handleSearch={handleSearch} />
+                    <FilterComponent handleSearch={handleSearch} placeholder={searchPlaceholder} />
                 )}
 
                 <Col
@@ -405,6 +407,7 @@ const ReactDataTable = (props) => {
                 clearSelectedRows={clearSelectedRows}
                 selectableRowSelected={selectableRowSelected}
                 paginationServerOptions={paginationServerOptions}
+                paginationComponent={DataTablePagination}
                 selectableRowsHighlight
             />
         </div>

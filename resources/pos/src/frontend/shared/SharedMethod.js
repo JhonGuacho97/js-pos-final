@@ -1,29 +1,56 @@
 //count discount on price
-export const calculateDiscount = ( totalCost ) => {
-    if ( totalCost.discount_value > 0 && totalCost.discount_type === '2' || totalCost.discount_type === 2 ) {
-        totalCost = ( +totalCost.net_unit_cost - Number( totalCost.discount_value ) )
-    } else if ( totalCost.discount_value > 0 && totalCost.discount_type === '1' || totalCost.discount_type === 1 ) {
-        const percentDiscount = totalCost.discount_type === '1' || totalCost.discount_type === 1 ? parseFloat( totalCost.net_unit_cost ).toFixed( 2 ) * Number( totalCost.discount_value ) / Number( 100 ) : 0;
-        totalCost = ( +totalCost.net_unit_cost - ( percentDiscount ) );
+export const calculateDiscount = ( product ) => {
+    const price = Number(product?.product_price ?? product?.net_unit_cost ?? 0);
+    const discountValue = Math.max(0, Number(product?.discount_value || 0));
+    const discountType = Number(product?.discount_type || 1);
+
+    if (discountType === 2) {
+        return Math.max(0, price - discountValue);
     }
-    return totalCost;
+
+    if (discountType === 1) {
+        return Math.max(0, price - (price * Math.min(discountValue, 100) / 100));
+    }
+
+    return price;
 };
 
 //count tax on price
-export const calculateTax = ( totalCost, finalCount ) => {
-    if ( totalCost.tax_type === '2' || totalCost.tax_type === 2 ) {
-        totalCost = +finalCount
-    } else if ( totalCost.tax_type === '1' || totalCost.tax_type === 1 ) {
-        let exclusiveTax = totalCost.tax_type === '1' || totalCost.tax_type === 1 ? parseFloat( finalCount ).toFixed( 2 ) * Number( totalCost.tax_value ) / Number( 100 ) : 0;
-        totalCost = ( +finalCount + ( exclusiveTax ) );
+export const calculateTax = ( product, discountedPrice ) => {
+    const taxType = Number(product?.tax_type || 1);
+    const taxRate = Math.max(0, Number(product?.tax_value || 0));
+
+    if (taxType === 2 || taxRate === 0) {
+        return Number(discountedPrice || 0);
     }
-    return totalCost;
+
+    return Number(discountedPrice || 0) * (1 + taxRate / 100);
+};
+
+export const calculateProductBreakdown = (product) => {
+    const productPrice = Math.max(0, Number(product?.product_price ?? product?.net_unit_cost ?? 0));
+    const discountedPrice = calculateDiscount({...product, product_price: productPrice});
+    const discountAmount = Math.max(0, productPrice - discountedPrice);
+    const taxRate = Math.max(0, Number(product?.tax_value || 0));
+    const taxType = Number(product?.tax_type || 1);
+    const taxAmount = taxRate <= 0
+        ? 0
+        : taxType === 2
+            ? discountedPrice * taxRate / (100 + taxRate)
+            : discountedPrice * taxRate / 100;
+    const finalPrice = taxType === 2 ? discountedPrice : discountedPrice + taxAmount;
+
+    return {
+        productPrice,
+        discountAmount,
+        discountedPrice,
+        taxAmount,
+        netUnitPrice: taxType === 2 ? discountedPrice - taxAmount : discountedPrice,
+        finalPrice,
+    };
 };
 
 //cart price updated
 export const calculateProductCost = ( product ) => {
-    let finalCount = 0;
-    finalCount = calculateDiscount( product );
-    finalCount = calculateTax( product, finalCount );
-    return +finalCount;
+    return calculateProductBreakdown(product).finalPrice;
 };

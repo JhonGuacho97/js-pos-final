@@ -15,6 +15,7 @@ import ResourceListHeader from "../../shared/components/ResourceListHeader";
 import { downloadAuthenticatedFile } from "../../shared/downloadAuthenticatedFile";
 import "../../assets/scss/custom/pages/resource-list.scss";
 import "../../assets/scss/custom/pages/fiscal-documents.scss";
+import { openProtectedPdf } from "../../utils/protectedFile";
 
 const ESTADOS_SRI = [
     { value: "TODOS", label: "Todos" },

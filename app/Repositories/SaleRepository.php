@@ -294,7 +294,8 @@ class SaleRepository extends BaseRepository
             getSettingValue('company_name'),
         ];
 
-        if (!empty($mailTemplate) && $mailTemplate->status == MailTemplate::ACTIVE) {
+        if (!empty($mailTemplate) && $mailTemplate->status == MailTemplate::ACTIVE
+            && filter_var($customer->email, FILTER_VALIDATE_EMAIL)) {
             $data['data'] = str_replace($search, $replace, $mailTemplate->content);
 
             Mail::to($customer->email)
@@ -337,7 +338,7 @@ class SaleRepository extends BaseRepository
     /**
      * @return mixed
      */
-    public function calculationSaleItems($saleItem, $warehouseId = null)
+    public function calculationSaleItems($saleItem, $warehouseId = null, $expectedSaleId = null)
     {
         $validator = Validator::make($saleItem, SaleItem::$rules);
         if ($validator->fails()) {
@@ -374,14 +375,55 @@ class SaleRepository extends BaseRepository
         $saleItem['presentation_quantity'] = $presentationQuantity;
         $saleItem['presentation_equivalence'] = $equivalence;
 
-        // Precio autoritativo: NUNCA se confía en el product_price que llega
-        // del cliente -- se recalcula siempre desde el precio real del
-        // producto o de la presentación en BD (con override por sucursal si
-        // existe), para que no se pueda vender a un precio manipulado
-        // enviando un product_price distinto en el request.
-        $saleItem['product_price'] = $presentation
+        // El precio de catálogo sigue siendo autoritativo. Un precio distinto
+        // solo se acepta con el permiso específico del POS y queda auditado.
+        $catalogPrice = (float) ($presentation
             ? $presentation->priceForWarehouse($warehouseId)
-            : $product->priceForWarehouse($warehouseId);
+            : $product->priceForWarehouse($warehouseId));
+        $requestedPrice = array_key_exists('product_price', $saleItem)
+            ? round((float) $saleItem['product_price'], 4)
+            : $catalogPrice;
+        $hasPriceOverride = abs($requestedPrice - $catalogPrice) > 0.0001;
+
+        $saleItem['catalog_price'] = $catalogPrice;
+        if ($hasPriceOverride) {
+            $existingOverride = $expectedSaleId !== null && ! empty($saleItem['sale_item_id'])
+                ? SaleItem::whereKey($saleItem['sale_item_id'])
+                    ->whereSaleId($expectedSaleId)
+                    ->first()
+                : null;
+            $keepsExistingOverride = $existingOverride
+                && (int) $existingOverride->product_id === (int) $saleItem['product_id']
+                && abs((float) $existingOverride->product_price - $requestedPrice) <= 0.0001
+                && $existingOverride->price_overridden_by;
+            $reason = trim((string) ($saleItem['price_override_reason'] ?? ''));
+            if (! $keepsExistingOverride && ! Auth::user()?->can('override_pos_price')) {
+                throw new UnprocessableEntityHttpException(
+                    'No tienes autorización para modificar el precio de venta.'
+                );
+            }
+            if ($keepsExistingOverride && $reason === '') {
+                $reason = (string) $existingOverride->price_override_reason;
+            }
+            if (mb_strlen($reason) < 3 || mb_strlen($reason) > 120) {
+                throw new UnprocessableEntityHttpException(
+                    'Indica un motivo válido para modificar el precio de venta.'
+                );
+            }
+
+            $saleItem['product_price'] = $requestedPrice;
+            $saleItem['catalog_price'] = $keepsExistingOverride
+                ? ($existingOverride->catalog_price ?? $catalogPrice)
+                : $catalogPrice;
+            $saleItem['price_override_reason'] = $reason;
+            $saleItem['price_overridden_by'] = $keepsExistingOverride
+                ? $existingOverride->price_overridden_by
+                : Auth::id();
+        } else {
+            $saleItem['product_price'] = $catalogPrice;
+            $saleItem['price_override_reason'] = null;
+            $saleItem['price_overridden_by'] = null;
+        }
 
         //discount calculation
         $perItemDiscountAmount = 0;
@@ -442,13 +484,15 @@ class SaleRepository extends BaseRepository
         foreach ($input['sale_items'] as $saleItem) {
             $product = Product::whereId($saleItem['product_id'])->first();
 
-            $equivalence = ! empty($saleItem['product_presentation_id'])
-                ? ($saleItem['presentation_equivalence'] ?? 1)
-                : 1;
-            $quantityInBaseUnits = $saleItem['quantity'] * $equivalence;
-
-            if (!empty($product) && isset($product->quantity_limit) && $quantityInBaseUnits > $product->quantity_limit) {
-                throw new UnprocessableEntityHttpException('Please enter less than ' . $product->quantity_limit . ' quantity of ' . $product->name . ' product.');
+            // quantity_limit es un límite comercial por línea de venta, no
+            // inventario expresado en unidades base. Una caja de 24 cuenta
+            // como una presentación vendida para este límite; el descuento
+            // de stock sí se convierte a 24 más abajo.
+            if (! empty($product) && is_numeric($product->quantity_limit) && (float) $product->quantity_limit > 0
+                && (float) $saleItem['quantity'] > (float) $product->quantity_limit) {
+                throw new UnprocessableEntityHttpException(
+                    'No puedes vender más de '.$product->quantity_limit.' unidades o presentaciones de '.$product->name.' en una misma venta.'
+                );
             }
             $item = $this->calculationSaleItems($saleItem, $input['warehouse_id'] ?? null);
             $saleItem = new SaleItem($item);
@@ -511,6 +555,7 @@ class SaleRepository extends BaseRepository
                     'payment_type' => $payment['payment_type'],
                     'amount' => $payment['amount'],
                     'received_amount' => $payment['received_amount'],
+                    'reference' => $payment['reference'] ?? null,
                 ]);
                 $totalPaid += $payment['amount'];
                 if ($firstPaymentType === null) {
@@ -574,17 +619,11 @@ class SaleRepository extends BaseRepository
             foreach ($input['sale_items'] as $key => $saleItem) {
                 $product = Product::whereId($saleItem['product_id'])->first();
 
-                // quantity_limit está definido en unidades base; si la línea
-                // es una presentación (ej. Six Pack), 'quantity' que llega
-                // aquí todavía es la cantidad de presentaciones, así que hay
-                // que convertir antes de comparar contra el límite.
-                $equivalence = ! empty($saleItem['product_presentation_id'])
-                    ? ($saleItem['presentation_equivalence'] ?? 1)
-                    : 1;
-                $quantityInBaseUnits = $saleItem['quantity'] * $equivalence;
-
-                if (!empty($product) && isset($product->quantity_limit) && $quantityInBaseUnits > $product->quantity_limit) {
-                    throw new UnprocessableEntityHttpException('Please enter less than ' . $product->quantity_limit . ' quantity of ' . $product->name . ' product.');
+                if (! empty($product) && is_numeric($product->quantity_limit) && (float) $product->quantity_limit > 0
+                    && (float) $saleItem['quantity'] > (float) $product->quantity_limit) {
+                    throw new UnprocessableEntityHttpException(
+                        'No puedes vender más de '.$product->quantity_limit.' unidades o presentaciones de '.$product->name.' en una misma venta.'
+                    );
                 }
 
                 //get different ids & update
@@ -596,6 +635,9 @@ class SaleRepository extends BaseRepository
                     'presentation_quantity',
                     'presentation_equivalence',
                     'product_price',
+                    'catalog_price',
+                    'price_override_reason',
+                    'price_overridden_by',
                     'net_unit_price',
                     'tax_type',
                     'tax_value',
@@ -607,7 +649,9 @@ class SaleRepository extends BaseRepository
                     'quantity',
                     'sub_total',
                 ]);
-                $this->updateItem($saleItemArray, $input['warehouse_id']);
+                if (! is_null($saleItem['sale_item_id'])) {
+                    $this->updateItem($saleItemArray, $input['warehouse_id'], $sale->id);
+                }
                 //create new product items
                 if (is_null($saleItem['sale_item_id'])) {
                     $saleItem = $this->calculationSaleItems($saleItem, $input['warehouse_id']);
@@ -617,6 +661,9 @@ class SaleRepository extends BaseRepository
                         'presentation_quantity',
                         'presentation_equivalence',
                         'product_price',
+                        'catalog_price',
+                        'price_override_reason',
+                        'price_overridden_by',
                         'net_unit_price',
                         'tax_type',
                         'tax_value',
@@ -698,12 +745,15 @@ class SaleRepository extends BaseRepository
         }
     }
 
-    public function updateItem($saleItem, $warehouseId): bool
+    public function updateItem($saleItem, $warehouseId, $saleId): bool
     {
         try {
-            $saleItem = $this->calculationSaleItems($saleItem, $warehouseId);
-            $item = SaleItem::whereId($saleItem['sale_item_id']);
-            $oldItem = SaleItem::whereId($saleItem['sale_item_id'])->first();
+            $saleItem = $this->calculationSaleItems($saleItem, $warehouseId, $saleId);
+            $item = SaleItem::whereId($saleItem['sale_item_id'])->whereSaleId($saleId);
+            $oldItem = (clone $item)->first();
+            if (! $oldItem) {
+                throw new UnprocessableEntityHttpException('La línea no pertenece a la venta que intentas editar.');
+            }
 
             if ($oldItem && $oldItem->quantity != $saleItem['quantity']) {
                 // Delta con signo: positivo = se vendió más que antes (hay

@@ -14,6 +14,7 @@ use App\Models\User;
 use App\Models\Warehouse;
 use App\Repositories\SalesPaymentRepository;
 use App\Services\CashControlService;
+use App\Services\SalePaymentAllocator;
 use App\Http\Controllers\API\POSRegisterAPIController;
 use Illuminate\Foundation\Testing\DatabaseTransactions;
 use Illuminate\Support\Facades\Auth;
@@ -103,6 +104,41 @@ class SalesAccountingIntegrityTest extends TestCase
             'type' => CashMovement::CASH_REFUND,
             'direction' => CashMovement::OUT,
         ]);
+    }
+
+    public function test_mixed_payment_change_never_inflates_the_expected_cash(): void
+    {
+        [$user, $register, $sale] = $this->fixtures();
+        Auth::login($user);
+
+        $allocated = app(SalePaymentAllocator::class)->allocate([
+            ['payment_type' => SalesPayment::CASH, 'amount' => 20],
+            ['payment_type' => SalesPayment::BANK_TRANSFER, 'amount' => 2],
+        ], 12);
+
+        foreach ($allocated as $payment) {
+            SalesPayment::create([
+                'sale_id' => $sale->id,
+                'payment_date' => now()->toDateString(),
+                'payment_type' => $payment['payment_type'],
+                'amount' => $payment['amount'],
+                'received_amount' => $payment['received_amount'],
+            ]);
+        }
+
+        $this->assertSame(12.0, (float) collect($allocated)->sum('amount'));
+        $this->assertSame(22.0, (float) collect($allocated)->sum('received_amount'));
+        $this->assertSame(20.0, app(CashControlService::class)->currentBalance($register));
+
+        $closing = app(POSRegisterAPIController::class)->getRegisterData(
+            $register->created_at->toDateTimeString(),
+            now()->toDateTimeString(),
+            $register
+        );
+        $this->assertSame(10.0, (float) $closing['today_sales_cash_payment']);
+        $this->assertSame(2.0, (float) $closing['today_sales_bank_transfer_payment']);
+        $this->assertSame(10.0, (float) $closing['cash_sales_movement_amount']);
+        $this->assertSame(0.0, (float) $closing['cash_refund_movement_amount']);
     }
 
     public function test_editing_a_payment_cannot_make_paid_amount_exceed_the_sale_total(): void

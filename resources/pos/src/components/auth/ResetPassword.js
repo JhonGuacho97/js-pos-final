@@ -1,124 +1,136 @@
-import React, {useEffect, useState} from 'react'
-import {connect} from 'react-redux';
-import {useNavigate, useParams} from 'react-router-dom';
-import TabTitle from '../../shared/tab-title/TabTitle';
-import {resetPassword} from '../../store/action/authAction';
-import {fetchFrontSetting} from '../../store/action/frontSettingAction';
-import {getFormattedMessage, placeholderText} from '../../shared/sharedMethod';
-import {Image} from 'react-bootstrap-v5';
+import React, { useState } from "react";
+import { connect } from "react-redux";
+import { Link, useNavigate, useParams } from "react-router-dom";
+import TabTitle from "../../shared/tab-title/TabTitle";
+import { resetPassword } from "../../store/action/authAction";
+import { getFormattedMessage, placeholderText } from "../../shared/sharedMethod";
+import { loginStyles } from "./styles/LoginStyles";
+import { EyeIcon, EyeOffIcon, LockIcon } from "./styles/icons";
+import AuthLayout from "./AuthLayout";
 
-const ResetPassword = (props) => {
-    const {resetPassword, fetchFrontSetting, frontSetting} = props
+const ResetPassword = ({ resetPassword }) => {
     const navigate = useNavigate();
-    const {token, email} = useParams();
-    const [resetValue, setResetValue] = useState({
-        password: '',
-        password_confirmation: '',
-        email: email,
-        token: token
+    const { token, email } = useParams();
+    const [values, setValues] = useState({
+        password: "",
+        password_confirmation: "",
+        email,
+        token,
     });
+    const [errors, setErrors] = useState({});
+    const [loading, setLoading] = useState(false);
+    const [visible, setVisible] = useState({ password: false, confirmation: false });
 
-    const [errors, setErrors] = useState({
-        password: '',
-        password_confirmation: '',
-    });
-
-    useEffect(() => {
-        fetchFrontSetting();
-    }, []);
-
-    const handleValidation = () => {
-        let errorss = {};
-        let isValid = false;
-        if (!resetValue['password']) {
-            errorss['password'] = getFormattedMessage('user.input.password.validate.label');
-        } else if (!resetValue['password_confirmation']) {
-            errorss['password_confirmation'] = getFormattedMessage('user.input.confirm-password.validate.label');
-        } else if (resetValue['password'] !== resetValue['password_confirmation']) {
-            errorss['password_confirmation'] = 'The confirm password and password must match';
-        } else {
-            isValid = true;
+    const validate = () => {
+        const nextErrors = {};
+        if (!values.password) {
+            nextErrors.password = getFormattedMessage("user.input.password.validate.label");
+        } else if (values.password.length < 6) {
+            nextErrors.password = "La contraseña debe tener al menos 6 caracteres.";
         }
-        setErrors(errorss);
-        return isValid;
+        if (!values.password_confirmation) {
+            nextErrors.password_confirmation = getFormattedMessage("user.input.confirm-password.validate.label");
+        } else if (values.password !== values.password_confirmation) {
+            nextErrors.password_confirmation = getFormattedMessage("reset-password.password.validate.label");
+        }
+        setErrors(nextErrors);
+        return Object.keys(nextErrors).length === 0;
     };
 
-    const prepareFormData = (data) => {
+    const submit = async (event) => {
+        event.preventDefault();
+        if (!validate()) return;
+
         const formData = new FormData();
-        formData.append('password', data.password);
-        formData.append('password_confirmation', data.password_confirmation);
-        formData.append('email', data.email);
-        formData.append('token', data.token);
-        return formData;
+        Object.entries(values).forEach(([key, value]) => formData.append(key, value));
+        setLoading(true);
+        await resetPassword(formData, navigate);
+        setLoading(false);
     };
 
-    const handleChange = (e) => {
-        e.persist();
-        setResetValue(inputs => ({...inputs, [e.target.name]: e.target.value}));
-        setErrors('');
+    const update = (event) => {
+        const { name, value } = event.target;
+        setValues((current) => ({ ...current, [name]: value }));
+        setErrors((current) => ({ ...current, [name]: "" }));
     };
 
-    const onSubmit = (e) => {
-        e.preventDefault();
-        const Valid = handleValidation();
-        if (Valid) {
-            resetPassword(prepareFormData(resetValue), navigate);
-        }
-    };
+    const passwordField = (name, label, isVisible, toggle) => (
+        <div className="auth-field">
+            <div className="auth-field__header"><label htmlFor={`reset-${name}`}>{label}</label></div>
+            <div className="auth-input-wrap">
+                <LockIcon className="auth-input-icon" />
+                <input
+                    id={`reset-${name}`}
+                    className={errors[name] ? "is-invalid" : ""}
+                    type={isVisible ? "text" : "password"}
+                    name={name}
+                    value={values[name]}
+                    autoComplete="new-password"
+                    placeholder={placeholderText(name === "password"
+                        ? "user.input.password.placeholder.label"
+                        : "change-password.input.confirm.placeholder.label")}
+                    aria-invalid={Boolean(errors[name])}
+                    aria-describedby={errors[name] ? `reset-${name}-error` : undefined}
+                    onChange={update}
+                />
+                <button
+                    type="button"
+                    className="auth-password-toggle"
+                    onClick={toggle}
+                    aria-label={isVisible ? "Ocultar contraseña" : "Mostrar contraseña"}
+                    aria-pressed={isVisible}
+                >
+                    {isVisible ? <EyeOffIcon /> : <EyeIcon />}
+                </button>
+            </div>
+            {errors[name] && <span id={`reset-${name}-error`} className="auth-error" role="alert">{errors[name]}</span>}
+        </div>
+    );
 
     return (
-        <div className='d-flex flex-center flex-column flex-column-fluid p-10 pb-lg-20 vh-100'>
-            <TabTitle title='Reset Password'/>
-            <div className='mb-12 col-12 text-center'>
-                <Image className='logo-height' src={frontSetting && frontSetting.value && frontSetting.value.logo}/>
-            </div>
-            <div className='bg-white rounded-15 shadow-md width-540 px-5 px-sm-7 py-10 mx-auto'>
-                <form className='form w-100'>
-                    <div className='text-center mb-10'>
-                        <h1 className='text-dark mb-3'>{getFormattedMessage('reset-password.title')}</h1>
-                    </div>
-                    <div className='mb-5'>
-                        <label className='form-label'>{getFormattedMessage('user.input.password.label')} :</label>
-                        <span className='required'/>
-                        <input type='password' className='form-control'
-                               placeholder={placeholderText('user.input.password.placeholder.label')}
-                               name='password' value={resetValue.password} required
-                               onChange={(e) => handleChange(e)}
-                        />
-                            <span className='text-danger d-block fw-400 fs-small mt-2'>{errors['password'] ? errors['password'] : null}</span>
+        <>
+            <style>{loginStyles}</style>
+            <TabTitle title="Restablecer contraseña" />
+            <AuthLayout page="reset">
+                <div className="auth-icon-box"><LockIcon /></div>
+                <div className="auth-card__intro">
+                    <span className="auth-card__eyebrow">Nuevo acceso</span>
+                    <h2>Crea una nueva contraseña</h2>
+                    <p>Elige una contraseña que no utilices en otros servicios para proteger mejor tu cuenta.</p>
+                </div>
+
+                <form onSubmit={submit} noValidate>
+                    {passwordField(
+                        "password",
+                        getFormattedMessage("user.input.password.label"),
+                        visible.password,
+                        () => setVisible((current) => ({ ...current, password: !current.password }))
+                    )}
+                    {passwordField(
+                        "password_confirmation",
+                        "Confirmar contraseña",
+                        visible.confirmation,
+                        () => setVisible((current) => ({ ...current, confirmation: !current.confirmation }))
+                    )}
+
+                    <div className="auth-password-hint">
+                        <span className={values.password.length >= 6 ? "is-complete" : ""}>Al menos 6 caracteres</span>
+                        <span className={values.password && values.password === values.password_confirmation ? "is-complete" : ""}>Ambas contraseñas coinciden</span>
                     </div>
 
-                    <div className='mb-10'>
-                        <label className='form-label'>{getFormattedMessage('change-password.input.confirm.label')}</label>
-                        <span className='required'/>
-                        <input type='password' className='form-control'
-                               placeholder={placeholderText('change-password.input.confirm.placeholder.label')}
-                               name='password_confirmation' value={resetValue.password_confirmation} required
-                               onChange={(e) => handleChange(e)}
-                        />
-                            <span
-                                className='text-danger d-block fw-400 fs-small mt-2'>{errors['password_confirmation'] ? errors['password_confirmation'] : null}</span>
-                    </div>
-
-                    <div className='d-flex justify-content-center pb-lg-0'>
-                        <button
-                            type='submit' className='btn btn-primary me-4'
-                            onClick={(e) => onSubmit(e)}
-                        >
-                            {
-                                <span>{getFormattedMessage('reset-password.title')}</span>
-                            }
-                        </button>
-                    </div>
+                    <button type="submit" className="auth-primary-button" disabled={loading}>
+                        <span className="auth-button__content">
+                            {loading && <span className="auth-spinner" />}
+                            <span className="auth-button__label">{loading ? "Actualizando..." : "Guardar nueva contraseña"}</span>
+                            {!loading && <span className="auth-button__arrow" aria-hidden="true">→</span>}
+                        </span>
+                    </button>
                 </form>
-            </div>
-        </div>
-    )
+
+                <Link to="/login" className="auth-back-link">← Volver a iniciar sesión</Link>
+            </AuthLayout>
+        </>
+    );
 };
 
-const mapStateToProps = (state) => {
-    const {frontSetting} = state;
-    return {frontSetting}
-};
-
-export default connect(mapStateToProps, {resetPassword, fetchFrontSetting})(ResetPassword);
+export default connect(null, { resetPassword })(ResetPassword);

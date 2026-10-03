@@ -388,6 +388,90 @@
     color: #9a3412 !important;
 }
 
+.sri-origin-options {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 14px;
+}
+
+.sri-origin-option {
+    position: relative;
+    display: flex;
+    align-items: center;
+    gap: 13px;
+    min-height: 92px;
+    padding: 16px;
+    border: 1px solid #dbe5f2;
+    border-radius: 15px;
+    background: #fff;
+    cursor: pointer;
+    transition: border-color .2s ease, box-shadow .2s ease, background-color .2s ease;
+
+    &:hover {
+        border-color: #93b4f8;
+        box-shadow: 0 8px 20px rgba(37, 99, 235, .07);
+    }
+
+    &.is-selected {
+        border-color: #2563eb;
+        background: #f6f9ff;
+        box-shadow: 0 0 0 3px rgba(37, 99, 235, .09);
+    }
+
+    > input {
+        position: absolute;
+        width: 1px;
+        height: 1px;
+        opacity: 0;
+        pointer-events: none;
+    }
+
+    > span:not(.sri-origin-option__icon) {
+        min-width: 0;
+        padding-right: 24px;
+    }
+
+    strong {
+        display: block;
+        margin-bottom: 4px;
+        color: #172033;
+        font-size: .9rem;
+        font-weight: 800;
+    }
+
+    small {
+        display: block;
+        color: #64748b;
+        font-size: .76rem;
+        line-height: 1.45;
+    }
+
+    &__icon {
+        display: grid;
+        flex: 0 0 42px;
+        height: 42px;
+        place-items: center;
+        border-radius: 12px;
+        background: #eef4ff;
+        color: #2563eb;
+    }
+
+    &__check {
+        position: absolute;
+        top: 14px;
+        right: 14px;
+        color: #2563eb;
+        opacity: 0;
+        transform: scale(.8);
+        transition: opacity .2s ease, transform .2s ease;
+    }
+
+    &.is-selected &__check {
+        opacity: 1;
+        transform: scale(1);
+    }
+}
+
 @keyframes sri-sequence-loading {
     to { background-position: -200% 0; }
 }
@@ -405,4 +489,5 @@
     .sri-sequence-card__numbers { grid-template-columns: 1fr; }
     .sri-sequence-card__numbers > i { transform: rotate(90deg); }
     .sri-sequence-modal__preview { align-items: flex-start; flex-direction: column; }
+    .sri-origin-options { grid-template-columns: 1fr; }
 }

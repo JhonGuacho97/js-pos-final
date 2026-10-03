@@ -39,17 +39,25 @@ const useLanguage = () => {
         }
     }, [language, updateLanguage?.lang_json_array, updatedLanguage]);
 
-    // 3. Resolver qué messages usar según la prioridad
+    // 3. Resolver qué messages usar según la prioridad. Las traducciones
+    // persistidas pueden provenir de una compilación anterior; se combinan
+    // con el archivo actual para que las claves nuevas estén disponibles.
     useEffect(() => {
+        const baseMessages = {
+            ...(allLocales["en"] || {}),
+            ...(activeLocale || allLocales["sp"] || {}),
+        };
+
         if (Object.keys(userEditedMessage).length > 0) {
-            // Prioridad 1: ediciones manuales del usuario
-            setMessages(userEditedMessage);
+            // Prioridad 1: ediciones manuales del usuario, sobre la versión
+            // actual del idioma (sin perder claves añadidas después).
+            setMessages({ ...baseMessages, ...userEditedMessage });
         } else if (updateLanguage?.iso_code === updatedLanguage && updateLanguage?.lang_json_array) {
             // Prioridad 2: idioma actualizado que coincide con localStorage
-            setMessages(updateLanguage.lang_json_array);
+            setMessages({ ...baseMessages, ...updateLanguage.lang_json_array });
         } else if (activeLocale) {
             // Prioridad 3: locale cargado desde archivos
-            setMessages(activeLocale);
+            setMessages(baseMessages);
         } else {
             // Prioridad 4: fallback español (inglés solo como último recurso
             // si el archivo de español no estuviera disponible).

@@ -12,6 +12,7 @@ use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Support\Facades\Crypt;
 use Illuminate\Support\Str;
+use Illuminate\Support\Facades\DB;
 
 class SriConfigController extends AppBaseController
 {
@@ -107,6 +108,8 @@ class SriConfigController extends AppBaseController
             'sri_ambiente',
             'sri_obligado_contabilidad',
             'sri_regimen_rimpe',
+            'sri_software_origin',
+            'sri_provider_ruc',
             'sri_certificado_path',
             'sri_logo',
         ];
@@ -116,6 +119,14 @@ class SriConfigController extends AppBaseController
             ->get()
             ->pluck('value', 'key')
             ->toArray();
+
+        $settings['sri_software_origin'] ??= config('saas.sri_software_origin', 'TERCERO');
+        $settings['sri_provider_ruc'] ??= $settings['sri_software_origin'] === 'TERCERO'
+            ? config('saas.sri_provider_ruc', '')
+            : '';
+
+        $settings['sri_software_origin'] = $settings['sri_software_origin'] ?? 'PROPIO';
+        $settings['sri_provider_ruc'] = $settings['sri_provider_ruc'] ?? '';
 
         // Verificar si el certificado existe y está vigente
         $certInfo = null;
@@ -405,17 +416,29 @@ class SriConfigController extends AppBaseController
         // resuelta no hay a quién guardarle esta config.
         requireCurrentStoreId();
 
-        $validator = Validator::make($request->all(), [
-            'sri_ruc' => 'required|digits:13',
-            'sri_razon_social' => 'required|string|max:300',
-            'sri_nombre_comercial' => 'nullable|string|max:300',
-            'sri_dir_matriz' => 'required|string|max:300',
-            'sri_estab' => 'required|digits:3',
-            'sri_pto_emi' => 'required|digits:3',
-            'sri_ambiente' => 'required|in:1,2',
-            'sri_obligado_contabilidad' => 'required|in:SI,NO',
-            'sri_regimen_rimpe' => 'nullable|in:,EMPRENDEDOR,NEGOCIO_POPULAR',
-        ]);
+        $validator = Validator::make(
+            $request->all(),
+            [
+                'sri_ruc' => 'required|digits:13',
+                'sri_razon_social' => 'required|string|max:300',
+                'sri_nombre_comercial' => 'nullable|string|max:300',
+                'sri_dir_matriz' => 'required|string|max:300',
+                'sri_estab' => 'required|digits:3',
+                'sri_pto_emi' => 'required|digits:3',
+                'sri_ambiente' => 'required|in:1,2',
+                'sri_obligado_contabilidad' => 'required|in:SI,NO',
+                'sri_regimen_rimpe' => 'nullable|in:,EMPRENDEDOR,NEGOCIO_POPULAR',
+                'sri_software_origin' => 'required|in:PROPIO,TERCERO',
+                'sri_provider_ruc' => 'nullable|required_if:sri_software_origin,TERCERO|digits:13|different:sri_ruc',
+            ],
+            [
+                'sri_software_origin.required' => 'Selecciona el origen del sistema de facturación.',
+                'sri_software_origin.in' => 'El origen del sistema de facturación no es válido.',
+                'sri_provider_ruc.required_if' => 'Ingresa el RUC del proveedor tecnológico.',
+                'sri_provider_ruc.digits' => 'El RUC del proveedor tecnológico debe tener 13 dígitos.',
+                'sri_provider_ruc.different' => 'El RUC del proveedor tecnológico no puede ser el mismo RUC del emisor.',
+            ]
+        );
 
         if ($validator->fails()) {
             return response()->json([
@@ -434,11 +457,21 @@ class SriConfigController extends AppBaseController
             'sri_ambiente',
             'sri_obligado_contabilidad',
             'sri_regimen_rimpe',
+            'sri_software_origin',
+            'sri_provider_ruc',
         ];
 
-        foreach ($campos as $campo) {
-            $this->guardarSetting($campo, $request->input($campo, ''));
-        }
+        DB::transaction(function () use ($campos, $request): void {
+            foreach ($campos as $campo) {
+                // input($campo, '') conserva null cuando la clave sí existe.
+                // Los campos opcionales se normalizan a texto vacío porque
+                // Setting::value y guardarSetting trabajan con strings.
+                $this->guardarSetting(
+                    $campo,
+                    (string) ($request->input($campo) ?? '')
+                );
+            }
+        });
 
         // Limpiar caché de config para que config/sri.php tome los nuevos valores
         \Illuminate\Support\Facades\Artisan::call('config:clear');

@@ -65,7 +65,7 @@ class SaleAPIController extends AppBaseController
 
         $sales = $this->saleRepository;
         $sales->withCount('payments');
-        $sales->with('user');
+        $sales->with(['user', 'payments']);
         if ($customer || $warehouse) {
             $sales->whereHas('customer', function (Builder $q) use ($search, $customer) {
                 if ($customer) {
@@ -103,7 +103,8 @@ class SaleAPIController extends AppBaseController
         }
 
         if ($request->get('payment_type') && $request->get('payment_type') != 'null') {
-            $sales->where('payment_type', $request->get('payment_type'));
+            $paymentType = (int) $request->get('payment_type');
+            $sales->whereHas('payments', fn (Builder $query) => $query->where('payment_type', $paymentType));
         }
 
         // Un usuario no-admin con sucursal asignada solo ve ventas de esa
@@ -191,7 +192,8 @@ class SaleAPIController extends AppBaseController
         }
 
         if ($request->get('payment_type') && $request->get('payment_type') != 'null') {
-            $query->where('payment_type', $request->get('payment_type'));
+            $paymentType = (int) $request->get('payment_type');
+            $query->whereHas('payments', fn (Builder $payments) => $payments->where('payment_type', $paymentType));
         }
 
         if ($restricted = $this->restrictedWarehouseId()) {
