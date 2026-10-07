@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect } from 'react';
 import Swiper from 'react-id-swiper';
 import 'swiper/swiper.scss';
 import { Nav, Button } from 'react-bootstrap-v5';
@@ -12,9 +12,7 @@ const swiperParams = {
 };
 
 const Category = (props) => {
-    const { fetchAllProductCategories, productCategories, setCategory, selectedOption } = props;
-    const [productCategoryName, setProductCategoryName] = useState(0);
-    const [proId, setProId] = useState(0);
+    const { fetchAllProductCategories, productCategories, setCategory, categoryId } = props;
 
     useEffect(() => {
         fetchAllProductCategories();
@@ -23,23 +21,20 @@ const Category = (props) => {
     //filter category function
     const onSelectCategory = (productCategory) => {
         setCategory(productCategory);
-        setProductCategoryName(productCategory);
     };
 
     const categoryItem = productCategories
         ?.filter(productCategory => productCategory.attributes.products_count > 0)
-        .map((productCategory, index) => (
-            <Nav.Item key={index} className="button-list__item">
+        .map((productCategory) => (
+            <Nav.Item key={productCategory.id} className="button-list__item">
                 <Button
                     variant="light"
-                    className={`custom-btn-size w-100 ${productCategoryName === productCategory.id
+                    className={`custom-btn-size w-100 ${String(categoryId) === String(productCategory.id)
                         ? "button-list__item-active text-white"
                         : ""
                         }`}
-                    onClick={() => {
-                        onSelectCategory(productCategory.id);
-                        setProId(productCategory.id);
-                    }}
+                    aria-pressed={String(categoryId) === String(productCategory.id)}
+                    onClick={() => onSelectCategory(productCategory.id)}
                 >
                     {productCategory.attributes.name}
                 </Button>
@@ -50,7 +45,8 @@ const Category = (props) => {
         <Nav className='button-list mb-2 d-flex flex-nowrap'>
             <Nav.Item className='button-list__item me-2'>
                 <Button variant='light'
-                    className={`custom-btn-size ${productCategoryName === 0 ? 'button-list__item-active text-white' : ''}`}
+                    className={`custom-btn-size ${!categoryId || String(categoryId) === '0' ? 'button-list__item-active text-white' : ''}`}
+                    aria-pressed={!categoryId || String(categoryId) === '0'}
                     onClick={() => onSelectCategory(0)}>
                     {getFormattedMessage('pos-all.categories.label')}
                 </Button>

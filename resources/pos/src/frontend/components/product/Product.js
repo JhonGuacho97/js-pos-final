@@ -16,6 +16,7 @@ import PresentationSelectModal from "./PresentationSelectModal";
 import VariationSelectModal from "./VariationSelectModal";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faLayerGroup } from "@fortawesome/free-solid-svg-icons";
+import { filterCatalogProducts } from "../../../offline/catalogStorage";
 
 const Product = (props) => {
     const {
@@ -66,7 +67,7 @@ const Product = (props) => {
         if (selectedOption) {
             setIsLoading(true);  // ← cuando cambia la categoría, muestra el skeleton
         }
-    }, [selectedOption, brandId, categoryId]);
+    }, [selectedOption?.value, brandId, categoryId]);
 
     const addToCart = (product) => {
         // Productos con presentaciones (Unidad/Six Pack/Caja...) piden
@@ -365,9 +366,8 @@ const Product = (props) => {
     };
 
     const posFilterProduct = groupVariationProducts(
-        posAllProducts &&
-        posAllProducts.filter(
-            (product) => product.attributes.stock.quantity > 0.0
+        filterCatalogProducts(posAllProducts, { brandId, categoryId }).filter(
+            (product) => product.attributes?.stock?.quantity > 0.0
         )
     );
     const loadAllProduct = (product, index) => {

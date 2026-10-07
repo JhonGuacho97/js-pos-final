@@ -128,6 +128,7 @@ const PosMainPage = (props) => {
     // 1. Agrega los refs
     const brandIdRef = useRef();
     const categoryIdRef = useRef();
+    const warehouseIdRef = useRef();
     const registerDetailsRef = useRef();
     const fetchRequestIdRef = useRef(0);
     const syncedWarehouseRef = useRef(null);
@@ -154,6 +155,7 @@ const PosMainPage = (props) => {
     const [categoryId, setCategoryId] = useState();
     const [selectedCustomerOption, setSelectedCustomerOption] = useState(null);
     const [selectedOption, setSelectedOption] = useState(null);
+    warehouseIdRef.current = selectedOption?.value;
     const [pendingWarehouse, setPendingWarehouse] = useState(null);
     const [updateHolList, setUpdateHoldList] = useState(false);
     const [hold_ref_no, setHold_ref_no] = useState("");
@@ -344,11 +346,15 @@ const PosMainPage = (props) => {
 
     // 2. Actualiza refs junto con estado
     const setCategory = (item) => {
+        if (categoryIdRef.current === item) return;
+        ++fetchRequestIdRef.current;
         setCategoryId(item);
         categoryIdRef.current = item;
     };
 
     const setBrand = (item) => {
+        if (brandIdRef.current === item) return;
+        ++fetchRequestIdRef.current;
         setBrandId(item);
         brandIdRef.current = item;
     };
@@ -357,50 +363,52 @@ const PosMainPage = (props) => {
         if (!selectedOption) return;
 
         const requestId = ++fetchRequestIdRef.current;
+        const warehouseId = selectedOption.value;
+        const isCurrent = () => requestId === fetchRequestIdRef.current
+            && String(warehouseIdRef.current) === String(warehouseId);
 
         const timer = setTimeout(async () => {
-            // Solo ejecuta si esta sigue siendo la última petición solicitada
-            if (requestId === fetchRequestIdRef.current) {
-                const warehouseId = selectedOption.value;
+            if (isCurrent()) {
                 const warehouseChanged = String(syncedWarehouseRef.current) !== String(warehouseId);
+                const refreshCache = warehouseChanged && navigator.onLine;
+                if (refreshCache) syncedWarehouseRef.current = warehouseId;
 
-                // Al entrar o cambiar de bodega descargamos primero la copia
-                // completa. Así el modo offline no queda limitado a la
-                // categoría que el cajero estaba mirando en ese momento.
-                if (warehouseChanged && navigator.onLine) {
-                    syncedWarehouseRef.current = warehouseId;
-                    await fetchBrandClickable(undefined, undefined, warehouseId);
-                }
-
-                if (requestId === fetchRequestIdRef.current
-                    && (brandIdRef.current || categoryIdRef.current || !warehouseChanged || !navigator.onLine)) {
-                    fetchBrandClickable(
-                        brandIdRef.current,
-                        categoryIdRef.current,
-                        warehouseId
-                    );
+                const result = await fetchBrandClickable(
+                    brandIdRef.current,
+                    categoryIdRef.current,
+                    warehouseId,
+                    { refreshCache, isCurrent }
+                );
+                if (refreshCache && result?.source !== "network"
+                    && String(syncedWarehouseRef.current) === String(warehouseId)) {
+                    syncedWarehouseRef.current = null;
                 }
             }
         }, 300);
 
-        return () => clearTimeout(timer);
-    }, [selectedOption, brandId, categoryId]);
+        return () => {
+            clearTimeout(timer);
+            // Invalida también las consultas que ya salieron a la API o a
+            // IndexedDB, incluso durante el debounce o al salir del POS.
+            if (requestId === fetchRequestIdRef.current) ++fetchRequestIdRef.current;
+        };
+    }, [selectedOption?.value, brandId, categoryId]);
 
     const syncOfflineCatalog = async () => {
-        const warehouseId = selectedOption?.value;
+        const warehouseId = warehouseIdRef.current;
         if (!warehouseId || !navigator.onLine) return;
+        const requestId = fetchRequestIdRef.current;
 
-        await fetchBrandClickable(undefined, undefined, warehouseId);
-
-        // Si el cajero estaba viendo una categoría o marca concreta,
-        // restauramos ese filtro después de renovar la copia completa.
-        if (brandIdRef.current || categoryIdRef.current) {
-            await fetchBrandClickable(
-                brandIdRef.current,
-                categoryIdRef.current,
-                warehouseId
-            );
-        }
+        return fetchBrandClickable(
+            brandIdRef.current,
+            categoryIdRef.current,
+            warehouseId,
+            {
+                refreshCache: true,
+                isCurrent: () => requestId === fetchRequestIdRef.current
+                    && String(warehouseIdRef.current) === String(warehouseId),
+            }
+        );
     };
 
     const syncQueuedSales = async (force = false) => {
@@ -1352,6 +1360,7 @@ const PosMainPage = (props) => {
                         <div className="pos-category-strip px-3 pt-3">
                             <Category
                                 setCategory={setCategory}
+                                categoryId={categoryId}
                                 brandId={brandId}
                                 selectedOption={selectedOption}
                             />
