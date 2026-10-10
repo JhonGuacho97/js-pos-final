@@ -1113,7 +1113,6 @@ const PosMainPage = (props) => {
                 }
             }
 
-            await requestOfflineSaleBackgroundSync().catch(() => null);
             const localReference = `OFF-${queuedSale.clientUuid.slice(0, 8).toUpperCase()}`;
             const customer = { name: selectedCustomerOption?.label || "Consumidor final" };
             const provisionalReceipt = {
@@ -1149,7 +1148,13 @@ const PosMainPage = (props) => {
                     ? "Venta registrada y confirmada correctamente."
                     : "Venta protegida en este dispositivo. EcuaPos confirmará el mismo cobro al recuperar conexión.",
             }));
-            if (serverSale) await syncOfflineCatalog().catch(() => null);
+            // La venta y su ticket ya están preparados. Estas tareas auxiliares
+            // no deben retrasar finishCheckout/onExited ni convertir un fallo
+            // de actualización en un supuesto error del cobro confirmado.
+            void Promise.resolve().then(() => requestOfflineSaleBackgroundSync()).catch(() => null);
+            if (serverSale) {
+                void Promise.resolve().then(() => syncOfflineCatalog()).catch(() => null);
+            }
             return true;
         } catch (_) {
             dispatch(addToast({
