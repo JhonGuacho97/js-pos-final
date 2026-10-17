@@ -215,7 +215,8 @@ class Product extends BaseModel implements HasMedia, JsonResourceful
 
     public function prepareAttributes(): array
     {
-        $this->load('variationProduct','mainProduct');
+        // Keep the relations (and nested media) already loaded by the list.
+        $this->loadMissing('variationProduct', 'mainProduct');
 
         // Un kit no guarda su propio stock real -- lo que muestra el
         // catálogo/POS siempre se recalcula en vivo desde sus componentes
@@ -436,6 +437,12 @@ class Product extends BaseModel implements HasMedia, JsonResourceful
      */
     public function warehouse($id)
     {
+        if ((string) $id === (string) $this->id && $this->relationLoaded('warehouseSummaries')) {
+            return $this->warehouseSummaries->map(fn ($row) => $row->only([
+                'total_quantity', 'warehouse_id', 'name',
+            ]));
+        }
+
         return Managestock::where('product_id', $id)->Join(
             'warehouses',
             'manage_stocks.warehouse_id',
@@ -445,6 +452,16 @@ class Product extends BaseModel implements HasMedia, JsonResourceful
             'manage_stocks.warehouse_id',
             'warehouses.name'
         )->groupBy('warehouse_id')->get();
+    }
+
+    public function warehouseSummaries(): HasMany
+    {
+        return $this->hasMany(ManageStock::class, 'product_id')
+            ->join('warehouses', 'manage_stocks.warehouse_id', '=', 'warehouses.id')
+            ->where('warehouses.is_active', true)
+            ->select('manage_stocks.product_id', 'manage_stocks.warehouse_id', 'warehouses.name')
+            ->selectRaw('sum(manage_stocks.quantity) as total_quantity')
+            ->groupBy('manage_stocks.product_id', 'manage_stocks.warehouse_id', 'warehouses.name');
     }
 
     /**
@@ -640,9 +657,14 @@ class Product extends BaseModel implements HasMedia, JsonResourceful
             if ($consumoPorKit <= 0) {
                 continue;
             }
-            $stockComponente = (float) (ManageStock::where('warehouse_id', $warehouseId)
-                ->where('product_id', $item->component_product_id)
-                ->value('quantity') ?? 0);
+            // Catalogs preload the component stock for the requested warehouse.
+            // Sales/other callers without that snapshot still query live stock.
+            $component = $item->relationLoaded('component') ? $item->component : null;
+            $stockComponente = $component && $component->relationLoaded('stocks')
+                ? (float) ($component->stocks->firstWhere('warehouse_id', $warehouseId)?->quantity ?? 0)
+                : (float) (ManageStock::where('warehouse_id', $warehouseId)
+                    ->where('product_id', $item->component_product_id)
+                    ->value('quantity') ?? 0);
             $armables = floor($stockComponente / $consumoPorKit);
             $minimo = $minimo === null ? $armables : min($minimo, $armables);
         }

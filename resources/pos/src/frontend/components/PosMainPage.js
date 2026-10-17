@@ -1,4 +1,4 @@
-import _, { useState, useEffect, useRef } from "react";
+import _, { useState, useEffect, useRef, useCallback } from "react";
 import { Button, Col, Container, Modal, Row, Table } from "react-bootstrap-v5";
 import { connect, useDispatch, useSelector } from "react-redux";
 import dayjs from 'dayjs';
@@ -20,6 +20,7 @@ import {
 } from "../../store/action/pos/posfetchProductAction";
 import ProductSearchbar from "./product/ProductSearchbar";
 import { prepareCartArray } from "../shared/PrepareCartArray";
+import { createCartSelector } from "../shared/catalogSelectors";
 import ProductDetailsModel from "../shared/ProductDetailsModel";
 import CartItemMainCalculation from "./cart-product/CartItemMainCalculation";
 import PosHeader from "./header/PosHeader";
@@ -178,6 +179,7 @@ const PosMainPage = (props) => {
     const [creditTerms, setCreditTerms] = useState({ payment_terms_days: 0, payment_due_date: dayjs().format('YYYY-MM-DD') });
     const [creditSaleEnabled, setCreditSaleEnabled] = useState(false);
     const [catalogStatus, setCatalogStatus] = useState({
+        catalogPreview: false,
         status: navigator.onLine ? "idle" : "checking",
         online: navigator.onLine,
         canRetry: navigator.onLine,
@@ -377,14 +379,14 @@ const PosMainPage = (props) => {
                     brandIdRef.current,
                     categoryIdRef.current,
                     warehouseId,
-                    { refreshCache, isCurrent }
+                    { refreshCache, isCurrent, previewCache: warehouseChanged }
                 );
                 if (refreshCache && result?.source !== "network"
                     && String(syncedWarehouseRef.current) === String(warehouseId)) {
                     syncedWarehouseRef.current = null;
                 }
             }
-        }, 300);
+        }, String(syncedWarehouseRef.current) !== String(warehouseId) ? 0 : 300);
 
         return () => {
             clearTimeout(timer);
@@ -515,6 +517,7 @@ const PosMainPage = (props) => {
                 ...current,
                 status: online ? (snapshot ? "ready" : "idle") : (snapshot ? "offline" : "unavailable"),
                 online,
+                catalogPreview: online ? current.catalogPreview : false,
                 canRetry: online,
                 hasCache: Boolean(snapshot),
                 updatedAt: snapshot?.updatedAt || null,
@@ -947,9 +950,7 @@ const PosMainPage = (props) => {
     };
 
     //product add to cart function
-    const addToCarts = (items) => {
-        updateCart(items);
-    };
+    const addToCarts = useCallback((items) => setUpdateProducts(items), []);
 
     // create customer model
     const customerModel = (val) => {
@@ -1337,6 +1338,7 @@ const PosMainPage = (props) => {
                         </div>
                         <div className="pos-catalog-actions d-sm-flex align-items-center">
                             <ProductSearchbar
+                                catalogPreview={catalogStatus.catalogPreview}
                                 customCart={customCart}
                                 setUpdateProducts={setUpdateProducts}
                                 updateProducts={updateProducts}
@@ -1371,6 +1373,7 @@ const PosMainPage = (props) => {
                             />
                         </div>
                         <Product
+                            catalogPreview={catalogStatus.catalogPreview}
                             cartProducts={updateProducts}
                             updateCart={addToCarts}
                             customCart={customCart}
@@ -1661,27 +1664,30 @@ const PosMainPage = (props) => {
     );
 };
 
-const mapStateToProps = (state) => {
-    const {
-        posAllProducts,
-        frontSetting,
-        settings,
-        cashPayment,
-        allConfigData,
-        posAllTodaySaleOverAllReport,
-        holdListData,
-        config,
-    } = state;
-    return {
-        holdListData,
-        posAllProducts,
-        frontSetting,
-        settings,
-        paymentDetails: cashPayment,
-        customCart: prepareCartArray(posAllProducts),
-        allConfigData,
-        posAllTodaySaleOverAllReport,
-        config,
+const mapStateToProps = () => {
+    const selectCart = createCartSelector(prepareCartArray);
+    return (state) => {
+        const {
+            posAllProducts,
+            frontSetting,
+            settings,
+            cashPayment,
+            allConfigData,
+            posAllTodaySaleOverAllReport,
+            holdListData,
+            config,
+        } = state;
+        return {
+            holdListData,
+            posAllProducts,
+            frontSetting,
+            settings,
+            paymentDetails: cashPayment,
+            customCart: selectCart(posAllProducts),
+            allConfigData,
+            posAllTodaySaleOverAllReport,
+            config,
+        };
     };
 };
 

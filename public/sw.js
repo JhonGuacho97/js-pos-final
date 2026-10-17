@@ -3,7 +3,7 @@
 // Las respuestas de /api/* siguen sin cachearse; los datos de productos,
 // precios y stock se guardan de forma explícita en IndexedDB desde la app.
 
-const CACHE_NAME = "ecuapos-v7";
+const CACHE_NAME = "ecuapos-v8";
 const CATALOG_ASSET_CACHE = "ecuapos-catalog-assets-v1";
 const OFFLINE_DB_NAME = "ecuapos-offline";
 const OFFLINE_DB_VERSION = 5;
@@ -60,6 +60,22 @@ self.addEventListener("activate", (event) => {
 // La aplicación envía las imágenes observadas al terminar una
 // sincronización del catálogo. Se guardan una por una para que una imagen
 // rota no invalide toda la descarga offline.
+const catalogAssetsInFlight = new Map();
+
+const cacheCatalogAsset = async (cache, url) => {
+    if (catalogAssetsInFlight.has(url.href)) return catalogAssetsInFlight.get(url.href);
+    const pending = (async () => {
+        const request = new Request(url.href, { credentials: "same-origin" });
+        if (await cache.match(request)) return;
+        const response = await fetch(request);
+        if (response.ok) await cache.put(request, response);
+    })().finally(() => catalogAssetsInFlight.delete(url.href));
+    catalogAssetsInFlight.set(url.href, pending);
+    return pending;
+};
+
+// A single queue also bounds concurrency across overlapping catalog messages.
+let catalogAssetQueue = Promise.resolve();
 self.addEventListener("message", (event) => {
     if (event.data?.type === "SYNC_OFFLINE_SALES") {
         event.waitUntil(syncOfflineSalesInBackground());
@@ -68,19 +84,23 @@ self.addEventListener("message", (event) => {
 
     if (event.data?.type !== "CACHE_CATALOG_ASSETS" || !Array.isArray(event.data.urls)) return;
 
-    event.waitUntil((async () => {
+    catalogAssetQueue = catalogAssetQueue.catch(() => null).then(async () => {
         const cache = await caches.open(CATALOG_ASSET_CACHE);
         const uniqueUrls = [...new Set(event.data.urls)].slice(0, 1000);
 
-        await Promise.allSettled(uniqueUrls.map(async (candidate) => {
-            const url = new URL(candidate, self.location.origin);
-            if (url.origin !== self.location.origin || url.pathname.startsWith("/api/")) return;
-
-            const request = new Request(url.href, { credentials: "same-origin" });
-            const response = await fetch(request);
-            if (response.ok) await cache.put(request, response);
+        let next = 0;
+        await Promise.all(Array.from({ length: Math.min(4, uniqueUrls.length) }, async () => {
+            while (next < uniqueUrls.length) {
+                const candidate = uniqueUrls[next++];
+                try {
+                    const url = new URL(candidate, self.location.origin);
+                    if (url.origin !== self.location.origin || url.pathname.startsWith("/api/")) continue;
+                    await cacheCatalogAsset(cache, url);
+                } catch (_) { /* A failed image must not stop the offline catalog. */ }
+            }
         }));
-    })());
+    });
+    event.waitUntil(catalogAssetQueue);
 });
 
 self.addEventListener("sync", (event) => {

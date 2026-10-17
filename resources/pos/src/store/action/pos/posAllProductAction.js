@@ -6,6 +6,7 @@ import {
     emitOfflineCatalogStatus,
     filterCatalogProducts,
     getLatestCatalogSnapshot,
+    getOfflineScopeKey,
     isNetworkError,
     saveOfflineSnapshot,
 } from "../../../offline/catalogStorage";
@@ -15,12 +16,30 @@ const offlineCatalogMessage = "No hay conexión y este catálogo todavía no se 
 // Por store, no por componente: las consultas del POS y las actualizaciones
 // posteriores a una venta escriben en la misma lista de Redux.
 const visibleCatalogRequests = new WeakMap();
+const catalogDownloads = new WeakMap();
+
+const downloadCatalog = (dispatch, url) => {
+    if (!catalogDownloads.has(dispatch)) catalogDownloads.set(dispatch, new Map());
+    const pending = catalogDownloads.get(dispatch);
+    const key = `${getOfflineScopeKey()}:${url}`;
+    if (pending.has(key)) return pending.get(key);
+    const download = {
+        response: apiConfig.get(url).finally(() => {
+            if (pending.get(key) === download) pending.delete(key);
+        }),
+        snapshot: null,
+    };
+    pending.set(key, download);
+    return download;
+};
 
 const createCatalogRequest = (dispatch, options = {}) => {
     const requestId = (visibleCatalogRequests.get(dispatch) || 0) + 1;
+    const scope = getOfflineScopeKey();
     if (!options.cacheOnly) visibleCatalogRequests.set(dispatch, requestId);
 
-    const isCurrent = () => (!options.isCurrent || options.isCurrent())
+    const isCurrent = () => scope === getOfflineScopeKey()
+        && (!options.isCurrent || options.isCurrent())
         && (options.cacheOnly || visibleCatalogRequests.get(dispatch) === requestId);
 
     return {
@@ -55,6 +74,7 @@ const dispatchCachedCatalog = async (dispatch, warehouse, actionType, filters, r
     request.publish(actionType, products);
     emitOfflineCatalogStatus({
         status: "offline",
+        catalogPreview: false,
         online: false,
         canRetry: navigator.onLine,
         warehouseId: snapshot.warehouseId,
@@ -163,26 +183,52 @@ export const fetchBrandClickable = (brandId, categoryId, warehouse, options = {}
         emitOfflineCatalogStatus({ status: "syncing", online: true, warehouseId: warehouse });
     }
 
+    const scope = getOfflineScopeKey();
+    let networkSettled = false;
+    // Read only this user's/store's warehouse snapshot. A late IndexedDB
+    // response must never replace fresh network prices or a newer selection.
+    if (options.previewCache && !options.cacheOnly) {
+        void getLatestCatalogSnapshot(warehouse).then((snapshot) => {
+            if (!snapshot || networkSettled || !request.isCurrent()) return;
+            emitOfflineCatalogStatus({
+                status: "syncing", online: true, warehouseId: warehouse,
+                catalogPreview: true, hasCache: true,
+            });
+            request.publish(productActionType.FETCH_BRAND_CLICKABLE,
+                filterCatalogProducts(snapshot.payload, filters));
+        }).catch(() => null);
+    }
+
     try {
-        const response = await apiConfig.get(
+        const download = downloadCatalog(dispatch,
             `products?filter[brand_id]=${queryFilters.brandId || ""}&filter[product_category_id]=${queryFilters.categoryId || ""}&page[size]=0&warehouse_id=${warehouse || ""}`
         );
+        const response = await download.response;
+        networkSettled = true;
         const products = response.data.data || [];
         const visibleProducts = filterCatalogProducts(products, filters);
+        if (request.isCurrent() && !options.cacheOnly) {
+            emitOfflineCatalogStatus({ catalogPreview: false, warehouseId: warehouse });
+        }
         request.publish(productActionType.FETCH_BRAND_CLICKABLE, visibleProducts);
 
-        const snapshot = isFullCatalog ? await saveCatalog(warehouse, products) : null;
+        const snapshot = isFullCatalog && scope === getOfflineScopeKey()
+            ? await (download.snapshot || (download.snapshot = saveCatalog(warehouse, products))) : null;
         return { source: "network", products: visibleProducts, snapshot };
     } catch (error) {
+        networkSettled = true;
         if (!request.isCurrent()) return { source: "stale", products: [] };
         if (isNetworkError(error)) {
             return dispatchCachedCatalog(dispatch, warehouse, productActionType.FETCH_BRAND_CLICKABLE, filters, request);
         }
 
         const message = error?.response?.data?.message || "No se pudo filtrar el catálogo.";
+        // Authentication/authorization errors cannot leave a cached preview usable.
+        request.publish(productActionType.FETCH_BRAND_CLICKABLE, []);
         dispatch(addToast({ text: message, type: toastType.ERROR }));
         emitOfflineCatalogStatus({
             status: "error",
+            catalogPreview: false,
             online: navigator.onLine,
             canRetry: navigator.onLine,
             warehouseId: warehouse,

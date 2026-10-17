@@ -47,7 +47,12 @@ class ProductAPIController extends AppBaseController
         // cientos de consultas extra y ninguna. Cargarlas acá, de una sola
         // vez para toda la página, es lo mismo que ya se hacía pero sin el
         // costo repetido.
-        $products->with(['productCategory', 'brand', 'mainProduct.media', 'variationProduct.variation', 'variationProduct.variationType'])
+        $products->with([
+            'productCategory', 'brand', 'mainProduct.media', 'media',
+            'variationProduct.variation', 'variationProduct.variationType',
+            'warehouseSummaries', 'presentations.presentationType', 'presentations.variationType',
+            'kitItems.component', 'kitItems.presentation.presentationType', 'kitItems.presentation.variationType',
+        ])
             ->withSum([
                 'stocks as stocks_sum_quantity' => fn ($query) => $query
                     ->whereHas('warehouse', fn ($warehouseQuery) => $warehouseQuery->active()),
@@ -77,6 +82,9 @@ class ProductAPIController extends AppBaseController
                             $query->where('warehouse_id', $warehouseId);
                         },
                         'presentations.product',
+                        'kitItems.component.stocks' => function ($query) use ($warehouseId) {
+                            $query->where('warehouse_id', $warehouseId);
+                        },
                     ]);
         }
 

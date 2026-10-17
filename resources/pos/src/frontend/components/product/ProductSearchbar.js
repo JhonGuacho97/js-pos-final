@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import { Col } from "react-bootstrap-v5";
 import { ReactSearchAutocomplete } from "react-search-autocomplete";
 import { connect, useDispatch } from "react-redux";
@@ -23,6 +23,7 @@ const ProductSearchbar = (props) => {
         updateProducts,
         posSearchCodeProduct,
         posSearchNameProduct,
+        catalogPreview,
     } = props;
     const [searchString, setSearchString] = useState("");
     const [keyDown, setKeyDown] = useState(false);
@@ -32,14 +33,14 @@ const ProductSearchbar = (props) => {
     const [play] = useSound(
         "https://res.cloudinary.com/dxt0es7sj/video/upload/v1785534224/click_audio_xw43en.mp3"
     );
-    const filterProduct = posAllProducts
+    const filterProduct = useMemo(() => posAllProducts
         .filter((qty) => qty.attributes.stock.quantity > 0)
         .map((item) => ({
             name: item.attributes.name,
             code: item.attributes.code,
             id: item.id,
             variationLabel: item.attributes.variation_product?.variation_type_name || null,
-        }));
+        })), [posAllProducts]);
 
     const formatResult = (item) => {
         return (
@@ -64,6 +65,7 @@ const ProductSearchbar = (props) => {
     // card), así el mismo producto puede tener varias líneas -una por
     // presentación- en el mismo ticket.
     const addPresentationLine = (product, presentation, qty) => {
+        if (catalogPreview) return;
         play();
         posSearchCodeProduct(product.attributes.code);
         inputFocus();
@@ -148,6 +150,7 @@ const ProductSearchbar = (props) => {
     };
 
     const onProductSearch = (code) => {
+        if (catalogPreview) return;
         const isObject = typeof code === 'object';
         const productCode = isObject ? code.code : code;
         const productId = isObject ? code.id : null;
@@ -248,7 +251,7 @@ const ProductSearchbar = (props) => {
                     setKeyDown(false);
                 }
             } else {
-                setUpdateProducts([...updateProducts, newProduct]);
+                setUpdateProducts([...updateProducts, { ...newProduct }]);
                 setKeyDown(false);
                 removeSearchClass(true);
             }
