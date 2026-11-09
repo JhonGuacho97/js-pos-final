@@ -32,7 +32,11 @@ class JSONApiFilterCriteria implements CriteriaInterface
         $searchableFields = $repository->getFieldsSearchable();
 
         // Add custom search filter for search single string on multiple fields. ?filter[search]=Jhon
-        $searchableFields[] = AllowedFilter::custom('search', new CustomSearchFilter($searchableFields));
+        // Un repositorio puede definir su propia búsqueda con getSearchFilter().
+        $searchFilter = method_exists($repository, 'getSearchFilter')
+            ? $repository->getSearchFilter()
+            : new CustomSearchFilter($searchableFields);
+        $searchableFields[] = AllowedFilter::custom('search', $searchFilter);
 
         /** @var BaseRepository $repository */
         $idFields = $model->getModel()->getIdFilterFields();
