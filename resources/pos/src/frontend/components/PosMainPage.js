@@ -36,6 +36,7 @@ import {
 } from "../../store/action/pos/posAllProductAction";
 import TabTitle from "../../shared/tab-title/TabTitle";
 import HeaderAllButton from "./header/HeaderAllButton";
+import ShiftSalesCard from "./header/ShiftSalesCard";
 import RegisterDetailsModel from "./register-detailsModal/RegisterDetailsModel";
 import PrintRegisterDetailsData from "./printModal/PrintRegisterDetailsData";
 import {
@@ -196,6 +197,8 @@ const PosMainPage = (props) => {
         backgroundSyncSupported: supportsOfflineBackgroundSync(),
     });
     const [showOfflineSales, setShowOfflineSales] = useState(false);
+    // Se incrementa tras cada cobro para refrescar "Ventas del turno".
+    const [shiftSalesRefreshKey, setShiftSalesRefreshKey] = useState(0);
     // const [searchString, setSearchString] = useState('');
     const [showCloseDetailsModal, setShowCloseDetailsModal] = useState(false);
     const { closeRegisterDetails } = useSelector((state) => state);
@@ -1155,6 +1158,7 @@ const PosMainPage = (props) => {
             void Promise.resolve().then(() => requestOfflineSaleBackgroundSync()).catch(() => null);
             if (serverSale) {
                 void Promise.resolve().then(() => syncOfflineCatalog()).catch(() => null);
+                setShiftSalesRefreshKey((key) => key + 1);
             }
             return true;
         } catch (_) {
@@ -1392,15 +1396,16 @@ const PosMainPage = (props) => {
                     xxl={4}
                     className={`pos-order-panel pos-left-scs ${mobilePane === "cart" ? "pos-mobile-pane-active" : ""}`}
                 >
-                    <div className="pos-order-heading my-3">
-                        <div>
-                            <span className="pos-eyebrow">Nueva venta</span>
-                            <h2>Pedido actual</h2>
-                        </div>
-                        <span className="pos-item-count">
-                            {updateProducts.length} {updateProducts.length === 1 ? "producto" : "productos"}
-                        </span>
-                    </div>
+                    <ShiftSalesCard
+                        warehouseId={selectedOption?.value}
+                        online={catalogStatus.online}
+                        pendingSales={catalogStatus.pendingSales}
+                        refreshKey={shiftSalesRefreshKey}
+                        itemCount={updateProducts.length}
+                        onOpenDetails={onClickDetailsModel}
+                        allConfigData={allConfigData}
+                        currencySymbol={frontSetting?.value?.currency_symbol}
+                    />
                     <div className="pos-context-card">
                         <PosHeader
                             setSelectedCustomerOption={setSelectedCustomerOption}

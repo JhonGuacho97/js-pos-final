@@ -201,6 +201,45 @@ class POSRegisterAPIController extends AppBaseController
         return $this->sendResponse($data, 'Details retrieved successfully');
     }
 
+    /**
+     * Resumen liviano para el indicador "Ventas del turno" de la pantalla
+     * POS: ventas del cajero autenticado desde que abrió su caja, en el
+     * almacén seleccionado en el POS (o el de la caja si no se envía).
+     * Se consulta tras cada venta, así que evita los cálculos de pagos y
+     * movimientos que sí hace getRegisterDetails().
+     */
+    public function shiftSalesSummary(Request $request)
+    {
+        $request->validate(['warehouse_id' => ['nullable', 'integer']]);
+
+        $register = POSRegister::where('user_id', Auth::id())
+            ->whereNull('closed_at')
+            ->latest('id')
+            ->first();
+
+        if (! $register) {
+            return $this->sendResponse([
+                'register_open' => false,
+                'sales_amount' => 0,
+                'sales_count' => 0,
+            ], 'Shift sales summary retrieved successfully');
+        }
+
+        $warehouseId = (int) ($request->input('warehouse_id') ?: $register->warehouse_id);
+
+        $sales = Sale::where('user_id', Auth::id())
+            ->where('created_at', '>=', $register->created_at)
+            ->when($warehouseId, fn ($query) => $query->where('warehouse_id', $warehouseId));
+
+        return $this->sendResponse([
+            'register_open' => true,
+            'register_opened_at' => $register->created_at,
+            'warehouse_id' => $warehouseId ?: null,
+            'sales_amount' => (float) (clone $sales)->sum('grand_total'),
+            'sales_count' => (clone $sales)->count(),
+        ], 'Shift sales summary retrieved successfully');
+    }
+
     public function registerReport(Request $request)
     {
         $perPage = getPageSize($request);

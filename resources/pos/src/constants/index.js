@@ -112,6 +112,7 @@ export const apiBaseURL = {
     REGISTER_CASH_IN_HAND: "register-entry",
     CLOSE_REGISTER: "register-close",
     GET_REGISTER_DETAILS: "get-register-details",
+    POS_SHIFT_SALES_SUMMARY: "pos-shift-sales-summary",
     GET_REGISTER_REPORT_DETAILS: "register-report",
     LOGIN_LOGS: "/login-logs",
     INVENTORY_COUNTS: "/inventory-counts",
