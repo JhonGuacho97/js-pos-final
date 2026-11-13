@@ -102,7 +102,16 @@ class ElectronicInvoiceController extends AppBaseController
     {
         $this->assertSaleBelongsToCurrentStore($sale);
 
-        $factura = $sale->electronicInvoice;
+        // Primero el comprobante que sigue vivo (pendiente, recibido, con
+        // error temporal o autorizado), aunque haya uno más reciente ya
+        // descartado -- p. ej. una "Rechazada" que quedó de un reintento
+        // fallido. Reintentar sobre esa generaría una segunda factura para
+        // la misma venta mientras la original sigue en curso.
+        $factura = ElectronicInvoice::where('sale_id', $sale->id)
+            ->where('tipo_comprobante', ElectronicInvoice::FACTURA)
+            ->whereNotIn('estado', [ElectronicInvoice::DEVUELTA, ElectronicInvoice::NO_AUTORIZADA])
+            ->latest('id')
+            ->first() ?? $sale->electronicInvoice;
 
         if (!$factura) {
             return response()->json([

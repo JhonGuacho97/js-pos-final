@@ -109,7 +109,12 @@ const handleSriLookup = async () => {
 
     setSriLoading(true);
     try {
-        const res = await fetch(`/api/sri/lookup?identification=${identification}`);
+        // Accept JSON: sin esto Laravel responde los errores como página
+        // HTML y el usuario solo veía "Error del servidor" sin el motivo.
+        const res = await fetch(
+            `/api/sri/lookup?identification=${encodeURIComponent(identification)}`,
+            { headers: { Accept: "application/json" } }
+        );
 
         let json;
         try {

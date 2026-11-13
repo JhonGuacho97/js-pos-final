@@ -21,20 +21,51 @@ class SriService
             : $this->mapCedula($data);
     }
 
+    private const API_URL = 'https://apiconsult.zampisoft.com/api/consultar';
+
+    /**
+     * Tiempo total que se espera al proveedor. La cédula se consulta contra
+     * el Registro Civil y tarda bastante más que el RUC: con el límite
+     * anterior (5 s con full + 10 s sin él) la consulta de cédula se cortaba
+     * y terminaba en "Error del servidor". Se mantiene por debajo de los
+     * 30 s de max_execution_time habituales en el hosting.
+     */
+    private const MAX_WAIT_SECONDS = 25;
+
     private function consultarApi(string $identification): array
     {
-        $response = $this->llamarProveedor($identification, true);
+        $deadline = microtime(true) + self::MAX_WAIT_SECONDS;
+        $url = self::API_URL;
+        $params = ['identificacion' => $identification];
 
-        if ($response === null || $response->failed()) {
-            \Log::warning('ApiConsult: full no disponible (timeout o error), reintentando sin el parámetro', [
-                'identificacion' => $identification,
-            ]);
+        // Ya no se envía full=true: no está documentado, la documentación
+        // lo asocia a respuestas 503 y además obligaba a una segunda consulta
+        // (que también se cobra) cada vez que fallaba.
+        $response = $this->llamarProveedor($url, $params, $deadline);
 
-            $response = $this->llamarProveedor($identification, false);
+        // 202: el proveedor sigue procesando. Según su documentación se
+        // consulta la misma solicitud por GET (Location si la envía),
+        // respetando Retry-After y sin repetir la consulta original.
+        while ($response !== null && $response->status() === 202) {
+            $wait = min(max((int) ($response->header('Retry-After') ?: 2), 1), 5);
+            if (microtime(true) + $wait >= $deadline) {
+                abort(503, 'El servicio de identificación sigue procesando la consulta. Intenta nuevamente en unos segundos.');
+            }
+            sleep($wait);
+
+            $location = $response->header('Location');
+            if ($location) {
+                $url = str_starts_with($location, 'http')
+                    ? $location
+                    : 'https://apiconsult.zampisoft.com/' . ltrim($location, '/');
+                $params = [];
+            }
+
+            $response = $this->llamarProveedor($url, $params, $deadline);
         }
 
         if ($response === null) {
-            abort(503, 'No se pudo conectar con el servicio de identificación. Intenta nuevamente.');
+            abort(503, 'El servicio de identificación no respondió a tiempo. Intenta nuevamente.');
         }
 
         if ($response->failed()) {
@@ -43,36 +74,38 @@ class SriService
 
         $data = $response->json();
 
-        \Log::info('ApiConsult response', $data ?? []);
+        if (!is_array($data)) {
+            \Log::error('ApiConsult: respuesta no es JSON', [
+                'identificacion' => $identification,
+                'status' => $response->status(),
+                'body' => mb_substr($response->body(), 0, 500),
+            ]);
+            abort(503, 'El servicio de identificación devolvió una respuesta inesperada. Intenta nuevamente.');
+        }
+
+        \Log::info('ApiConsult response', $data);
 
         if (empty($data['success'])) {
-            abort(404, 'No encontrado en los registros.');
+            abort(404, $data['error'] ?? 'No encontrado en los registros.');
         }
 
         return $data;
     }
 
-    private function llamarProveedor(string $identification, bool $full)
+    private function llamarProveedor(string $url, array $params, float $deadline)
     {
-        $token = config('services.apiconsult.token');
-        $url = 'https://apiconsult.zampisoft.com/api/consultar';
-
-        $params = [
-            'token' => $token,
-            'identificacion' => $identification,
-        ];
-
-        if ($full) {
-            $params['full'] = 'true';
-        }
+        $timeout = max(1, (int) floor($deadline - microtime(true)));
 
         try {
-            // Sin retry(): si hace timeout (típico cuando full no está disponible
-            // por horario), preferimos caer rápido al fallback en vez de
-            // multiplicar la espera reintentando una llamada que va a volver a fallar.
-            return Http::timeout($full ? 5 : 10)->get($url, $params);
+            // Sin retry(): cada consulta nueva al proveedor se cobra.
+            return Http::acceptJson()
+                ->connectTimeout(min(10, $timeout))
+                ->timeout($timeout)
+                ->get($url, ['token' => config('services.apiconsult.token')] + $params);
         } catch (\Exception $e) {
-            \Log::error('ApiConsult connection error (full=' . ($full ? 'true' : 'false') . '): ' . $e->getMessage());
+            \Log::error('ApiConsult connection error: ' . $e->getMessage(), [
+                'identificacion' => $params['identificacion'] ?? null,
+            ]);
             return null;
         }
     }
@@ -80,9 +113,9 @@ class SriService
     private function mapCedula(array $data): array
     {
         $persona = $data['persona'] ?? $data;
-        $nombre = $persona['nombre'] ?? null;
+        $nombre = trim((string) ($persona['nombre'] ?? ''));
 
-        if (empty($nombre)) {
+        if ($nombre === '') {
             abort(404, 'No encontrado en los registros.');
         }
 
@@ -128,8 +161,8 @@ class SriService
         if (!empty($persona['direccion']['domicilio'])) {
             return $persona['direccion']['domicilio'];
         }
-        if (!empty($persona['calleDomicilio'])) {
-            return trim($persona['calleDomicilio']);
+        if (trim((string) ($persona['calleDomicilio'] ?? '')) !== '') {
+            return trim(trim($persona['calleDomicilio']) . ' ' . trim((string) ($persona['numeracionDomicilio'] ?? '')));
         }
         if (!empty($persona['lugarDomicilio'])) {
             return str_replace('/', ', ', $persona['lugarDomicilio']);
@@ -171,13 +204,18 @@ class SriService
         ]);
 
         $messages = [
-            400 => 'Identificación inválida o datos incompletos en la consulta.',
+            400 => 'Identificación inválida. Revisa los dígitos de la cédula o RUC.',
             401 => 'Token de autenticación incorrecto. Contacta al administrador del sistema.',
             402 => 'Saldo insuficiente en el servicio de consultas. Contacta al administrador del sistema.',
+            403 => 'La cuenta del servicio de consultas no tiene permiso o está inactiva. Contacta al administrador del sistema.',
             404 => 'No se encontró información para esa identificación.',
-            503 => 'El servicio de identificación no está disponible temporalmente. Intenta más tarde.',
+            429 => 'Demasiadas consultas seguidas. Espera unos segundos e intenta de nuevo.',
         ];
 
-        abort($status, $messages[$status] ?? 'Error al conectar con el servicio externo de identificación.');
+        // Los 5xx del proveedor se devuelven como 503: es su servicio el que
+        // falla, no el nuestro, y así el mensaje llega claro al usuario.
+        $code = $status >= 500 ? 503 : (isset($messages[$status]) ? $status : 502);
+
+        abort($code, $messages[$status] ?? 'El servicio de identificación no está disponible temporalmente. Intenta más tarde.');
     }
 }

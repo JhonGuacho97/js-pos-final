@@ -184,17 +184,24 @@ class SriSoapService
                     ]
                 ],
             ];
-        } catch (\Exception $e) {
+        } catch (\Throwable $e) {
+            // Falla de conexión, timeout o del propio servidor (por ejemplo,
+            // la extensión SOAP de PHP no está instalada). El comprobante ya
+            // está firmado y no tiene nada de malo: se marca como error
+            // temporal para reenviar EL MISMO XML, sin gastar otro secuencial.
+            // Antes se marcaba DEVUELTA (estado final) y \Error ni siquiera
+            // se capturaba, lo que dejaba la factura atascada en PENDIENTE.
             $this->logSriException($context, $e, $client);
             Log::error('Error enviando comprobante al SRI: ' . $e->getMessage());
 
             return [
-                'estado' => 'DEVUELTA',
+                'estado' => 'ERROR_TEMPORAL_SRI',
                 'mensajes' => [
                     [
                         'identificador' => 'CONNECTION_ERROR',
-                        'mensaje' => 'No se pudo conectar al servidor del SRI: ' . $e->getMessage(),
-                        'tipo' => 'ERROR',
+                        'mensaje' => 'No se pudo conectar con el SRI.',
+                        'informacionAdicional' => 'No es un error de tu comprobante -- se reintentará el envío. Detalle técnico: ' . $e->getMessage(),
+                        'tipo' => 'ADVERTENCIA',
                     ]
                 ],
             ];
@@ -243,12 +250,17 @@ class SriSoapService
                 'estado' => 'ERROR',
                 'mensaje' => $e->getMessage(),
             ];
-        } catch (\Exception $e) {
+        } catch (\Throwable $e) {
+            // Igual que en enviarComprobante(): no poder conectar no dice
+            // nada sobre el comprobante. Se trata como error temporal para
+            // que agotar los intentos no lo marque NO_AUTORIZADA (eso haría
+            // que un reintento emitiera una factura nueva mientras el SRI
+            // podría autorizar la original).
             $this->logSriException($context, $e, $client);
             Log::error('Error consultando autorización SRI: ' . $e->getMessage());
 
             return [
-                'estado' => 'ERROR',
+                'estado' => 'ERROR_TEMPORAL_SRI',
                 'mensaje' => 'No se pudo conectar al servidor del SRI: ' . $e->getMessage(),
             ];
         }
@@ -288,6 +300,16 @@ class SriSoapService
                     }
                 }
             }
+        }
+
+        // 43 "CLAVE ACCESO REGISTRADA" / 70 "CLAVE DE ACCESO EN PROCESAMIENTO":
+        // el SRI ya tiene este mismo comprobante (típico al reenviar tras un
+        // envío que se cortó después de llegar). No es un rechazo: se sigue
+        // con la consulta de autorización como si se hubiera recibido.
+        if ($estado === 'DEVUELTA' && collect($mensajes)->contains(
+            fn ($m) => in_array($m['identificador'], ['43', '70'], true)
+        )) {
+            $estado = 'RECIBIDA';
         }
 
         return [
