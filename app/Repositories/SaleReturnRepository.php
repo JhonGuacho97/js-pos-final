@@ -197,68 +197,83 @@ class SaleReturnRepository extends BaseRepository
                 }
             }
 
-            $mailTemplate = MailTemplate::where('type', MailTemplate::MAIL_TYPE_SALE_RETURN)->first();
-            $smsTemplate = SmsTemplate::where('type', SmsTemplate::SMS_TYPE_SALE_RETURN)->first();
-
-            $subject = 'Customer sale return';
-
-            $customer = Customer::whereId($saleReturn->customer_id)->first();
-
-            $search = [
-                '{customer_name}', '{sales_return_id}', '{sales_return_date}', '{sales_return_amount}', '{app_name}',
-            ];
-
-            $replace = [
-                $customer->name, $saleReturn->reference_code, $saleReturn->date, number_format($saleReturn->grand_total, 2),
-                getSettingValue('company_name'),
-            ];
-
-            if (! empty($mailTemplate) && $mailTemplate->status == MailTemplate::ACTIVE
-                && filter_var($customer->email, FILTER_VALIDATE_EMAIL)) {
-                $data['data'] = str_replace($search, $replace, $mailTemplate->content);
-
-                Mail::to($customer->email)
-                    ->send(new MailSender('emails.mail-sender', $subject, $data));
-            }
-
-            if (! empty($smsTemplate) && $smsTemplate->status == SmsTemplate::ACTIVE) {
-                $message = str_replace($search, $replace, $smsTemplate->content);
-
-                $client = new \GuzzleHttp\Client();
-
-                $url = SmsSetting::where('key', 'url')->value('value');
-                //                $token = SmsSetting::where('key', 'token')->value('value');
-                //            $url = "https://xrjv8e.api.infobip.com/sms/2/text/advanced";
-
-                $data = SmsSetting::where('key', 'payload')->value('value');
-
-                $data = preg_replace('/\s/', '', $data);
-
-                $data = json_decode($data, true);
-
-                $toKey = SmsSetting::where('key', 'mobile_key')->value('value');
-                $number = $customer->phone;
-
-                $messageKey = SmsSetting::where('key', 'message_key')->value('value');
-
-                $data = replaceArrayValue($data, $toKey, $number);
-                $data = replaceArrayValue($data, $messageKey, $message);
-
-                $response = $client->post($url, [
-                    'headers' => [
-                        'Content-Type' => 'application/json',
-                        'Accept' => 'application/json',
-                    ],
-                    'form_params' => [$data],
-                ]);
-            }
-
             DB::commit();
-
-            return $saleReturn;
         } catch (Exception $e) {
             DB::rollBack();
             throw new UnprocessableEntityHttpException($e->getMessage());
+        }
+
+        // Correo/SMS al cliente: fuera de la transacción y después de
+        // responder al POS. Antes iban dentro de la transacción, así que un
+        // servidor de correo caído deshacía la devolución completa (y la
+        // dejaba cargando hasta agotar el tiempo de espera).
+        app()->terminating(function () use ($saleReturn) {
+            try {
+                $this->enviarNotificacionesDevolucion($saleReturn);
+            } catch (\Throwable $e) {
+                \Illuminate\Support\Facades\Log::warning(
+                    "storeSaleReturn: la devolución {$saleReturn->id} se guardó correctamente pero falló el envío de la notificación: " . $e->getMessage()
+                );
+            }
+        });
+
+        return $saleReturn;
+    }
+
+    private function enviarNotificacionesDevolucion(SaleReturn $saleReturn): void
+    {
+        $mailTemplate = MailTemplate::where('type', MailTemplate::MAIL_TYPE_SALE_RETURN)->first();
+        $smsTemplate = SmsTemplate::where('type', SmsTemplate::SMS_TYPE_SALE_RETURN)->first();
+
+        $subject = 'Customer sale return';
+
+        $customer = Customer::whereId($saleReturn->customer_id)->first();
+
+        $search = [
+            '{customer_name}', '{sales_return_id}', '{sales_return_date}', '{sales_return_amount}', '{app_name}',
+        ];
+
+        $replace = [
+            $customer->name, $saleReturn->reference_code, $saleReturn->date, number_format($saleReturn->grand_total, 2),
+            getSettingValue('company_name'),
+        ];
+
+        if (! empty($mailTemplate) && $mailTemplate->status == MailTemplate::ACTIVE
+            && filter_var($customer->email, FILTER_VALIDATE_EMAIL)) {
+            $data['data'] = str_replace($search, $replace, $mailTemplate->content);
+
+            Mail::to($customer->email)
+                ->send(new MailSender('emails.mail-sender', $subject, $data));
+        }
+
+        if (! empty($smsTemplate) && $smsTemplate->status == SmsTemplate::ACTIVE) {
+            $message = str_replace($search, $replace, $smsTemplate->content);
+
+            $client = new \GuzzleHttp\Client(['timeout' => 10]);
+
+            $url = SmsSetting::where('key', 'url')->value('value');
+
+            $data = SmsSetting::where('key', 'payload')->value('value');
+
+            $data = preg_replace('/\s/', '', $data);
+
+            $data = json_decode($data, true);
+
+            $toKey = SmsSetting::where('key', 'mobile_key')->value('value');
+            $number = $customer->phone;
+
+            $messageKey = SmsSetting::where('key', 'message_key')->value('value');
+
+            $data = replaceArrayValue($data, $toKey, $number);
+            $data = replaceArrayValue($data, $messageKey, $message);
+
+            $client->post($url, [
+                'headers' => [
+                    'Content-Type' => 'application/json',
+                    'Accept' => 'application/json',
+                ],
+                'form_params' => [$data],
+            ]);
         }
     }
 

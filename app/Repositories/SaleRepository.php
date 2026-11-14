@@ -244,13 +244,20 @@ class SaleRepository extends BaseRepository
         // transacción se mantenía abierta reteniendo los locks de stock
         // mientras esperaba una llamada HTTP externa. Un fallo acá ya no
         // puede deshacer la venta -- solo se loguea.
-        try {
-            $this->enviarNotificacionesVenta($sale);
-        } catch (\Throwable $e) {
-            \Illuminate\Support\Facades\Log::warning(
-                "storeSale: la venta {$sale->id} se guardó correctamente pero falló el envío de la notificación: " . $e->getMessage()
-            );
-        }
+        //
+        // Además se envía recién cuando la respuesta ya salió hacia el POS
+        // (los callbacks de "terminating" corren después de
+        // fastcgi_finish_request): un servidor de correo lento o caído
+        // dejaba la venta "cargando" hasta agotar el tiempo de espera.
+        app()->terminating(function () use ($sale) {
+            try {
+                $this->enviarNotificacionesVenta($sale);
+            } catch (\Throwable $e) {
+                \Illuminate\Support\Facades\Log::warning(
+                    "storeSale: la venta {$sale->id} se guardó correctamente pero falló el envío de la notificación: " . $e->getMessage()
+                );
+            }
+        });
 
         return $sale;
     }
@@ -313,7 +320,7 @@ class SaleRepository extends BaseRepository
         if (!empty($smsTemplate) && $smsTemplate->status == SmsTemplate::ACTIVE) {
             $message = str_replace($search, $replace, $smsTemplate->content);
 
-            $client = new \GuzzleHttp\Client();
+            $client = new \GuzzleHttp\Client(['timeout' => 10]);
 
             $url = SmsSetting::where('key', 'url')->value('value');
             // $token = SmsSetting::where('key', 'token')->value('value');
