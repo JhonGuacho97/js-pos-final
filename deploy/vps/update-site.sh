@@ -1,0 +1,73 @@
+#!/usr/bin/env bash
+# =============================================================================
+# EcuaPos -- actualizar un sitio con lo último de GitHub
+#
+# Uso (como root):
+#   bash update-site.sh jhonsport.ecua-pos.com
+#   bash update-site.sh --all          # todos los sitios de /var/www
+#
+# Deja el código igual a GitHub, instala dependencias de producción,
+# aplica migraciones nuevas, limpia cachés y
+# reinicia el worker de la cola para que tome el código nuevo.
+# =============================================================================
+set -euo pipefail
+
+DEPLOY_USER="deploy"
+
+if [[ $EUID -ne 0 ]]; then
+    echo "Este script debe ejecutarse como root." >&2
+    exit 1
+fi
+
+update_one() {
+    local domain="$1"
+    local app_dir="/var/www/${domain}"
+    local slug
+    slug="$(echo "${domain%%.*}" | tr -c 'a-z0-9\n' '_')"
+
+    if [[ ! -f "${app_dir}/artisan" ]]; then
+        echo "No existe una instalación en ${app_dir}" >&2
+        return 1
+    fi
+
+    echo "=============== ${domain} ==============="
+    local before
+    before="$(sudo -u "${DEPLOY_USER}" -H git -C "${app_dir}" rev-parse --short HEAD)"
+
+    # vendor/ está versionado en Git y `composer install --no-dev` borra de
+    # ahí los paquetes de desarrollo, así que el árbol nunca queda "limpio"
+    # y un `git pull` fallaría. En el servidor no se edita código a mano:
+    # se alinea exactamente con GitHub. .env, storage/ y public/uploads/
+    # no están versionados y no se tocan.
+    local branch
+    branch="$(sudo -u "${DEPLOY_USER}" -H git -C "${app_dir}" rev-parse --abbrev-ref HEAD)"
+    sudo -u "${DEPLOY_USER}" -H git -C "${app_dir}" fetch --quiet origin "${branch}"
+    sudo -u "${DEPLOY_USER}" -H git -C "${app_dir}" reset --quiet --hard "origin/${branch}"
+    sudo -u "${DEPLOY_USER}" -H bash -c "cd '${app_dir}' && composer install --no-dev --optimize-autoloader --no-interaction"
+
+    # Las migraciones y las cachés corren como www-data, el mismo usuario
+    # del sitio y del worker, para que los archivos que generen sigan
+    # siendo escribibles por ellos.
+    sudo -u www-data php "${app_dir}/artisan" migrate --force --no-interaction
+    sudo -u www-data php "${app_dir}/artisan" optimize:clear
+    sudo -u www-data php "${app_dir}/artisan" view:cache
+    sudo -u www-data php "${app_dir}/artisan" queue:restart
+
+    systemctl reload "php8.3-fpm"
+    supervisorctl restart "ecuapos-queue-${slug}" >/dev/null 2>&1 || true
+
+    local after
+    after="$(sudo -u "${DEPLOY_USER}" -H git -C "${app_dir}" rev-parse --short HEAD)"
+    echo "   ${before} -> ${after}"
+}
+
+if [[ "${1:-}" == "--all" ]]; then
+    for dir in /var/www/*/; do
+        [[ -f "${dir}artisan" ]] && update_one "$(basename "${dir}")"
+    done
+elif [[ -n "${1:-}" ]]; then
+    update_one "$1"
+else
+    echo "Uso: bash update-site.sh <dominio> | --all" >&2
+    exit 1
+fi

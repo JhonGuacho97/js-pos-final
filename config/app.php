@@ -176,7 +176,8 @@ return [
         Spatie\Permission\PermissionServiceProvider::class,
         Spatie\JsonApiPaginate\JsonApiPaginateServiceProvider::class,
         Prettus\Repository\Providers\RepositoryServiceProvider::class,
-        Barryvdh\LaravelIdeHelper\IdeHelperServiceProvider::class,
+        // IdeHelper es solo de desarrollo (require-dev) y se registra solo por
+        // package discovery; nombrarlo acá rompía `composer install --no-dev`.
         Maatwebsite\Excel\ExcelServiceProvider::class,
         /*
          * Application Service Providers...
