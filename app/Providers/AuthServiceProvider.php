@@ -2,7 +2,9 @@
 
 namespace App\Providers;
 
+use App\Models\PersonalAccessToken;
 use Illuminate\Foundation\Support\Providers\AuthServiceProvider as ServiceProvider;
+use Laravel\Sanctum\Sanctum;
 
 class AuthServiceProvider extends ServiceProvider
 {
@@ -20,6 +22,7 @@ class AuthServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
-        //
+        // Modelo propio: evita un UPDATE de last_used_at en cada petición.
+        Sanctum::usePersonalAccessTokenModel(PersonalAccessToken::class);
     }
 }
