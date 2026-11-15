@@ -54,7 +54,14 @@ update_one() {
     sudo -u www-data php "${app_dir}/artisan" queue:restart
 
     systemctl reload "php8.3-fpm"
-    supervisorctl restart "ecuapos-queue-${slug}" >/dev/null 2>&1 || true
+    # Solo si ya estaba corriendo: `supervisorctl restart` también ENCIENDE
+    # un worker apagado, y durante una mudanza el worker queda apagado a
+    # propósito para que este servidor no facture a la vez que el anterior.
+    if supervisorctl status "ecuapos-queue-${slug}" 2>/dev/null | grep -q RUNNING; then
+        supervisorctl restart "ecuapos-queue-${slug}" >/dev/null
+    else
+        echo "   Worker ecuapos-queue-${slug} apagado: no se enciende."
+    fi
 
     local after
     after="$(sudo -u "${DEPLOY_USER}" -H git -C "${app_dir}" rev-parse --short HEAD)"
