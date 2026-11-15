@@ -115,14 +115,26 @@ class SaleItem extends BaseModel implements JsonResourceful
         'sub_total' => 'double',
     ];
 
+    /**
+     * Unidades ya consultadas en este proceso. Un listado de ventas pedía
+     * la misma unidad una vez por cada ítem de cada fila.
+     *
+     * @var array<int|string, array>
+     */
+    protected static array $saleUnitCache = [];
+
     public function getSaleUnitAttribute($value): array
     {
-        $saleUnit = Unit::whereId($value)->first();
-        if ($saleUnit) {
-            return $saleUnit->toArray();
+        if ($value === null || $value === '') {
+            return [];
         }
 
-        return [];
+        if (! array_key_exists($value, static::$saleUnitCache)) {
+            $saleUnit = Unit::whereId($value)->first();
+            static::$saleUnitCache[$value] = $saleUnit ? $saleUnit->toArray() : [];
+        }
+
+        return static::$saleUnitCache[$value];
     }
 
     public function prepareLinks(): array
