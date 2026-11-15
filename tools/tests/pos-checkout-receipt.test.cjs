@@ -104,6 +104,7 @@ const fixture = (options = {}) => {
         createClientUuid: () => 'test-sale-uuid',
         checkoutProcessingRef: { current: false },
         setCheckoutProcessing: value => { state.processing = value; },
+        setShiftSalesRefreshKey: () => events.push('shift-refresh'),
     };
     vm.createContext(scope);
     vm.runInContext(`${code}\nthis.submit = onCashPayment; this.exited = handlePaymentModalExited;`, scope);
