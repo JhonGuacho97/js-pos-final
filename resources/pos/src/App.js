@@ -31,9 +31,11 @@ function App() {
     // ─── CSS según dirección del idioma ──────────────────────────────────────
     useEffect(() => {
         if (updatedLanguage === "ar") {
-            require("./assets/css/custom.rtl.css");
-            require("./assets/css/style.rtl.css");
-            require("./assets/css/frontend.rtl.css");
+            // Solo para árabe: en su propio chunk, para que estas hojas
+            // (~500 KB) no viajen en el bundle principal de todos.
+            import(/* webpackChunkName: "rtl-styles" */ "./assets/css/custom.rtl.css");
+            import(/* webpackChunkName: "rtl-styles" */ "./assets/css/style.rtl.css");
+            import(/* webpackChunkName: "rtl-styles" */ "./assets/css/frontend.rtl.css");
         } else {
             require("./assets/css/custom.css");
             require("./assets/css/style.css");

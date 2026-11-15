@@ -9,7 +9,7 @@ import Form from "react-bootstrap/Form";
 import ReactSelect from "../../shared/select/reactSelect";
 import { addProduct } from "../../store/action/productAction";
 import { useNavigate } from "react-router";
-import { upperCase } from "lodash";
+import upperCase from "lodash/upperCase";
 
 const CreateSubProductModal = (props) => {
 

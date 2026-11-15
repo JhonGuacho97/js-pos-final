@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { useSelector } from "react-redux";
 import { Tokens } from "../constants";
-import { getFiles } from "../locales/index";
+import { getFiles, loadLocale } from "../locales/index";
 
 /**
  * useLanguage
@@ -27,10 +27,24 @@ const useLanguage = () => {
     // El locale activo según localStorage o el selector del store
     const activeLocale = allLocales[updatedLanguage ?? selectedLanguage];
 
-    // 1. Cargar todos los archivos de locale cuando cambia el idioma
+    // 1. Cargar el idioma activo cuando cambia. El español ya viene en el
+    // bundle; cualquier otro se descarga bajo demanda, junto con el inglés
+    // que le sirve de base para las claves que le falten.
+    const wantedLocale = updatedLanguage ?? selectedLanguage;
     useEffect(() => {
+        let cancelled = false;
         setAllLocales(getFiles());
-    }, [language, updateLanguage?.lang_json_array]);
+
+        if (wantedLocale && wantedLocale !== "sp") {
+            Promise.all([loadLocale("en"), loadLocale(wantedLocale)]).then(() => {
+                if (!cancelled) setAllLocales(getFiles());
+            });
+        }
+
+        return () => {
+            cancelled = true;
+        };
+    }, [language, updateLanguage?.lang_json_array, wantedLocale]);
 
     // 2. Si el usuario editó mensajes en el idioma activo, capturarlos
     useEffect(() => {
