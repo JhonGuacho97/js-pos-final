@@ -3,182 +3,254 @@ import ReactDOM from "react-dom";
 import "./catalog.scss";
 
 const bootstrap = window.__ECUAPOS_CATALOG__ || {};
-const money = (value) => `$ ${Number(value || 0).toFixed(2)}`;
+const money = (value) => `$${Number(value || 0).toFixed(2)}`;
 const readableText = (value) => value && String(value).trim().toLowerCase() !== "null" ? String(value).trim() : "";
 const cartStorageKey = `ecuapos-catalog-cart:${bootstrap.slug}`;
 const csrfToken = document.querySelector('meta[name="csrf-token"]')?.content || "";
 
-const icons = {
-    arrow: <><path d="M5 12h14"/><path d="m13 6 6 6-6 6"/></>,
-    bag: <><path d="M6 8h12l1 12H5L6 8Z"/><path d="M9 9V6a3 3 0 0 1 6 0v3"/></>,
-    cart: <><path d="M3 4h2l2.2 10.2a2 2 0 0 0 2 1.6h7.6a2 2 0 0 0 2-1.6L20 8H6"/><circle cx="9" cy="20" r="1"/><circle cx="17" cy="20" r="1"/></>,
-    check: <path d="m5 12 4 4L19 6"/>,
-    delivery: <><path d="M3 6h11v10H3z"/><path d="M14 10h4l3 3v3h-7z"/><circle cx="7" cy="18" r="2"/><circle cx="18" cy="18" r="2"/></>,
-    image: <><rect x="3" y="4" width="18" height="16" rx="2"/><circle cx="9" cy="10" r="2"/><path d="m21 15-5-5L5 20"/></>,
-    package: <><path d="m4 7 8-4 8 4-8 4-8-4Z"/><path d="M4 7v10l8 4 8-4V7M12 11v10"/></>,
-    search: <><circle cx="11" cy="11" r="7"/><path d="m20 20-4-4"/></>,
-    shield: <><path d="M12 3 5 6v5c0 4.5 2.8 8 7 10 4.2-2 7-5.5 7-10V6l-7-3Z"/><path d="m9 12 2 2 4-4"/></>,
-    store: <><path d="M4 10v10h16V10"/><path d="M3 4h18l-1 6H4L3 4Z"/><path d="M9 20v-6h6v6"/></>,
-    whatsapp: <><path d="M20 11.5a8 8 0 0 1-11.8 7L4 20l1.4-4A8 8 0 1 1 20 11.5Z"/><path d="M9 8.5c.8 3 2.2 4.5 5 5.5"/></>,
-    zoom: <><circle cx="10" cy="10" r="6"/><path d="m15 15 5 5M10 7v6M7 10h6"/></>,
-};
-const Icon = ({ name, size = 20 }) => <svg className="catalog-icon" width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">{icons[name]}</svg>;
+// "Sin Marca" es el valor por defecto del POS: no le dice nada al cliente.
+const visibleBrand = (brand) => brand && !/^sin\s+marca$/i.test(brand.trim()) ? brand.trim() : "";
 
-function ProductImage({ src, alt }) {
-    return src ? <img src={src} alt={alt} loading="lazy" decoding="async" /> : (
-        <div className="catalog-image-fallback"><Icon name="package" size={34} /><small>Imagen próximamente</small></div>
-    );
+/*
+ * Las variantes del POS llegan como un solo texto: "NEGRO TALLA 41",
+ * "Talla 36", "XL", "SERIE 23/26". Para elegir como en una tienda de
+ * calzado se separan en color y talla. Si un nombre no sigue ese patrón
+ * se muestra tal cual, como una opción más.
+ */
+const SIZE_PATTERN = /^(xxs|xs|s|m|l|xl|xxl|xxxl|[2-5]xl|\d+(?:[.,]\d+)?(?:\s*[-/]\s*\d+(?:[.,]\d+)?)?)$/i;
+function parseOption(name) {
+    const text = readableText(name);
+    const withSize = text.match(/^(.*?)\s*\btalla\b\s*(.+)$/i);
+    if (withSize) return { color: withSize[1].trim(), size: withSize[2].trim(), isSize: true };
+    if (SIZE_PATTERN.test(text) || /^serie\b/i.test(text)) return { color: "", size: text, isSize: true };
+    return { color: "", size: text, isSize: false };
+}
+// Orden de tienda: tallas de ropa de menor a mayor y tallas numéricas en orden.
+const LETTER_SIZES = ["XXS", "XS", "S", "M", "L", "XL", "XXL", "2XL", "XXXL", "3XL", "4XL", "5XL"];
+function sizeRank(size) {
+    const text = String(size).toUpperCase().replace(/^SERIE\s*/, "");
+    const letter = LETTER_SIZES.indexOf(text === "XXL" ? "2XL" : text === "XXXL" ? "3XL" : text);
+    if (letter >= 0) return letter;
+    const number = parseFloat(text.replace(",", "."));
+    return Number.isNaN(number) ? 1000 : 100 + number;
+}
+const bySize = (a, b) => sizeRank(a) - sizeRank(b);
+const titleCase = (value) => value.toLowerCase().replace(/(^|\s)\S/g, (letter) => letter.toUpperCase());
+
+function describeOptions(product) {
+    const parsed = product.options.map((option) => ({ ...parseOption(option.name), option }))
+        .sort((a, b) => (a.isSize && b.isSize ? bySize(a.size, b.size) : 0));
+    const colors = [...new Set(parsed.map((item) => item.color).filter(Boolean).map((color) => color.toUpperCase()))];
+    const allSizes = parsed.every((item) => item.isSize);
+    const single = product.options.length === 1
+        && readableText(product.options[0].name).toLowerCase() === readableText(product.name).toLowerCase();
+    return { parsed, colors, allSizes, single };
 }
 
-function ProductModal({ product, onClose, onAdd }) {
-    const images = (product.images || []).filter(Boolean);
+/* Resumen que va en la tarjeta: "Tallas 38 · 40 · 41 +2" con lo que hay en stock. */
+function sizeSummary(product) {
+    const { parsed, allSizes, single } = describeOptions(product);
+    if (single || !product.options.length) return "";
+    const sizes = [...new Set(parsed.filter((item) => item.option.available).map((item) => item.size.toUpperCase()))];
+    if (!sizes.length) return "";
+    if (allSizes) sizes.sort(bySize);
+    const label = allSizes ? (sizes.length === 1 ? "Talla" : "Tallas") : (sizes.length === 1 ? "Opción" : "Opciones");
+    const shown = sizes.slice(0, 4).join(" · ");
+    return `${label} ${shown}${sizes.length > 4 ? ` +${sizes.length - 4}` : ""}`;
+}
+
+const icons = {
+    arrowLeft: <path d="M19 12H5m6-6-6 6 6 6" />,
+    bag: <><path d="M5 8h14l-1 13H6L5 8Z" /><path d="M9 10V6a3 3 0 0 1 6 0v4" /></>,
+    check: <path d="m5 12 4 4L19 6" />,
+    close: <path d="M6 6l12 12M18 6 6 18" />,
+    delivery: <><path d="M3 6h11v10H3z" /><path d="M14 10h4l3 3v3h-7z" /><circle cx="7" cy="18" r="2" /><circle cx="18" cy="18" r="2" /></>,
+    minus: <path d="M6 12h12" />,
+    plus: <path d="M12 6v12M6 12h12" />,
+    search: <><circle cx="11" cy="11" r="7" /><path d="m20 20-4-4" /></>,
+    store: <><path d="M4 10v10h16V10" /><path d="M3 4h18l-1 6H4L3 4Z" /><path d="M9 20v-6h6v6" /></>,
+    whatsapp: <><path d="M20 11.5a8 8 0 0 1-11.8 7L4 20l1.4-4A8 8 0 1 1 20 11.5Z" /><path d="M9 8.5c.8 3 2.2 4.5 5 5.5" /></>,
+    zoom: <><circle cx="10" cy="10" r="6" /><path d="m15 15 5 5M10 7v6M7 10h6" /></>,
+};
+const Icon = ({ name, size = 20 }) => <svg className="cx-icon" width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="square" strokeLinejoin="miter" aria-hidden="true">{icons[name]}</svg>;
+
+/* La foto aparece con un fundido sobre un fondo neutro en vez de "saltar". */
+function Photo({ src, alt, eager = false }) {
+    const [loaded, setLoaded] = useState(false);
+    const imageRef = useRef(null);
+    // Una foto que ya estaba en caché puede terminar de cargar antes de que
+    // React conecte onLoad; sin esto se quedaría invisible.
+    useEffect(() => { if (imageRef.current?.complete) setLoaded(true); }, [src]);
+    if (!src) return <div className="cx-photo cx-photo--empty"><span>Sin foto</span></div>;
+    return <div className={`cx-photo${loaded ? " is-loaded" : ""}`}>
+        <img ref={imageRef} src={src} alt={alt} loading={eager ? "eager" : "lazy"} decoding="async" onLoad={() => setLoaded(true)} onError={() => setLoaded(true)} />
+    </div>;
+}
+
+function ProductSheet({ product, settings, onClose, onAdd }) {
+    const images = product.images || [];
+    const { parsed, colors, allSizes, single } = useMemo(() => describeOptions(product), [product]);
+    const firstAvailable = parsed.find((item) => item.option.available) || parsed[0];
+    const [color, setColor] = useState(firstAvailable?.color.toUpperCase() || "");
+    const [optionId, setOptionId] = useState(single || parsed.length === 1 ? firstAvailable?.option.product_id : null);
     const [activeImage, setActiveImage] = useState(0);
     const [zoomOpen, setZoomOpen] = useState(false);
     const [pan, setPan] = useState({ x: 0, y: 0 });
-    const dragStart = useRef(null);
-    const availableOptions = product.options.filter((option) => option.available);
-    const [optionId, setOptionId] = useState(availableOptions[0]?.product_id);
-    const option = product.options.find((item) => item.product_id === optionId) || availableOptions[0];
-    const defaultPresentation = option?.presentations?.find((item) => item.is_default && item.available)
-        || option?.presentations?.find((item) => item.available);
-    const [presentationId, setPresentationId] = useState(defaultPresentation?.id || null);
     const [qty, setQty] = useState(1);
+    const dragStart = useRef(null);
+    const galleryRef = useRef(null);
 
+    const visibleOptions = colors.length > 1 ? parsed.filter((item) => item.color.toUpperCase() === color) : parsed;
+    const option = product.options.find((item) => item.product_id === optionId) || null;
+    const presentations = option?.presentations || [];
+    const defaultPresentation = presentations.find((item) => item.is_default && item.available) || presentations.find((item) => item.available);
+    const [presentationId, setPresentationId] = useState(defaultPresentation?.id || null);
+
+    useEffect(() => { setPresentationId(defaultPresentation?.id || null); setQty(1); }, [optionId]);
     useEffect(() => {
-        const next = option?.presentations?.find((item) => item.is_default && item.available)
-            || option?.presentations?.find((item) => item.available);
-        setPresentationId(next?.id || null);
-        setQty(1);
-    }, [optionId]);
+        const onKey = (event) => { if (event.key === "Escape") zoomOpen ? setZoomOpen(false) : onClose(); };
+        window.addEventListener("keydown", onKey);
+        return () => window.removeEventListener("keydown", onKey);
+    }, [zoomOpen, onClose]);
 
-    useEffect(() => {
-        setActiveImage(0);
-        setZoomOpen(false);
-        setPan({ x: 0, y: 0 });
-    }, [product.id]);
-
-    useEffect(() => {
-        setPan({ x: 0, y: 0 });
-    }, [activeImage]);
-
-    const startPan = (event) => {
-        event.currentTarget.setPointerCapture?.(event.pointerId);
-        dragStart.current = { clientX: event.clientX, clientY: event.clientY, pan };
+    const chooseColor = (value) => {
+        setColor(value);
+        const current = parsed.find((item) => item.option.product_id === optionId);
+        if (current && current.color.toUpperCase() !== value) setOptionId(null);
     };
-    const movePan = (event) => {
-        if (!dragStart.current) return;
-        setPan({
-            x: dragStart.current.pan.x + event.clientX - dragStart.current.clientX,
-            y: dragStart.current.pan.y + event.clientY - dragStart.current.clientY,
-        });
+    const showImage = (index) => {
+        setActiveImage(index);
+        const track = galleryRef.current;
+        if (track) track.scrollTo({ left: track.clientWidth * index, behavior: "smooth" });
     };
-    const endPan = () => { dragStart.current = null; };
+    const onGalleryScroll = () => {
+        const track = galleryRef.current;
+        if (track) setActiveImage(Math.round(track.scrollLeft / Math.max(1, track.clientWidth)));
+    };
 
-    const presentation = option?.presentations?.find((item) => item.id === presentationId);
-    const price = presentation?.price ?? option?.price ?? 0;
+    const presentation = presentations.find((item) => item.id === presentationId);
+    const price = presentation?.price ?? option?.price ?? product.min_price;
     const maxQty = presentation?.stock ?? option?.stock ?? null;
-    const canAdd = option?.available && (!option.presentations.length || Boolean(presentation)) && (maxQty === null || qty <= maxQty);
+    const needsPresentation = presentations.length > 0 && !presentation;
+    const canAdd = Boolean(option?.available) && !needsPresentation && (maxQty === null || qty <= maxQty);
+    const pickLabel = allSizes ? "Talla" : "Opción";
+    const missing = !option ? `Elige ${pickLabel.toLowerCase()}` : needsPresentation ? "Elige presentación" : "";
+    const lowStock = settings.show_stock && maxQty !== null && maxQty > 0 && maxQty <= 3;
 
-    if (!product) return null;
-
-    return (
-        <div className="catalog-overlay" onMouseDown={(event) => event.target === event.currentTarget && onClose()}>
-            <section className="catalog-product-modal" role="dialog" aria-modal="true" aria-label={`Detalle de ${product.name}`}>
-                <button className="catalog-close" onClick={onClose} aria-label="Cerrar">×</button>
-                <div className="catalog-product-modal__media">
-                    <div className="catalog-product-gallery">
-                        <ProductImage src={images[activeImage]} alt={`${product.name}${images.length > 1 ? ` · imagen ${activeImage + 1}` : ""}`} />
-                        {images.length > 0 && <button className="catalog-gallery-zoom" type="button" aria-label="Ampliar imagen"
-                            onClick={() => { setPan({ x: 0, y: 0 }); setZoomOpen(true); }}><Icon name="zoom" size={17} /> <span>Ampliar</span></button>}
-                        {images.length > 1 && <>
-                            <button className="catalog-gallery-nav catalog-gallery-nav--previous" type="button" aria-label="Imagen anterior"
-                                onClick={() => setActiveImage((current) => (current - 1 + images.length) % images.length)}>‹</button>
-                            <button className="catalog-gallery-nav catalog-gallery-nav--next" type="button" aria-label="Imagen siguiente"
-                                onClick={() => setActiveImage((current) => (current + 1) % images.length)}>›</button>
-                            <span className="catalog-gallery-count">{activeImage + 1} / {images.length}</span>
-                            <div className="catalog-gallery-thumbnails" aria-label="Galería de imágenes">
-                                {images.map((image, index) => <button key={`${image}-${index}`} type="button"
-                                    className={index === activeImage ? "active" : ""} aria-label={`Ver imagen ${index + 1}`}
-                                    onClick={() => setActiveImage(index)}><img src={image} alt="" /></button>)}
-                            </div>
-                        </>}
-                    </div>
+    return <div className="cx-overlay" onMouseDown={(event) => event.target === event.currentTarget && onClose()}>
+        <section className="cx-sheet" role="dialog" aria-modal="true" aria-label={product.name}>
+            <button className="cx-icon-button cx-sheet__close" onClick={onClose} aria-label="Cerrar"><Icon name="close" /></button>
+            <div className="cx-sheet__media">
+                <div className="cx-gallery" ref={galleryRef} onScroll={onGalleryScroll}>
+                    {images.length ? images.map((image, index) => <div className="cx-gallery__slide" key={image.full}>
+                        <Photo src={image.detail} alt={`${product.name}${images.length > 1 ? `, foto ${index + 1}` : ""}`} eager={index === 0} />
+                    </div>) : <div className="cx-gallery__slide"><Photo src="" alt="" /></div>}
                 </div>
-                <div className="catalog-product-modal__content">
-                    <span className="catalog-eyebrow">{product.category?.name || "Producto"}</span>
-                    <h2>{product.name}</h2>
-                    {product.brand && <span className="catalog-brand">{product.brand}</span>}
-                    <p>{readableText(product.description) || "Selecciona la opción que prefieras y agrégala a tu pedido."}</p>
-
-                    {product.options.length > 1 && <div className="catalog-picker">
-                        <label>Variante</label>
-                        <div className="catalog-choice-grid">
-                            {product.options.map((item) => <button key={item.product_id} disabled={!item.available}
-                                className={item.product_id === option?.product_id ? "active" : ""}
-                                onClick={() => setOptionId(item.product_id)}>
-                                <strong>{item.name}</strong><small>{item.available ? money(item.price) : "Agotado"}</small>
-                            </button>)}
-                        </div>
-                    </div>}
-
-                    {option?.presentations?.length > 0 && <div className="catalog-picker">
-                        <label>Presentación</label>
-                        <div className="catalog-choice-grid">
-                            {option.presentations.map((item) => <button key={item.id} disabled={!item.available}
-                                className={item.id === presentation?.id ? "active" : ""}
-                                onClick={() => setPresentationId(item.id)}>
-                                <strong>{item.name}</strong><small>{item.available ? money(item.price) : "Agotado"}</small>
-                            </button>)}
-                        </div>
-                    </div>}
-
-                    <div className="catalog-product-action">
-                        <div className="catalog-stepper">
-                            <button type="button" aria-label="Reducir cantidad" onClick={() => setQty((value) => Math.max(1, value - 1))}>−</button>
-                            <strong>{qty}</strong>
-                            <button type="button" aria-label="Aumentar cantidad" onClick={() => setQty((value) => value + 1)}>+</button>
-                        </div>
-                        <button className="catalog-primary" disabled={!canAdd} onClick={() => {
-                            onAdd(product, option, presentation, qty);
-                            onClose();
-                        }}>
-                            <span>Agregar</span><strong>{money(price * qty)}</strong>
-                        </button>
-                    </div>
-                    {!canAdd && <div className="catalog-inline-error">No hay existencia suficiente para esta selección.</div>}
-                </div>
-                {zoomOpen && <div className="catalog-image-zoom" role="dialog" aria-modal="true" aria-label={`Imagen ampliada de ${product.name}`}>
-                    <div className="catalog-image-zoom__toolbar"><span>Arrastra la imagen para ver los detalles</span><div><button type="button" onClick={() => setPan({ x: 0, y: 0 })}>Centrar</button><button type="button" aria-label="Cerrar vista ampliada" onClick={() => setZoomOpen(false)}>×</button></div></div>
-                    <div className="catalog-image-zoom__canvas" onPointerDown={startPan} onPointerMove={movePan} onPointerUp={endPan} onPointerCancel={endPan} title="Arrastra la imagen con el cursor"><img src={images[activeImage]} alt={`${product.name} ampliado`} style={{ transform: `translate(${pan.x}px, ${pan.y}px) scale(1.85)` }} /></div>
+                {images.length > 0 && <button type="button" className="cx-zoom-button" onClick={() => { setPan({ x: 0, y: 0 }); setZoomOpen(true); }}><Icon name="zoom" size={16} /> Ampliar</button>}
+                {images.length > 1 && <div className="cx-thumbs" aria-label="Fotos del producto">
+                    {images.map((image, index) => <button key={image.full} type="button" className={index === activeImage ? "is-active" : ""} aria-label={`Ver foto ${index + 1}`} onClick={() => showImage(index)}><img src={image.thumb} alt="" /></button>)}
                 </div>}
-            </section>
-        </div>
-    );
+            </div>
+
+            <div className="cx-sheet__info">
+                <p className="cx-kicker">{[visibleBrand(product.brand), product.category?.name].filter(Boolean).join(" / ")}</p>
+                <h2 className="cx-sheet__title">{product.name}</h2>
+                <p className="cx-sheet__price">{money(price)}</p>
+                {readableText(product.description) && <p className="cx-sheet__description">{readableText(product.description)}</p>}
+
+                {!single && colors.length > 1 && <div className="cx-field">
+                    <div className="cx-field__label">Color <b>{titleCase(color)}</b></div>
+                    <div className="cx-chips">
+                        {colors.map((value) => {
+                            const available = parsed.some((item) => item.color.toUpperCase() === value && item.option.available);
+                            return <button key={value} type="button" disabled={!available} className={value === color ? "is-active" : ""} onClick={() => chooseColor(value)}>{titleCase(value)}</button>;
+                        })}
+                    </div>
+                </div>}
+
+                {!single && colors.length === 1 && <p className="cx-field__label">Color <b>{titleCase(colors[0])}</b></p>}
+
+                {!single && parsed.length > 1 && <div className="cx-field">
+                    <div className="cx-field__label">{pickLabel}{option && <b>{parseOption(option.name).size}</b>}</div>
+                    <div className={`cx-sizes${allSizes ? "" : " cx-sizes--wide"}`}>
+                        {visibleOptions.map(({ option: item, size }) => <button key={item.product_id} type="button" disabled={!item.available}
+                            className={item.product_id === optionId ? "is-active" : ""} aria-label={`${pickLabel} ${size}${item.available ? "" : ", agotado"}`}
+                            onClick={() => setOptionId(item.product_id)}>{size}</button>)}
+                    </div>
+                </div>}
+
+                {presentations.length > 0 && <div className="cx-field">
+                    <div className="cx-field__label">Presentación</div>
+                    <div className="cx-chips">
+                        {presentations.map((item) => <button key={item.id} type="button" disabled={!item.available} className={item.id === presentation?.id ? "is-active" : ""} onClick={() => setPresentationId(item.id)}>
+                            {item.name} <small>{money(item.price)}</small>
+                        </button>)}
+                    </div>
+                </div>}
+
+                {lowStock && <p className="cx-stock-note">{maxQty === 1 ? "Queda 1 unidad" : `Quedan ${maxQty} unidades`}</p>}
+                {option && maxQty !== null && qty > maxQty && <p className="cx-inline-error">Solo hay {maxQty} disponibles.</p>}
+
+                <div className="cx-buybar">
+                    <div className="cx-stepper" aria-label="Cantidad">
+                        <button type="button" aria-label="Quitar uno" disabled={qty <= 1} onClick={() => setQty((value) => Math.max(1, value - 1))}><Icon name="minus" size={16} /></button>
+                        <span>{qty}</span>
+                        <button type="button" aria-label="Agregar uno" disabled={maxQty !== null && qty >= maxQty} onClick={() => setQty((value) => value + 1)}><Icon name="plus" size={16} /></button>
+                    </div>
+                    <button type="button" className="cx-button cx-button--accent cx-buybar__add" disabled={!canAdd} onClick={() => { onAdd(product, option, presentation, qty); onClose(); }}>
+                        {missing || <>Agregar <span>{money(price * qty)}</span></>}
+                    </button>
+                </div>
+            </div>
+
+            {zoomOpen && <div className="cx-zoom" role="dialog" aria-modal="true" aria-label={`Foto ampliada de ${product.name}`}>
+                <div className="cx-zoom__bar"><span>Arrastra para recorrer la foto</span><button type="button" className="cx-icon-button" aria-label="Cerrar foto ampliada" onClick={() => setZoomOpen(false)}><Icon name="close" /></button></div>
+                <div className="cx-zoom__canvas"
+                    onPointerDown={(event) => { event.currentTarget.setPointerCapture?.(event.pointerId); dragStart.current = { x: event.clientX, y: event.clientY, pan }; }}
+                    onPointerMove={(event) => dragStart.current && setPan({ x: dragStart.current.pan.x + event.clientX - dragStart.current.x, y: dragStart.current.pan.y + event.clientY - dragStart.current.y })}
+                    onPointerUp={() => { dragStart.current = null; }} onPointerCancel={() => { dragStart.current = null; }}>
+                    <img src={images[activeImage]?.detail} alt="" draggable="false" style={{ transform: `translate(${pan.x}px, ${pan.y}px) scale(1.9)` }} />
+                </div>
+            </div>}
+        </section>
+    </div>;
 }
 
-function CartDrawer({ cart, settings, onClose, onQty, onRemove, onCheckout }) {
+function CartPanel({ cart, settings, onClose, onQty, onRemove, onCheckout }) {
     const subtotal = cart.reduce((sum, item) => sum + item.price * item.quantity, 0);
-    return <div className="catalog-overlay" onMouseDown={(event) => event.target === event.currentTarget && onClose()}>
-        <aside className="catalog-cart" role="dialog" aria-modal="true" aria-label="Carrito de compras">
-            <header><div><span className="catalog-eyebrow">Tu selección</span><h2>Carrito</h2></div><button className="catalog-close" onClick={onClose} aria-label="Cerrar carrito">×</button></header>
-            <div className="catalog-cart__items">
-                {!cart.length && <div className="catalog-empty"><span className="catalog-empty__icon"><Icon name="bag" size={28} /></span><h3>Tu carrito está vacío</h3><p>Explora el catálogo y agrega lo que necesitas.</p></div>}
-                {cart.map((item) => <article className="catalog-cart-item" key={item.key}>
-                    <div className="catalog-cart-item__image"><ProductImage src={item.image} alt={item.productName} /></div>
-                    <div className="catalog-cart-item__content">
-                        <div><h3>{item.productName}</h3><p>{[item.optionName, item.presentationName].filter(Boolean).join(" · ")}</p></div>
-                        <strong>{money(item.price * item.quantity)}</strong>
-                        <div className="catalog-cart-item__actions">
-                            <div className="catalog-mini-stepper"><button type="button" aria-label="Reducir cantidad" onClick={() => onQty(item.key, item.quantity - 1)}>−</button><span>{item.quantity}</span><button type="button" aria-label="Aumentar cantidad" onClick={() => onQty(item.key, item.quantity + 1)}>+</button></div>
-                            <button className="catalog-remove" onClick={() => onRemove(item.key)}>Eliminar</button>
+    const missing = settings.minimum_order - subtotal;
+    useEffect(() => {
+        const onKey = (event) => event.key === "Escape" && onClose();
+        window.addEventListener("keydown", onKey);
+        return () => window.removeEventListener("keydown", onKey);
+    }, [onClose]);
+
+    return <div className="cx-overlay cx-overlay--side" onMouseDown={(event) => event.target === event.currentTarget && onClose()}>
+        <aside className="cx-cart" role="dialog" aria-modal="true" aria-label="Tu pedido">
+            <header className="cx-cart__head"><h2>Tu pedido</h2><button className="cx-icon-button" onClick={onClose} aria-label="Cerrar pedido"><Icon name="close" /></button></header>
+            <div className="cx-cart__items">
+                {!cart.length && <div className="cx-empty"><Icon name="bag" size={32} /><p>Todavía no agregas nada.</p><button type="button" className="cx-link" onClick={onClose}>Seguir viendo productos</button></div>}
+                {cart.map((item) => <article className="cx-line" key={item.key}>
+                    <div className="cx-line__photo"><Photo src={item.image} alt="" /></div>
+                    <div className="cx-line__body">
+                        <h3>{item.productName}</h3>
+                        {(item.optionName || item.presentationName) && <p>{[item.optionName, item.presentationName].filter(Boolean).join(" · ")}</p>}
+                        <div className="cx-line__row">
+                            <div className="cx-stepper cx-stepper--small">
+                                <button type="button" aria-label="Quitar uno" onClick={() => onQty(item.key, item.quantity - 1)}><Icon name="minus" size={14} /></button>
+                                <span>{item.quantity}</span>
+                                <button type="button" aria-label="Agregar uno" disabled={item.maxQty !== null && item.quantity >= item.maxQty} onClick={() => onQty(item.key, item.quantity + 1)}><Icon name="plus" size={14} /></button>
+                            </div>
+                            <strong>{money(item.price * item.quantity)}</strong>
                         </div>
+                        <button type="button" className="cx-link cx-line__remove" onClick={() => onRemove(item.key)}>Quitar</button>
                     </div>
                 </article>)}
             </div>
-            {cart.length > 0 && <footer className="catalog-cart__footer">
-                {settings.minimum_order > subtotal && <p className="catalog-minimum">Faltan {money(settings.minimum_order - subtotal)} para completar el pedido mínimo.</p>}
-                <div><span>Subtotal</span><strong>{money(subtotal)}</strong></div>
-                <button className="catalog-primary" disabled={subtotal < settings.minimum_order} onClick={onCheckout}>Continuar pedido <Icon name="arrow" size={18} /></button>
+            {cart.length > 0 && <footer className="cx-cart__foot">
+                {missing > 0 && <p className="cx-notice">Te faltan {money(missing)} para el pedido mínimo de {money(settings.minimum_order)}.</p>}
+                <div className="cx-total"><span>Subtotal</span><strong>{money(subtotal)}</strong></div>
+                <button type="button" className="cx-button cx-button--accent cx-button--block" disabled={missing > 0} onClick={onCheckout}>Continuar con el pedido</button>
             </footer>}
         </aside>
     </div>;
@@ -211,92 +283,236 @@ function Checkout({ cart, settings, onBack, onSuccess }) {
         } catch (requestError) { setError(requestError.message); } finally { setBusy(false); }
     };
 
-    return <main className="catalog-checkout-page">
-        <button type="button" className="catalog-back" onClick={onBack}>← Volver al catálogo</button>
-        <div className="catalog-checkout-layout">
-            <form className="catalog-checkout-card" onSubmit={submit}>
-                <div className="catalog-checkout-heading"><span className="catalog-eyebrow">Último paso</span><h1>Completa tu pedido</h1><p>La tienda recibirá tu solicitud y coordinará contigo por WhatsApp.</p></div>
-                <fieldset className="catalog-form-section"><legend><span>1</span> Tus datos</legend>
-                    <div className="catalog-form-grid"><label><span>Nombre completo *</span><input required autoComplete="name" name="customer_name" value={form.customer_name} onChange={update} placeholder="¿Cómo te llamas?" /></label><label><span>Teléfono / WhatsApp *</span><input required autoComplete="tel" inputMode="tel" name="customer_phone" value={form.customer_phone} onChange={update} placeholder="09XXXXXXXX" /></label></div>
-                    <div className="catalog-form-grid"><label><span>Correo electrónico *</span><input required type="email" autoComplete="email" name="customer_email" value={form.customer_email} onChange={update} placeholder="tu@correo.com" /></label><label><span>Ciudad *</span><input required autoComplete="address-level2" name="customer_city" value={form.customer_city} onChange={update} placeholder="Ej. Manta" /></label></div>
-                    <div className="catalog-form-grid catalog-form-grid--identification"><label><span>Tipo de identificación</span><select name="customer_identification_type" value={form.customer_identification_type} onChange={update}><option value="05">Cédula</option><option value="04">RUC</option><option value="06">Pasaporte</option><option value="08">Identificación del exterior</option></select></label><label><span>Identificación <small>opcional</small></span><input name="customer_identification" value={form.customer_identification} onChange={update} placeholder="Para identificar tu registro" /></label></div>
+    return <main className="cx-checkout">
+        <button type="button" className="cx-link cx-back" onClick={onBack}><Icon name="arrowLeft" size={18} /> Volver al catálogo</button>
+        <h1 className="cx-checkout__title">Datos del pedido</h1>
+        <p className="cx-checkout__lead">Lo recibimos y te escribimos por WhatsApp para confirmar disponibilidad, pago y entrega.</p>
+        <div className="cx-checkout__layout">
+            <form className="cx-form" onSubmit={submit}>
+                <fieldset>
+                    <legend><span>1</span> Tus datos</legend>
+                    <div className="cx-form__grid">
+                        <label className="cx-input"><span>Nombre y apellido</span><input required autoComplete="name" name="customer_name" value={form.customer_name} onChange={update} /></label>
+                        <label className="cx-input"><span>Celular (WhatsApp)</span><input required autoComplete="tel" inputMode="tel" name="customer_phone" value={form.customer_phone} onChange={update} placeholder="09XXXXXXXX" /></label>
+                        <label className="cx-input"><span>Correo</span><input required type="email" autoComplete="email" name="customer_email" value={form.customer_email} onChange={update} /></label>
+                        <label className="cx-input"><span>Ciudad</span><input required autoComplete="address-level2" name="customer_city" value={form.customer_city} onChange={update} /></label>
+                        <label className="cx-input"><span>Tipo de identificación</span><select name="customer_identification_type" value={form.customer_identification_type} onChange={update}><option value="05">Cédula</option><option value="04">RUC</option><option value="06">Pasaporte</option><option value="08">Identificación del exterior</option></select></label>
+                        <label className="cx-input"><span>Número <em>opcional</em></span><input name="customer_identification" inputMode="numeric" value={form.customer_identification} onChange={update} /></label>
+                    </div>
                 </fieldset>
-                <fieldset className="catalog-form-section"><legend><span>2</span> Entrega y pago</legend>
-                    <div className="catalog-field"><span>¿Cómo recibirás tu pedido?</span><div className="catalog-delivery-options">
-                        {settings.allow_pickup && <button type="button" className={form.fulfillment_type === "pickup" ? "active" : ""} onClick={() => setForm({ ...form, fulfillment_type: "pickup" })}><Icon name="store" size={21} /><span><strong>Retiro en tienda</strong><small>Coordina el horario</small></span></button>}
-                        {settings.allow_delivery && <button type="button" className={form.fulfillment_type === "delivery" ? "active" : ""} onClick={() => setForm({ ...form, fulfillment_type: "delivery" })}><Icon name="delivery" size={21} /><span><strong>Entrega a domicilio</strong><small>{settings.delivery_fee > 0 ? `Costo ${money(settings.delivery_fee)}` : "Sin costo adicional"}</small></span></button>}
-                    </div></div>
-                    {form.fulfillment_type === "delivery" && <label className="catalog-field"><span>Dirección de entrega *</span><textarea required autoComplete="street-address" name="delivery_address" value={form.delivery_address} onChange={update} placeholder="Dirección y referencia" /></label>}
-                    <div className="catalog-form-grid"><label><span>Forma de pago prevista</span><select name="payment_method" value={form.payment_method} onChange={update}><option value="">Seleccionar</option><option>Efectivo</option><option>Transferencia</option><option>Tarjeta</option></select></label><label><span>Observaciones</span><textarea name="notes" value={form.notes} onChange={update} placeholder="Indicaciones adicionales" /></label></div>
+                <fieldset>
+                    <legend><span>2</span> Entrega</legend>
+                    <div className="cx-choice">
+                        {settings.allow_pickup && <label className={form.fulfillment_type === "pickup" ? "is-active" : ""}><input type="radio" name="fulfillment_type" value="pickup" checked={form.fulfillment_type === "pickup"} onChange={update} /><Icon name="store" size={22} /><span><strong>Retiro en tienda</strong><small>Coordinamos la hora por WhatsApp</small></span></label>}
+                        {settings.allow_delivery && <label className={form.fulfillment_type === "delivery" ? "is-active" : ""}><input type="radio" name="fulfillment_type" value="delivery" checked={form.fulfillment_type === "delivery"} onChange={update} /><Icon name="delivery" size={22} /><span><strong>A domicilio</strong><small>{settings.delivery_fee > 0 ? `Envío ${money(settings.delivery_fee)}` : "Sin costo de envío"}</small></span></label>}
+                    </div>
+                    {form.fulfillment_type === "delivery" && <label className="cx-input"><span>Dirección y referencia</span><textarea required autoComplete="street-address" name="delivery_address" value={form.delivery_address} onChange={update} rows={3} /></label>}
                 </fieldset>
-                <label className="catalog-check catalog-check--checkout"><input required type="checkbox" name="privacy_consent" checked={form.privacy_consent} onChange={update} /><span>Acepto que la tienda use estos datos exclusivamente para registrar y gestionar mi pedido.</span></label>
-                {error && <div className="catalog-error">{error}</div>}
-                <button className="catalog-primary catalog-submit" disabled={busy}>{busy ? "Registrando pedido…" : <><span><Icon name="whatsapp" size={20} /> Enviar pedido por WhatsApp</span><strong>{money(subtotal + delivery)}</strong></>}</button>
+                <fieldset>
+                    <legend><span>3</span> Pago y notas</legend>
+                    <div className="cx-form__grid">
+                        <label className="cx-input"><span>¿Cómo piensas pagar?</span><select name="payment_method" value={form.payment_method} onChange={update}><option value="">Lo decido después</option><option>Efectivo</option><option>Transferencia</option><option>Tarjeta</option></select></label>
+                        <label className="cx-input"><span>Notas <em>opcional</em></span><textarea name="notes" value={form.notes} onChange={update} rows={2} /></label>
+                    </div>
+                </fieldset>
+                <label className="cx-consent"><input required type="checkbox" name="privacy_consent" checked={form.privacy_consent} onChange={update} /><span>Acepto que la tienda use estos datos solo para registrar y gestionar mi pedido.</span></label>
+                {error && <div className="cx-alert" role="alert">{error}</div>}
+                <button className="cx-button cx-button--whatsapp cx-button--block" disabled={busy}>
+                    {busy ? "Registrando pedido…" : <><Icon name="whatsapp" size={20} /> Enviar pedido por WhatsApp · {money(subtotal + delivery)}</>}
+                </button>
+                <p className="cx-form__note">Aquí no se cobra nada. El pago se acuerda con la tienda.</p>
             </form>
-            <aside className="catalog-order-summary"><span className="catalog-eyebrow">Resumen</span><h2>Tu pedido</h2>{cart.map((item) => <div className="catalog-summary-line" key={item.key}><span>{item.quantity} × {item.productName}<small>{[item.optionName, item.presentationName].filter(Boolean).join(" · ")}</small></span><strong>{money(item.price * item.quantity)}</strong></div>)}<div className="catalog-summary-total"><span>Subtotal</span><strong>{money(subtotal)}</strong></div>{delivery > 0 && <div className="catalog-summary-total"><span>Entrega</span><strong>{money(delivery)}</strong></div>}<div className="catalog-summary-total grand"><span>Total</span><strong>{money(subtotal + delivery)}</strong></div><p className="catalog-summary-note"><Icon name="shield" size={19} /> No realizarás ningún pago en esta página. La tienda confirmará disponibilidad y forma de pago.</p></aside>
+            <aside className="cx-summary">
+                <h2>Resumen</h2>
+                {cart.map((item) => <div className="cx-summary__line" key={item.key}>
+                    <span><b>{item.quantity}×</b> {item.productName}{(item.optionName || item.presentationName) && <small>{[item.optionName, item.presentationName].filter(Boolean).join(" · ")}</small>}</span>
+                    <strong>{money(item.price * item.quantity)}</strong>
+                </div>)}
+                <div className="cx-summary__total"><span>Subtotal</span><span>{money(subtotal)}</span></div>
+                {form.fulfillment_type === "delivery" && <div className="cx-summary__total"><span>Envío</span><span>{delivery > 0 ? money(delivery) : "Gratis"}</span></div>}
+                <div className="cx-summary__total cx-summary__total--grand"><span>Total</span><strong>{money(subtotal + delivery)}</strong></div>
+            </aside>
         </div>
     </main>;
 }
 
+function ProductCard({ product, onOpen }) {
+    const cover = product.images[0];
+    const sizes = sizeSummary(product);
+    const brand = visibleBrand(product.brand);
+    return <article className={`cx-card${product.available ? "" : " is-sold-out"}`}>
+        <button type="button" className="cx-card__hit" disabled={!product.available} onClick={() => onOpen(product)} aria-label={`${product.name}, ${money(product.min_price)}${product.available ? "" : ", agotado"}`}>
+            <div className="cx-card__photo">
+                <Photo src={cover?.thumb} alt="" />
+                {product.featured && product.available && <span className="cx-tag cx-tag--accent">Destacado</span>}
+                {!product.available && <span className="cx-tag cx-tag--ink">Agotado</span>}
+                {product.images.length > 1 && <span className="cx-card__count">{product.images.length} fotos</span>}
+            </div>
+            <div className="cx-card__body">
+                <p className="cx-card__brand">{brand || product.category?.name || " "}</p>
+                <h3 className="cx-card__name">{product.name}</h3>
+                <p className="cx-card__price">{product.min_price !== product.max_price && <small>desde </small>}{money(product.min_price)}</p>
+                {sizes && product.available && <p className="cx-card__sizes">{sizes}</p>}
+            </div>
+        </button>
+    </article>;
+}
+
 function CatalogApp() {
-    const [data, setData] = useState(null);
-    const [loading, setLoading] = useState(true);
+    const embedded = bootstrap.data || null;
+    const [data, setData] = useState(embedded);
     const [error, setError] = useState("");
     const [search, setSearch] = useState("");
     const [category, setCategory] = useState("all");
     const [selectedProduct, setSelectedProduct] = useState(null);
     const [cartOpen, setCartOpen] = useState(false);
     const [checkout, setCheckout] = useState(false);
+    const [toast, setToast] = useState(null);
     const [cart, setCart] = useState(() => { try { return JSON.parse(localStorage.getItem(cartStorageKey)) || []; } catch { return []; } });
 
-    useEffect(() => { fetch(bootstrap.apiUrl, { headers: { Accept: "application/json" } }).then(async (response) => { const body = await response.json(); if (!response.ok) throw new Error(body.message); return body.data; }).then(setData).catch(() => setError("Este catálogo no está disponible en este momento.")).finally(() => setLoading(false)); }, []);
-    useEffect(() => { localStorage.setItem(cartStorageKey, JSON.stringify(cart)); }, [cart]);
-    useEffect(() => { document.body.classList.toggle("catalog-locked", Boolean(selectedProduct || cartOpen)); return () => document.body.classList.remove("catalog-locked"); }, [selectedProduct, cartOpen]);
+    useEffect(() => {
+        if (embedded) return;
+        fetch(bootstrap.apiUrl, { headers: { Accept: "application/json" } })
+            .then(async (response) => { const body = await response.json(); if (!response.ok) throw new Error(body.message); return body.data; })
+            .then(setData)
+            .catch(() => setError("Este catálogo no está disponible en este momento."));
+    }, []);
+    useEffect(() => { try { localStorage.setItem(cartStorageKey, JSON.stringify(cart)); } catch { /* modo privado */ } }, [cart]);
+    useEffect(() => {
+        document.body.classList.toggle("cx-locked", Boolean(selectedProduct || cartOpen));
+        return () => document.body.classList.remove("cx-locked");
+    }, [selectedProduct, cartOpen]);
+    useEffect(() => {
+        if (!toast) return undefined;
+        const timer = setTimeout(() => setToast(null), 3200);
+        return () => clearTimeout(timer);
+    }, [toast]);
 
-    const filtered = useMemo(() => (data?.products || []).filter((product) => {
-        const matchesCategory = category === "all" || String(product.category?.id) === String(category);
+    const categoryCounts = useMemo(() => (data?.products || []).reduce((counts, product) => {
+        const id = product.category?.id;
+        if (id) counts[id] = (counts[id] || 0) + 1;
+        return counts;
+    }, {}), [data]);
+
+    const filtered = useMemo(() => {
         const term = search.trim().toLowerCase();
-        return matchesCategory && (!term || `${product.name} ${product.brand || ""}`.toLowerCase().includes(term));
-    }), [data, category, search]);
+        return (data?.products || []).filter((product) => {
+            const matchesCategory = category === "all" || String(product.category?.id) === String(category);
+            const haystack = `${product.name} ${product.brand || ""} ${product.category?.name || ""}`.toLowerCase();
+            return matchesCategory && (!term || haystack.includes(term));
+        });
+    }, [data, category, search]);
 
     const addToCart = (product, option, presentation, quantity) => {
         const key = `${option.product_id}:${presentation?.id || "base"}`;
+        // "L" a secas no dice mucho en el resumen: se muestra "Talla L".
+        const parsedOption = parseOption(option.name);
+        const optionName = product.options.length > 1
+            ? (parsedOption.isSize && !parsedOption.color && !/talla|serie/i.test(option.name) ? `Talla ${parsedOption.size}` : readableText(option.name))
+            : "";
         setCart((current) => {
             const existing = current.find((item) => item.key === key);
             const maxQty = presentation?.stock ?? option.stock ?? null;
             const requestedQty = (existing?.quantity || 0) + quantity;
             const nextQty = maxQty === null ? requestedQty : Math.min(requestedQty, maxQty);
-            const next = { key, productId: option.product_id, presentationId: presentation?.id || null, productName: product.name, optionName: product.options.length > 1 ? option.name : "", presentationName: presentation?.name || "", price: presentation?.price ?? option.price, quantity: nextQty, image: product.images[0] || "", maxQty };
+            const next = { key, productId: option.product_id, presentationId: presentation?.id || null, productName: product.name, optionName, presentationName: presentation?.name || "", price: presentation?.price ?? option.price, quantity: nextQty, image: product.images[0]?.thumb || "", maxQty };
             return existing ? current.map((item) => item.key === key ? next : item) : [...current, next];
         });
+        setToast({ name: product.name, detail: [optionName, presentation?.name].filter(Boolean).join(" · ") });
     };
     const changeQty = (key, quantity) => setCart((current) => quantity <= 0 ? current.filter((item) => item.key !== key) : current.map((item) => item.key === key ? { ...item, quantity: item.maxQty === null ? quantity : Math.min(quantity, item.maxQty) } : item));
     const count = cart.reduce((sum, item) => sum + item.quantity, 0);
     const total = cart.reduce((sum, item) => sum + item.price * item.quantity, 0);
-    const startCheckout = () => {
-        setCartOpen(false);
-        setCheckout(true);
-        window.scrollTo(0, 0);
+    const startCheckout = () => { setCartOpen(false); setCheckout(true); window.scrollTo(0, 0); };
+    const selectCategory = (id) => {
+        setCategory(id);
+        const anchor = document.getElementById("productos");
+        if (anchor && anchor.getBoundingClientRect().top < 0) anchor.scrollIntoView({ behavior: "smooth" });
     };
 
-    if (loading) return <div className="catalog-loading"><span className="catalog-loading__mark"><Icon name="store" size={28} /></span><div><strong>Preparando el catálogo</strong><p>Un momento, ya casi está listo…</p></div></div>;
-    if (error) return <div className="catalog-loading catalog-loading--error"><span>!</span><h1>Catálogo no disponible</h1><p>{error}</p></div>;
+    if (error) return <div className="cx-state"><h1>Catálogo no disponible</h1><p>{error}</p></div>;
+    if (!data) return <div className="cx-state" aria-busy="true"><div className="cx-state__bar" /><p>Cargando catálogo…</p></div>;
     if (checkout) return <Checkout cart={cart} settings={data.settings} onBack={() => setCheckout(false)} onSuccess={() => setCart([])} />;
 
-    return <div className="catalog-app">
-        <header className="catalog-header"><div className="catalog-shell catalog-header__inner"><a className="catalog-logo" href="#catalogo" aria-label={`Ir al catálogo de ${data.store.name}`}><span className="catalog-logo__image">{data.store.logo ? <img src={data.store.logo} alt="" /> : <Icon name="store" size={22} />}</span><div><strong>{data.store.name}</strong><small>Pedidos directos</small></div></a><div className="catalog-header__actions"><span className="catalog-header__status"><i /> Atención por WhatsApp</span><button type="button" className="catalog-cart-button" onClick={() => setCartOpen(true)} aria-label={`Abrir carrito, ${count} productos`}><Icon name="cart" size={20} /><span className="catalog-cart-count">{count}</span><strong>{count ? money(total) : "Mi pedido"}</strong></button></div></div></header>
-        <main>
-            <section className="catalog-hero"><div className="catalog-shell catalog-hero__layout"><div className="catalog-hero__copy"><span className="catalog-eyebrow"><i /> Catálogo disponible</span><h1>{data.settings.headline}</h1><p>{data.settings.description || "Explora nuestros productos, arma tu pedido y coordina la entrega directamente por WhatsApp."}</p><a href="#catalogo" className="catalog-hero__link">Ver productos <Icon name="arrow" size={18} /></a></div><aside className="catalog-order-flow" aria-label="Cómo realizar un pedido"><div className="catalog-order-flow__heading"><span className="catalog-order-flow__icon"><Icon name="bag" size={24} /></span><div><span className="catalog-eyebrow">Simple y directo</span><h2>Tu pedido en 3 pasos</h2></div></div><ol><li><span>01</span><div><strong>Elige</strong><small>Productos y cantidades</small></div></li><li><span>02</span><div><strong>Completa</strong><small>Tus datos de contacto</small></div></li><li><span>03</span><div><strong>Coordina</strong><small>Entrega y pago por WhatsApp</small></div></li></ol><div className="catalog-order-flow__meta">{data.settings.allow_pickup && <span><Icon name="store" size={16} /> Retiro</span>}{data.settings.allow_delivery && <span><Icon name="delivery" size={16} /> Entrega</span>}{data.settings.minimum_order > 0 && <span>Pedido mín. {money(data.settings.minimum_order)}</span>}</div></aside></div></section>
-            <section id="catalogo" className="catalog-shell catalog-products-section"><div className="catalog-discovery"><div className="catalog-search"><Icon name="search" size={20} /><input aria-label="Buscar productos" value={search} onChange={(event) => setSearch(event.target.value)} placeholder="¿Qué estás buscando?" />{search && <button type="button" aria-label="Limpiar búsqueda" onClick={() => setSearch("")}>×</button>}</div><div className="catalog-categories" aria-label="Categorías"><button type="button" className={category === "all" ? "active" : ""} onClick={() => setCategory("all")}>Todos <span>{data.products.length}</span></button>{data.categories.map((item) => <button type="button" key={item.id} className={String(category) === String(item.id) ? "active" : ""} onClick={() => setCategory(item.id)}>{item.name}</button>)}</div></div>
-                <div className="catalog-section-title"><div><span className="catalog-eyebrow">Nuestra selección</span><h2>{category === "all" ? "Productos disponibles" : data.categories.find((item) => String(item.id) === String(category))?.name}</h2></div><span>{filtered.length} {filtered.length === 1 ? "resultado" : "resultados"}</span></div>
-                <div className="catalog-product-grid">{filtered.map((product) => <article key={product.id} role="button" tabIndex={product.available ? 0 : -1} aria-disabled={!product.available} className={`catalog-product-card${!product.available ? " is-sold-out" : ""}`} onKeyDown={(event) => { if (product.available && (event.key === "Enter" || event.key === " ")) { event.preventDefault(); setSelectedProduct(product); } }} onClick={() => product.available && setSelectedProduct(product)}><div className="catalog-product-card__image"><ProductImage src={product.images[0]} alt={product.name} />{product.featured && <span className="catalog-featured">Recomendado</span>}{!product.available && <span className="catalog-sold-out">Agotado</span>}{product.images.length > 1 && <span className="catalog-image-count" title={`${product.images.length} imágenes`}><Icon name="image" size={14} /> {product.images.length}</span>}</div><div className="catalog-product-card__body"><span className="catalog-product-card__category">{product.category?.name || product.brand || "Producto"}</span><h3>{product.name}</h3>{readableText(product.description) && <p>{readableText(product.description)}</p>}<div className="catalog-product-card__footer"><span><small>{product.min_price !== product.max_price ? "Desde" : "Precio"}</small><strong>{money(product.min_price)}</strong></span><span className="catalog-product-card__action" aria-hidden="true"><Icon name="arrow" size={18} /></span></div></div></article>)}</div>
-                {!filtered.length && <div className="catalog-empty catalog-empty--products"><span className="catalog-empty__icon"><Icon name="search" size={28} /></span><h3>No encontramos coincidencias</h3><p>Prueba con otro término o revisa todas las categorías.</p><button type="button" onClick={() => { setSearch(""); setCategory("all"); }}>Ver todos los productos</button></div>}
+    const { store, settings, categories } = data;
+    const services = [
+        settings.allow_pickup && "Retiro en tienda",
+        settings.allow_delivery && (settings.delivery_fee > 0 ? `Envío a domicilio ${money(settings.delivery_fee)}` : "Envío a domicilio sin costo"),
+        settings.minimum_order > 0 && `Pedido mínimo ${money(settings.minimum_order)}`,
+        "Confirmación por WhatsApp",
+    ].filter(Boolean);
+    const activeCategory = categories.find((item) => String(item.id) === String(category));
+
+    return <div className="cx-app">
+        <header className="cx-header">
+            <div className="cx-wrap cx-header__inner">
+                <a className="cx-brand" href="#top" aria-label={store.name}>
+                    {store.logo && <img src={store.logo} alt="" width="40" height="40" />}
+                    <span>{store.name}</span>
+                </a>
+                <label className="cx-search cx-search--header">
+                    <Icon name="search" size={18} />
+                    <input type="search" aria-label="Buscar productos" placeholder="Buscar producto o marca" value={search} onChange={(event) => setSearch(event.target.value)} />
+                </label>
+                <button type="button" className="cx-cart-button" onClick={() => setCartOpen(true)} aria-label={`Ver pedido, ${count} ${count === 1 ? "producto" : "productos"}`}>
+                    <Icon name="bag" size={20} />
+                    <span className="cx-cart-button__label">{count ? money(total) : "Pedido"}</span>
+                    {count > 0 && <span className="cx-cart-button__count">{count}</span>}
+                </button>
+            </div>
+        </header>
+
+        <main id="top">
+            <section className="cx-intro">
+                <div className="cx-wrap">
+                    <h1>{settings.headline}</h1>
+                    {readableText(settings.description) && <p className="cx-intro__lead">{settings.description}</p>}
+                    <ul className="cx-services">{services.map((service) => <li key={service}><Icon name="check" size={14} /> {service}</li>)}</ul>
+                </div>
+            </section>
+
+            <nav className="cx-filters" id="productos" aria-label="Categorías">
+                <div className="cx-wrap">
+                    <label className="cx-search cx-search--mobile">
+                        <Icon name="search" size={18} />
+                        <input type="search" aria-label="Buscar productos" placeholder="Buscar producto o marca" value={search} onChange={(event) => setSearch(event.target.value)} />
+                    </label>
+                    <div className="cx-tabs" role="tablist">
+                        <button type="button" role="tab" aria-selected={category === "all"} className={category === "all" ? "is-active" : ""} onClick={() => selectCategory("all")}>Todo <span>{data.products.length}</span></button>
+                        {categories.map((item) => <button type="button" role="tab" key={item.id} aria-selected={String(category) === String(item.id)} className={String(category) === String(item.id) ? "is-active" : ""} onClick={() => selectCategory(item.id)}>{item.name} <span>{categoryCounts[item.id] || 0}</span></button>)}
+                    </div>
+                </div>
+            </nav>
+
+            <section className="cx-wrap cx-results" aria-live="polite">
+                <div className="cx-results__head">
+                    <h2>{search.trim() ? `Resultados para “${search.trim()}”` : activeCategory?.name || "Todos los productos"}</h2>
+                    <span>{filtered.length} {filtered.length === 1 ? "producto" : "productos"}</span>
+                </div>
+                {filtered.length > 0 ? <div className="cx-grid">{filtered.map((product) => <ProductCard key={product.id} product={product} onOpen={setSelectedProduct} />)}</div>
+                    : <div className="cx-empty cx-empty--results"><p>No encontramos productos con ese nombre.</p><button type="button" className="cx-button cx-button--ghost" onClick={() => { setSearch(""); setCategory("all"); }}>Ver todo el catálogo</button></div>}
             </section>
         </main>
-        <footer className="catalog-footer"><div className="catalog-shell"><div><strong>{data.store.name}</strong><span>Compra directa, atención cercana.</span></div><span>Catálogo impulsado por <b>EcuaPOS</b></span></div></footer>
-        {count > 0 && <button className="catalog-mobile-cart" onClick={() => setCartOpen(true)}><span><Icon name="cart" size={19} /> {count} {count === 1 ? "producto" : "productos"}</span><strong>{money(total)}</strong></button>}
-        {selectedProduct && <ProductModal product={selectedProduct} onClose={() => setSelectedProduct(null)} onAdd={addToCart} />}
-        {cartOpen && <CartDrawer cart={cart} settings={data.settings} onClose={() => setCartOpen(false)} onQty={changeQty} onRemove={(key) => setCart((current) => current.filter((item) => item.key !== key))} onCheckout={startCheckout} />}
+
+        <footer className="cx-footer">
+            <div className="cx-wrap">
+                <strong>{store.name}</strong>
+                <span>Pedidos y atención por WhatsApp</span>
+                <small>Catálogo con EcuaPOS</small>
+            </div>
+        </footer>
+
+        {count > 0 && !cartOpen && !selectedProduct && <button type="button" className="cx-floating-cart" onClick={() => setCartOpen(true)}>
+            <span><b>{count}</b> {count === 1 ? "producto" : "productos"}</span>
+            <span>Ver pedido · {money(total)}</span>
+        </button>}
+        {toast && <div className="cx-toast" role="status">
+            <Icon name="check" size={18} />
+            <span><b>Agregado</b> {toast.name}{toast.detail ? ` · ${toast.detail}` : ""}</span>
+            <button type="button" onClick={() => { setToast(null); setCartOpen(true); }}>Ver pedido</button>
+        </div>}
+        {selectedProduct && <ProductSheet product={selectedProduct} settings={settings} onClose={() => setSelectedProduct(null)} onAdd={addToCart} />}
+        {cartOpen && <CartPanel cart={cart} settings={settings} onClose={() => setCartOpen(false)} onQty={changeQty} onRemove={(key) => setCart((current) => current.filter((item) => item.key !== key))} onCheckout={startCheckout} />}
     </div>;
 }
 

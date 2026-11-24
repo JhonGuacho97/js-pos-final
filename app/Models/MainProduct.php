@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use App\Models\Contracts\JsonResourceful;
+use App\Traits\HasCatalogImages;
 use App\Traits\HasJsonResourcefulData;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
@@ -42,7 +43,10 @@ use Spatie\MediaLibrary\InteractsWithMedia;
  */
 class MainProduct extends Model implements HasMedia, JsonResourceful
 {
-    use HasFactory, HasJsonResourcefulData, InteractsWithMedia;
+    use HasFactory, HasJsonResourcefulData, InteractsWithMedia, HasCatalogImages {
+        // Las versiones reducidas de fotos para el catálogo virtual.
+        HasCatalogImages::registerMediaConversions insteadof InteractsWithMedia;
+    }
 
     protected $fillable = [
         'store_id',

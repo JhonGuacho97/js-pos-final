@@ -22,6 +22,16 @@ class PublicCatalogController extends Controller
 {
     public function show(Store $store): JsonResponse
     {
+        return response()->json(['data' => $this->catalogPayload($store)]);
+    }
+
+    /**
+     * Datos completos del catálogo. La página /catalogo/{slug} los incrusta
+     * en el HTML para mostrar los productos sin esperar otra petición; la
+     * ruta de la API sigue devolviendo exactamente lo mismo.
+     */
+    public function catalogPayload(Store $store): array
+    {
         $setting = $this->activeSetting($store);
         $warehouseId = (int) $setting->warehouse_id;
 
@@ -60,26 +70,24 @@ class PublicCatalogController extends Controller
 
         $logo = Setting::where('store_id', $store->id)->where('key', 'logo')->first();
 
-        return response()->json([
-            'data' => [
-                'store' => [
-                    'name' => $store->name,
-                    'slug' => $store->slug,
-                    'logo' => $logo?->logo ?: asset('images/ecua-pos-logo.png'),
-                ],
-                'settings' => [
-                    'headline' => $setting->headline ?: 'Todo lo que necesitas, en un solo lugar.',
-                    'description' => $setting->description,
-                    'show_stock' => $setting->show_stock,
-                    'allow_pickup' => $setting->allow_pickup,
-                    'allow_delivery' => $setting->allow_delivery,
-                    'delivery_fee' => (float) $setting->delivery_fee,
-                    'minimum_order' => (float) $setting->minimum_order,
-                ],
-                'categories' => $categories,
-                'products' => $items,
+        return [
+            'store' => [
+                'name' => $store->name,
+                'slug' => $store->slug,
+                'logo' => $logo?->logo ?: asset('images/ecua-pos-logo.png'),
             ],
-        ]);
+            'settings' => [
+                'headline' => $setting->headline ?: 'Todo lo que necesitas, en un solo lugar.',
+                'description' => $setting->description,
+                'show_stock' => $setting->show_stock,
+                'allow_pickup' => $setting->allow_pickup,
+                'allow_delivery' => $setting->allow_delivery,
+                'delivery_fee' => (float) $setting->delivery_fee,
+                'minimum_order' => (float) $setting->minimum_order,
+            ],
+            'categories' => $categories,
+            'products' => $items,
+        ];
     }
 
     public function storeOrder(Request $request, Store $store): JsonResponse
@@ -338,8 +346,9 @@ class PublicCatalogController extends Controller
             ->map(function (Collection $group) use ($stocks, $warehouseId, $showStock) {
                 $first = $group->first();
                 $options = $group->map(fn (Product $product) => $this->productOption($product, $stocks, $warehouseId, $showStock))->values();
-                $images = $first->mainProduct?->image_url ?: $first->image_url;
-                $imageUrls = is_array($images) ? ($images['imageUrls'] ?? []) : [];
+                // Cada imagen trae su miniatura, su versión de detalle y el
+                // original (ver HasCatalogImages).
+                $images = $first->mainProduct?->catalogImages() ?: $first->catalogImages();
 
                 return [
                     'id' => $first->main_product_id ? 'main-'.$first->main_product_id : 'product-'.$first->id,
@@ -348,7 +357,7 @@ class PublicCatalogController extends Controller
                     'featured' => $group->contains('catalog_featured', true),
                     'category' => $first->productCategory ? ['id' => $first->productCategory->id, 'name' => $first->productCategory->name] : null,
                     'brand' => $first->brand?->name,
-                    'images' => array_values($imageUrls),
+                    'images' => $images,
                     'min_price' => (float) $options->min('price'),
                     'max_price' => (float) $options->max('price'),
                     'available' => $options->contains('available', true),
