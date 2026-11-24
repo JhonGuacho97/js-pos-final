@@ -176,6 +176,9 @@ server {
     # Archivos ocultos (.env, .git...) y scripts dentro de uploads nunca se sirven.
     location ~ /\.(?!well-known) { deny all; }
     location ~* ^/uploads/.*\.php$ { deny all; }
+    # Los certificados .p12 del SRI viven en public/uploads/certificados
+    # (disco "local"); nunca deben poder descargarse por la web.
+    location ^~ /uploads/certificados/ { deny all; }
 }
 NGINX
 ln -sf "/etc/nginx/sites-available/${NGINX_SITE}" "/etc/nginx/sites-enabled/${NGINX_SITE}"
