@@ -5,6 +5,11 @@ import { useDispatch, useSelector } from "react-redux";
 import { IntlProvider } from "react-intl";
 import { settingsKey, Tokens } from "./constants";
 import Toasts from "./shared/toast/Toasts";
+// En su propio chunk: trae el almacenamiento offline, que el bundle
+// principal no necesita para pintar la primera pantalla.
+const ElectronicInvoiceWatcher = React.lazy(() => import(
+    /* webpackChunkName: "invoice-watcher" */ "./components/sri/ElectronicInvoiceWatcher"
+));
 import { fetchFrontSetting } from "./store/action/frontSettingAction";
 import { fetchConfig } from "./store/action/configAction";
 import { fetchMyStores } from "./store/action/storeAction";
@@ -111,6 +116,11 @@ function App() {
                 <Toasts
                     language={updatedLanguage ?? selectedLanguage}
                 />
+                {token && (
+                    <React.Suspense fallback={null}>
+                        <ElectronicInvoiceWatcher />
+                    </React.Suspense>
+                )}
             </IntlProvider>
         </div>
     );
