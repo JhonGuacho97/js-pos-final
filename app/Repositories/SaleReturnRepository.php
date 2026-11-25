@@ -238,11 +238,11 @@ class SaleReturnRepository extends BaseRepository
             getSettingValue('company_name'),
         ];
 
-        if (! empty($mailTemplate) && $mailTemplate->status == MailTemplate::ACTIVE
-            && filter_var($customer->email, FILTER_VALIDATE_EMAIL)) {
+        $destinatario = $customer?->emailParaEnvios();
+        if (! empty($mailTemplate) && $mailTemplate->status == MailTemplate::ACTIVE && $destinatario) {
             $data['data'] = str_replace($search, $replace, $mailTemplate->content);
 
-            Mail::to($customer->email)
+            Mail::to($destinatario)
                 ->send(new MailSender('emails.mail-sender', $subject, $data));
         }
 
