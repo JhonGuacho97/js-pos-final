@@ -18,7 +18,10 @@ class LandingPageController extends Controller
         $content = LandingPageSetting::mergeWithDefaults($settings?->content);
         $plans = SaaSPlan::where('is_active', true)->where('code', '!=', 'trial')
             ->orderBy('sort_order')->orderBy('price')->get();
+        // Los límites reales de la prueba, para no prometer en la landing algo
+        // distinto de lo que el plan "trial" permite.
+        $trial = SaaSPlan::where('is_active', true)->where('code', 'trial')->first();
 
-        return view('landing', compact('content', 'plans'));
+        return view('landing', compact('content', 'plans', 'trial'));
     }
 }

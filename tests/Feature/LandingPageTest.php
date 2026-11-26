@@ -19,10 +19,12 @@ class LandingPageTest extends TestCase
     {
         $this->get('/')
             ->assertOk()
-            ->assertSee('Vende, factura y controla tu negocio')
+            ->assertSee('Vende en mostrador y factura al SRI')
             ->assertSee('/sistema#/crear-cuenta', false)
             ->assertSee('data-auth-user', false)
-            ->assertSee('Ir al dashboard')
+            ->assertSee('Ir al sistema')
+            ->assertSee('wa.me/593987497541', false)
+            ->assertSee('ventas@ecuapos.tech')
             ->assertSee('Preguntas frecuentes');
     }
 

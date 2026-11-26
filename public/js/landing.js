@@ -22,7 +22,7 @@ document.addEventListener('DOMContentLoaded', function () {
             if (!link.dataset.guestHref) link.dataset.guestHref = link.getAttribute('href');
             if (!link.dataset.guestHtml) link.dataset.guestHtml = link.innerHTML;
             link.setAttribute('href', authenticated ? dashboardUrl() : link.dataset.guestHref);
-            var signedInLabel = link.dataset.authLabel || (link.closest('.lp-plan') ? 'Ir al dashboard' : null);
+            var signedInLabel = link.dataset.authLabel || (link.closest('.lp-plan') ? 'Ir al sistema' : null);
             if (signedInLabel) link.innerHTML = authenticated ? signedInLabel : link.dataset.guestHtml;
         });
         document.querySelectorAll('[data-auth-user]').forEach(function (link) {
@@ -74,10 +74,4 @@ document.addEventListener('DOMContentLoaded', function () {
         dialog.querySelector('.lp-legal-close').addEventListener('click', function () { dialog.close(); });
         dialog.addEventListener('click', function (event) { if (event.target === dialog) dialog.close(); });
     });
-    if ('IntersectionObserver' in window) {
-        var observer = new IntersectionObserver(function (entries) {
-            entries.forEach(function (entry) { if (entry.isIntersecting) { entry.target.classList.add('visible'); observer.unobserve(entry.target); } });
-        }, { threshold: .08 });
-        document.querySelectorAll('.lp-reveal').forEach(function (element) { observer.observe(element); });
-    } else document.querySelectorAll('.lp-reveal').forEach(function (element) { element.classList.add('visible'); });
 });
