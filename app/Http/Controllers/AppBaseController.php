@@ -113,10 +113,27 @@ class AppBaseController extends Controller
      */
     protected function scopeQueryToCurrentStore($query, string $warehouseColumn = 'warehouse_id')
     {
+        // Aislamiento SaaS: sin tienda activa resuelta se aborta (no se
+        // devuelven datos de todas las tiendas).
         $storeId = $this->requireCurrentStoreId();
-        $query->whereIn($warehouseColumn, Warehouse::where('store_id', $storeId)->active()->pluck('id'));
+        $query->whereIn($warehouseColumn, $this->activeWarehouseIdsOfStore($storeId));
 
         return $query;
+    }
+
+    /**
+     * Almacenes activos de la tienda, consultados una sola vez por
+     * petición: los reportes llaman a scopeQueryToCurrentStore() una vez
+     * por cada total que calculan (hasta 10 veces la misma consulta).
+     *
+     * @var array<int, \Illuminate\Support\Collection>
+     */
+    private array $activeWarehouseIdsByStore = [];
+
+    private function activeWarehouseIdsOfStore(int $storeId)
+    {
+        return $this->activeWarehouseIdsByStore[$storeId]
+            ??= Warehouse::where('store_id', $storeId)->active()->pluck('id');
     }
 
     /**
