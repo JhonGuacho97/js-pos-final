@@ -1015,6 +1015,13 @@
     "settings.backup.generating": "Generando respaldo...",
     "settings.backup.button": "Descargar Respaldo",
     "backup.success.message": "Respaldo descargado correctamente.",
-    "backup.error.message": "Ocurrió un error al generar el respaldo."
+    "backup.error.message": "Ocurrió un error al generar el respaldo.",
+    "login-status.success": "Exitoso",
+    "login-status.failed": "Fallido",
+    "purchases.purchases-details.title": "Detalle de compras",
+    "payment-method.filter.cash.label": "Efectivo",
+    "payment-method.filter.cheque.label": "Cheque",
+    "payment-method.filter.bank-transfer.label": "Transferencia bancaria",
+    "payment-method.filter.other.label": "Otro"
 
 }

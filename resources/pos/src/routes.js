@@ -1,7 +1,9 @@
 import { Permissions } from "./constants";
 import { lazyWithRetry } from "./shared/lazyWithRetry";
 
-import Dashboard from "./components/dashboard/Dashboard";
+// El dashboard arrastra las librerías de gráficos (echarts, chart.js):
+// en su propio chunk, quien entra directo al POS no las descarga.
+const Dashboard = lazyWithRetry(() => import(/* webpackChunkName: "dashboard" */ "./components/dashboard/Dashboard"), "Dashboard");
 
 // Maestros pequeños que casi siempre se navegan seguidos desde el mismo
 // menú (Catálogo) -- agrupados en un solo chunk "catalog-masters".

@@ -19,3 +19,29 @@
     RewriteCond %{REQUEST_FILENAME} !-f
     RewriteRule ^ index.php [L]
 </IfModule>
+
+# --- Rendimiento ------------------------------------------------------------
+# Compresión de texto: el JS/CSS/JSON viaja ~4 veces más liviano.
+<IfModule mod_deflate.c>
+    AddOutputFilterByType DEFLATE text/html text/plain text/css text/javascript application/javascript application/json image/svg+xml application/manifest+json
+</IfModule>
+
+<IfModule mod_headers.c>
+    # Los chunks llevan un hash de contenido en el nombre: si cambian, cambia
+    # el nombre, así que el navegador puede guardarlos un año sin revalidar.
+    <FilesMatch "\.[0-9a-f]{8}\.js$">
+        Header set Cache-Control "public, max-age=31536000, immutable"
+    </FilesMatch>
+    # Fuentes: un mes. Imágenes: un día (un logo o una foto de producto
+    # reemplazados deben verse pronto).
+    <FilesMatch "\.(woff2?|ttf|eot|otf)$">
+        Header set Cache-Control "public, max-age=2592000"
+    </FilesMatch>
+    <FilesMatch "\.(png|jpe?g|gif|webp|svg|ico)$">
+        Header set Cache-Control "public, max-age=86400"
+    </FilesMatch>
+    # El service worker siempre se revalida para que las actualizaciones lleguen.
+    <FilesMatch "^sw\.js$">
+        Header set Cache-Control "no-cache"
+    </FilesMatch>
+</IfModule>

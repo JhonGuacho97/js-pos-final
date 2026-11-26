@@ -3,7 +3,7 @@ import requestParam from "../../shared/requestParam";
 import { setLoading } from "./loadingAction";
 import { setTotalRecord } from "./totalRecordAction";
 import { addToast } from "./toastAction";
-import _ from "lodash";
+import isEmpty from "lodash/isEmpty";
 import apiConfig from "../../config/apiConfig";
 
 export const fetchLoginLogs =
@@ -16,7 +16,7 @@ export const fetchLoginLogs =
             let url = apiBaseURL.LOGIN_LOGS;
 
             if (
-                !_.isEmpty(filter) &&
+                !isEmpty(filter) &&
                 (filter.page ||
                     filter.pageSize ||
                     filter.search ||

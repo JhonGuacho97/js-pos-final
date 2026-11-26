@@ -41,7 +41,6 @@ import UnitsForm from "../units/UnitsForm";
 import { addUnit } from "../../store/action/unitsAction";
 import { fetchAllVariations } from "../../store/action/variationAction";
 import ReactMultiSelect from "../../shared/select/ReactMultiSelect";
-import { toUpper } from "lodash";
 import PresentationsSection from "./sections/PresentationsSection";
 import apiConfig from "../../config/apiConfig";
 import { apiBaseURL } from "../../constants";
