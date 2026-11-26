@@ -32,10 +32,10 @@ class PosCatalogPerformanceTest extends TestCase
             'warehouses' => ['store_id', 'is_active'],
             'manage_stocks' => ['warehouse_id', 'product_id', 'quantity', 'alert'],
             'variation_products' => ['main_product_id', 'product_id', 'variation_id', 'variation_type_id'],
-            'variations' => [], 'variation_types' => ['variation_id'],
+            'variations' => ['store_id'], 'variation_types' => ['store_id', 'variation_id'],
             'base_units' => [], 'units' => ['base_unit'],
             'product_warehouse_prices' => ['product_id', 'warehouse_id', 'price'],
-            'presentation_types' => ['presentation_family_id'],
+            'presentation_types' => ['store_id', 'presentation_family_id'],
             'product_presentations' => ['product_id', 'presentation_type_id', 'variation_type_id', 'equivalence', 'price', 'cost', 'sort', 'is_base_unit', 'is_default'],
             'presentation_warehouse_prices' => ['product_presentation_id', 'warehouse_id', 'price'],
             'product_kit_items' => ['kit_product_id', 'component_product_id', 'component_product_presentation_id', 'quantity'],
@@ -61,9 +61,9 @@ class PosCatalogPerformanceTest extends TestCase
         DB::table('brands')->insert(['id' => 1, 'name' => 'Brand']);
         DB::table('base_units')->insert(['id' => 1, 'name' => 'Unit']);
         DB::table('units')->insert(['id' => 1, 'name' => 'Unit', 'base_unit' => 1]);
-        DB::table('variations')->insert(['id' => 1, 'name' => 'Size']);
-        DB::table('variation_types')->insert(['id' => 1, 'name' => 'Small', 'variation_id' => 1]);
-        DB::table('presentation_types')->insert(['id' => 1, 'name' => 'Box', 'presentation_family_id' => 1]);
+        DB::table('variations')->insert(['id' => 1, 'name' => 'Size', 'store_id' => 1]);
+        DB::table('variation_types')->insert(['id' => 1, 'name' => 'Small', 'variation_id' => 1, 'store_id' => 1]);
+        DB::table('presentation_types')->insert(['id' => 1, 'name' => 'Box', 'presentation_family_id' => 1, 'store_id' => 1]);
     }
 
     private function seedProducts(int $from, int $to, int $store = 1, int $warehouse = 1): void
