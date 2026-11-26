@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\API;
 
+use App\Filters\SaleSearchFilter;
 use App\Http\Controllers\AppBaseController;
 use App\Http\Requests\CreateSaleRequest;
 use App\Http\Requests\UpdateSaleRequest;
@@ -9,7 +10,6 @@ use App\Http\Resources\SaleCollection;
 use App\Http\Resources\SaleResource;
 use App\Models\CreditNote;
 use App\Models\CreditNoteItem;
-use App\Models\Customer;
 use App\Models\Hold;
 use App\Models\Sale;
 use App\Models\SalesPayment;
@@ -59,24 +59,12 @@ class SaleAPIController extends AppBaseController
         }
 
         $perPage = getPageSize($request);
-        $search = $request->filter['search'] ?? '';
-        $customer = (Customer::where('name', 'LIKE', "%$search%")->get()->count() != 0);
-        $warehouse = (Warehouse::active()->where('name', 'LIKE', "%$search%")->get()->count() != 0);
 
+        // filter[search] (referencia, cliente o almacén) lo aplica el
+        // repositorio con SaleSearchFilter.
         $sales = $this->saleRepository;
         $sales->withCount('payments');
         $sales->with(['user', 'payments']);
-        if ($customer || $warehouse) {
-            $sales->whereHas('customer', function (Builder $q) use ($search, $customer) {
-                if ($customer) {
-                    $q->where('name', 'LIKE', "%$search%");
-                }
-            })->whereHas('warehouse', function (Builder $q) use ($search, $warehouse) {
-                if ($warehouse) {
-                    $q->where('name', 'LIKE', "%$search%");
-                }
-            });
-        }
 
         if ($request->get('start_date') && $request->get('end_date')) {
             $sales->whereBetween('date', [$request->get('start_date'), $request->get('end_date')]);
@@ -151,21 +139,7 @@ class SaleAPIController extends AppBaseController
      */
     private function applySaleFilters(Builder $query, Request $request): Builder
     {
-        $search = $request->filter['search'] ?? '';
-        $customer = (Customer::where('name', 'LIKE', "%$search%")->get()->count() != 0);
-        $warehouse = (Warehouse::active()->where('name', 'LIKE', "%$search%")->get()->count() != 0);
-
-        if ($customer || $warehouse) {
-            $query->whereHas('customer', function (Builder $q) use ($search, $customer) {
-                if ($customer) {
-                    $q->where('name', 'LIKE', "%$search%");
-                }
-            })->whereHas('warehouse', function (Builder $q) use ($search, $warehouse) {
-                if ($warehouse) {
-                    $q->where('name', 'LIKE', "%$search%");
-                }
-            });
-        }
+        SaleSearchFilter::apply($query, $request->filter['search'] ?? '');
 
         if ($request->get('start_date') && $request->get('end_date')) {
             $query->whereBetween('date', [$request->get('start_date'), $request->get('end_date')]);

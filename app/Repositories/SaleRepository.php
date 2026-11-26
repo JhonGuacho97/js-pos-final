@@ -3,6 +3,7 @@
 namespace App\Repositories;
 
 use App\Exceptions\InsufficientStockException;
+use App\Filters\SaleSearchFilter;
 use App\Mail\MailSender;
 use App\Models\Customer;
 use App\Models\MailTemplate;
@@ -61,6 +62,14 @@ class SaleRepository extends BaseRepository
     public function getFieldsSearchable(): array
     {
         return $this->fieldSearchable;
+    }
+
+    /**
+     * Búsqueda libre (?filter[search]=) agrupada: referencia, cliente o almacén.
+     */
+    public function getSearchFilter(): SaleSearchFilter
+    {
+        return new SaleSearchFilter();
     }
 
     /**
