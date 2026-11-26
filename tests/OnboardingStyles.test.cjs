@@ -72,9 +72,32 @@ test('segundo paso mantiene formulario, credenciales y controles accesibles', ()
         assert.match(markup, /autoComplete="new-password"/);
         assert.match(markup, /aria-label="Mostrar contraseña"/);
         assert.match(markup, /name="terms"/);
-        assert.match(markup, /Crear mi cuenta/);
+        // El paso 2 ya no crea la cuenta: primero se verifica el correo.
+        assert.match(markup, /Verificar mi correo/);
         assert.equal((markup.match(/<form\b/g) || []).length, 1);
         assert.doesNotMatch(markup, /class="[^"]*\blp-/);
+    } finally {
+        React.useState = originalState;
+    }
+});
+
+test('tercer paso pide el código del correo antes de crear la cuenta', () => {
+    const originalState = React.useState;
+    try {
+        React.useState = (initial) => originalState(initial === 1 ? 3 : (
+            initial && Object.hasOwn(initial, 'organization_name')
+                ? { ...initial, organization_name: 'Empresa de prueba', city: 'Manta', email: 'dueno@example.test' }
+                : initial
+        ));
+        const markup = render();
+        assert.match(markup, /Verifica tu correo/);
+        assert.match(markup, /Paso 3 de 3/);
+        assert.match(markup, /name="email_code"/);
+        assert.match(markup, /inputMode="numeric"/);
+        assert.match(markup, /autoComplete="one-time-code"/);
+        assert.match(markup, /Reenviar código/);
+        assert.match(markup, /Crear mi cuenta/);
+        assert.equal((markup.match(/<form\b/g) || []).length, 1);
     } finally {
         React.useState = originalState;
     }

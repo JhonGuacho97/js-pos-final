@@ -26,6 +26,8 @@ class CreateOrganizationRequest extends FormRequest
             'province' => ['nullable', 'string', 'max:100'],
             'password' => ['required', 'confirmed', Password::min(8)->letters()->numbers()],
             'terms' => ['accepted'],
+            // Código que llegó al correo (ver OnboardingEmailVerification).
+            'email_code' => ['required', 'digits:6'],
             'website' => ['prohibited'],
         ];
     }
@@ -37,6 +39,8 @@ class CreateOrganizationRequest extends FormRequest
             'phone.regex' => 'Ingrese un número de teléfono válido.',
             'password.confirmed' => 'Las contraseñas no coinciden.',
             'terms.accepted' => 'Debe aceptar los términos para crear la cuenta.',
+            'email_code.required' => 'Ingrese el código que enviamos a su correo.',
+            'email_code.digits' => 'El código tiene 6 dígitos.',
         ];
     }
 }

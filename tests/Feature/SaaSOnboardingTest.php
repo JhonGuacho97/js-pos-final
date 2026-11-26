@@ -6,8 +6,10 @@ use App\Models\Organization;
 use App\Models\Permission;
 use App\Models\Role;
 use App\Models\Store;
+use App\Mail\OnboardingVerificationCodeMail;
 use App\Models\User;
 use Illuminate\Foundation\Testing\DatabaseTransactions;
+use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Str;
 use Laravel\Sanctum\Sanctum;
 use Tests\TestCase;
@@ -28,6 +30,7 @@ class SaaSOnboardingTest extends TestCase
         config(['saas.self_registration_enabled' => true]);
         $beforeOrganizations = Organization::count();
         $email = 'owner-'.Str::lower(Str::random(10)).'@example.test';
+        $code = $this->requestCode($email);
 
         $response = $this->postJson('/api/onboarding/register', [
             'organization_name' => 'Café del Pacífico',
@@ -42,6 +45,7 @@ class SaaSOnboardingTest extends TestCase
             'password' => 'ClaveSaaS123',
             'password_confirmation' => 'ClaveSaaS123',
             'terms' => true,
+            'email_code' => $code,
         ])->assertCreated();
 
         $organizationId = (int) $response->json('data.organization.id');
@@ -133,9 +137,113 @@ class SaaSOnboardingTest extends TestCase
             'password' => 'ClaveSaaS123',
             'password_confirmation' => 'ClaveSaaS123',
             'terms' => true,
+            'email_code' => '123456',
         ])->assertUnprocessable();
 
         $this->assertSame($beforeOrganizations, Organization::count());
         $this->assertSame($beforeStores, Store::count());
+    }
+
+    public function test_registration_requires_the_code_sent_to_the_email(): void
+    {
+        config(['saas.self_registration_enabled' => true]);
+        $email = 'nocode-'.Str::lower(Str::random(10)).'@example.test';
+        $before = Organization::count();
+
+        // Sin código.
+        $this->assertRejected($this->postJson('/api/onboarding/register', $this->payload($email)), 'Ingrese el código');
+
+        // Con un código que nunca se pidió.
+        $this->assertRejected($this->postJson('/api/onboarding/register', $this->payload($email, '123456')), 'no fue solicitado');
+
+        $this->assertSame($before, Organization::count());
+        $this->assertFalse(User::where('email', $email)->exists());
+    }
+
+    public function test_wrong_codes_are_limited_and_the_code_is_single_use(): void
+    {
+        config(['saas.self_registration_enabled' => true]);
+        // Aquí se prueba el límite de intentos del código, no el de peticiones por IP.
+        $this->withoutMiddleware(\Illuminate\Routing\Middleware\ThrottleRequests::class);
+        $email = 'tries-'.Str::lower(Str::random(10)).'@example.test';
+        $code = $this->requestCode($email);
+        $wrong = $code === '000000' ? '111111' : '000000';
+
+        for ($i = 0; $i < 5; $i++) {
+            $this->assertRejected(
+                $this->postJson('/api/onboarding/register', $this->payload($email, $wrong)),
+                $i < 4 ? 'no es correcto' : 'Demasiados intentos'
+            );
+        }
+
+        // Tras 5 fallos ni el código correcto sirve: hay que pedir otro.
+        $this->assertRejected($this->postJson('/api/onboarding/register', $this->payload($email, $code)), 'Demasiados intentos');
+        $this->assertFalse(User::where('email', $email)->exists());
+    }
+
+    public function test_send_code_rejects_existing_accounts_and_rapid_resends(): void
+    {
+        config(['saas.self_registration_enabled' => true]);
+        Mail::fake();
+        $existing = User::create([
+            'first_name' => 'Usuario', 'last_name' => 'Existente',
+            'email' => 'taken-'.Str::lower(Str::random(10)).'@example.test',
+            'phone' => '0999999999', 'password' => bcrypt('ClaveSaaS123'), 'language' => 'sp',
+        ]);
+
+        $this->assertRejected($this->postJson('/api/onboarding/send-code', ['email' => $existing->email]), 'Ya existe una cuenta');
+
+        $email = 'resend-'.Str::lower(Str::random(10)).'@example.test';
+        $this->postJson('/api/onboarding/send-code', ['email' => $email])->assertOk();
+        $this->assertRejected($this->postJson('/api/onboarding/send-code', ['email' => $email]), 'Ya enviamos un código');
+
+        Mail::assertSent(OnboardingVerificationCodeMail::class, 1);
+    }
+
+    public function test_send_code_is_closed_when_registration_is_disabled(): void
+    {
+        config(['saas.self_registration_enabled' => false]);
+        Mail::fake();
+
+        $this->postJson('/api/onboarding/send-code', ['email' => 'closed@example.test'])->assertForbidden();
+        Mail::assertNothingSent();
+    }
+
+    private function assertRejected($response, string $message): void
+    {
+        $response->assertUnprocessable();
+        $this->assertStringContainsString($message, (string) $response->json('message'));
+    }
+
+    private function requestCode(string $email): string
+    {
+        Mail::fake();
+        $this->postJson('/api/onboarding/send-code', ['email' => $email])->assertOk();
+
+        $code = null;
+        Mail::assertSent(OnboardingVerificationCodeMail::class, function ($mail) use ($email, &$code) {
+            $code = $mail->code;
+
+            return $mail->hasTo($email);
+        });
+        $this->assertMatchesRegularExpression('/^\d{6}$/', (string) $code);
+
+        return $code;
+    }
+
+    private function payload(string $email, ?string $code = null): array
+    {
+        return array_filter([
+            'organization_name' => 'Empresa '.Str::random(5),
+            'first_name' => 'Ana',
+            'last_name' => 'Prueba',
+            'email' => $email,
+            'phone' => '0991234567',
+            'city' => 'Manta',
+            'password' => 'ClaveSaaS123',
+            'password_confirmation' => 'ClaveSaaS123',
+            'terms' => true,
+            'email_code' => $code,
+        ], fn ($value) => $value !== null);
     }
 }

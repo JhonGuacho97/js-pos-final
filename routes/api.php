@@ -809,8 +809,13 @@ Route::middleware([
 ])->post('offline-sync/customers', [OfflineCustomerSyncController::class, 'store']);
 
 Route::post('login', [AuthController::class, 'login'])->middleware('throttle:5,1')->name('login');
+Route::post('onboarding/send-code', [SaaSOnboardingController::class, 'sendCode'])
+    ->middleware('throttle:5,1')
+    ->name('saas.onboarding.send-code');
+// El alta exige el código del correo (5 intentos por código): 6 por minuto
+// deja corregir un código mal escrito sin bloquear a la persona.
 Route::post('onboarding/register', [SaaSOnboardingController::class, 'store'])
-    ->middleware('throttle:3,1')
+    ->middleware('throttle:6,1')
     ->name('saas.onboarding.register');
 
 Route::post(

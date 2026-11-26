@@ -21,6 +21,13 @@ const initialValues = {
     password: '',
     password_confirmation: '',
     terms: false,
+    email_code: '',
+};
+
+const STEP_TITLES = {
+    1: ['Configura tu negocio', 'Estos datos identificarán tu espacio de trabajo.'],
+    2: ['Crea tu cuenta propietaria', 'Usarás estas credenciales para administrar EcuaPOS.'],
+    3: ['Verifica tu correo', 'Ingresa el código de 6 dígitos que te enviamos.'],
 };
 
 const Onboarding = () => {
@@ -32,15 +39,26 @@ const Onboarding = () => {
     const [serverError, setServerError] = useState('');
     const [loading, setLoading] = useState(false);
     const [visiblePasswords, setVisiblePasswords] = useState({});
+    const [codeSentTo, setCodeSentTo] = useState('');
+    const [resendIn, setResendIn] = useState(0);
+    const [notice, setNotice] = useState('');
     const headingRef = useRef(null);
 
     useEffect(() => {
         headingRef.current?.focus();
     }, [step]);
 
+    // Cuenta regresiva para "Reenviar código" (el servidor exige 60 s).
+    useEffect(() => {
+        if (resendIn <= 0) return undefined;
+        const timer = setTimeout(() => setResendIn((seconds) => seconds - 1), 1000);
+        return () => clearTimeout(timer);
+    }, [resendIn]);
+
     const change = ({ target }) => {
         const value = target.type === 'checkbox' ? target.checked : target.value;
-        setValues((current) => ({ ...current, [target.name]: value }));
+        const next = target.name === 'email_code' ? value.replace(/\D/g, '').slice(0, 6) : value;
+        setValues((current) => ({ ...current, [target.name]: next }));
         setErrors((current) => ({ ...current, [target.name]: '' }));
         setServerError('');
     };
@@ -67,8 +85,46 @@ const Onboarding = () => {
             if (!values.terms) nextErrors.terms = 'Debe aceptar los términos para continuar.';
         }
 
+        if (currentStep === 3 && !/^\d{6}$/.test(values.email_code)) {
+            nextErrors.email_code = 'Ingrese los 6 dígitos del código.';
+        }
+
         setErrors(nextErrors);
         return Object.keys(nextErrors).length === 0;
+    };
+
+    const apiMessage = (error, fallback) => error?.response?.data?.message || fallback;
+
+    // Pide el código al servidor. Si el correo ya tiene cuenta o no se pudo
+    // enviar, el mensaje se muestra en el paso de la cuenta.
+    const sendCode = async () => {
+        setLoading(true);
+        setServerError('');
+        setNotice('');
+        try {
+            const response = await apiConfig.post('onboarding/send-code', { email: values.email });
+            setCodeSentTo(values.email);
+            setResendIn(response?.data?.data?.resend_in_seconds || 60);
+            setValues((current) => ({ ...current, email_code: '' }));
+            setNotice(`Enviamos un código a ${values.email}. Revisa también la carpeta de spam.`);
+            setStep(3);
+            return true;
+        } catch (error) {
+            setServerError(apiMessage(error, 'No pudimos enviar el código. Inténtelo nuevamente.'));
+            return false;
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    const continueToVerification = async () => {
+        if (!validateStep(2)) return;
+        // Mismo correo y código aún vigente: no hace falta pedir otro.
+        if (codeSentTo && codeSentTo === values.email) {
+            setStep(3);
+            return;
+        }
+        await sendCode();
     };
 
     const continueToOwner = () => {
@@ -77,10 +133,11 @@ const Onboarding = () => {
 
     const submit = async (event) => {
         event.preventDefault();
-        if (!validateStep(2)) return;
+        if (!validateStep(3)) return;
 
         setLoading(true);
         setServerError('');
+        setNotice('');
         try {
             await apiConfig.post('onboarding/register', values);
 
@@ -99,7 +156,7 @@ const Onboarding = () => {
                     setStep(1);
                 }
             }
-            setServerError(error?.response?.data?.message || 'No pudimos crear la cuenta. Inténtelo nuevamente.');
+            setServerError(apiMessage(error, 'No pudimos crear la cuenta. Inténtelo nuevamente.'));
             setLoading(false);
         }
     };
@@ -121,6 +178,8 @@ const Onboarding = () => {
                     placeholder={options.placeholder || ''}
                     autoComplete={options.autoComplete}
                     required={options.required}
+                    inputMode={options.inputMode}
+                    maxLength={options.maxLength}
                     aria-invalid={Boolean(errors[name])}
                     aria-describedby={[errors[name] && `ob-${name}-error`, options.hint && `ob-${name}-hint`].filter(Boolean).join(' ') || undefined}
                 />
@@ -144,21 +203,24 @@ const Onboarding = () => {
             <AuthLayout page="onboarding">
                         <div className="ob-topline">
                             <Link to="/login" className="auth-inline-link" aria-disabled={loading} onClick={(event) => loading && event.preventDefault()}>← Volver al acceso</Link>
-                            <span aria-live="polite">Paso {step} de 2</span>
+                            <span aria-live="polite">Paso {step} de 3</span>
                         </div>
                         <ol className="ob-steps" aria-label="Pasos de registro">
-                            <li className={step === 1 ? 'is-current' : 'is-complete'} aria-current={step === 1 ? 'step' : undefined}><span>{step === 2 ? '✓' : '1'}</span><strong>Tu empresa</strong></li>
-                            <li className={step === 2 ? 'is-current' : ''} aria-current={step === 2 ? 'step' : undefined}><span>2</span><strong>Tu cuenta</strong></li>
+                            {[[1, 'Tu empresa'], [2, 'Tu cuenta'], [3, 'Verificación']].map(([number, label]) => (
+                                <li key={number} className={step === number ? 'is-current' : (step > number ? 'is-complete' : '')} aria-current={step === number ? 'step' : undefined}><span>{step > number ? '✓' : number}</span><strong>{label}</strong></li>
+                            ))}
                         </ol>
                         <div className="auth-card__intro">
                             <span className="auth-card__eyebrow">Cuenta empresarial</span>
-                            <h2 ref={headingRef} tabIndex={-1}>{step === 1 ? 'Configura tu negocio' : 'Crea tu cuenta propietaria'}</h2>
-                            <p>{step === 1 ? 'Estos datos identificarán tu espacio de trabajo.' : 'Usarás estas credenciales para administrar EcuaPOS.'}</p>
+                            <h2 ref={headingRef} tabIndex={-1}>{STEP_TITLES[step][0]}</h2>
+                            <p>{STEP_TITLES[step][1]}</p>
                         </div>
 
                         {serverError && <div className="ob-server-error" role="alert">{serverError}</div>}
 
-                        <form onSubmit={step === 1 ? (event) => { event.preventDefault(); continueToOwner(); } : submit} noValidate>
+                        <form onSubmit={step === 1
+                            ? (event) => { event.preventDefault(); continueToOwner(); }
+                            : (step === 2 ? (event) => { event.preventDefault(); continueToVerification(); } : submit)} noValidate>
                             <fieldset disabled={loading} className="ob-fieldset">
                         {step === 1 ? (
                             <div className="ob-form-grid">
@@ -171,7 +233,7 @@ const Onboarding = () => {
                                     <button type="submit" className="auth-primary-button"><span className="auth-button__content"><span className="auth-button__label">Continuar con mi cuenta</span><span className="auth-button__arrow" aria-hidden="true">→</span></span></button>
                                 </div>
                             </div>
-                        ) : (
+                        ) : step === 2 ? (
                             <div className="ob-form-grid">
                                 <div className="ob-business-summary ob-full"><span>Tu empresa</span><strong>{values.organization_name}</strong><small>{values.city}{values.province ? `, ${values.province}` : ''}</small></div>
                                 {field('first_name', 'Nombres', { required: true, autoComplete: 'given-name' })}
@@ -187,6 +249,27 @@ const Onboarding = () => {
                                 {errors.terms && <span id="ob-terms-error" className="auth-error ob-full" role="alert">{errors.terms}</span>}
                                 <div className="ob-actions ob-full">
                                     <button type="button" className="auth-secondary-button" onClick={() => setStep(1)} disabled={loading}>Atrás</button>
+                                    <button type="submit" className="auth-primary-button" disabled={loading}>
+                                        <span className="auth-button__content">{loading && <span className="auth-spinner" />}<span className="auth-button__label">{loading ? 'Enviando código...' : 'Verificar mi correo'}</span>{!loading && <span className="auth-button__arrow" aria-hidden="true">→</span>}</span>
+                                    </button>
+                                </div>
+                            </div>
+                        ) : (
+                            <div className="ob-form-grid">
+                                <div className="ob-business-summary ob-full"><span>Código enviado a</span><strong>{codeSentTo}</strong><small>Vence en 15 minutos.</small></div>
+                                {notice && <div className="ob-field-hint ob-full" role="status">{notice}</div>}
+                                {field('email_code', 'Código de verificación', { full: true, required: true, inputMode: 'numeric', maxLength: 6, autoComplete: 'one-time-code', placeholder: '000000' })}
+                                <div className="ob-full">
+                                    <button
+                                        type="button"
+                                        className="auth-inline-link"
+                                        onClick={sendCode}
+                                        disabled={loading || resendIn > 0}
+                                        style={{ background: 'none', border: 0, padding: 0 }}
+                                    >{resendIn > 0 ? `Reenviar código en ${resendIn} s` : 'Reenviar código'}</button>
+                                </div>
+                                <div className="ob-actions ob-full">
+                                    <button type="button" className="auth-secondary-button" onClick={() => setStep(2)} disabled={loading}>Cambiar correo</button>
                                     <button type="submit" className="auth-primary-button" disabled={loading}>
                                         <span className="auth-button__content">{loading && <span className="auth-spinner" />}<span className="auth-button__label">{loading ? 'Preparando tu cuenta...' : 'Crear mi cuenta'}</span>{!loading && <span className="auth-button__arrow" aria-hidden="true">→</span>}</span>
                                     </button>
