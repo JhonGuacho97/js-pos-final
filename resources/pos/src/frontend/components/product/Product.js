@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import { Card } from "react-bootstrap-v5";
 import { connect, useDispatch } from "react-redux";
 import useSound from "use-sound";
@@ -16,7 +16,7 @@ import PresentationSelectModal from "./PresentationSelectModal";
 import VariationSelectModal from "./VariationSelectModal";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faLayerGroup } from "@fortawesome/free-solid-svg-icons";
-import { filterCatalogProducts } from "../../../offline/catalogStorage";
+import { selectCatalogProducts } from "../../shared/catalogSelectors";
 
 const Product = (props) => {
     const {
@@ -34,6 +34,7 @@ const Product = (props) => {
         allConfigData,
         brandId,
         categoryId,
+        catalogPreview,
     } = props;
     const [updateProducts, setUpdateProducts] = useState([]);
     const [isLoading, setIsLoading] = useState(true);
@@ -70,6 +71,7 @@ const Product = (props) => {
     }, [selectedOption?.value, brandId, categoryId]);
 
     const addToCart = (product) => {
+        if (catalogPreview) return;
         // Productos con presentaciones (Unidad/Six Pack/Caja...) piden
         // primero cuál presentación y cuántas, en vez de agregar directo.
         if (product.attributes.manage_presentations) {
@@ -96,6 +98,7 @@ const Product = (props) => {
     // (ej: 1 Unidad + 2 Cajas de Corona en el mismo ticket), identificada
     // con un id compuesto para no chocar con la línea de otra presentación.
     const addPresentationToCart = (product, presentation, qty) => {
+        if (catalogPreview) return;
         play();
         posFetchProduct(product.id);
 
@@ -184,6 +187,7 @@ const Product = (props) => {
     // igual que un producto normal, solo que con la cantidad elegida en
     // el modal en vez de sumar de a uno.
     const addVariationToCart = (parentProduct, variation, qty) => {
+        if (catalogPreview) return;
         play();
         posFetchProduct(variation.id);
 
@@ -309,7 +313,7 @@ const Product = (props) => {
             }
         } else {
             setUpdateProducts((prevSelected) => [...prevSelected, product]);
-            updateCart((prevSelected) => [...prevSelected, newProduct]);
+            updateCart((prevSelected) => [...prevSelected, { ...newProduct }]);
         }
     };
 
@@ -321,54 +325,9 @@ const Product = (props) => {
     // principal en una sola tarjeta -- igual que ya se hace con las
     // presentaciones. Si tras el filtro de stock/búsqueda queda una sola
     // variante visible, se muestra normal (sin agrupar, sin selector).
-    const groupVariationProducts = (products) => {
-        if (!products) return products;
-        const grouped = [];
-        const seenMainProductIds = new Set();
-
-        products.forEach((product) => {
-            const variationInfo = product.attributes?.variation_product;
-            const mainId = variationInfo?.main_product_id;
-
-            if (!mainId) {
-                grouped.push(product);
-                return;
-            }
-            if (seenMainProductIds.has(mainId)) return;
-            seenMainProductIds.add(mainId);
-
-            const siblings = products.filter(
-                (p) => p.attributes?.variation_product?.main_product_id === mainId
-            );
-
-            if (siblings.length <= 1) {
-                grouped.push(product);
-                return;
-            }
-
-            const totalStock = siblings.reduce(
-                (sum, s) => sum + (s.attributes?.stock?.quantity || 0),
-                0
-            );
-
-            grouped.push({
-                id: `mp_${mainId}`,
-                isVariationGroup: true,
-                attributes: {
-                    ...product.attributes,
-                    stock: { quantity: totalStock },
-                    variations: siblings,
-                },
-            });
-        });
-
-        return grouped;
-    };
-
-    const posFilterProduct = groupVariationProducts(
-        filterCatalogProducts(posAllProducts, { brandId, categoryId }).filter(
-            (product) => product.attributes?.stock?.quantity > 0.0
-        )
+    const posFilterProduct = useMemo(
+        () => selectCatalogProducts(posAllProducts, { brandId, categoryId }),
+        [posAllProducts, brandId, categoryId]
     );
     const loadAllProduct = (product, index) => {
         const findDifferentWords = (str1, str2) => {
@@ -389,6 +348,8 @@ const Product = (props) => {
             <div
                 className="product-custom-card"
                 key={product.id}
+                style={{ contentVisibility: 'auto', containIntrinsicSize: 'auto 260px' }}
+                aria-disabled={catalogPreview || undefined}
                 onClick={() => addToCart(product)}
             >
                 <Card
@@ -409,6 +370,8 @@ const Product = (props) => {
                             }
                             alt={product.attributes?.name || "Producto"}
                             className="product-img"
+                            loading={index < 12 ? 'eager' : 'lazy'}
+                            decoding="async"
                         />
 
                         {(product.attributes.manage_presentations ||

@@ -29,6 +29,7 @@ const load = (file, dependencies, globals = {}) => {
 // Real filter, actions and reducer; only HTTP and IndexedDB are simulated.
 // These tests never access Laravel, a database, or the network.
 const storage = load('offline/catalogStorage.js', { '../constants': {} });
+const selectors = load('frontend/shared/catalogSelectors.js', { '../../offline/catalogStorage': storage });
 const constants = load('constants/index.js', {});
 const reducer = load('store/reducers/pos/posAllProductReducres.js', {
     '../../../constants': constants,
@@ -66,6 +67,7 @@ const fixture = ({ online = true } = {}) => {
         '../toastAction': { addToast: (payload) => ({ type: 'test-toast', payload }) },
         '../../../offline/catalogStorage': {
             ...storage,
+            getOfflineScopeKey: () => 'test-user:test-store',
             emitOfflineCatalogStatus: (status) => statuses.push(status),
             cacheCatalogImages: () => {},
             getLatestCatalogSnapshot: (warehouse) => {
@@ -140,11 +142,12 @@ test('obsolete errors do not reset connectivity or display a toast', async () =>
     const old = f.dispatch(f.fetchBrandClickable(2, 7, 1));
     const newest = f.dispatch(f.fetchBrandClickable(2, 8, 1));
     f.respond(1, [shoes]); await newest;
+    const statusCount = f.statuses.length;
     f.requests[0].reject({ response: { status: 500, data: { message: 'old failure' } } });
     await old;
     assert.deepEqual(f.ids(), ['shoes']);
     assert.equal(f.actions.length, 1);
-    assert.equal(f.statuses.length, 0);
+    assert.equal(f.statuses.length, statusCount);
 });
 
 test('offline IndexedDB reads cannot overwrite a newer filter', async () => {
@@ -213,6 +216,7 @@ const lifecycleCode = babel.transformFromAstSync({ type: 'File', program: {
 const lifecycle = (f) => {
     let cleanup;
     const timers = [];
+    const delays = [];
     const scope = {
         navigator: f.navigator, selectedOption: { value: 1 }, brandId: 2, categoryId: 7,
         brandIdRef: { current: 2 }, categoryIdRef: { current: 7 },
@@ -222,16 +226,17 @@ const lifecycle = (f) => {
         setBrandId: (id) => { scope.brandId = id; },
         fetchBrandClickable: (...args) => f.dispatch(f.fetchBrandClickable(...args)),
         useEffect: (effect) => { cleanup = effect(); },
-        setTimeout: (callback) => { timers.push(callback); return timers.length; },
+        setTimeout: (callback, delay) => { timers.push(callback); delays.push(delay); return timers.length; },
         clearTimeout: () => {},
     };
     vm.createContext(scope);
     vm.runInContext(`${lifecycleCode}\nthis.setCategory = setCategory; this.setBrand = setBrand; this.sync = syncOfflineCatalog;`, scope);
-    return { scope, cleanup: () => cleanup(), start: () => timers[0]() };
+    return { scope, delays, cleanup: () => cleanup(), start: () => timers[0]() };
 };
 
 test('initial POS load saves a full catalog but displays the selected category', async () => {
     const f = fixture(), page = lifecycle(f);
+    assert.equal(page.delays[0], 0);
     const pending = page.start();
     f.respond(0, allProducts); await pending;
     assert.deepEqual(f.ids(), ['beer']);
@@ -293,33 +298,18 @@ test('brand changes invalidate pending requests without resetting category', asy
 });
 
 test('product grid enforces category/brand/stock before grouping variants', () => {
-    const ast = babel.parseSync(source('frontend/components/product/Product.js'), {
-        babelrc: false, configFile: false, parserOpts: { plugins: ['jsx'] },
-    });
-    const body = ast.program.body.find((node) =>
-        node.type === 'VariableDeclaration' && node.declarations[0].id.name === 'Product'
-    ).declarations[0].init.body.body;
-    const productNodes = body.filter((node) => node.type === 'VariableDeclaration'
-        && ['groupVariationProducts', 'posFilterProduct'].includes(node.declarations[0].id.name));
-    assert.equal(productNodes.length, 2);
-    const { code } = babel.transformFromAstSync({ type: 'File', program: {
-        type: 'Program', sourceType: 'script', body: productNodes,
-    } }, undefined, { babelrc: false, configFile: false });
     const firstVariant = product('variant-1');
     const secondVariant = product('variant-2');
     firstVariant.attributes.variation_product = { main_product_id: 10 };
     secondVariant.attributes.variation_product = { main_product_id: 10 };
     const noStock = product('sold-out');
     noStock.attributes.stock.quantity = 0;
-    const scope = {
-        filterCatalogProducts: storage.filterCatalogProducts, brandId: '2', categoryId: '7',
-        posAllProducts: [...allProducts, noStock, firstVariant, secondVariant],
-    };
-    vm.createContext(scope);
-    vm.runInContext(`${code}\nthis.products = posFilterProduct;`, scope);
-    assert.deepEqual(Array.from(scope.products, (item) => item.id), ['beer', 'mp_10']);
-    assert.equal(scope.products[1].attributes.variations.length, 2);
-    assert.equal(scope.products[1].attributes.stock.quantity, 10);
+    const products = selectors.selectCatalogProducts(
+        [...allProducts, noStock, firstVariant, secondVariant], { brandId: '2', categoryId: '7' }
+    );
+    assert.deepEqual(Array.from(products, (item) => item.id), ['beer', 'mp_10']);
+    assert.equal(products[1].attributes.variations.length, 2);
+    assert.equal(products[1].attributes.stock.quantity, 10);
 });
 
 test('category highlight follows the parent selection with numeric/string IDs', () => {

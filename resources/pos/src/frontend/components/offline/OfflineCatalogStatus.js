@@ -25,6 +25,14 @@ const statusCopy = (status) => {
         };
     }
 
+    if (status.catalogPreview) {
+        return {
+            icon: "bi-arrow-repeat",
+            title: "Actualizando precios y existencias",
+            detail: "Vista previa del catálogo guardado. Podrás agregar productos al terminar la actualización.",
+        };
+    }
+
     if (status.status === "syncing") {
         return {
             icon: "bi-arrow-repeat",

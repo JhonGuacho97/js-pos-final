@@ -11,7 +11,8 @@
         "rtl": "webpack --config webpack-rtl.config.js",
         "build": "mix --production",
         "test:pos-catalog": "node --test tools/tests/pos-catalog-filter.test.cjs",
-        "test:pos-checkout": "node --test tools/tests/pos-checkout-receipt.test.cjs"
+        "test:pos-checkout": "node --test tools/tests/pos-checkout-receipt.test.cjs",
+        "test:pos-performance": "node --test tools/tests/pos-catalog-performance.test.cjs"
     },
     "devDependencies": {
         "@babel/preset-react": "^7.28.5",
