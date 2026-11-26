@@ -5,6 +5,7 @@ namespace App\Models;
 use App\Models\Concerns\BelongsToStore;
 
 use App\Models\Contracts\JsonResourceful;
+use App\Traits\HasCatalogImages;
 use App\Traits\HasJsonResourcefulData;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -84,7 +85,10 @@ use Spatie\MediaLibrary\MediaCollections\Models\Media;
  */
 class Product extends BaseModel implements HasMedia, JsonResourceful
 {
-    use HasFactory, InteractsWithMedia, HasJsonResourcefulData, BelongsToStore;
+    use HasFactory, InteractsWithMedia, HasJsonResourcefulData, BelongsToStore, HasCatalogImages {
+        // Las versiones reducidas de fotos para el catálogo virtual.
+        HasCatalogImages::registerMediaConversions insteadof InteractsWithMedia;
+    }
 
     protected $table = 'products';
 
