@@ -23,4 +23,6 @@ Route::get('/catalogo/{store:slug}', CatalogPageController::class)->name('catalo
 Route::post('/catalogo/{store:slug}/pedidos', [PublicCatalogController::class, 'storeOrder'])
     ->middleware('throttle:15,1')->name('catalog.orders.store');
 
-include 'upgrade.php';
+// Las migraciones se ejecutan solo desde la consola durante el despliegue
+// (deploy/vps/update-site.sh). Antes había rutas GET públicas que
+// corrían `migrate --force` sin autenticación.

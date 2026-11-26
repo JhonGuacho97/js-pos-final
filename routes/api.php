@@ -79,7 +79,10 @@ use Illuminate\Support\Facades\Route;
 // base de datos ni expone información de la instalación.
 Route::get('/health', HealthController::class);
 
-Route::get('/sri/lookup', [SriController::class, 'lookup']);
+// Consulta de cédula/RUC: gasta el token de ApiConsult y devuelve datos
+// personales, así que solo la usan usuarios con sesión y con límite.
+Route::middleware(['auth:sanctum', 'store.context', 'throttle:30,1'])
+    ->get('/sri/lookup', [SriController::class, 'lookup']);
 Route::prefix('catalog/{store:slug}')->middleware('throttle:60,1')->group(function () {
     Route::get('/', [PublicCatalogController::class, 'show']);
 });
