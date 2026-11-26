@@ -1,4 +1,7 @@
 * text=auto
+# Los scripts del VPS se ejecutan en Linux: siempre con saltos de línea LF,
+# aunque se copien desde un checkout de Windows.
+*.sh text eol=lf
 
 *.blade.php diff=html
 *.css diff=css
