@@ -9,7 +9,8 @@
         "prod": "npm run production",
         "production": "mix --production",
         "rtl": "webpack --config webpack-rtl.config.js",
-        "build": "mix --production"
+        "build": "mix --production",
+        "test:pos-catalog": "node --test tools/tests/pos-catalog-filter.test.cjs"
     },
     "devDependencies": {
         "@babel/preset-react": "^7.28.5",
