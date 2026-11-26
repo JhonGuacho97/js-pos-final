@@ -102,7 +102,7 @@ const ActionDropDownButton = (props) => {
                         disabled={isEmitiendoFactura}
                         className='py-3 px-4 d-flex align-items-center fs-6'
                     >
-                        <img src="https://res.cloudinary.com/dxt0es7sj/image/upload/v1785960274/sri_negro_ct8qgt.svg" alt="SRI" className='me-2' />
+                        <img src="/images/sri-logo.webp" alt="SRI" className='me-2' width="22" height="22" style={{ objectFit: 'contain', flexShrink: 0 }} />
                         {isEmitiendoFactura ? 'Emitiendo...' : 'Emitir Factura'}
                     </Dropdown.Item>
                     : null}
