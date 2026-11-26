@@ -457,6 +457,16 @@ export const deleteOfflineSyncCredential = async () => {
     );
 };
 
+// El servidor respondió 401 con esta credencial (por ejemplo, la base de
+// datos se reemplazó y el token ya no existe). Se borra solo si sigue
+// siendo la guardada: otra pestaña pudo haberla renovado mientras tanto.
+export const discardRejectedOfflineSyncCredential = async (token) => {
+    const current = await getOfflineSyncCredential().catch(() => null);
+    if (token && current?.token === token) {
+        await deleteOfflineSyncCredential();
+    }
+};
+
 export const getOfflineSyncCredentialsForCurrentUser = async () => {
     const { user } = getOfflineScope();
     const credentials = await runRequest(

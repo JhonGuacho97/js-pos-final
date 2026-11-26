@@ -1,5 +1,6 @@
 import {
     claimOfflineSale,
+    discardRejectedOfflineSyncCredential,
     getOfflineCustomer,
     getOfflineSales,
     getOfflineSyncCredential,
@@ -48,7 +49,7 @@ export const syncOfflineSales = (callbacks = {}) => {
             if (callbacks.force || sale.status === "syncing") return true;
             return !sale.nextRetryAt || new Date(sale.nextRetryAt).getTime() <= now;
         });
-        const result = { synced: 0, review: 0, remaining: sales.length, credentialMissing: false };
+        const result = { synced: 0, review: 0, remaining: sales.length, credentialMissing: false, authFailed: false };
         if (sales.length && (!credential?.token
             || new Date(credential.expires_at).getTime() <= Date.now())) {
             result.credentialMissing = true;
@@ -180,6 +181,15 @@ export const syncOfflineSales = (callbacks = {}) => {
                 });
                 result.review += 1;
                 result.remaining -= 1;
+                if (responseStatus === 401) {
+                    // La credencial ya no vale en el servidor: se descarta
+                    // para que ensureOfflineSyncCredential() pida otra y el
+                    // llamador reintente. Las ventas siguientes fallarían
+                    // igual, así que no tiene sentido seguir con esta.
+                    await discardRejectedOfflineSyncCredential(credential.token).catch(() => null);
+                    result.authFailed = true;
+                    break;
+                }
                 await callbacks.onReview?.(claimedSale, message);
             }
         }

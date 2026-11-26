@@ -1,5 +1,6 @@
 import {
     claimOfflineCustomer,
+    discardRejectedOfflineSyncCredential,
     getOfflineCustomers,
     getOfflineSyncCredential,
     updateOfflineCustomer,
@@ -29,7 +30,7 @@ export const syncOfflineCustomers = (options = {}) => {
             if (options.force || customer.status === "syncing") return true;
             return !customer.nextRetryAt || new Date(customer.nextRetryAt).getTime() <= now;
         });
-        const result = { synced: 0, review: 0, remaining: customers.length, credentialMissing: false };
+        const result = { synced: 0, review: 0, remaining: customers.length, credentialMissing: false, authFailed: false };
 
         if (!customers.length) return result;
         if (!credential?.token || Number(credential.version || 0) < 2
@@ -89,6 +90,13 @@ export const syncOfflineCustomers = (options = {}) => {
                 });
                 result.review += 1;
                 result.remaining -= 1;
+                if (response.status === 401) {
+                    // Credencial rechazada: se descarta para renovarla (ver
+                    // syncOfflineSales) en vez de bloquear la cola.
+                    await discardRejectedOfflineSyncCredential(credential.token).catch(() => null);
+                    result.authFailed = true;
+                    break;
+                }
                 await options.onReview?.(claimed, message);
             } catch (error) {
                 const attempts = Number(claimed.attempts || 1);

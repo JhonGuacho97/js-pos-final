@@ -72,6 +72,7 @@ import {
     OFFLINE_CUSTOMERS_EVENT,
     OFFLINE_SALES_EVENT,
     reserveOfflineCatalogStock,
+    resetOfflineAuthFailures,
     resetOfflineCsrfFailures,
 } from "../../offline/catalogStorage";
 import { diagnoseOfflineSale, syncOfflineSales } from "../../offline/offlineSalesSync";
@@ -399,10 +400,35 @@ const PosMainPage = (props) => {
         );
     };
 
+    // Si el servidor rechaza la credencial de sincronización (401), la
+    // sincronización la descarta; aquí se pide una nueva y se reintenta una
+    // sola vez. Sin esto, una credencial que dejó de existir en el servidor
+    // (por ejemplo, tras reemplazar la base de datos) bloqueaba todas las
+    // ventas con "Unauthenticated." hasta que venciera, un mes después.
+    const runWithFreshCredential = async (syncFn, options) => {
+        let result = await syncFn(options).catch(() => null);
+        if (result?.authFailed) {
+            const fresh = await ensureOfflineSyncCredential().catch(() => null);
+            if (fresh?.token) {
+                result = await syncFn({ ...options, credential: fresh }).catch(() => null);
+            }
+            if (!fresh?.token || result?.authFailed) {
+                dispatch(addToast({
+                    text: "El servidor no aceptó la sesión para sincronizar. Cierra sesión y vuelve a ingresar.",
+                    type: toastType.ERROR,
+                }));
+            }
+        }
+        return result;
+    };
+
     const syncQueuedSales = async (force = false) => {
         if (!navigator.onLine) return;
 
         await resetOfflineCsrfFailures().catch(() => null);
+        // Ventas bloqueadas por una credencial rechazada vuelven a la cola:
+        // el reintento descubre si la credencial sigue sin valer y la renueva.
+        await resetOfflineAuthFailures().catch(() => null);
 
         let credential = await getOfflineSyncCredential().catch(() => null);
         const pendingSales = (await getOfflineSales().catch(() => []))
@@ -416,7 +442,7 @@ const PosMainPage = (props) => {
             credential = await ensureOfflineSyncCredential().catch(() => credential);
         }
         if (customersNeedingSync.length) {
-            const customerResult = await syncOfflineCustomers({
+            const customerResult = await runWithFreshCredential(syncOfflineCustomers, {
                 force,
                 credential,
                 onReview: (_queuedCustomer, message) => {
@@ -425,7 +451,7 @@ const PosMainPage = (props) => {
                         type: toastType.WARNING,
                     }));
                 },
-            }).catch(() => null);
+            });
 
             if (customerResult?.credentialMissing) {
                 dispatch(addToast({
@@ -441,7 +467,7 @@ const PosMainPage = (props) => {
             }
         }
 
-        const result = await syncOfflineSales({
+        const result = await runWithFreshCredential(syncOfflineSales, {
             force,
             credential,
             onReview: (_queuedSale, message) => {
@@ -450,7 +476,7 @@ const PosMainPage = (props) => {
                     type: toastType.WARNING,
                 }));
             },
-        }).catch(() => null);
+        });
 
         if (result?.credentialMissing) {
             dispatch(addToast({
@@ -1076,7 +1102,7 @@ const PosMainPage = (props) => {
                 setCheckoutStage("Confirmando el cobro con el servidor…");
                 const credential = await ensureOfflineSyncCredential().catch(() => null);
                 if (credential?.token) {
-                    await syncOfflineSales({
+                    await runWithFreshCredential(syncOfflineSales, {
                         force: true,
                         credential,
                         onlyClientUuid: queuedSale.clientUuid,
