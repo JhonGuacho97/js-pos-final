@@ -23,7 +23,11 @@ class PersonalAccessToken extends SanctumPersonalAccessToken
             if ($previous && Carbon::parse($previous)->gt(now()->subSeconds(self::LAST_USED_REFRESH_SECONDS))) {
                 // Se descarta el cambio pendiente: el token queda como vino
                 // de la base y no se emite ningún UPDATE.
-                $this->setRawAttributes($this->getOriginal(), true);
+                // getRawOriginal(), no getOriginal(): este último devuelve
+                // los valores ya convertidos (`abilities` como array) y, al
+                // guardarlos como atributos crudos, la siguiente lectura de
+                // `abilities` (tokenCan) fallaba con "json_decode(): ... array given".
+                $this->setRawAttributes($this->getRawOriginal(), true);
 
                 return true;
             }
