@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use App\Models\CreditNote;
+use App\Models\Customer;
 use App\Models\ElectronicInvoice;
 use App\Models\Sale;
 
@@ -147,26 +148,18 @@ class SriXmlService
         $this->nodo($dom, $infoFact, 'razonSocialComprador', $customer->razonSocialSri());
         $this->nodo($dom, $infoFact, 'identificacionComprador', $customer->identificacionSri());
         $this->nodo($dom, $infoFact, 'totalSinImpuestos', $this->decimal2($sale->subtotalSinIvaSri()));
-        $this->nodo($dom, $infoFact, 'totalDescuento', $this->decimal2($sale->discount ?? 0));
+        // Tabla 21: "Total descuento" suma los descuentos de las líneas. El
+        // descuento global de la venta no puede llegar acá (validarCalculos
+        // bloquea la emisión si se usó), así que siempre valía 0.
+        $this->nodo($dom, $infoFact, 'totalDescuento', $this->decimal2(
+            $sale->saleItems->sum(fn ($item) => $item->descuentoSri())
+        ));
 
-        // totalConImpuestos
+        // totalConImpuestos -- un <totalImpuesto> por cada tarifa usada en
+        // las líneas (0%, 15%...). Antes se sumaba todo bajo una sola
+        // tarifa y una venta mixta declaraba mal sus bases.
         $totalConImp = $dom->createElement('totalConImpuestos');
-        // Mismo criterio que en subtotalSinIvaSri(): el IVA vive por
-        // producto (Inclusivo/Exclusivo), no en un campo global de la
-        // venta -- sumar $sale->tax_amount acá era el mismo bug que en
-        // el RIDE, solo que directo en el XML que se manda al SRI.
-        $ivaFactura = $sale->saleItems->sum(fn ($item) => $item->valorIvaSri());
-        $itemConIvaFactura = $sale->saleItems->first(fn ($item) => ($item->tax_value ?: $sale->tax_rate) > 0);
-        $tarifaFactura = $itemConIvaFactura
-            ? ($itemConIvaFactura->tax_value ?: $sale->tax_rate)
-            : ($sale->tax_rate ?? 0);
-        $this->agregarTotalImpuesto(
-            $dom,
-            $totalConImp,
-            $sale->subtotalSinIvaSri(),
-            $ivaFactura,
-            $tarifaFactura
-        );
+        $this->agregarTotalesPorTarifa($dom, $totalConImp, $sale->saleItems);
         $infoFact->appendChild($totalConImp);
 
         $this->nodo($dom, $infoFact, 'propina', '0.00');
@@ -239,6 +232,9 @@ class SriXmlService
         // migración add_store_context_to_electronic_invoices_table) --
         // no hace falta derivarlo de nuevo desde la venta/almacén.
         $storeId = $facturaOrigen->store_id;
+        $this->exigirCompradorIdentificado($facturaOrigen->sale?->customer, 'nota de débito');
+        $tarifa = $facturaOrigen->sale?->tax_rate ?? 15;
+        $codigoPorcentaje = SriCatalogo::codigoPorcentajeIva((float) $tarifa);
 
         $cfg = SriConfigService::get($storeId);
         $secuencial = $this->proximoSecuencial(ElectronicInvoice::NOTA_DEBITO, $storeId, $cfg);
@@ -257,7 +253,6 @@ class SriXmlService
         $customer = $sale->customer;
 
         $totalSinImp = collect($motivos)->sum('valor');
-        $tarifa = $sale->tax_rate ?? 15;
         $iva = round($totalSinImp * $tarifa / 100, 2);
         $total = round($totalSinImp + $iva, 2);
 
@@ -304,7 +299,10 @@ class SriXmlService
             $dom,
             $infoND,
             'fechaEmisionDocSustento',
-            $facturaOrigen->created_at->format('d/m/Y')
+            // La fecha de emisión de la factura es la de la venta (la misma
+            // que lleva su XML). created_at está en UTC y después de las
+            // 19:00 de Ecuador ya marca el día siguiente.
+            $sale->fechaEmisionSri()
         );
         $this->nodo($dom, $infoND, 'totalSinImpuestos', $this->decimal2($totalSinImp));
 
@@ -312,7 +310,7 @@ class SriXmlService
         $impuestos = $dom->createElement('impuestos');
         $impuesto = $dom->createElement('impuesto');
         $this->nodo($dom, $impuesto, 'codigo', '2');
-        $this->nodo($dom, $impuesto, 'codigoPorcentaje', $this->codigoPorcentaje($tarifa));
+        $this->nodo($dom, $impuesto, 'codigoPorcentaje', $codigoPorcentaje);
         $this->nodo($dom, $impuesto, 'tarifa', $this->decimal2($tarifa));
         $this->nodo($dom, $impuesto, 'baseImponible', $this->decimal2($totalSinImp));
         $this->nodo($dom, $impuesto, 'valor', $this->decimal2($iva));
@@ -424,7 +422,9 @@ class SriXmlService
             $dom,
             $infoNC,
             'fechaEmisionDocSustento',
-            optional($sale?->created_at)->format('d/m/Y') ?: $fechaEmision
+            // Fecha de la venta = fecha de emisión de la factura que se
+            // corrige (created_at está en UTC, ver nota de débito).
+            $sale?->date ? $sale->fechaEmisionSri() : $fechaEmision
         );
 
         $totalSinImp = $creditNote->subtotalSinIvaSri();
@@ -435,14 +435,7 @@ class SriXmlService
         // totalConImpuestos -- mismo criterio que Factura: el IVA vive
         // por producto (Inclusivo/Exclusivo), se suma real de las líneas.
         $totalConImp = $dom->createElement('totalConImpuestos');
-        $ivaNota = $creditNote->creditNoteItems->sum(fn ($item) => $item->valorIvaSri());
-        $itemConIva = $creditNote->creditNoteItems->first(
-            fn ($item) => ($item->tax_value ?: $creditNote->tax_rate) > 0
-        );
-        $tarifaNota = $itemConIva
-            ? ($itemConIva->tax_value ?: $creditNote->tax_rate)
-            : ($creditNote->tax_rate ?? 0);
-        $this->agregarTotalImpuesto($dom, $totalConImp, $totalSinImp, $ivaNota, $tarifaNota);
+        $this->agregarTotalesPorTarifa($dom, $totalConImp, $creditNote->creditNoteItems);
         $infoNC->appendChild($totalConImp);
 
         $this->nodo($dom, $infoNC, 'motivo', $creditNote->motivo);
@@ -561,8 +554,13 @@ class SriXmlService
     private function validarCalculosNotaCredito(CreditNote $creditNote): void
     {
         $tolerancia = 0.02;
+        $this->exigirCompradorIdentificado($creditNote->customer, 'nota de crédito');
 
         foreach ($creditNote->creditNoteItems as $item) {
+            // Tarifa fuera de la Tabla 17: se detiene acá, antes de gastar
+            // un secuencial.
+            $item->codigoPorcentajeIvaSri();
+
             // Con presentación (Six Pack/Caja/...), product_price queda
             // guardado al precio DE LA PRESENTACIÓN (ej. $30 la caja),
             // pero 'quantity' se convierte a unidades base de inventario
@@ -625,7 +623,20 @@ class SriXmlService
     {
         $tolerancia = 0.02; // margen de redondeo aceptable
 
+        // Numeral 9.10 de la ficha técnica: sobre USD 50 la factura debe
+        // llevar los datos del comprador.
+        if (self::excedeConsumidorFinal($sale)) {
+            throw new \RuntimeException(
+                'No se puede emitir: una factura de más de USD '.number_format(SriCatalogo::MAXIMO_CONSUMIDOR_FINAL, 2).
+                ' no puede ir a "Consumidor final". Asigna a la venta un cliente con cédula o RUC y reintenta.'
+            );
+        }
+
         foreach ($sale->saleItems as $item) {
+            // Tarifa fuera de la Tabla 17: se detiene acá, antes de gastar
+            // un secuencial.
+            $item->codigoPorcentajeIvaSri();
+
             // Con presentación (Six Pack/Caja/...), product_price queda
             // guardado al precio DE LA PRESENTACIÓN (ej. $30 la caja),
             // pero 'quantity' se convierte a unidades base de inventario
@@ -731,31 +742,66 @@ class SriXmlService
         }
     }
 
-    private function agregarTotalImpuesto(
-        \DOMDocument $dom,
-        \DOMElement $parent,
-        float $base,
-        float $valorIva,
-        float $tarifa
-    ): void {
-        $totalImp = $dom->createElement('totalImpuesto');
-        $this->nodo($dom, $totalImp, 'codigo', '2');
-        $this->nodo($dom, $totalImp, 'codigoPorcentaje', $this->codigoPorcentaje($tarifa));
-        $this->nodo($dom, $totalImp, 'baseImponible', $this->decimal2($base));
-        $this->nodo($dom, $totalImp, 'valor', $this->decimal2($valorIva));
-        $parent->appendChild($totalImp);
+    public static function excedeConsumidorFinal(Sale $sale): bool
+    {
+        $customer = $sale->customer;
+
+        return $customer
+            && $customer->tipoIdentificacionSri() === Customer::TIPO_CONSUMIDOR_FINAL
+            && round((float) $sale->grand_total, 2) > SriCatalogo::MAXIMO_CONSUMIDOR_FINAL;
     }
 
-    private function codigoPorcentaje(float $tarifa): string
+    /**
+     * Ficha técnica (tabla de tipos de identificación): las notas de
+     * crédito y de débito deben identificar al receptor con RUC, cédula,
+     * pasaporte o identificación del exterior, nunca "Consumidor final".
+     * Además, desde el 01/01/2026 una factura a consumidor final ya no se
+     * puede corregir con nota de crédito (Resolución NAC-DGERCGC25-00000017).
+     */
+    private function exigirCompradorIdentificado(?Customer $customer, string $documento): void
     {
-        return match ((int) $tarifa) {
-            0 => '0',
-            12 => '2',
-            14 => '3',
-            15 => '4',
-            5 => '5',
-            default => '4',
-        };
+        if (!$customer || $customer->tipoIdentificacionSri() === Customer::TIPO_CONSUMIDOR_FINAL) {
+            throw new \RuntimeException(
+                "No se puede emitir: el SRI no permite una {$documento} a \"Consumidor final\". ".
+                'El comprobante debe ir a un cliente identificado con cédula, RUC o pasaporte.'
+            );
+        }
+    }
+
+    /**
+     * Un <totalImpuesto> por cada código de tarifa presente en las líneas,
+     * con la suma de sus bases e IVA. Así una venta con productos al 0% y
+     * al 15% declara cada base en su tarifa, como pide la Tabla 21.
+     */
+    private function agregarTotalesPorTarifa(\DOMDocument $dom, \DOMElement $parent, $items): void
+    {
+        foreach (self::totalesPorTarifa($items) as $codigo => $total) {
+            $totalImp = $dom->createElement('totalImpuesto');
+            $this->nodo($dom, $totalImp, 'codigo', '2');
+            $this->nodo($dom, $totalImp, 'codigoPorcentaje', (string) $codigo);
+            $this->nodo($dom, $totalImp, 'baseImponible', $this->decimal2($total['base']));
+            $this->nodo($dom, $totalImp, 'valor', $this->decimal2($total['valor']));
+            $parent->appendChild($totalImp);
+        }
+    }
+
+    /**
+     * @return array<string, array{base: float, valor: float, tarifa: float}>
+     */
+    public static function totalesPorTarifa($items): array
+    {
+        $totales = [];
+
+        foreach ($items as $item) {
+            $codigo = $item->codigoPorcentajeIvaSri();
+            $totales[$codigo] ??= ['base' => 0.0, 'valor' => 0.0, 'tarifa' => $item->tarifaIvaSri()];
+            $totales[$codigo]['base'] = round($totales[$codigo]['base'] + $item->precioTotalSinImpuestoSri(), 2);
+            $totales[$codigo]['valor'] = round($totales[$codigo]['valor'] + $item->valorIvaSri(), 2);
+        }
+
+        ksort($totales, SORT_NATURAL);
+
+        return $totales;
     }
 
     private function decimal2(float $valor): string

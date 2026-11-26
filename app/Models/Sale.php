@@ -318,19 +318,21 @@ class Sale extends BaseModel implements HasMedia, JsonResourceful
     }
 
     /**
-     * Forma de pago mapeada al código SRI.
-     * Basado en las constantes que ya tienes: CASH=1, CHEQUE=2,
-     * BANK_TRANSFER=3, OTHER=4.
+     * Forma de pago mapeada a la Tabla 24 de la ficha técnica del SRI.
+     * Cheque y transferencia pasan por el sistema financiero: código 20.
+     * El 15 es "compensación de deudas" y no corresponde a ninguno.
      */
+    public static function codigoFormaPagoSri(?int $paymentType): string
+    {
+        return match ($paymentType) {
+            self::CHEQUE, self::BANK_TRANSFER => '20',
+            default => '01', // efectivo / otros
+        };
+    }
+
     public function formaPagoSri(): string
     {
-        return match ($this->payment_type) {
-            self::CASH => '01', // efectivo
-            self::CHEQUE => '15', // transferencia (cheque → más cercano)
-            self::BANK_TRANSFER => '15', // transferencia bancaria
-            self::OTHER => '01', // otros → efectivo por defecto
-            default => '01',
-        };
+        return self::codigoFormaPagoSri($this->payment_type === null ? null : (int) $this->payment_type);
     }
 
     /**
@@ -354,11 +356,7 @@ class Sale extends BaseModel implements HasMedia, JsonResourceful
                 continue;
             }
 
-            $code = match ((int) $payment->payment_type) {
-                self::CASH => '01',
-                self::CHEQUE, self::BANK_TRANSFER => '15',
-                default => '01',
-            };
+            $code = self::codigoFormaPagoSri((int) $payment->payment_type);
             $grouped[$code] = round(($grouped[$code] ?? 0) + $amount, 2);
             $remaining = round($remaining - $amount, 2);
         }

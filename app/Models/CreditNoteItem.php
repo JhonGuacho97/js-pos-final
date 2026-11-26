@@ -134,18 +134,7 @@ class CreditNoteItem extends BaseModel implements JsonResourceful
 
     public function codigoPorcentajeIvaSri(): string
     {
-        $tarifa = ($this->tax_value > 0)
-            ? $this->tax_value
-            : ($this->creditNote->tax_rate ?? 0);
-
-        return match ((int) $tarifa) {
-            0 => '0',
-            12 => '2',
-            14 => '3',
-            15 => '4',
-            5 => '5',
-            default => '4',
-        };
+        return \App\Services\SriCatalogo::codigoPorcentajeIva($this->tarifaIvaSri());
     }
 
     public function tarifaIvaSri(): float

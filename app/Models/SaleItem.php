@@ -231,19 +231,7 @@ class SaleItem extends BaseModel implements JsonResourceful
      */
     public function codigoPorcentajeIvaSri(): string
     {
-        // Si el item no tiene tarifa definida, toma la de la venta
-        $tarifa = ($this->tax_value > 0)
-            ? $this->tax_value
-            : ($this->sale->tax_rate ?? 0);
-
-        return match ((int) $tarifa) {
-            0 => '0',
-            12 => '2',
-            14 => '3',
-            15 => '4',
-            5 => '5',
-            default => '4',
-        };
+        return \App\Services\SriCatalogo::codigoPorcentajeIva($this->tarifaIvaSri());
     }
 
     public function tarifaIvaSri(): float

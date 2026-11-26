@@ -225,6 +225,10 @@
                 <div class="small">
                     Obligado a llevar contabilidad: {{ $sri['obligado_contabilidad'] }}
                 </div>
+
+                @if (!empty($leyendaRimpe))
+                    <div class="small" style="margin-top:2px;"><strong>{{ $leyendaRimpe }}</strong></div>
+                @endif
             </td>
             <td class="qr-cell" style="width: 26%;">
                 <img src="{{ $qrBase64 }}" style="width: 90px; height: 90px;" />
@@ -243,7 +247,7 @@
 
                     <table style="width:100%; margin-top:4px;">
                         <tr>
-                            <td class="small" style="padding:0;">Ambiente: <strong>{{ ($sri['ambiente'] ?? config('sri.ambiente')) == 1 ? 'PRUEBAS' : 'PRODUCCIÓN' }}</strong></td>
+                            <td class="small" style="padding:0;">Ambiente: <strong>{{ ($factura->ambiente ?? $sri['ambiente'] ?? config('sri.ambiente')) == 1 ? 'PRUEBAS' : 'PRODUCCIÓN' }}</strong></td>
                             <td class="small" style="padding:0; text-align:right;">Emisión: <strong>NORMAL</strong></td>
                         </tr>
                     </table>
@@ -269,7 +273,7 @@
                             <td>Identificación: <strong>{{ $venta->customer->identificacionSri() }}</strong></td>
                         </tr>
                         <tr>
-                            <td>Fecha Emisión: {{ $factura->created_at->format('d/m/Y') }}</td>
+                            <td>Fecha Emisión: {{ $resumen['fecha_emision'] ?? ($notaDebitoData['fecha_emision'] ?? $venta->fechaEmisionSri()) }}</td>
                             <td>Dirección: {{ $venta->customer->address }}</td>
                         </tr>
                     </table>
@@ -344,7 +348,9 @@
                     <div>Email: {{ $venta->customer->email }}</div>
                     <div>Teléfono: {{ $venta->customer->phone }}</div>
                     @if (!$notaDebitoData)
-                        <div>Forma de pago: {{ $formaPagoTexto }}</div>
+                        @foreach ($resumen['pagos'] as $pago)
+                            <div>Forma de pago: {{ $pago['texto'] }} -- ${{ number_format($pago['total'], 2) }}</div>
+                        @endforeach
                     @endif
                 </div>
             </td>
@@ -364,31 +370,29 @@
                         <td class="value">${{ number_format($notaDebitoData['total'], 2) }}</td>
                     </tr>
                     @else
+                    @foreach ($resumen['subtotales'] as $fila)
+                    <tr>
+                        <td class="label">{{ $fila['label'] }}</td>
+                        <td class="value">${{ number_format($fila['valor'], 2) }}</td>
+                    </tr>
+                    @endforeach
                     <tr>
                         <td class="label">Subtotal sin impuestos</td>
-                        <td class="value">${{ number_format($venta->subtotalSinIvaSri(), 2) }}</td>
+                        <td class="value">${{ number_format($resumen['subtotal'], 2) }}</td>
                     </tr>
                     <tr>
-                        <td class="label">Descuento</td>
-                        <td class="value">${{ number_format($venta->discount ?? 0, 2) }}</td>
+                        <td class="label">Total descuento</td>
+                        <td class="value">${{ number_format($resumen['descuento'], 2) }}</td>
                     </tr>
-                    @php
-                        // La tarifa de IVA vive por producto, no a nivel
-                        // de venta -- se suma el IVA real de cada línea.
-                        // Se muestra la tarifa del primer producto con
-                        // IVA > 0 como referencia (asume una sola tarifa
-                        // por venta, el caso normal).
-                        $ivaTotal = $venta->saleItems->sum(fn ($item) => $item->valorIvaSri());
-                        $itemConIva = $venta->saleItems->first(fn ($item) => ($item->tax_value ?: $venta->tax_rate) > 0);
-                        $tarifaMostrada = $itemConIva ? ($itemConIva->tax_value ?: $venta->tax_rate) : ($venta->tax_rate ?? 0);
-                    @endphp
+                    @foreach ($resumen['ivas'] as $fila)
                     <tr>
-                        <td class="label">IVA {{ number_format($tarifaMostrada, 0) }}%</td>
-                        <td class="value">${{ number_format($ivaTotal, 2) }}</td>
+                        <td class="label">{{ $fila['label'] }}</td>
+                        <td class="value">${{ number_format($fila['valor'], 2) }}</td>
                     </tr>
+                    @endforeach
                     <tr class="total-row">
                         <td class="label">Valor total</td>
-                        <td class="value">${{ number_format($venta->grand_total ?? 0, 2) }}</td>
+                        <td class="value">${{ number_format($resumen['total'], 2) }}</td>
                     </tr>
                     @endif
                 </table>

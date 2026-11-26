@@ -22,13 +22,9 @@ class SriRideService
      */
     private const RIDE_DISK = 'saas_private';
 
-    private const FORMAS_PAGO_TEXTO = [
-        '01' => 'EFECTIVO',
-        '15' => 'TRANSFERENCIA / COMPENSACIÓN',
-        '16' => 'TARJETA DE DÉBITO',
-        '17' => 'DINERO ELECTRÓNICO',
-        '19' => 'TARJETA DE CRÉDITO',
-        '20' => 'OTROS',
+    private const LEYENDAS_RIMPE = [
+        'EMPRENDEDOR' => 'CONTRIBUYENTE RÉGIMEN RIMPE',
+        'NEGOCIO_POPULAR' => 'CONTRIBUYENTE NEGOCIO POPULAR - RÉGIMEN RIMPE',
     ];
 
     public function generarPdf(ElectronicInvoice $factura): string
@@ -41,7 +37,6 @@ class SriRideService
             ->generate($factura->clave_acceso);
         $qrBase64 = 'data:image/svg+xml;base64,' . base64_encode($qrSvg);
 
-        $formaPagoTexto = self::FORMAS_PAGO_TEXTO[$venta->formaPagoSri()] ?? 'OTROS';
         $notaDebitoData = $factura->tipo_comprobante === ElectronicInvoice::NOTA_DEBITO
             ? $this->extraerNotaDebitoData($factura)
             : null;
@@ -51,6 +46,14 @@ class SriRideService
         // reemplaza con la configuración actual porque podría haber cambiado.
         $sriConfig['provider_ruc'] = $factura->provider_ruc;
         $logoBase64 = $this->obtenerLogoBase64($sriConfig, $factura->store_id);
+        $resumen = $notaDebitoData
+            ? null
+            : $this->resumenTributario($factura, $venta->saleItems, 'infoFactura', $sriConfig, [
+                'fecha' => $venta->fechaEmisionSri(),
+                'descuento' => $venta->saleItems->sum(fn ($item) => $item->descuentoSri()),
+                'total' => (float) $venta->grand_total,
+                'pagos' => $venta->pagosSri(),
+            ]);
 
         $pdf = Pdf::loadView('sri.ride', [
             'factura' => $factura,
@@ -58,8 +61,9 @@ class SriRideService
             'sri' => $sriConfig,
             'qrBase64' => $qrBase64,
             'logoBase64' => $logoBase64,
-            'formaPagoTexto' => $formaPagoTexto,
             'notaDebitoData' => $notaDebitoData,
+            'resumen' => $resumen,
+            'leyendaRimpe' => $this->leyendaRimpe($factura, $sriConfig),
         ])->setPaper('a4', 'portrait')->setOption([
             'tempDir' => public_path(),
             'chroot' => public_path(),
@@ -109,6 +113,13 @@ class SriRideService
             default => 'Otro',
         };
 
+        $resumen = $this->resumenTributario($comprobante, $creditNote->creditNoteItems, 'infoNotaCredito', $sriConfig, [
+            'fecha' => optional($creditNote->date)->format('d/m/Y'),
+            'descuento' => $creditNote->creditNoteItems->sum(fn ($item) => $item->descuentoSri()),
+            'total' => (float) $creditNote->grand_total,
+            'pagos' => [],
+        ]);
+
         $pdf = Pdf::loadView('sri.ride-nota-credito', [
             'comprobante' => $comprobante,
             'creditNote' => $creditNote,
@@ -116,6 +127,8 @@ class SriRideService
             'qrBase64' => $qrBase64,
             'logoBase64' => $logoBase64,
             'conceptoTexto' => $conceptoTexto,
+            'resumen' => $resumen,
+            'leyendaRimpe' => $this->leyendaRimpe($comprobante, $sriConfig),
         ])->setPaper('a4', 'portrait')->setOption([
             'tempDir' => public_path(),
             'chroot' => public_path(),
@@ -162,6 +175,138 @@ class SriRideService
     }
 
     /**
+     * Totales del RIDE según la Tabla 21 de la ficha técnica: un subtotal
+     * por cada tarifa, total descuento, IVA por tarifa y valor total. Se
+     * leen del XML que se envió al SRI para que el RIDE muestre exactamente
+     * lo autorizado (aunque el sistema haya cambiado después). Si todavía
+     * no hay XML, se calculan desde las líneas con el mismo criterio que
+     * usa SriXmlService.
+     */
+    private function resumenTributario(ElectronicInvoice $comprobante, $items, string $nodoInfo, array $sriConfig, array $respaldo): array
+    {
+        $xpath = $this->xpathComprobante($comprobante);
+
+        if ($xpath) {
+            $info = "//*[local-name()=\"{$nodoInfo}\"]";
+            $texto = static fn (string $expr, $ctx = null): string => trim((string) ($ctx
+                ? $xpath->evaluate("string({$expr})", $ctx)
+                : $xpath->evaluate("string({$expr})")));
+            $tarifas = [];
+
+            foreach ($xpath->query("{$info}/*[local-name()=\"totalConImpuestos\"]/*[local-name()=\"totalImpuesto\"]") as $nodo) {
+                if ($texto('*[local-name()="codigo"]', $nodo) !== '2') {
+                    continue;
+                }
+                $codigo = $texto('*[local-name()="codigoPorcentaje"]', $nodo);
+                $tarifas[$codigo] = [
+                    'base' => (float) $texto('*[local-name()="baseImponible"]', $nodo),
+                    'valor' => (float) $texto('*[local-name()="valor"]', $nodo),
+                ];
+            }
+
+            $pagos = [];
+            foreach ($xpath->query("{$info}/*[local-name()=\"pagos\"]/*[local-name()=\"pago\"]") as $nodo) {
+                $pagos[] = [
+                    'formaPago' => $texto('*[local-name()="formaPago"]', $nodo),
+                    'total' => (float) $texto('*[local-name()="total"]', $nodo),
+                ];
+            }
+
+            $descuento = $nodoInfo === 'infoFactura'
+                ? (float) $texto("{$info}/*[local-name()=\"totalDescuento\"]")
+                : (float) $xpath->evaluate('sum(//*[local-name()="detalle"]/*[local-name()="descuento"])');
+            $total = $nodoInfo === 'infoFactura'
+                ? (float) $texto("{$info}/*[local-name()=\"importeTotal\"]")
+                : (float) $texto("{$info}/*[local-name()=\"valorModificacion\"]");
+
+            return $this->armarResumen(
+                $tarifas,
+                (float) $texto("{$info}/*[local-name()=\"totalSinImpuestos\"]"),
+                $descuento,
+                $total,
+                $pagos,
+                $texto("{$info}/*[local-name()=\"fechaEmision\"]") ?: $respaldo['fecha']
+            );
+        }
+
+        $tarifas = array_map(
+            fn ($t) => ['base' => $t['base'], 'valor' => $t['valor']],
+            SriXmlService::totalesPorTarifa($items)
+        );
+
+        return $this->armarResumen(
+            $tarifas,
+            array_sum(array_column($tarifas, 'base')),
+            (float) $respaldo['descuento'],
+            (float) $respaldo['total'],
+            $respaldo['pagos'],
+            $respaldo['fecha']
+        );
+    }
+
+    private function armarResumen(array $tarifas, float $subtotal, float $descuento, float $total, array $pagos, ?string $fecha): array
+    {
+        ksort($tarifas, SORT_NATURAL);
+        $subtotales = [];
+        $ivas = [];
+
+        foreach ($tarifas as $codigo => $t) {
+            $etiqueta = SriCatalogo::etiquetaIva((string) $codigo);
+            $subtotales[] = ['label' => "Subtotal {$etiqueta}", 'valor' => $t['base']];
+
+            if (!in_array((string) $codigo, ['0', '6', '7'], true)) {
+                $ivas[] = ['label' => "IVA {$etiqueta}", 'valor' => $t['valor']];
+            }
+        }
+
+        return [
+            'subtotales' => $subtotales,
+            'subtotal' => $subtotal,
+            'descuento' => $descuento,
+            'ivas' => $ivas,
+            'total' => $total,
+            'pagos' => array_map(fn ($p) => [
+                'texto' => SriCatalogo::textoFormaPago((string) $p['formaPago']),
+                'total' => (float) $p['total'],
+            ], $pagos),
+            'fecha_emision' => $fecha,
+        ];
+    }
+
+    /**
+     * Anexo 22: la leyenda RIMPE también debe constar en el RIDE. Se toma
+     * del XML emitido; si no lo tiene, de la configuración actual.
+     */
+    private function leyendaRimpe(ElectronicInvoice $comprobante, array $sriConfig): ?string
+    {
+        $xpath = $this->xpathComprobante($comprobante);
+        $leyenda = $xpath
+            ? trim((string) $xpath->evaluate('string(//*[local-name()="infoTributaria"]/*[local-name()="contribuyenteRimpe"])'))
+            : '';
+
+        if ($leyenda === '' && !$xpath) {
+            $leyenda = self::LEYENDAS_RIMPE[$sriConfig['regimen_rimpe'] ?? ''] ?? '';
+        }
+
+        return $leyenda !== '' ? $leyenda : null;
+    }
+
+    private function xpathComprobante(ElectronicInvoice $comprobante): ?\DOMXPath
+    {
+        $xml = $comprobante->xml_autorizado ?: $comprobante->xml_firmado;
+        if (!$xml) {
+            return null;
+        }
+
+        $dom = new \DOMDocument();
+        if (!@$dom->loadXML($xml, LIBXML_NONET)) {
+            return null;
+        }
+
+        return new \DOMXPath($dom);
+    }
+
+    /**
      * La nota de débito conserva sus motivos dentro del XML firmado y
      * autorizado. Se leen desde ese documento para producir un RIDE fiel,
      * sin confundirlos con las líneas originales de la venta.
@@ -187,6 +332,7 @@ class SriRideService
         }
 
         return [
+            'fecha_emision' => $value('//*[local-name()="infoNotaDebito"]/*[local-name()="fechaEmision"]'),
             'numero_documento_modificado' => $value('//*[local-name()="infoNotaDebito"]/*[local-name()="numDocModificado"]'),
             'fecha_documento_modificado' => $value('//*[local-name()="infoNotaDebito"]/*[local-name()="fechaEmisionDocSustento"]'),
             'subtotal' => (float) $value('//*[local-name()="infoNotaDebito"]/*[local-name()="totalSinImpuestos"]'),
