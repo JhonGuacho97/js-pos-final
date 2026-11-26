@@ -27,7 +27,7 @@ PHP_VERSION="8.3"
 DEPLOY_USER="deploy"
 # Repositorio público: se clona por HTTPS sin llave. Si algún día se vuelve
 # privado, usa --repo git@github.com:... con la deploy key de setup-server.sh.
-REPO="https://github.com/JhonGuacho97/js-pos-final.git"
+REPO="https://github.com/JhonGuacho97/saas-ecuapos.git"
 BRANCH="codex/ecuapos-saas"
 SEED=0
 PROVIDER_RUC=""
