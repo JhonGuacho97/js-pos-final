@@ -143,6 +143,26 @@ class Customer extends BaseModel
     }
 
     /**
+     * Correo al que se le pueden enviar documentos (RIDE, venta,
+     * devolución), o null si no corresponde. Consumidor final nunca recibe
+     * correos: su ficha suele llevar un correo de relleno
+     * (consumidorfinal@gmail.com) que tiene formato válido pero no existe,
+     * y cada envío rebotaba y dañaba la reputación del remitente.
+     */
+    public function emailParaEnvios(): ?string
+    {
+        if ($this->es_consumidor_final
+            || strtolower(trim((string) $this->name)) === 'consumidor final'
+            || trim((string) $this->identification) === '9999999999999') {
+            return null;
+        }
+
+        $email = trim((string) $this->email);
+
+        return filter_var($email, FILTER_VALIDATE_EMAIL) ? $email : null;
+    }
+
+    /**
      * Nombre que irá en el XML del SRI.
      */
     public function razonSocialSri(): string

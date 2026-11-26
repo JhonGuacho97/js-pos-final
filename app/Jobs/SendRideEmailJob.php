@@ -36,9 +36,10 @@ class SendRideEmailJob implements ShouldQueue
         }
 
         $customer = $factura->sale?->customer;
+        $destinatario = $customer?->emailParaEnvios();
 
-        if (!$customer || ! filter_var($customer->email, FILTER_VALIDATE_EMAIL)) {
-            Log::info("SendRideEmailJob: factura {$factura->id} sin un correo válido, no se envía.");
+        if (!$destinatario) {
+            Log::info("SendRideEmailJob: factura {$factura->id} sin un correo de destino (consumidor final o correo inválido), no se envía.");
             return;
         }
 
@@ -110,11 +111,11 @@ class SendRideEmailJob implements ShouldQueue
         }
 
         try {
-            Mail::to($customer->email)->send(
+            Mail::to($destinatario)->send(
                 new MailSender('emails.mail-sender', $subject, ['data' => $content], $attachments)
             );
             $factura->update(['correo_enviado_at' => now()]);
-            Log::info("SendRideEmailJob: correo enviado a {$customer->email} para la factura {$factura->id}.");
+            Log::info("SendRideEmailJob: correo enviado a {$destinatario} para la factura {$factura->id}.");
         } catch (\Throwable $e) {
             Log::error("SendRideEmailJob: falló el envío para la factura {$factura->id}: " . $e->getMessage());
         } finally {
