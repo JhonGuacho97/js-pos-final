@@ -714,6 +714,7 @@ Route::middleware(['auth:sanctum', 'store.context', 'subscription.active'])->gro
 
     // POS Register routes
     Route::get('get-register-details', [POSRegisterAPIController::class, 'getRegisterDetails']);
+    Route::get('pos-shift-sales-summary', [POSRegisterAPIController::class, 'shiftSalesSummary']);
     Route::post('register-entry', [POSRegisterAPIController::class, 'entry']);
     Route::get('available-cash-registers', [POSRegisterAPIController::class, 'availableCashRegisters']);
     Route::post('register-close', [POSRegisterAPIController::class, 'closeRegister']);
