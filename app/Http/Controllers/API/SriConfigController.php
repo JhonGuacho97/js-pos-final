@@ -597,10 +597,12 @@ class SriConfigController extends AppBaseController
             $certClave = $certClaveRaw ? Crypt::decryptString($certClaveRaw) : null;
         }
 
-        $certData = file_get_contents($fullPath);
-        $certs = [];
-
-        if (!openssl_pkcs12_read($certData, $certs, $certClave)) {
+        // Mismo lector que la subida y la firma: con OpenSSL 3 (VPS Ubuntu
+        // 24.04) openssl_pkcs12_read() no abre los .p12 con cifrado legacy
+        // y el certificado salía "inválido" aunque firmara sin problemas.
+        try {
+            $certs = \App\Services\SriFirmaService::leerPkcs12ConFallback($fullPath, (string) $certClave);
+        } catch (\Throwable $e) {
             return ['valido' => false, 'mensaje' => 'No se pudo leer el certificado'];
         }
 
