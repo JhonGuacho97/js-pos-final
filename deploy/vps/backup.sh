@@ -25,6 +25,9 @@ mkdir -p "${DEST}"
 for dir in /var/www/*/; do
     [[ -f "${dir}artisan" && -f "${dir}.env" ]] || continue
     domain="$(basename "${dir}")"
+    # Solo sitios de EcuaPos (creados por add-site.sh); otros proyectos del
+    # VPS tienen sus propios respaldos.
+    [[ -e "/etc/nginx/sites-available/zz-ecuapos-${domain}" ]] || continue
     db="$(grep -E '^DB_DATABASE=' "${dir}.env" | cut -d= -f2- | tr -d '"')"
 
     echo "[$(date '+%F %T')] ${domain}: base ${db}"

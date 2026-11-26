@@ -1,5 +1,9 @@
 # Despliegue de EcuaPos en un VPS (Ubuntu 24.04)
 
+> **SaaS:** esta guía es la del POS de una sola empresa. Para la plataforma
+> multiempresa lee primero [SAAS.md](SAAS.md): cambia la instalación nueva,
+> los workers, el pool de PHP-FPM y las carpetas privadas.
+
 Guía para instalar EcuaPos en un VPS propio (probado para Hostinger KVM 2:
 2 vCPU, 8 GB RAM, 100 GB) y mudar una tienda que hoy corre en cPanel.
 

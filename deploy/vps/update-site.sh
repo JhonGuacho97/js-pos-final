@@ -48,6 +48,13 @@ update_one() {
     # Las migraciones y las cachés corren como www-data, el mismo usuario
     # del sitio y del worker, para que los archivos que generen sigan
     # siendo escribibles por ellos.
+    # El estado de los workers se mira ANTES de queue:restart: justo después
+    # están reiniciándose (STARTING) y el chequeo los daba por apagados.
+    local workers_running=0
+    if supervisorctl status "ecuapos-queue-${slug}:*" 2>/dev/null | grep -q RUNNING; then
+        workers_running=1
+    fi
+
     sudo -u www-data php "${app_dir}/artisan" migrate --force --no-interaction
     sudo -u www-data php "${app_dir}/artisan" optimize:clear
     sudo -u www-data php "${app_dir}/artisan" view:cache
@@ -57,10 +64,11 @@ update_one() {
     # Solo si ya estaba corriendo: `supervisorctl restart` también ENCIENDE
     # un worker apagado, y durante una mudanza el worker queda apagado a
     # propósito para que este servidor no facture a la vez que el anterior.
-    if supervisorctl status "ecuapos-queue-${slug}" 2>/dev/null | grep -q RUNNING; then
-        supervisorctl restart "ecuapos-queue-${slug}" >/dev/null
+    # "nombre:*" sirve con uno o varios workers (numprocs).
+    if [[ "${workers_running}" -eq 1 ]]; then
+        supervisorctl restart "ecuapos-queue-${slug}:*" >/dev/null
     else
-        echo "   Worker ecuapos-queue-${slug} apagado: no se enciende."
+        echo "   Workers ecuapos-queue-${slug} apagados: no se encienden."
     fi
 
     local after
@@ -69,8 +77,12 @@ update_one() {
 }
 
 if [[ "${1:-}" == "--all" ]]; then
+    # Solo sitios creados por add-site.sh (tienen su "zz-ecuapos-" en
+    # Nginx): otro proyecto Laravel del VPS nunca se toca.
     for dir in /var/www/*/; do
-        [[ -f "${dir}artisan" ]] && update_one "$(basename "${dir}")"
+        domain="$(basename "${dir}")"
+        [[ -f "${dir}artisan" && -e "/etc/nginx/sites-available/zz-ecuapos-${domain}" ]] \
+            && update_one "${domain}"
     done
 elif [[ -n "${1:-}" ]]; then
     update_one "$1"
