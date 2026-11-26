@@ -43,6 +43,15 @@ class EmitirFacturaJob implements ShouldQueue
             return;
         }
 
+        // Si un intento anterior ya creó el comprobante (el worker se cortó,
+        // falló el envío, o se pidió "Reintentar"), se retoma ESE mismo
+        // comprobante en vez de generar otro. Antes el reintento chocaba con
+        // él y guardaba una factura "Rechazada" falsa, dejando la real
+        // atascada en PENDIENTE para siempre.
+        if (($previo = $this->comprobanteEnCurso()) && !$this->retomarComprobante($previo)) {
+            return;
+        }
+
         // Generar XML según tipo de comprobante
         try {
             $result = match ($this->tipoComprobante) {
@@ -132,8 +141,23 @@ class EmitirFacturaJob implements ShouldQueue
 
         $factura->update(['xml_firmado' => $xmlFirmado, 'xml_firmado_at' => now()]);
 
-        // Enviar al SRI
-        $respuesta = $soapService->enviarComprobante($xmlFirmado, $factura->store_id);
+        // Enviar al SRI. enviarComprobante() ya convierte los fallos de
+        // conexión en ERROR_TEMPORAL_SRI; este catch es la última red por si
+        // algo más revienta: nunca debe quedar en PENDIENTE con el XML firmado.
+        try {
+            $respuesta = $soapService->enviarComprobante($xmlFirmado, $factura->store_id);
+        } catch (\Throwable $e) {
+            Log::error("Comprobante {$factura->id}: error inesperado al enviar al SRI: " . $e->getMessage());
+            $respuesta = [
+                'estado'   => 'ERROR_TEMPORAL_SRI',
+                'mensajes' => [[
+                    'identificador'        => 'ENVIO_ERROR',
+                    'mensaje'              => 'No se pudo enviar el comprobante al SRI.',
+                    'informacionAdicional' => 'Se reintentará el envío. Detalle técnico: ' . $e->getMessage(),
+                    'tipo'                 => 'ADVERTENCIA',
+                ]],
+            ];
+        }
 
         if ($respuesta['estado'] === 'ERROR_TEMPORAL_SRI') {
             $factura->update([
@@ -157,6 +181,98 @@ class EmitirFacturaJob implements ShouldQueue
 
         $factura->update(['estado' => ElectronicInvoice::RECIBIDA, 'enviado_sri_at' => now()]);
         AutorizarFacturaJob::dispatch($factura->id)->delay(now()->addSeconds(5));
+    }
+
+    // ─────────────────────────────────────────────
+    // REANUDAR UN COMPROBANTE YA CREADO
+    // ─────────────────────────────────────────────
+
+    /**
+     * Último comprobante de esta venta (o nota de crédito) que sigue vivo:
+     * todo lo que no terminó DEVUELTA ni NO_AUTORIZADA. Las notas de débito
+     * no tienen un sujeto único que permita detectarlo.
+     */
+    private function comprobanteEnCurso(): ?ElectronicInvoice
+    {
+        $query = ElectronicInvoice::query()
+            ->whereNotIn('estado', [ElectronicInvoice::DEVUELTA, ElectronicInvoice::NO_AUTORIZADA])
+            ->latest('id');
+
+        return match ($this->tipoComprobante) {
+            ElectronicInvoice::FACTURA => $query
+                ->where('sale_id', $this->saleId)
+                ->where('tipo_comprobante', ElectronicInvoice::FACTURA)
+                ->first(),
+            ElectronicInvoice::NOTA_CREDITO => $this->creditNoteId
+                ? $query->where('credit_note_id', $this->creditNoteId)->first()
+                : null,
+            default => null,
+        };
+    }
+
+    /**
+     * Continúa un comprobante existente desde donde quedó. Devuelve true
+     * solo cuando hay que generar uno nuevo (el anterior se cortó antes de
+     * firmarse, así que nunca llegó al SRI).
+     */
+    private function retomarComprobante(ElectronicInvoice $factura): bool
+    {
+        switch ($factura->estado) {
+            case ElectronicInvoice::AUTORIZADA:
+                Log::info("EmitirFacturaJob: el comprobante {$factura->id} ya está autorizado, no se emite otro.");
+                return false;
+
+            case ElectronicInvoice::RECIBIDA:
+                // El SRI ya lo tiene: solo falta consultar la autorización.
+                AutorizarFacturaJob::dispatch($factura->id);
+                return false;
+
+            case ElectronicInvoice::ERROR_TEMPORAL_SRI:
+                if (!empty($factura->xml_firmado)) {
+                    ReenviarComprobanteJob::dispatch($factura->id);
+                    return false;
+                }
+                break;
+
+            case ElectronicInvoice::PENDIENTE:
+                if (!empty($factura->xml_firmado)) {
+                    // Firmado pero el envío no terminó: se reenvía el mismo
+                    // XML. Si el SRI sí alcanzó a recibirlo, responde "clave
+                    // registrada" y se sigue con la autorización.
+                    $factura->update([
+                        'estado'       => ElectronicInvoice::ERROR_TEMPORAL_SRI,
+                        'mensajes_sri' => [[
+                            'identificador'        => 'ENVIO_INTERRUMPIDO',
+                            'mensaje'              => 'El envío al SRI se interrumpió.',
+                            'informacionAdicional' => 'Se reenvía el mismo comprobante firmado.',
+                            'tipo'                 => 'ADVERTENCIA',
+                        ]],
+                    ]);
+                    ReenviarComprobanteJob::dispatch($factura->id);
+                    return false;
+                }
+
+                // Sin firmar: o lo está procesando otro worker en este
+                // momento, o ese intento murió antes de firmar.
+                if ($factura->updated_at && $factura->updated_at->gt(now()->subMinutes(2))) {
+                    $this->release(60);
+                    return false;
+                }
+                break;
+        }
+
+        // Nunca se firmó ni se envió al SRI: se descarta y se genera de nuevo.
+        $factura->update([
+            'estado'       => ElectronicInvoice::NO_AUTORIZADA,
+            'mensajes_sri' => [[
+                'identificador'        => 'PROCESO_INTERRUMPIDO',
+                'mensaje'              => 'La emisión se interrumpió antes de firmar el comprobante.',
+                'informacionAdicional' => 'Nunca se envió al SRI; se generó un comprobante nuevo.',
+                'tipo'                 => 'ERROR',
+            ]],
+        ]);
+
+        return true;
     }
 
     // ─────────────────────────────────────────────
