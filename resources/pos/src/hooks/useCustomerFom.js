@@ -11,6 +11,7 @@ dayjs.extend(localizedFormat);
 dayjs.extend(isoWeek);
 dayjs.extend(relativeTime);
 import { addToast } from "../store/action/toastAction";
+import { Tokens } from "../constants";
 import { validarIdentificacion } from "../utils/identificacionValidator";
 
 export const useCustomerForm = ({ singleCustomer, addCustomerData, editCustomer, id }) => {
@@ -109,7 +110,17 @@ const handleSriLookup = async () => {
 
     setSriLoading(true);
     try {
-        const res = await fetch(`/api/sri/lookup?identification=${identification}`);
+        // La consulta exige sesión: gasta el token de ApiConsult y devuelve
+        // datos personales, así que no puede quedar abierta al público.
+        const headers = { Accept: "application/json" };
+        const token = localStorage.getItem(Tokens.ADMIN);
+        const storeId = localStorage.getItem(Tokens.CURRENT_STORE_ID);
+        if (token) headers.Authorization = `Bearer ${token}`;
+        if (storeId) headers["X-Store-Id"] = storeId;
+        const res = await fetch(
+            `/api/sri/lookup?identification=${encodeURIComponent(identification)}`,
+            { headers }
+        );
 
         let json;
         try {

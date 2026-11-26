@@ -41,15 +41,13 @@ class SriConfigService
         // tiendas y pluck() se quedaría con la del store_id más alto,
         // sin relación con la operación real en curso. whereNull acá
         // restringe al fallback de sistema.
-        $query = Setting::query()->orderBy('store_id');
-        if ($storeId !== null) {
-            $query->where(function ($q) use ($storeId) {
-                $q->whereNull('store_id')->orWhere('store_id', $storeId);
-            });
-        } else {
-            $query->whereNull('store_id');
-        }
-        $settings = $query->get()->pluck('value', 'key');
+        // effectiveFor(): los sri_* salen solo de la propia tienda. Una
+        // tienda sin configurar queda sin RUC ni firma (y no puede emitir),
+        // en vez de heredar los de la instalación original.
+        $settings = Setting::query()->orderBy('store_id')
+            ->effectiveFor($storeId)
+            ->get()
+            ->pluck('value', 'key');
 
         // El SaaS usa su identidad de plataforma cuando la tienda aún no
         // hizo una elección explícita; nunca hereda el RUC de otra tienda.

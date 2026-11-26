@@ -36,6 +36,38 @@ class Setting extends Model implements HasMedia
 
     const PATH = 'settings';
 
+    /**
+     * Prefijo de los datos fiscales (RUC, razón social, firma, clave,
+     * establecimiento, ambiente...). Nunca se heredan de las filas globales
+     * (store_id NULL): esas filas pueden venir de la instalación original y
+     * una empresa nueva terminaría emitiendo con el RUC y la firma de otra.
+     */
+    public const FISCAL_KEY_PREFIX = 'sri_';
+
+    public static function isFiscalKey(string $key): bool
+    {
+        return str_starts_with($key, self::FISCAL_KEY_PREFIX);
+    }
+
+    /**
+     * Filas que aplican a una tienda: las propias y las globales (store_id
+     * NULL) que no sean fiscales. Sin tienda, solo las globales no fiscales.
+     * Para que la fila de la tienda gane, consumir con orderBy('store_id')
+     * + pluck(), o con orderByDesc('store_id') + first()/value().
+     */
+    public function scopeEffectiveFor($query, ?int $storeId)
+    {
+        return $query->where(function ($q) use ($storeId) {
+            if ($storeId) {
+                $q->where('store_id', $storeId);
+            }
+            $q->orWhere(function ($global) {
+                $global->whereNull('store_id')
+                    ->where('key', 'not like', self::FISCAL_KEY_PREFIX.'%');
+            });
+        });
+    }
+
     protected $table = 'settings';
 
     /**

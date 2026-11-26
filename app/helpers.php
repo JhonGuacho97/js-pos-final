@@ -90,13 +90,8 @@ if (! function_exists('getSettingValue')) {
         if (in_array($keyName, ['default_warehouse', 'default_customer'], true)) {
             return $storeId ? $query->where('store_id', $storeId)->value('value') : null;
         }
-        if ($storeId) {
-            $query->where(function ($q) use ($storeId) {
-                $q->whereNull('store_id')->orWhere('store_id', $storeId);
-            });
-        } else {
-            $query->whereNull('store_id');
-        }
+        // Los datos fiscales (sri_*) nunca caen al fallback global.
+        $query->effectiveFor($storeId);
 
         /** @var Setting $setting */
         $setting = $query->orderByDesc('store_id')->first();

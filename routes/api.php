@@ -158,7 +158,10 @@ Route::middleware('auth:sanctum')->group(function () {
 Route::middleware(['auth:sanctum', 'abilities:*'])
     ->delete('offline-sync/device-token', [OfflineSyncTokenController::class, 'destroy']);
 
-Route::get('/sri/lookup', [SriController::class, 'lookup']);
+// Consulta de cédula/RUC: gasta el token de ApiConsult de la plataforma y
+// devuelve datos personales, así que solo la usan usuarios con sesión.
+Route::middleware(['auth:sanctum', 'store.context', 'throttle:30,1'])
+    ->get('/sri/lookup', [SriController::class, 'lookup']);
 Route::prefix('catalog/{store:slug}')->middleware('throttle:60,1')->group(function () {
     Route::get('/', [PublicCatalogController::class, 'show']);
 });

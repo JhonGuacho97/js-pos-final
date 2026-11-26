@@ -59,13 +59,7 @@ class SriConfigController extends AppBaseController
     {
         $storeId = $this->currentStoreId();
         $query = Setting::query()->orderBy('store_id');
-        if ($storeId) {
-            $query->where(function ($q) use ($storeId) {
-                $q->whereNull('store_id')->orWhere('store_id', $storeId);
-            });
-        } else {
-            $query->whereNull('store_id');
-        }
+        $query->effectiveFor($storeId ?: null);
 
         return $query;
     }
@@ -83,13 +77,7 @@ class SriConfigController extends AppBaseController
     {
         $storeId = $this->currentStoreId();
         $query = Setting::query()->where('key', $key)->orderByDesc('store_id');
-        if ($storeId) {
-            $query->where(function ($q) use ($storeId) {
-                $q->whereNull('store_id')->orWhere('store_id', $storeId);
-            });
-        } else {
-            $query->whereNull('store_id');
-        }
+        $query->effectiveFor($storeId ?: null);
 
         return $query->value('value');
     }
