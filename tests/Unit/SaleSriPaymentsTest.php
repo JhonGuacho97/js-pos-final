@@ -19,7 +19,7 @@ class SaleSriPaymentsTest extends TestCase
 
         $this->assertSame([
             ['formaPago' => '01', 'total' => 5.0],
-            ['formaPago' => '15', 'total' => 7.0],
+            ['formaPago' => '20', 'total' => 7.0],
         ], $sale->pagosSri());
     }
 
@@ -31,7 +31,7 @@ class SaleSriPaymentsTest extends TestCase
         ]));
 
         $this->assertSame([
-            ['formaPago' => '15', 'total' => 10.0],
+            ['formaPago' => '20', 'total' => 10.0],
         ], $sale->pagosSri());
     }
 }

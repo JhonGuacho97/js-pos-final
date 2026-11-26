@@ -233,6 +233,10 @@
                 <div class="small">
                     Obligado a llevar contabilidad: {{ $sri['obligado_contabilidad'] }}
                 </div>
+
+                @if (!empty($leyendaRimpe))
+                    <div class="small" style="margin-top:2px;"><strong>{{ $leyendaRimpe }}</strong></div>
+                @endif
             </td>
             <td class="qr-cell" style="width: 26%;">
                 <img src="{{ $qrBase64 }}" style="width: 90px; height: 90px;" />
@@ -251,7 +255,7 @@
 
                     <table style="width:100%; margin-top:4px;">
                         <tr>
-                            <td class="small" style="padding:0;">Ambiente: <strong>{{ ($sri['ambiente'] ?? config('sri.ambiente')) == 1 ? 'PRUEBAS' : 'PRODUCCIÓN' }}</strong></td>
+                            <td class="small" style="padding:0;">Ambiente: <strong>{{ ($comprobante->ambiente ?? $sri['ambiente'] ?? config('sri.ambiente')) == 1 ? 'PRUEBAS' : 'PRODUCCIÓN' }}</strong></td>
                             <td class="small" style="padding:0; text-align:right;">Emisión: <strong>NORMAL</strong></td>
                         </tr>
                     </table>
@@ -277,7 +281,7 @@
                         </tr>
                         <tr>
                             <td style="width: 50%;">Identificación: <strong>{{ $creditNote->customer->identificacionSri() }}</strong></td>
-                            <td>Fecha Emisión: {{ optional($creditNote->date)->format('d/m/Y') }}</td>
+                            <td>Fecha Emisión: {{ $resumen['fecha_emision'] }}</td>
                         </tr>
                     </table>
                 </div>
@@ -346,29 +350,29 @@
             </td>
             <td style="width: 45%; vertical-align: top;">
                 <table class="totales-table" style="width:100%;">
+                    @foreach ($resumen['subtotales'] as $fila)
+                    <tr>
+                        <td class="label">{{ $fila['label'] }}</td>
+                        <td class="value">${{ number_format($fila['valor'], 2) }}</td>
+                    </tr>
+                    @endforeach
                     <tr>
                         <td class="label">Subtotal sin impuestos</td>
-                        <td class="value">${{ number_format($creditNote->subtotalSinIvaSri(), 2) }}</td>
+                        <td class="value">${{ number_format($resumen['subtotal'], 2) }}</td>
                     </tr>
                     <tr>
-                        <td class="label">Descuento</td>
-                        <td class="value">${{ number_format($creditNote->discount ?? 0, 2) }}</td>
+                        <td class="label">Total descuento</td>
+                        <td class="value">${{ number_format($resumen['descuento'], 2) }}</td>
                     </tr>
-                    @php
-                        // Mismo criterio que el RIDE de Factura: la
-                        // tarifa vive por producto, se suma el IVA real
-                        // de cada línea, no un campo global.
-                        $ivaTotal = $creditNote->creditNoteItems->sum(fn ($item) => $item->valorIvaSri());
-                        $itemConIva = $creditNote->creditNoteItems->first(fn ($item) => ($item->tax_value ?: $creditNote->tax_rate) > 0);
-                        $tarifaMostrada = $itemConIva ? ($itemConIva->tax_value ?: $creditNote->tax_rate) : ($creditNote->tax_rate ?? 0);
-                    @endphp
+                    @foreach ($resumen['ivas'] as $fila)
                     <tr>
-                        <td class="label">IVA {{ number_format($tarifaMostrada, 0) }}%</td>
-                        <td class="value">${{ number_format($ivaTotal, 2) }}</td>
+                        <td class="label">{{ $fila['label'] }}</td>
+                        <td class="value">${{ number_format($fila['valor'], 2) }}</td>
                     </tr>
+                    @endforeach
                     <tr class="total-row">
                         <td class="label">Total Nota de Crédito</td>
-                        <td class="value">${{ number_format($creditNote->grand_total ?? 0, 2) }}</td>
+                        <td class="value">${{ number_format($resumen['total'], 2) }}</td>
                     </tr>
                 </table>
             </td>

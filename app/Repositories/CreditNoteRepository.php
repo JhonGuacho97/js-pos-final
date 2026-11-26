@@ -47,6 +47,17 @@ class CreditNoteRepository extends BaseRepository
                 throw new UnprocessableEntityHttpException('La factura seleccionada no existe.');
             }
 
+            // Ficha técnica del SRI: una nota de crédito debe identificar al
+            // receptor (cédula, RUC o pasaporte), y desde el 01/01/2026 una
+            // factura a consumidor final no se puede corregir con nota de
+            // crédito (Resolución NAC-DGERCGC25-00000017).
+            $customer = \App\Models\Customer::find($input['customer_id'] ?? $sale->customer_id);
+            if (!$customer || $customer->tipoIdentificacionSri() === \App\Models\Customer::TIPO_CONSUMIDOR_FINAL) {
+                throw new UnprocessableEntityHttpException(
+                    'El SRI no permite notas de crédito a "Consumidor final". Solo se pueden hacer sobre facturas emitidas a un cliente identificado con cédula, RUC o pasaporte.'
+                );
+            }
+
             // Se calcula UNA sola vez acá (no en el loop de inserción de
             // más abajo) porque 'quantity' de cada item calculado ya
             // viene en UNIDADES BASE (conversión de presentación

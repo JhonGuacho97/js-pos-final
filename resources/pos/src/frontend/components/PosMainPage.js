@@ -338,6 +338,12 @@ const PosMainPage = (props) => {
             errors["payment"] = "Consumidor final no puede mantener saldos pendientes. Selecciona un cliente identificado o completa el cobro.";
             isValid = false;
         }
+        // Ficha técnica del SRI, numeral 9.10: una factura de más de USD 50
+        // debe llevar los datos del comprador.
+        if (tipoComprobanteSri === "01" && customer?.es_consumidor_final && Number(grandTotal) > 50) {
+            errors["payment"] = "El SRI no permite facturas de más de $50.00 a Consumidor final. Selecciona un cliente con cédula o RUC, o cobra sin factura electrónica.";
+            isValid = false;
+        }
         if (catalogStatus.online && creditProfile?.credit_enabled && newBalance > Number(creditProfile.available_credit || 0)) {
             errors["payment"] = `El saldo pendiente supera el cupo disponible del cliente ($${Number(creditProfile.available_credit || 0).toFixed(2)}).`;
             isValid = false;
