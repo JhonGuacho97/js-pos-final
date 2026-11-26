@@ -226,14 +226,59 @@ class ProfitLossReportService
             }
         }
 
+        $rows = $this->roundPreservingTotal($rows, 'revenue');
+        $rows = $this->roundPreservingTotal($rows, 'cost');
+
         return collect($rows)->map(function ($row) {
             $row['quantity'] = round($row['quantity'], 2);
-            $row['revenue'] = round($row['revenue'], 2);
-            $row['cost'] = round($row['cost'], 2);
             $row['profit'] = round($row['revenue'] - $row['cost'], 2);
             $row['margin_percent'] = $this->margin($row['profit'], $row['revenue']);
             return $row;
         })->sortByDesc('profit')->values()->all();
+    }
+
+    /**
+     * Redondea una columna a 2 decimales sin que la suma de las filas se
+     * aleje del total real. Redondear cada fila por separado acumulaba
+     * centavos (con 224 productos, 9 centavos): la tabla de rentabilidad
+     * no sumaba lo mismo que las ventas netas del reporte.
+     *
+     * Método del mayor residuo: se trunca cada fila a centavos y los
+     * centavos que faltan para el total se reparten entre las filas que
+     * más cerca quedaron del centavo siguiente.
+     */
+    private function roundPreservingTotal(array $rows, string $field): array
+    {
+        if ($rows === []) {
+            return $rows;
+        }
+
+        $targetCents = (int) round(array_sum(array_column($rows, $field)) * 100);
+        $remainders = [];
+        $assigned = 0;
+        foreach ($rows as $key => $row) {
+            $cents = $row[$field] * 100;
+            $floor = (int) floor($cents + 1e-6);
+            $remainders[$key] = $cents - $floor;
+            $rows[$key][$field] = $floor;
+            $assigned += $floor;
+        }
+
+        arsort($remainders);
+        $missing = $targetCents - $assigned;
+        foreach (array_keys($remainders) as $key) {
+            if ($missing <= 0) {
+                break;
+            }
+            $rows[$key][$field]++;
+            $missing--;
+        }
+
+        foreach ($rows as $key => $row) {
+            $rows[$key][$field] = round($row[$field] / 100, 2);
+        }
+
+        return $rows;
     }
 
     private function categoryProfitability(array $products): array
