@@ -84,10 +84,11 @@ CPU. Como referencia, alcanzan para unas decenas de empresas pequeñas con
 ventas al mismo tiempo. Si la carga sostenida pasa de ~70 % de CPU en horas
 pico, el siguiente paso es subir a 4 vCPU; no hace falta separar bases.
 
-### MariaDB (hacerlo a mano, en horario sin ventas)
+### MariaDB
 
-La configuración por defecto usa un buffer de 128 MB. Con varias empresas,
-los reportes terminan leyendo del disco. Recomendado:
+**Aplicado en el VPS el 2026-11-26.** Antes el buffer era el de fábrica,
+128 MB; con varias empresas, los reportes terminan leyendo del disco. La
+configuración anterior quedó respaldada en `/root/mariadb-antes-*/`:
 
 ```ini
 # /etc/mysql/mariadb.conf.d/60-ecuapos.cnf
@@ -97,10 +98,14 @@ innodb_log_file_size    = 256M
 max_connections         = 100
 ```
 
-Aplicarlo requiere **reiniciar MariaDB**, y eso corta un par de segundos a
-todos los proyectos que la usan, YAPA incluido. Por eso ningún script lo hace
-solo. Coordínalo, aplícalo con `systemctl restart mariadb` y revisa que YAPA
-responda.
+Cambiarlo requiere **reiniciar MariaDB**, lo que corta unos segundos a
+todos los sitios de EcuaPos. YAPA usa PostgreSQL y no se ve afectado. Por
+eso ningún script lo hace solo. Para reiniciar:
+
+1. Apaga los workers (`supervisorctl stop ...`) para que ninguna factura
+   quede a medias.
+2. Corre `systemctl restart mariadb`.
+3. Enciende los workers otra vez.
 
 ### Respaldos
 
