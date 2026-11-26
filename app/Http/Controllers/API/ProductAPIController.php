@@ -86,6 +86,10 @@ class ProductAPIController extends AppBaseController
                             $query->where('warehouse_id', $warehouseId);
                         },
                     ]);
+        } else {
+            // prepareAttributes() siempre devuelve `stock`: sin filtro de
+            // almacén se consultaba una vez por cada producto de la página.
+            $products->with('stock');
         }
 
         $products = $products->paginate($perPage);

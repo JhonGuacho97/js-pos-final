@@ -246,7 +246,7 @@ class Sale extends BaseModel implements HasMedia, JsonResourceful
             'grand_total' => $this->grand_total,
             'received_amount' => $this->received_amount,
             'paid_amount' => $this->paid_amount,
-            'due_amount' => $this->dueAmount($this->id),
+            'due_amount' => $this->dueAmountForListing(),
             'payment_type' => $this->payment_type,
             'payments_count' => $this->payments_count ?? $this->payments()->count(),
             'payments' => $this->payments,
@@ -445,7 +445,18 @@ class Sale extends BaseModel implements HasMedia, JsonResourceful
     /** Importe de notas de crédito válidas aplicado a la venta. */
     public function creditedAmount(?int $id = null): float
     {
-        return (float) CreditNote::where('sale_id', $id ?? $this->id)
+        return (float) static::creditNotesAppliedQuery()
+            ->where('sale_id', $id ?? $this->id)
+            ->sum('grand_total');
+    }
+
+    /**
+     * Notas de crédito que descuentan saldo de una venta. Una sola
+     * definición para el cálculo por venta y para el cálculo en lote.
+     */
+    protected static function creditNotesAppliedQuery()
+    {
+        return CreditNote::query()
             ->where('generar_como', CreditNote::GENERAR_SALDO)
             ->noCanceladas()
             ->where(function ($q) {
@@ -456,8 +467,50 @@ class Sale extends BaseModel implements HasMedia, JsonResourceful
                             ElectronicInvoice::DEVUELTA,
                         ]);
                     });
-            })
-            ->sum('grand_total');
+            });
+    }
+
+    /**
+     * Saldo acreditado ya calculado en lote por preloadDueAmounts(). Es
+     * una propiedad real del objeto (no un atributo de Eloquent): no se
+     * guarda en la base ni sale en toArray().
+     */
+    public ?float $preloadedCreditedAmount = null;
+
+    /**
+     * Calcula en UNA consulta lo acreditado de todas las ventas de un
+     * listado. Sin esto, cada fila hacía 3 consultas para su saldo.
+     * Requiere que las ventas traigan la relación `payments` cargada.
+     */
+    public static function preloadDueAmounts(iterable $sales): void
+    {
+        $sales = collect($sales);
+        if ($sales->isEmpty()) {
+            return;
+        }
+
+        $credited = static::creditNotesAppliedQuery()
+            ->whereIn('sale_id', $sales->pluck('id'))
+            ->groupBy('sale_id')
+            ->selectRaw('sale_id, SUM(grand_total) as total')
+            ->pluck('total', 'sale_id');
+
+        foreach ($sales as $sale) {
+            $sale->preloadedCreditedAmount = (float) ($credited[$sale->id] ?? 0);
+        }
+    }
+
+    /** Saldo pendiente usando lo precargado si existe; si no, consulta. */
+    protected function dueAmountForListing(): float|int
+    {
+        if ($this->preloadedCreditedAmount === null || ! $this->relationLoaded('payments')) {
+            return $this->dueAmount($this->id);
+        }
+
+        return max(0, round(
+            $this->grand_total - $this->payments->sum('amount') - $this->preloadedCreditedAmount,
+            2
+        ));
     }
 
     /** Recalcula el estado visible de pago desde sus movimientos reales. */

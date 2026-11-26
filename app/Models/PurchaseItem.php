@@ -111,14 +111,26 @@ class PurchaseItem extends BaseModel implements JsonResourceful
         'sub_total' => 'double',
     ];
 
+    /**
+     * Unidades ya consultadas en este proceso: un listado de compras pedía
+     * la misma unidad una vez por cada ítem de cada fila.
+     *
+     * @var array<int|string, array>
+     */
+    protected static array $purchaseUnitCache = [];
+
     public function getPurchaseUnitAttribute($value)
     {
-        $purchaseUnit = Unit::whereId($value)->first();
-        if ($purchaseUnit) {
-            return $purchaseUnit->toArray();
+        if ($value === null || $value === '') {
+            return [];
         }
 
-        return [];
+        if (! array_key_exists($value, static::$purchaseUnitCache)) {
+            $purchaseUnit = Unit::whereId($value)->first();
+            static::$purchaseUnitCache[$value] = $purchaseUnit ? $purchaseUnit->toArray() : [];
+        }
+
+        return static::$purchaseUnitCache[$value];
     }
 
     public function prepareLinks(): array

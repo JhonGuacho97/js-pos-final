@@ -71,6 +71,10 @@ class PurchaseAPIController extends AppBaseController
         }
         $this->scopeQueryToCurrentStore($purchases);
 
+        // Lo que prepareAttributes() usa por fila se trae en lote para toda
+        // la página, en vez de 3 consultas por cada compra.
+        $purchases->with(['supplier', 'warehouse', 'purchaseItems']);
+
         $purchases = $purchases->paginate($perPage);
 
         PurchaseResource::usingWithCollection();

@@ -64,7 +64,10 @@ class SaleAPIController extends AppBaseController
         // repositorio con SaleSearchFilter.
         $sales = $this->saleRepository;
         $sales->withCount('payments');
-        $sales->with(['user', 'payments']);
+        // Todo lo que prepareAttributes() usa por fila se trae en lote:
+        // antes cada venta disparaba sus propias consultas (cliente,
+        // almacén, ítems, factura), ~10 por fila.
+        $sales->with(['user', 'payments', 'customer', 'warehouse', 'saleItems', 'electronicInvoice']);
 
         if ($request->get('start_date') && $request->get('end_date')) {
             $sales->whereBetween('date', [$request->get('start_date'), $request->get('end_date')]);
@@ -111,6 +114,7 @@ class SaleAPIController extends AppBaseController
         }
 
         $sales = $sales->paginate($perPage);
+        Sale::preloadDueAmounts($sales->items());
 
         // Totales de TODOS los registros que calzan con el filtro (no solo
         // los de la página actual) -- mismos filtros de arriba, sin paginar.
