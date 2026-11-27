@@ -1056,5 +1056,8 @@
     "sidebar.item.login-logs": "Inicios de sesión",
     "sidebar.item.advanced": "Correo y avanzado",
     "sidebar.item.mail-settings": "Servidor de correo",
-    "sidebar.item.email-templates": "Plantillas de correo"
+    "sidebar.item.email-templates": "Plantillas de correo",
+    "sidebar.item.sri-documents": "Comprobantes SRI",
+    "sidebar.tab.returns": "Devoluciones",
+    "sidebar.tab.kits": "Kits"
 }

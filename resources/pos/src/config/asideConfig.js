@@ -5,27 +5,20 @@ import {
     faHouse,
     faChartLine,
     faCartShopping,
-    faFileLines,
-    faRotateLeft,
     faUserGroup,
     faHandHoldingDollar,
     faBuildingColumns,
     faBagShopping,
     faFileInvoiceDollar,
-    faFileCircleMinus,
     faCashRegister,
     faMoneyBills,
-    faTags,
     faBoxesStacked,
-    faGift,
-    faBarcode,
     faLayerGroup,
     faClipboardList,
     faSliders,
     faRightLeft,
     faListCheck,
     faReceipt,
-    faReply,
     faTruck,
     faChartColumn,
     faStore,
@@ -36,15 +29,19 @@ import { getFormattedMessage } from "../shared/sharedMethod";
 
 // Estructura del menú, ordenada por lo que hace un negocio en el día
 // (vender, facturar, caja, productos, inventario, compras) y no por las
-// tablas de la base. Lo que casi no se usa queda dentro de acordeones
-// ({subMenu}): "Clasificación" en Productos y los tres de Administración.
+// tablas de la base.
 //
-// Encabezados {groupHeader: true, title}: MasterLayout.js los quita si
-// ningún ítem del grupo sobrevive al filtro de permisos (pruneEmptyGroups).
-// Las rutas ("to") no cambian: solo cambia dónde aparecen y cómo se llaman,
-// así que permisos, enlaces guardados y la búsqueda global siguen igual.
-// Los textos del menú usan claves propias "sidebar.*" para no alterar los
-// títulos de las páginas, que reutilizan las claves "*.title".
+// - {tabs: [...]}: pantallas hermanas que comparten una sola entrada del
+//   menú; SectionTabs.js las muestra como pestañas arriba del contenido.
+//   MasterLayout.js filtra cada pestaña por su permiso y deja la entrada
+//   apuntando a la primera pestaña permitida.
+// - {subMenu: [...]}: acordeones de Administración, cerrados por defecto.
+// - {groupHeader: true, title}: MasterLayout.js los quita si ningún ítem
+//   del grupo sobrevive al filtro de permisos (pruneEmptyGroups).
+//
+// Las rutas ("to") no cambian, así que permisos, enlaces guardados y la
+// búsqueda global siguen igual. Los textos del menú usan claves propias
+// "sidebar.*" para no alterar los títulos de las páginas.
 export default [
     {
         title: "sidebar.item.dashboard",
@@ -91,23 +88,22 @@ export default [
         fontIcon: <FontAwesomeIcon icon={faCartShopping} />,
         to: "/app/sales",
         class: "d-flex",
-        permission: Permissions.MANAGE_SALE,
+        tabs: [
+            { title: "sales.title", name: "sales", to: "/app/sales", permission: Permissions.MANAGE_SALE },
+            { title: "sidebar.item.quotations", name: "quotations", to: "/app/quotations", permission: Permissions.MANAGE_QUOTATION },
+            { title: "sidebar.tab.returns", name: "sales return", to: "/app/sale-return", permission: Permissions.MANAGE_SALE_RETURN },
+        ],
     },
     {
-        title: "sidebar.item.quotations",
-        name: "quotations",
-        fontIcon: <FontAwesomeIcon icon={faFileLines} />,
-        to: "/app/quotations",
+        title: "sidebar.item.sri-documents",
+        name: "electronic invoices",
+        fontIcon: <FontAwesomeIcon icon={faFileInvoiceDollar} />,
+        to: "/app/electronic-invoices",
         class: "d-flex",
-        permission: Permissions.MANAGE_QUOTATION,
-    },
-    {
-        title: "sales-return.title",
-        name: "sales return",
-        fontIcon: <FontAwesomeIcon icon={faRotateLeft} />,
-        to: "/app/sale-return",
-        class: "d-flex",
-        permission: Permissions.MANAGE_SALE_RETURN,
+        tabs: [
+            { title: "sidebar.item.electronic-documents", name: "electronic invoices", to: "/app/electronic-invoices", permission: Permissions.MANAGE_ELECTRONIC_INVOICES },
+            { title: "sidebar.item.credit-notes", name: "credit notes", to: "/app/credit-notes", permission: Permissions.MANAGE_SALE },
+        ],
     },
     {
         title: "customers.title",
@@ -142,24 +138,6 @@ export default [
         permission: Permissions.MANAGE_CATALOG_ORDERS,
     },
 
-    { groupHeader: true, title: "sidebar.group.einvoicing" },
-    {
-        title: "sidebar.item.electronic-documents",
-        name: "electronic invoices",
-        fontIcon: <FontAwesomeIcon icon={faFileInvoiceDollar} />,
-        to: "/app/electronic-invoices",
-        class: "d-flex",
-        permission: Permissions.MANAGE_ELECTRONIC_INVOICES,
-    },
-    {
-        title: "sidebar.item.credit-notes",
-        name: "credit notes",
-        fontIcon: <FontAwesomeIcon icon={faFileCircleMinus} />,
-        to: "/app/credit-notes",
-        class: "d-flex",
-        permission: Permissions.MANAGE_SALE,
-    },
-
     { groupHeader: true, title: "sidebar.group.cash" },
     {
         title: "sidebar.item.cash-control",
@@ -175,15 +153,10 @@ export default [
         fontIcon: <FontAwesomeIcon icon={faMoneyBills} />,
         to: "/app/expenses",
         class: "d-flex",
-        permission: Permissions.MANAGE_EXPENSES,
-    },
-    {
-        title: "expense.categories.title",
-        name: "expense categories",
-        fontIcon: <FontAwesomeIcon icon={faTags} />,
-        to: "/app/expense-categories",
-        class: "d-flex",
-        permission: Permissions.MANAGE_EXPENSES_CATEGORIES,
+        tabs: [
+            { title: "expenses.title", name: "expenses", to: "/app/expenses", permission: Permissions.MANAGE_EXPENSES },
+            { title: "sidebar.item.categories", name: "expense categories", to: "/app/expense-categories", permission: Permissions.MANAGE_EXPENSES_CATEGORIES },
+        ],
     },
 
     { groupHeader: true, title: "sidebar.group.products" },
@@ -193,23 +166,11 @@ export default [
         fontIcon: <FontAwesomeIcon icon={faBoxesStacked} />,
         to: "/app/products",
         class: "d-flex",
-        permission: Permissions.MANAGE_PRODUCTS,
-    },
-    {
-        title: "sidebar.item.product-kits",
-        name: "product kits",
-        fontIcon: <FontAwesomeIcon icon={faGift} />,
-        to: "/app/product-kits",
-        class: "d-flex",
-        permission: Permissions.MANAGE_PRODUCTS,
-    },
-    {
-        title: "sidebar.item.print-barcode",
-        name: "print barcode",
-        fontIcon: <FontAwesomeIcon icon={faBarcode} />,
-        to: "/app/print/barcode",
-        class: "d-flex",
-        permission: Permissions.MANAGE_PRODUCTS,
+        tabs: [
+            { title: "sidebar.item.products", name: "products", to: "/app/products", permission: Permissions.MANAGE_PRODUCTS },
+            { title: "sidebar.tab.kits", name: "product kits", to: "/app/product-kits", permission: Permissions.MANAGE_PRODUCTS },
+            { title: "sidebar.item.print-barcode", name: "print barcode", to: "/app/print/barcode", permission: Permissions.MANAGE_PRODUCTS },
+        ],
     },
     {
         // Datos maestros que se configuran una vez y casi no se tocan.
@@ -218,52 +179,12 @@ export default [
         fontIcon: <FontAwesomeIcon icon={faLayerGroup} />,
         to: "/app/product-categories",
         class: "d-flex",
-        is_submenu: "true",
-        permission: Permissions.MANAGE_PRODUCT_CATEGORIES,
-        subPath: {
-            categoriesSubPath: "/app/product-categories",
-            brandsSubPath: "/app/brands",
-            variationsSubPath: "/app/variations",
-            unitsSubPath: "/app/units",
-            baseUnitsSubPath: "/app/base-units",
-        },
-        subMenu: [
-            {
-                title: "sidebar.item.categories",
-                name: "product categories",
-                to: "/app/product-categories",
-                class: "d-flex",
-                permission: Permissions.MANAGE_PRODUCT_CATEGORIES,
-            },
-            {
-                title: "brands.title",
-                name: "brands",
-                to: "/app/brands",
-                path: "/app/create-brand",
-                class: "d-flex",
-                permission: Permissions.MANAGE_BRANDS,
-            },
-            {
-                title: "variations.title",
-                name: "variations",
-                to: "/app/variations",
-                class: "d-flex",
-                permission: Permissions.MANAGE_VARIATIONS,
-            },
-            {
-                title: "units.title",
-                name: "units",
-                to: "/app/units",
-                class: "d-flex",
-                permission: Permissions.MANAGE_UNITS,
-            },
-            {
-                title: "base-units.title",
-                name: "base units",
-                to: "/app/base-units",
-                class: "d-flex",
-                permission: Permissions.MANAGE_UNITS,
-            },
+        tabs: [
+            { title: "sidebar.item.categories", name: "product categories", to: "/app/product-categories", permission: Permissions.MANAGE_PRODUCT_CATEGORIES },
+            { title: "brands.title", name: "brands", to: "/app/brands", permission: Permissions.MANAGE_BRANDS },
+            { title: "variations.title", name: "variations", to: "/app/variations", permission: Permissions.MANAGE_VARIATIONS },
+            { title: "units.title", name: "units", to: "/app/units", permission: Permissions.MANAGE_UNITS },
+            { title: "base-units.title", name: "base units", to: "/app/base-units", permission: Permissions.MANAGE_UNITS },
         ],
     },
 
@@ -308,15 +229,10 @@ export default [
         fontIcon: <FontAwesomeIcon icon={faReceipt} />,
         to: "/app/purchases",
         class: "d-flex",
-        permission: Permissions.MANAGE_PURCHASE,
-    },
-    {
-        title: "sidebar.item.purchase-returns",
-        name: "purchases return",
-        fontIcon: <FontAwesomeIcon icon={faReply} />,
-        to: "/app/purchase-return",
-        class: "d-flex",
-        permission: Permissions.MANAGE_PURCHASE_RETURN,
+        tabs: [
+            { title: "sidebar.item.purchases", name: "purchases", to: "/app/purchases", permission: Permissions.MANAGE_PURCHASE },
+            { title: "sidebar.tab.returns", name: "purchases return", to: "/app/purchase-return", permission: Permissions.MANAGE_PURCHASE_RETURN },
+        ],
     },
     {
         title: "suppliers.title",

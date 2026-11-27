@@ -849,5 +849,8 @@
     "sidebar.item.login-logs": "Login history",
     "sidebar.item.advanced": "Email and advanced",
     "sidebar.item.mail-settings": "Mail server",
-    "sidebar.item.email-templates": "Email templates"
+    "sidebar.item.email-templates": "Email templates",
+    "sidebar.item.sri-documents": "SRI documents",
+    "sidebar.tab.returns": "Returns",
+    "sidebar.tab.kits": "Kits"
 }
