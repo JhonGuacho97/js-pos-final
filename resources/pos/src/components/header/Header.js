@@ -48,6 +48,20 @@ const Header = (props) => {
     const { stores, currentStoreId } = useSelector(state => state.myStores);
     const dispatch = useDispatch();
 
+    // El botón "Vender" del sidebar (AsideMenu.js) avisa con este evento:
+    // si la tienda exige abrir caja antes de vender, se muestra el mismo
+    // modal que el botón POS de aquí arriba y se cancela la navegación.
+    useEffect(() => {
+        const onOpenPos = (event) => {
+            if (allConfigData?.open_register === true) {
+                event.preventDefault();
+                setShowPosRegisterModel(true);
+            }
+        };
+        window.addEventListener('ecuapos:open-pos', onOpenPos);
+        return () => window.removeEventListener('ecuapos:open-pos', onOpenPos);
+    }, [allConfigData?.open_register]);
+
     // Sin 2+ tiendas no hay nada que elegir -- no se agrega fricción
     // visual nueva a la instalación single-store de hoy.
     const onSelectStore = (store) => {

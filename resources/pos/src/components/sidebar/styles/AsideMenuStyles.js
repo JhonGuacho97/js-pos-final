@@ -115,6 +115,45 @@ export const asideStyles = `
     scrollbar-gutter: stable;
   }
 
+  .aside-menu-container .aside-sell {
+    padding: 14px 14px 0;
+  }
+
+  .aside-menu-container .aside-sell-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 9px;
+    height: 44px;
+    border-radius: 11px;
+    background: var(--sidebar-primary);
+    color: #fff !important;
+    font-size: 14px;
+    font-weight: 700;
+    text-decoration: none !important;
+    box-shadow: 0 6px 16px -8px rgba(21, 94, 239, .7);
+    transition: background-color .16s ease, transform .16s ease;
+  }
+
+  .aside-menu-container .aside-sell-btn:hover,
+  .aside-menu-container .aside-sell-btn:focus-visible {
+    background: #0f4ad0;
+  }
+
+  .aside-menu-container .aside-sell-btn:active {
+    transform: translateY(1px);
+  }
+
+  .aside-menu-container.collapsed .aside-sell {
+    padding: 14px 16px 0;
+  }
+
+  .aside-menu-container.collapsed .aside-sell-btn {
+    width: 48px;
+    margin: 0 auto;
+    font-size: 16px;
+  }
+
   .aside-menu-container .aside-menu-container__aside-search {
     position: sticky !important;
     top: 0;
