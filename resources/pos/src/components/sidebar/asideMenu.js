@@ -8,6 +8,7 @@ import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import {
     faAnglesLeft,
     faAnglesRight,
+    faCashRegister,
     faSearch,
     faXmark,
 } from "@fortawesome/free-solid-svg-icons";
@@ -51,6 +52,18 @@ const AsideMenu = (props) => {
 
     const handleMenuNavigation = () => {
         if (isResponsiveMenu) menuClick();
+    };
+
+    // "Vender" va primero porque es lo que más se usa. La ruta /app/pos ya
+    // viene filtrada por permisos en asideConfig (ítem oculto "pos"). Si la
+    // tienda exige abrir caja antes de vender, Header.js escucha este evento,
+    // muestra su modal de apertura y cancela la navegación.
+    const canSell = asideConfig?.some((route) => route.name === "pos");
+    const handleSellClick = (event) => {
+        const openPos = new CustomEvent("ecuapos:open-pos", { cancelable: true });
+        window.dispatchEvent(openPos);
+        if (openPos.defaultPrevented) event.preventDefault();
+        handleMenuNavigation();
     };
 
     const updateMenu = () => {
@@ -212,6 +225,20 @@ const AsideMenu = (props) => {
                 </SidebarHeader>
 
                 <SidebarContent className="sidebar-scrolling">
+                    {canSell && (
+                        <div className="aside-sell">
+                            <Link
+                                to="/app/pos"
+                                className="aside-sell-btn"
+                                onClick={handleSellClick}
+                                title={compactMenu ? intl.formatMessage({ id: "sidebar.sell" }) : undefined}
+                            >
+                                <FontAwesomeIcon icon={faCashRegister} />
+                                {!compactMenu && <span>{intl.formatMessage({ id: "sidebar.sell" })}</span>}
+                            </Link>
+                        </div>
+                    )}
+
                     {/* ── Search ── */}
                     <div className={`d-flex position-relative aside-menu-container__aside-search search-control ${compactMenu ? "d-none" : ""} py-3 mt-1`}>
                         <div className="position-relative d-flex w-100">
