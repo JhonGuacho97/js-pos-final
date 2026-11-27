@@ -5,6 +5,7 @@ import Header from "./header/Header";
 import Footer from "./footer/Footer";
 import AsideTopSubMenuItem from "./sidebar/asideTopSubMenuItem";
 import GlobalSearch from "./header/GlobalSearch";
+import SectionTabs from "./sidebar/SectionTabs";
 import { Tokens } from "../constants";
 import asideConfig from "../config/asideConfig";
 import { environment } from "../config/environment";
@@ -74,7 +75,10 @@ const MasterLayout = (props) => {
                 </div>
                 <div className="content d-flex flex-column flex-column-fluid pt-7">
                     <div className="d-flex flex-column-fluid">
-                        <div className="container-fluid">{children}</div>
+                        <div className="container-fluid">
+                            <SectionTabs routes={newRoutes} />
+                            {children}
+                        </div>
                     </div>
                 </div>
                 <div className="container-fluid">
@@ -108,6 +112,15 @@ const prepareRoutes = (config) => {
             // Pasa de largo -- se filtra abajo en pruneEmptyGroups() una vez
             // que ya sabemos qué rutas reales quedaron a cada lado.
             filterRoutes.push(route);
+            return;
+        }
+        if (route.tabs) {
+            // Entrada con pestañas: se muestra si el usuario puede ver al
+            // menos una, y apunta a la primera que puede ver.
+            const tabs = route.tabs.filter((tab) => hasAnyPermission(permissions, tab.permission));
+            if (tabs.length) {
+                filterRoutes.push({ ...route, tabs, to: tabs[0].to });
+            }
             return;
         }
         const permissionsRoute = getRouteWithSubMenu(route, permissions);

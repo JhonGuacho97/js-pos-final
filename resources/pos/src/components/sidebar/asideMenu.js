@@ -17,6 +17,7 @@ import { getFormattedMessage, placeholderText } from "../../shared/sharedMethod"
 import { useIntl } from "react-intl";
 import { Tokens } from "../../constants";
 import { asideStyles } from "./styles/AsideMenuStyles";
+import { pathMatches } from "./SectionTabs";
 
 const AsideMenu = (props) => {
     const {
@@ -84,8 +85,13 @@ const AsideMenu = (props) => {
                     intl.formatMessage({ id: `${p.title}` }).toLowerCase()
                 ).some(name => name.includes(searchTerm.toLowerCase()));
             } else {
-                return intl.formatMessage({ id: `${post.title}` })
-                    .toLowerCase().includes(searchTerm.toLowerCase());
+                // Una entrada con pestañas aparece si coincide ella o
+                // cualquiera de sus pestañas ("cotizaciones" → Ventas).
+                const titles = [post.title, ...(post.tabs || []).map((tab) => tab.title)];
+                return titles.some((title) =>
+                    intl.formatMessage({ id: `${title}` })
+                        .toLowerCase().includes(searchTerm.toLowerCase())
+                );
             }
         });
     };
@@ -327,6 +333,7 @@ const AsideMenu = (props) => {
                                             }
                                             className={`${!compactMenu ? mainItems.class : ""} flex-column`}
                                             active={
+                                                mainItems.tabs?.some((tab) => pathMatches(location.pathname, tab.to)) ||
                                                 location.pathname === mainItems.to ||
                                                 location.pathname === mainItems.path ||
                                                 location.pathname === mainItems.mailSettingsPath ||

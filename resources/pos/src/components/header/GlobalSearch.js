@@ -23,6 +23,13 @@ const buildSearchablePages = (newRoutes) => {
             currentGroup = route.title;
             return;
         }
+        if (route.tabs?.length) {
+            // Cada pestaña es una página propia para la búsqueda.
+            route.tabs.forEach((tab) => {
+                pages.push({ title: tab.title, to: tab.to, group: currentGroup });
+            });
+            return;
+        }
         if (route.newRoute?.length) {
             route.newRoute.forEach((child) => {
                 if (child.to) {
