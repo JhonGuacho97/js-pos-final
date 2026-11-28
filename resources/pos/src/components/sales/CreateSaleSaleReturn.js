@@ -3,7 +3,6 @@ import {connect} from 'react-redux';
 import {useParams} from 'react-router-dom';
 import SalesForm from './SalesForm';
 import MasterLayout from '../MasterLayout';
-import HeaderTitle from '../header/HeaderTitle';
 import {editSale, fetchSale} from '../../store/action/salesAction';
 import {fetchAllCustomer} from '../../store/action/customerAction';
 import {fetchAllWarehouses} from '../../store/action/warehouseAction';
@@ -94,7 +93,6 @@ const CreateSaleSaleReturn = (props) => {
     return (
         <MasterLayout>
             <TopProgressBar/>
-            <HeaderTitle title={getFormattedMessage('sale.edit.title')} to='/app/sales'/>
             {isLoading ? <Spinner /> :
                 <SalesForm singleSale={itemsValue} id={id} customers={customers} warehouses={warehouses}/>}
         </MasterLayout>

@@ -1,8 +1,6 @@
-import React, { useEffect, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { Form, InputGroup, Button } from 'react-bootstrap-v5';
-import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import { faPlus, faPen, faClockRotateLeft } from '@fortawesome/free-solid-svg-icons';
+import React, { useEffect, useRef, useState } from 'react';
+import { Link, useNavigate } from 'react-router-dom';
+import { InputGroup } from 'react-bootstrap-v5';
 import dayjs from 'dayjs';
 import utc from 'dayjs/plugin/utc';
 import localizedFormat from 'dayjs/plugin/localizedFormat';
@@ -20,16 +18,17 @@ import ProductRowTable from '../../shared/components/sales/ProductRowTable';
 import { placeholderText, getFormattedMessage, decimalValidate, onFocusInput, getFormattedOptions, toLocalDateObject } from '../../shared/sharedMethod';
 import ReactDatePicker from '../../shared/datepicker/ReactDatePicker';
 import ProductMainCalculation from './ProductMainCalculation';
-import { calculateCartTotalAmount, calculateCartTotalTaxAmount } from '../../shared/calculation/calculation';
+import { amountBeforeTax, calculateCartTotalAmount, calculateCartTotalTaxAmount, taxAmountMultiply } from '../../shared/calculation/calculation';
 import { prepareSaleProductArray } from '../../shared/prepareArray/prepareSaleArray';
-import ModelFooter from '../../shared/components/modelFooter';
 import { addToast } from '../../store/action/toastAction';
 import { paymentMethodOptions, salePaymentStatusOptions, saleStatusOptions, statusOptions, toastType } from '../../constants';
 import { fetchFrontSetting } from '../../store/action/frontSettingAction';
 import ReactSelect from '../../shared/select/reactSelect';
 import CustomerForm from '../../frontend/components/customerModel/CustomerForm';
 import CustomerSalesHistoryModal from '../customer/CustomerSalesHistoryModal';
-import '../../assets/scss/custom/pages/sales-form.scss';
+import SaleCustomerField from './SaleCustomerField';
+import { updatePosCustomer } from '../../store/action/pos/customerAction';
+import '../../assets/scss/custom/pages/sale-desk.scss';
 import apiConfig from '../../config/apiConfig';
 
 const SalesForm = (props) => {
@@ -45,7 +44,8 @@ const SalesForm = (props) => {
         fetchProductsByWarehouse,
         fetchFrontSetting,
         frontSetting,
-        isQuotation, allConfigData
+        isQuotation, allConfigData, settings, isSaving, updatePosCustomer,
+        backTo = isQuotation ? '/app/quotations' : '/app/sales'
     } = props;
 
     const navigate = useNavigate();
@@ -64,6 +64,11 @@ const SalesForm = (props) => {
     const [modalHistorial, setModalHistorial] = useState(false);
     const [creditProfile, setCreditProfile] = useState(null);
     const [creditLoading, setCreditLoading] = useState(false);
+    const [customerDraft, setCustomerDraft] = useState(null);
+    const [adjustOpen, setAdjustOpen] = useState(false);
+    const [notesOpen, setNotesOpen] = useState(Boolean(singleSale?.notes));
+    const adjustRef = useRef(null);
+    const searchRef = useRef(null);
 
     const [saleValue, setSaleValue] = useState({
         date: new Date(),
@@ -78,7 +83,7 @@ const SalesForm = (props) => {
         received_amount: 0,
         paid_amount: 0,
         status_id: { label: getFormattedMessage("status.filter.complated.label"), value: 1 },
-        payment_status: { label: getFormattedMessage("payment-status.filter.unpaid.label"), value: 2 },
+        payment_status: { label: getFormattedMessage("payment-status.filter.paid.label"), value: 1 },
         payment_type: { label: getFormattedMessage("payment-type.filter.cash.label"), value: 1 },
         payment_terms_days: 0,
         payment_due_date: dayjs().format('YYYY-MM-DD'),
@@ -382,238 +387,342 @@ const SalesForm = (props) => {
         ? { id: selectedCustomer.id, ...selectedCustomerData }
         : null;
 
+    const isEdit = Boolean(singleSale) && !isQuotation;
+    const isCreate = !singleSale;
+    // Crear venta y convertir cotización emiten documento y registran el
+    // cobro; al editar, los pagos se manejan desde la lista de ventas.
+    const showPayment = isCreate || isQuotation;
+    const currency = frontSetting.value?.currency_symbol || '$';
+    const money = (value) => `${currency}${Number(value || 0).toFixed(2)}`;
+    const subtotalNoTax = updateProducts.reduce((sum, item) => sum + amountBeforeTax(item) * Number(item.quantity || 0), 0);
+    const itemsTax = updateProducts.reduce((sum, item) => sum + Number(taxAmountMultiply(item)), 0);
+    const orderTax = Number(calculateCartTotalTaxAmount(updateProducts, saleValue));
+    const grandTotal = calculateCartTotalAmount(updateProducts, saleValue);
+    const discountValue = Number(saleValue.discount || 0);
+    const shippingValue = Number(saleValue.shipping || 0);
+    const saleStatusValue = Number(saleValue.status_id?.value ?? saleValue.status_id);
+    const adjustmentsActive = Number(saleValue.tax_rate || 0) > 0 || discountValue > 0 || shippingValue > 0
+        || (saleStatusValue && saleStatusValue !== 1);
+    const paymentStatus = Number(saleValue.payment_status?.value ?? saleValue.payment_status);
+    const paymentType = Number(saleValue.payment_type?.value ?? saleValue.payment_type);
+    const paymentChoices = [
+        { value: 1, label: 'Pagado' },
+        ...(isCreate ? [{ value: 3, label: 'Abono' }] : []),
+        { value: 2, label: 'Pendiente' },
+    ];
+    const methodChoices = [
+        { value: 1, label: 'Efectivo' },
+        { value: 3, label: 'Transferencia' },
+        { value: 2, label: 'Cheque' },
+        { value: 4, label: 'Otro' },
+    ];
+    const canEditCustomer = Boolean(selectedCustomerFlat) && !selectedCustomerFlat.es_consumidor_final;
+    const submitRef = useRef(null);
+
+    // Bodega por defecto al crear: la del usuario, la de Ajustes o la
+    // única que exista, para no obligar a elegirla en cada venta.
+    useEffect(() => {
+        if (singleSale || saleValue.warehouse_id || !warehouses?.length) return;
+        const preferredId = allConfigData?.default_warehouse_id || settings?.attributes?.default_warehouse;
+        const preferred = warehouses.find((w) => String(w.id) === String(preferredId))
+            || (warehouses.length === 1 ? warehouses[0] : null);
+        if (preferred) {
+            setSaleValue((current) => ({ ...current, warehouse_id: { value: preferred.id, label: preferred.attributes.name } }));
+        }
+    }, [warehouses, allConfigData?.default_warehouse_id, settings?.attributes?.default_warehouse]);
+
+    // Atajos: F1 busca producto, Ctrl+Enter guarda (F2 lo maneja el campo
+    // de cliente).
+    useEffect(() => {
+        const onKeyDown = (event) => {
+            if (event.key === 'F1') {
+                event.preventDefault();
+                searchRef.current?.querySelector('input')?.focus();
+            } else if ((event.ctrlKey || event.metaKey) && event.key === 'Enter') {
+                event.preventDefault();
+                submitRef.current?.click();
+            }
+        };
+        window.addEventListener('keydown', onKeyDown);
+        return () => window.removeEventListener('keydown', onKeyDown);
+    }, []);
+
+    useEffect(() => {
+        if (!adjustOpen) return undefined;
+        const onPointerDown = (event) => {
+            if (adjustRef.current && !adjustRef.current.contains(event.target)) setAdjustOpen(false);
+        };
+        document.addEventListener('mousedown', onPointerDown);
+        return () => document.removeEventListener('mousedown', onPointerDown);
+    }, [adjustOpen]);
+
+    const openCreateCustomer = (identification = '') => {
+        const tipo = /^\d{13}$/.test(identification) ? '04' : /^\d{10}$/.test(identification) ? '05' : '06';
+        setCustomerDraft(identification ? { identification, tipo_identificacion: tipo } : null);
+        setModalShowCustomer(true);
+    };
+
+    const onCustomerCreated = (option) => {
+        if (option?.value) onCustomerChange({ value: option.value, label: option.label });
+    };
+
+    const title = isEdit ? 'Editar venta' : 'Convertir cotización en venta';
+
     return (
-        <div className='sale-form-v2'>
-            <div className='sale-form-heading'>
-                <div>
-                    <span className='sale-form-eyebrow'>{isQuotation ? 'Cotización' : 'Ventas'}</span>
-                    <h1>{singleSale && !isQuotation ? 'Editar venta' : isQuotation ? 'Convertir en venta' : 'Nueva venta'}</h1>
-                    <p>Completa los datos, agrega productos y revisa el total antes de guardar.</p>
-                </div>
-                <div className='sale-form-heading-status'>
-                    <span className='sale-status-dot' />
-                    {singleSale ? 'Edición en curso' : 'Borrador'}
-                </div>
-            </div>
-
-            <div className='row g-4 align-items-start'>
-                <div className='col-xl-8'>
-                    <section className='sale-panel sale-customer-panel'>
-                        <div className='sale-panel-heading'>
-                            <div className='sale-panel-icon'><i className='bi bi-person' /></div>
-                            <div>
-                                <h2>{getFormattedMessage('customer.title')}</h2>
-                                <p>Selecciona quién recibirá esta venta.</p>
-                            </div>
-                            {selectedCustomerFlat && (
-                                <div className='sale-customer-actions'>
-                                    <Button variant='light' onClick={() => setModalEditCustomer(true)} title='Editar cliente'>
-                                        <FontAwesomeIcon icon={faPen} /><span>Editar</span>
-                                    </Button>
-                                    <Button variant='light' onClick={() => setModalHistorial(true)} title='Historial de ventas'>
-                                        <FontAwesomeIcon icon={faClockRotateLeft} /><span>Historial</span>
-                                    </Button>
-                                </div>
-                            )}
-                        </div>
-
-                        <div className='sale-customer-select-row'>
-                            <ReactSelect name='customer_id' data={customers} onChange={onCustomerChange}
-                                title={getFormattedMessage('customer.title')} errors={errors['customer_id']}
-                                defaultValue={saleValue.customer_id} value={saleValue.customer_id}
-                                placeholder={placeholderText('sale.select.customer.placeholder.label')} />
-                            <Button onClick={() => setModalShowCustomer(true)} className='sale-add-customer' title='Agregar nuevo cliente'>
-                                <FontAwesomeIcon icon={faPlus} /><span>Nuevo cliente</span>
-                            </Button>
-                        </div>
-
-                        <div className='sale-customer-details'>
-                            <div><span>Cédula / RUC</span><strong>{selectedCustomerData?.identification || 'Sin información'}</strong></div>
-                            <div><span>Celular</span><strong>{selectedCustomerData?.phone || 'Sin información'}</strong></div>
-                            <div><span>Correo</span><strong>{selectedCustomerData?.email || 'Sin información'}</strong></div>
-                            <div><span>Dirección</span><strong>{selectedCustomerData?.address || 'Sin información'}</strong></div>
-                        </div>
-                        {selectedCustomerFlat && <div className={`sale-credit-snapshot ${creditProfile?.credit_enabled ? 'is-controlled' : ''}`}>
-                            <div><i className='bi bi-credit-card-2-front' /><span><small>Crédito del cliente</small><strong>{creditLoading ? 'Consultando…' : creditProfile?.credit_enabled ? 'Cupo controlado' : 'Sin límite controlado'}</strong></span></div>
-                            <div><small>Saldo actual</small><strong>{frontSetting.value?.currency_symbol || '$'}{Number(creditProfile?.outstanding_balance || 0).toFixed(2)}</strong></div>
-                            <div><small>Disponible</small><strong>{creditProfile?.available_credit === null || creditProfile?.available_credit === undefined ? 'Sin límite' : `${frontSetting.value?.currency_symbol || '$'}${Number(creditProfile.available_credit).toFixed(2)}`}</strong></div>
-                            {Number(creditProfile?.overdue_balance || 0) > 0 && <div className='is-overdue'><small>Vencido</small><strong>{frontSetting.value?.currency_symbol || '$'}{Number(creditProfile.overdue_balance).toFixed(2)}</strong></div>}
-                        </div>}
-                    </section>
-
-                    <section className='sale-panel sale-document-panel'>
-                        <div className='sale-panel-heading'>
-                            <div className='sale-panel-icon'><i className='bi bi-receipt' /></div>
-                            <div>
-                                <h2>Datos del documento</h2>
-                                <p>Define el comprobante, la fecha y la bodega de salida.</p>
-                            </div>
-                        </div>
-                        <div className='row g-3'>
-                            <div className='col-md-4'>
-                                <label className='form-label'>Tipo de documento</label>
-                                <select className='form-select' value={emitirFacturaSri ? 'factura' : 'recibo'}
-                                    onChange={(e) => setEmitirFacturaSri(e.target.value === 'factura')}>
-                                    <option value='factura'>Factura electrónica</option>
-                                    <option value='recibo'>Recibo electrónico</option>
-                                </select>
-                            </div>
-                            <div className='col-md-4'>
-                                <label className='form-label'>{getFormattedMessage('react-data-table.date.column.label')}</label>
-                                <div className='position-relative'>
-                                    <ReactDatePicker onChangeDate={handleCallback} newStartDate={saleValue.date} />
-                                </div>
-                                {errors['date'] && <span className='text-danger d-block fw-400 fs-small mt-2'>{errors['date']}</span>}
-                            </div>
-                            <div className='col-md-4'>
-                                <ReactSelect name='warehouse_id' data={warehouses} onChange={onWarehouseChange}
-                                    title={getFormattedMessage('warehouse.title')} errors={errors['warehouse_id']}
-                                    defaultValue={saleValue.warehouse_id} value={saleValue.warehouse_id} addSearchItems={singleSale}
-                                    isWarehouseDisable={true}
-                                    placeholder={placeholderText('purchase.select.warehouse.placeholder.label')} />
-                            </div>
-                        </div>
-                        <div className={`sale-document-indicator ${emitirFacturaSri ? 'is-sri' : ''}`}>
-                            <i className={`bi ${emitirFacturaSri ? 'bi-patch-check' : 'bi-receipt-cutoff'}`} />
-                            <span>{emitirFacturaSri ? 'Se emitirá un comprobante electrónico SRI.' : 'Se generará un recibo electrónico interno.'}</span>
-                        </div>
-                    </section>
-
-                    <section className='sale-panel sale-products-panel'>
-                        <div className='sale-panel-heading sale-products-heading'>
-                            <div className='sale-panel-icon'><i className='bi bi-box-seam' /></div>
-                            <div>
-                                <h2>Productos</h2>
-                                <p>Busca artículos y ajusta cantidades, precios e impuestos.</p>
-                            </div>
-                            <span className='sale-product-count'>{updateProducts.length} {updateProducts.length === 1 ? 'producto' : 'productos'}</span>
-                        </div>
-                        <div className='sale-product-search'>
-                            <label className='form-label'>{getFormattedMessage('product.title')}</label>
-                            <ProductSearch values={saleValue} products={products} handleValidation={handleValidation}
-                                updateProducts={updateProducts} setUpdateProducts={setUpdateProducts}
-                                customProducts={customProducts} presentationMode='sale' />
-                        </div>
-                        <div className='sale-products-table'>
-                            <ProductRowTable updateProducts={updateProducts} setUpdateProducts={setUpdateProducts}
-                                updatedQty={updatedQty} frontSetting={frontSetting}
-                                updateCost={updateCost} updateDiscount={updateDiscount}
-                                updateTax={updateTax} updateSubTotal={updateSubTotal}
-                                updateSaleUnit={updateSaleUnit} />
-                        </div>
-                    </section>
+        <div className='sale-desk'>
+            <section className='sale-desk__head'>
+                <div className='sale-desk__bar'>
+                    <Link to={backTo} className='sale-desk__back' title='Volver' aria-label='Volver'>
+                        <i className='bi bi-arrow-left' />
+                    </Link>
+                    {isCreate ? (
+                        <nav className='sale-desk__modes' aria-label='Qué vas a crear'>
+                            <span className='is-active' aria-current='page'><i className='bi bi-cart3' /> Venta</span>
+                            <Link to='/app/quotations/create'><i className='bi bi-file-earmark-text' /> Cotización</Link>
+                        </nav>
+                    ) : (
+                        <h1 className='sale-desk__title'>{title}</h1>
+                    )}
+                    <span className='sale-desk__spacer' />
+                    <span className='sale-desk__shortcuts'>
+                        <kbd>F1</kbd> producto <kbd>F2</kbd> cliente <kbd>Ctrl</kbd>+<kbd>Enter</kbd> guardar
+                    </span>
                 </div>
 
-                <div className='col-xl-4'>
-                    <aside className='sale-summary-panel'>
-                        <div className='sale-summary-heading'>
-                            <div>
-                                <span className='sale-form-eyebrow'>Resumen</span>
-                                <h2>Total de la venta</h2>
-                            </div>
-                            <i className='bi bi-calculator' />
+                <div className={`sale-desk__fields ${showPayment ? '' : 'is-compact'}`}>
+                    <div className='sale-desk__field sale-desk__field--customer'>
+                        <span className='sale-desk__label'>Cliente <kbd>F2</kbd></span>
+                        <SaleCustomerField
+                            customers={customers}
+                            value={saleValue.customer_id}
+                            onChange={onCustomerChange}
+                            onCreate={openCreateCustomer}
+                            onEdit={() => setModalEditCustomer(true)}
+                            onHistory={() => setModalHistorial(true)}
+                            canEdit={canEditCustomer}
+                            invalid={Boolean(errors['customer_id'])}
+                        />
+                        {errors['customer_id'] && <small className='sale-desk__error'>{errors['customer_id']}</small>}
+                    </div>
+                    <div className='sale-desk__field'>
+                        <span className='sale-desk__label'>Bodega</span>
+                        <ReactSelect name='warehouse_id' data={warehouses} onChange={onWarehouseChange} isRequired
+                            errors={errors['warehouse_id']} defaultValue={saleValue.warehouse_id} value={saleValue.warehouse_id}
+                            addSearchItems={singleSale} isWarehouseDisable={true}
+                            placeholder={placeholderText('purchase.select.warehouse.placeholder.label')} />
+                    </div>
+                    {showPayment && (
+                        <div className='sale-desk__field'>
+                            <span className='sale-desk__label'>Documento</span>
+                            <select className='form-select' value={emitirFacturaSri ? 'factura' : 'recibo'} aria-label='Tipo de documento'
+                                onChange={(e) => setEmitirFacturaSri(e.target.value === 'factura')}>
+                                <option value='factura'>Factura electrónica SRI</option>
+                                <option value='recibo'>Recibo electrónico</option>
+                            </select>
                         </div>
-
-                        <div className='sale-summary-calculation'>
-                            <ProductMainCalculation inputValues={saleValue} allConfigData={allConfigData}
-                                updateProducts={updateProducts} frontSetting={frontSetting} />
+                    )}
+                    <div className='sale-desk__field sale-desk__field--date'>
+                        <span className='sale-desk__label'>Fecha</span>
+                        <div className='position-relative'>
+                            <ReactDatePicker onChangeDate={handleCallback} newStartDate={saleValue.date} />
                         </div>
+                        {errors['date'] && <small className='sale-desk__error'>{errors['date']}</small>}
+                    </div>
+                </div>
 
-                        <div className='sale-summary-section'>
-                            <div className='sale-summary-section-title'><i className='bi bi-sliders' /> Ajustes del total</div>
-                            <div className='row g-3'>
-                                <div className='col-12'>
-                                    <label className='form-label'>{getFormattedMessage('purchase.input.order-tax.label')}</label>
-                                    <InputGroup>
-                                        <input aria-label='Impuesto de la venta' className='form-control' type='text' name='tax_rate'
-                                            value={saleValue.tax_rate} onBlur={onBlurInput} onFocus={onFocusInput}
-                                            onKeyPress={decimalValidate} onChange={onChangeInput} />
-                                        <InputGroup.Text>%</InputGroup.Text>
-                                    </InputGroup>
-                                </div>
-                                <div className='col-sm-6 col-xl-12'>
-                                    <Form.Label>{getFormattedMessage('purchase.order-item.table.discount.column.label')}</Form.Label>
+                {selectedCustomerFlat && (
+                    <div className='sale-desk__customer-line'>
+                        <span><i className='bi bi-telephone' />{selectedCustomerData?.phone || 'Sin teléfono'}</span>
+                        <span title={selectedCustomerData?.email}><i className='bi bi-envelope' />{selectedCustomerData?.email || 'Sin correo'}</span>
+                        {selectedCustomerData?.address && <span title={selectedCustomerData.address}><i className='bi bi-geo-alt' />{selectedCustomerData.address}</span>}
+                        {!isQuotation && creditLoading && <em className='sale-desk__pill'>Consultando crédito…</em>}
+                        {!isQuotation && !creditLoading && creditProfile?.credit_enabled && (
+                            <em className='sale-desk__pill is-success'>
+                                Disponible {creditProfile.available_credit === null || creditProfile.available_credit === undefined ? 'sin límite' : money(creditProfile.available_credit)}
+                            </em>
+                        )}
+                        {!isQuotation && !creditLoading && Number(creditProfile?.outstanding_balance || 0) > 0 && (
+                            <em className='sale-desk__pill is-warning'>Saldo {money(creditProfile.outstanding_balance)}</em>
+                        )}
+                        {!isQuotation && !creditLoading && Number(creditProfile?.overdue_balance || 0) > 0 && (
+                            <em className='sale-desk__pill is-danger'>Vencido {money(creditProfile.overdue_balance)}</em>
+                        )}
+                    </div>
+                )}
+            </section>
+
+            <section className='sale-desk__items'>
+                <div className='sale-desk__items-bar'>
+                    <div className='sale-desk__search' ref={searchRef}>
+                        <ProductSearch values={saleValue} products={products} handleValidation={handleValidation}
+                            updateProducts={updateProducts} setUpdateProducts={setUpdateProducts}
+                            customProducts={customProducts} presentationMode='sale' />
+                        <kbd className='sale-desk__search-kbd'>F1</kbd>
+                    </div>
+                    <div className='sale-desk__adjust' ref={adjustRef}>
+                        <button type='button' className={`sale-desk__adjust-btn ${adjustmentsActive ? 'has-values' : ''}`}
+                            onClick={() => setAdjustOpen((open) => !open)} aria-expanded={adjustOpen}>
+                            <i className='bi bi-sliders' /> Ajustes
+                            {adjustmentsActive && <span className='sale-desk__dot' aria-label='Con ajustes' />}
+                            <i className='bi bi-chevron-down' />
+                        </button>
+                        {adjustOpen && (
+                            <div className='sale-desk__adjust-panel' role='dialog' aria-label='Ajustes de la venta'>
+                                <label>
+                                    <span>Descuento general</span>
                                     <InputGroup>
                                         <input aria-label='Descuento de la venta' className='form-control' type='text' name='discount'
                                             value={saleValue.discount} onBlur={onBlurInput} onFocus={onFocusInput}
                                             onKeyPress={decimalValidate} onChange={onChangeInput} />
-                                        <InputGroup.Text>{frontSetting.value && frontSetting.value.currency_symbol}</InputGroup.Text>
+                                        <InputGroup.Text>{currency}</InputGroup.Text>
                                     </InputGroup>
-                                </div>
-                                <div className='col-sm-6 col-xl-12'>
-                                    <label className='form-label'>{getFormattedMessage('purchase.input.shipping.label')}</label>
+                                </label>
+                                <label>
+                                    <span>Envío</span>
                                     <InputGroup>
                                         <input aria-label='Envío de la venta' className='form-control' type='text' name='shipping'
                                             value={saleValue.shipping} onBlur={onBlurInput} onFocus={onFocusInput}
                                             onKeyPress={decimalValidate} onChange={onChangeInput} />
-                                        <InputGroup.Text>{frontSetting.value && frontSetting.value.currency_symbol}</InputGroup.Text>
+                                        <InputGroup.Text>{currency}</InputGroup.Text>
                                     </InputGroup>
+                                </label>
+                                <label>
+                                    <span>Impuesto del pedido</span>
+                                    <InputGroup>
+                                        <input aria-label='Impuesto del pedido' className='form-control' type='text' name='tax_rate'
+                                            value={saleValue.tax_rate} onBlur={onBlurInput} onFocus={onFocusInput}
+                                            onKeyPress={decimalValidate} onChange={onChangeInput} />
+                                        <InputGroup.Text>%</InputGroup.Text>
+                                    </InputGroup>
+                                </label>
+                                <label>
+                                    <span>Estado de la venta</span>
+                                    <select className='form-select' value={saleStatusValue || 1}
+                                        onChange={(e) => {
+                                            const option = statusFilterOptions.find((item) => String(item.id) === e.target.value);
+                                            onStatusChange({ value: option.id, label: option.name });
+                                        }}>
+                                        {statusFilterOptions.map((option) => (
+                                            <option key={option.id} value={option.id}>{option.name}</option>
+                                        ))}
+                                    </select>
+                                </label>
+                            </div>
+                        )}
+                    </div>
+                </div>
+                {!saleValue.warehouse_id && (
+                    <div className='sale-desk__notice'><i className='bi bi-info-circle' /> Elige la bodega para buscar productos.</div>
+                )}
+                <div className='sale-desk__table'>
+                    <ProductRowTable updateProducts={updateProducts} setUpdateProducts={setUpdateProducts}
+                        updatedQty={updatedQty} frontSetting={frontSetting}
+                        updateCost={updateCost} updateDiscount={updateDiscount}
+                        updateTax={updateTax} updateSubTotal={updateSubTotal}
+                        updateSaleUnit={updateSaleUnit} />
+                </div>
+            </section>
+
+            <footer className='sale-desk__footer'>
+                <section className='sale-desk__pay'>
+                    {showPayment ? (
+                        <>
+                            <div className='sale-desk__pay-row'>
+                                <h2>Pago</h2>
+                                <div className='sale-desk__segmented' role='radiogroup' aria-label='Estado del pago'>
+                                    {paymentChoices.map((choice) => (
+                                        <button key={choice.value} type='button' role='radio' aria-checked={paymentStatus === choice.value}
+                                            className={paymentStatus === choice.value ? 'is-active' : ''}
+                                            onClick={() => onPaymentStatusChange({ value: choice.value, label: choice.label })}>
+                                            {choice.label}
+                                        </button>
+                                    ))}
                                 </div>
                             </div>
-                        </div>
+                            {paymentStatus !== 2 && (
+                                <div className='sale-desk__methods' role='radiogroup' aria-label='Forma de pago'>
+                                    {methodChoices.map((method) => (
+                                        <button key={method.value} type='button' role='radio' aria-checked={paymentType === method.value}
+                                            className={paymentType === method.value ? 'is-active' : ''}
+                                            onClick={() => onPaymentTypeChange({ value: method.value, label: method.label })}>
+                                            {method.label}
+                                        </button>
+                                    ))}
+                                </div>
+                            )}
+                            {paymentStatus === 2 && (
+                                <p className='sale-desk__pay-note'><i className='bi bi-journal-text' /> El saldo quedará en cuentas por cobrar.</p>
+                            )}
+                            {(paymentStatus === 3 || (isCreate && [2, 3].includes(paymentStatus))) && (
+                                <div className='sale-desk__terms'>
+                                    {paymentStatus === 3 && (
+                                        <label><span>Abono inicial</span>
+                                            <InputGroup><InputGroup.Text>{currency}</InputGroup.Text>
+                                                <input className='form-control' type='number' min='0.01' step='0.01'
+                                                    value={saleValue.initial_payment_amount}
+                                                    onChange={(e) => setSaleValue({ ...saleValue, initial_payment_amount: e.target.value })} />
+                                            </InputGroup>
+                                        </label>
+                                    )}
+                                    {isCreate && (
+                                        <>
+                                            <label><span>Días de plazo</span>
+                                                <input className='form-control' type='number' min='0' max='3650' value={saleValue.payment_terms_days}
+                                                    onChange={(e) => { const days = Number(e.target.value || 0); setSaleValue({ ...saleValue, payment_terms_days: days, payment_due_date: dayjs(saleValue.date).add(days, 'day').format('YYYY-MM-DD') }); }} />
+                                            </label>
+                                            <label><span>Vence</span>
+                                                <input className='form-control' type='date' value={saleValue.payment_due_date}
+                                                    onChange={(e) => setSaleValue({ ...saleValue, payment_due_date: e.target.value })} />
+                                            </label>
+                                        </>
+                                    )}
+                                </div>
+                            )}
+                            {(errors['payment_status'] || errors['payment_type'] || errors['status_id']) && (
+                                <small className='sale-desk__error'>{errors['payment_status'] || errors['payment_type'] || errors['status_id']}</small>
+                            )}
+                        </>
+                    ) : (
+                        <p className='sale-desk__pay-note'><i className='bi bi-info-circle' /> Los cobros de esta venta se registran desde la lista de ventas.</p>
+                    )}
+                    {notesOpen ? (
+                        <textarea name='notes' className='form-control sale-desk__notes' rows={2} autoFocus={!singleSale?.notes}
+                            value={saleValue.notes || ''} aria-label='Nota de la venta'
+                            placeholder={placeholderText('globally.input.notes.placeholder.label')}
+                            onChange={onNotesChangeInput} />
+                    ) : (
+                        <button type='button' className='sale-desk__link' onClick={() => setNotesOpen(true)}>
+                            <i className='bi bi-plus-lg' /> Agregar nota
+                        </button>
+                    )}
+                </section>
 
-                        <div className='sale-summary-section'>
-                            <div className='sale-summary-section-title'><i className='bi bi-check2-circle' /> Estado y pago</div>
-                            <div className='sale-summary-fields'>
-                                <ReactSelect multiLanguageOption={statusFilterOptions} onChange={onStatusChange} name='status_id'
-                                    title={getFormattedMessage('purchase.select.status.label')} value={saleValue.status_id}
-                                    errors={errors['status_id']} defaultValue={statusDefaultValue[0]}
-                                    placeholder={getFormattedMessage('purchase.select.status.label')} />
-                                {!singleSale && <ReactSelect multiLanguageOption={paymentStatusFilterOptions}
-                                    onChange={onPaymentStatusChange} name='payment_status'
-                                    title={getFormattedMessage('dashboard.recentSales.paymentStatus.label')}
-                                    value={saleValue.payment_status} errors={errors['payment_status']}
-                                    defaultValue={paymentStatusDefaultValue[0]}
-                                    placeholder={placeholderText('sale.select.payment-status.placeholder')} />}
-                                {!singleSale && saleValue?.payment_status?.value !== 2 && (
-                                    <ReactSelect title={getFormattedMessage('select.payment-type.label')} name='payment_type'
-                                        value={saleValue.payment_type} errors={errors['payment_type']}
-                                        placeholder={placeholderText('sale.select.payment-type.placeholder')}
-                                        defaultValue={paymentTypeDefaultValue[0]} multiLanguageOption={paymentMethodOption}
-                                        onChange={onPaymentTypeChange} />
-                                )}
-                                {!singleSale && Number(saleValue?.payment_status?.value) === 3 && <label className='sale-credit-field'>Abono inicial
-                                    <InputGroup><InputGroup.Text>{frontSetting.value?.currency_symbol || '$'}</InputGroup.Text><input className='form-control' type='number' min='0.01' step='0.01' value={saleValue.initial_payment_amount} onChange={(e) => setSaleValue({ ...saleValue, initial_payment_amount: e.target.value })} /></InputGroup>
-                                </label>}
-                                {isQuotation && <ReactSelect multiLanguageOption={paymentStatusFilterOptions}
-                                    onChange={onPaymentStatusChange} name='payment_status'
-                                    title={getFormattedMessage('dashboard.recentSales.paymentStatus.label')}
-                                    value={saleValue.payment_status} errors={errors['payment_status']}
-                                    defaultValue={paymentStatusDefaultValue[0]}
-                                    placeholder={placeholderText('sale.select.payment-status.placeholder')} />}
-                                {isQuotation && isPaymentType && <ReactSelect title={getFormattedMessage('select.payment-type.label')}
-                                    name='payment_type' value={saleValue.payment_type} errors={errors['payment_type']}
-                                    placeholder={placeholderText('sale.select.payment-type.placeholder')}
-                                    defaultValue={paymentTypeDefaultValue[0]} multiLanguageOption={paymentMethodOption}
-                                    onChange={onPaymentTypeChange} />}
-                            </div>
-                            {!singleSale && [2, 3].includes(Number(saleValue?.payment_status?.value)) && <div className='sale-credit-terms'>
-                                <div><i className='bi bi-calendar2-week' /><span><strong>Condiciones de crédito</strong><small>Este saldo aparecerá en cuentas por cobrar.</small></span></div>
-                                <label>Días de plazo<input type='number' min='0' max='3650' value={saleValue.payment_terms_days} onChange={(e) => { const days = Number(e.target.value || 0); setSaleValue({ ...saleValue, payment_terms_days: days, payment_due_date: dayjs(saleValue.date).add(days, 'day').format('YYYY-MM-DD') }); }} /></label>
-                                <label>Fecha de vencimiento<input type='date' value={saleValue.payment_due_date} onChange={(e) => setSaleValue({ ...saleValue, payment_due_date: e.target.value })} /></label>
-                            </div>}
-                        </div>
+                <section className='sale-desk__total'>
+                    <dl>
+                        <div><dt>Subtotal sin impuestos</dt><dd>{money(subtotalNoTax)}</dd></div>
+                        <div><dt>IVA</dt><dd>{money(itemsTax + orderTax)}</dd></div>
+                        {discountValue > 0 && <div><dt>Descuento</dt><dd>-{money(discountValue)}</dd></div>}
+                        {shippingValue > 0 && <div><dt>Envío</dt><dd>{money(shippingValue)}</dd></div>}
+                    </dl>
+                    <button ref={submitRef} type='button' className='sale-desk__save' onClick={onSubmit} disabled={isSaving}>
+                        <span className='sale-desk__save-label'>
+                            <span><i className='bi bi-check2-circle' /> {isSaving ? 'Guardando…' : isEdit ? 'Guardar cambios' : 'Guardar venta'}</span>
+                            <small><kbd>Ctrl</kbd> + <kbd>Enter</kbd></small>
+                        </span>
+                        <span className='sale-desk__save-total'>
+                            <small>Total a pagar</small>
+                            <strong>{money(grandTotal)}</strong>
+                        </span>
+                    </button>
+                </section>
+            </footer>
 
-                        <div className='sale-summary-section sale-notes-section'>
-                            <label className='sale-summary-section-title' htmlFor='sale-notes'>
-                                <i className='bi bi-card-text' /> Información adicional
-                            </label>
-                            <textarea id='sale-notes' name='notes' className='form-control' rows={3}
-                                value={saleValue.notes || ''}
-                                placeholder={placeholderText('globally.input.notes.placeholder.label')}
-                                onChange={onNotesChangeInput} />
-                        </div>
-
-                        <div className='sale-form-actions'>
-                            <ModelFooter onEditRecord={singleSale} onSubmit={onSubmit} link='/app/sales' />
-                        </div>
-                    </aside>
-                </div>
-            </div>
             {modalShowCustomer && (
                 <CustomerForm
                     show={modalShowCustomer}
                     hide={setModalShowCustomer}
+                    initialValues={customerDraft}
+                    onCustomerCreated={onCustomerCreated}
                 />
             )}
             {modalEditCustomer && selectedCustomerFlat && (
@@ -621,6 +730,7 @@ const SalesForm = (props) => {
                     show={modalEditCustomer}
                     hide={setModalEditCustomer}
                     singleCustomer={[selectedCustomerFlat]}
+                    onEditSubmit={(customerId, values) => updatePosCustomer(customerId, values, setModalEditCustomer)}
                 />
             )}
             <CustomerSalesHistoryModal
@@ -633,8 +743,8 @@ const SalesForm = (props) => {
 }
 
 const mapStateToProps = (state) => {
-    const { purchaseProducts, products, frontSetting, allConfigData } = state;
-    return { customProducts: prepareSaleProductArray(products), purchaseProducts, products, frontSetting, allConfigData }
+    const { purchaseProducts, products, frontSetting, allConfigData, settings, isSaving } = state;
+    return { customProducts: prepareSaleProductArray(products), purchaseProducts, products, frontSetting, allConfigData, settings, isSaving }
 }
 
-export default connect(mapStateToProps, { editSale, fetchProductsByWarehouse, fetchFrontSetting })(SalesForm)
+export default connect(mapStateToProps, { editSale, fetchProductsByWarehouse, fetchFrontSetting, updatePosCustomer })(SalesForm)

@@ -3,7 +3,6 @@ import {connect} from 'react-redux';
 import {useNavigate} from 'react-router-dom';
 import SalesForm from './SalesForm';
 import MasterLayout from '../MasterLayout';
-import HeaderTitle from '../header/HeaderTitle';
 import {addSale} from '../../store/action/salesAction';
 import {fetchAllCustomer} from '../../store/action/customerAction';
 import {fetchAllWarehouses} from '../../store/action/warehouseAction';
@@ -24,7 +23,6 @@ const CreateSale = (props) => {
 
     return (
         <MasterLayout>
-            <HeaderTitle title={getFormattedMessage('sale.create.title')} to='/app/sales'/>
             <SalesForm addSaleData={addSaleData} customers={customers} warehouses={warehouses}/>
         </MasterLayout>
     )

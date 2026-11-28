@@ -3,7 +3,6 @@ import {connect} from 'react-redux';
 import {useParams} from 'react-router-dom';
 import {useNavigate} from 'react-router-dom';
 import MasterLayout from '../MasterLayout';
-import HeaderTitle from '../header/HeaderTitle';
 import {fetchAllCustomer} from '../../store/action/customerAction';
 import {fetchAllWarehouses} from '../../store/action/warehouseAction';
 import status from '../../shared/option-lists/status.json';
@@ -85,7 +84,6 @@ const CreateQuotationSale = (props) => {
     return (
         <MasterLayout>
             <TopProgressBar/>
-            <HeaderTitle title={getFormattedMessage("sale.create.title")} to='/app/quotations'/>
             {isLoading ? <Spinner /> :
                 <SalesForm singleSale={itemsValue} id={id} addSaleData={addSaleData} isQuotation={true} customers={customers} warehouses={warehouses}/>}
         </MasterLayout>
