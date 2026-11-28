@@ -138,6 +138,27 @@ export default [
         permission: Permissions.MANAGE_CATALOG_ORDERS,
     },
 
+    { groupHeader: true, title: "sidebar.group.purchases" },
+    {
+        title: "sidebar.item.purchases",
+        name: "purchases",
+        fontIcon: <FontAwesomeIcon icon={faReceipt} />,
+        to: "/app/purchases",
+        class: "d-flex",
+        tabs: [
+            { title: "sidebar.item.purchases", name: "purchases", to: "/app/purchases", permission: Permissions.MANAGE_PURCHASE },
+            { title: "sidebar.tab.returns", name: "purchases return", to: "/app/purchase-return", permission: Permissions.MANAGE_PURCHASE_RETURN },
+        ],
+    },
+    {
+        title: "suppliers.title",
+        name: "suppliers",
+        fontIcon: <FontAwesomeIcon icon={faTruck} />,
+        to: "/app/suppliers",
+        class: "d-flex",
+        permission: Permissions.MANAGE_SUPPLIERS,
+    },
+
     { groupHeader: true, title: "sidebar.group.cash" },
     {
         title: "sidebar.item.cash-control",
@@ -220,27 +241,6 @@ export default [
         to: "/app/inventory-counts",
         class: "d-flex",
         permission: Permissions.INVENTORY_COUNTS_ACCESS,
-    },
-
-    { groupHeader: true, title: "sidebar.group.purchases" },
-    {
-        title: "sidebar.item.purchases",
-        name: "purchases",
-        fontIcon: <FontAwesomeIcon icon={faReceipt} />,
-        to: "/app/purchases",
-        class: "d-flex",
-        tabs: [
-            { title: "sidebar.item.purchases", name: "purchases", to: "/app/purchases", permission: Permissions.MANAGE_PURCHASE },
-            { title: "sidebar.tab.returns", name: "purchases return", to: "/app/purchase-return", permission: Permissions.MANAGE_PURCHASE_RETURN },
-        ],
-    },
-    {
-        title: "suppliers.title",
-        name: "suppliers",
-        fontIcon: <FontAwesomeIcon icon={faTruck} />,
-        to: "/app/suppliers",
-        class: "d-flex",
-        permission: Permissions.MANAGE_SUPPLIERS,
     },
 
     { groupHeader: true, title: "sidebar.group.analysis" },
